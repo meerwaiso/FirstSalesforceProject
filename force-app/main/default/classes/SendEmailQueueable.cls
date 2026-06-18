@@ -12,6 +12,8 @@ public with sharing class SendEmailQueueable implements Queueable {
             WHERE Id IN :accountIds
         ];
 
+        User currentUser = [SELECT Id, Name, Email FROM User WHERE Id = :UserInfo.getUserId()];
+
         for (Account acc : accounts) {
             String subject = 'Neuer Account erstellt: ' + acc.Name;
 
@@ -25,9 +27,12 @@ public with sharing class SendEmailQueueable implements Queueable {
                 + '</table>';
 
             Messaging.SingleEmailMessage email = new Messaging.SingleEmailMessage();
+            email.setSenderDisplayName(currentUser.Name);
+            email.setSignAsId(currentUser.Id);
             email.setToAddresses(new List<String> { 'meerwais.osmani@gmail.com' });
             email.setSubject(subject);
             email.setHtmlBody(body);
+            email.setWhatId(acc.Id);
 
             Messaging.sendEmail(new List<Messaging.SingleEmailMessage> { email });
         }
