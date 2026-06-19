@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<UtilityBar xmlns="http://soap.sforce.com/2006/04/metadata">
+    <utilityComponent>
+        <componentName>utility:RecentItems</componentName>
+        <isVisible>true</isVisible>
+        <position>right</position>
+    </utilityComponent>
+    <utilityComponent>
+        <componentName>utility:AppLauncher</componentName>
+        <isVisible>true</isVisible>
+        <position>right</position>
+    </utilityComponent>
+    <utilityComponent>
+        <componentName>utility:Notifications</componentName>
+        <isVisible>true</isVisible>
+        <position>right</position>
+    </utilityComponent>
+    <utilityComponent>
+        <componentName>utility:Settings</componentName>
+        <isVisible>true</isVisible>
+        <position>right</position>
+    </utilityComponent>
+</UtilityBar>
