@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Smartphone__c.Status__c</fullName>
+    <description>Lebenszyklus-Status des Smartphones</description>
+    <label>Status</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Verfübar</fullName>
+                <default>false</default>
+                <label>Verfügbar</label>
+            </value>
+            <value>
+                <fullName>Reserviert</fullName>
+                <default>false</default>
+                <label>Reserviert</label>
+            </value>
+            <value>
+                <fullName>In_Betrieb</fullName>
+                <default>false</default>
+                <label>In Betrieb</label>
+            </value>
+            <value>
+                <fullName>Verkauft</fullName>
+                <default>false</default>
+                <label>Verkauft</label>
+            </value>
+            <value>
+                <fullName>Ausgemustert</fullName>
+                <default>false</default>
+                <label>Ausgemustert</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>
