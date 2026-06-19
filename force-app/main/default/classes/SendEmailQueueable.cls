@@ -28,7 +28,6 @@ public with sharing class SendEmailQueueable implements Queueable {
 
             Messaging.SingleEmailMessage email = new Messaging.SingleEmailMessage();
             email.setSenderDisplayName(currentUser.Name);
-            email.setSignAsId(currentUser.Id);
             email.setToAddresses(new List<String> { 'meerwais.osmani@gmail.com' });
             email.setSubject(subject);
             email.setHtmlBody(body);
