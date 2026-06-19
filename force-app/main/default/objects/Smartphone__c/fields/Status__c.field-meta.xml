@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Smartphone__c.Status__c</fullName>
+    <fullName>Status__c</fullName>
     <description>Lebenszyklus-Status des Smartphones</description>
     <label>Status</label>
     <required>false</required>

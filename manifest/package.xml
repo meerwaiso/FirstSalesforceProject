@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Smartphone__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>Smartphone__c.Farbe__c</members>
+        <members>Smartphone__c.Garantie_bis__c</members>
+        <members>Smartphone__c.Gewaehrleistungsnummer__c</members>
+        <members>Smartphone__c.Kaufdatum__c</members>
+        <members>Smartphone__c.Kondition__c</members>
+        <members>Smartphone__c.Kunde__c</members>
+        <members>Smartphone__c.Marke__c</members>
+        <members>Smartphone__c.Modell__c</members>
+        <members>Smartphone__c.Preis__c</members>
+        <members>Smartphone__c.Seriennummer__c</members>
+        <members>Smartphone__c.Speicherkapazitaet__c</members>
+        <members>Smartphone__c.Status__c</members>
+        <members>Smartphone__c.Verkaeufer__c</members>
+        <members>Smartphone__c.Verkaufsdatum__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>62.0</version>
+</Package>
