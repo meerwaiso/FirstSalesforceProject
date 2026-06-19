@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Smartphone__c.Kunde__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <label>Kunde</label>
+    <referenceTo>Account</referenceTo>
+    <relationshipLabel>Smartphones</relationshipLabel>
+    <relationshipName>Smartphones</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>
