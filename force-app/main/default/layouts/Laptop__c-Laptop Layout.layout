@@ -46,7 +46,7 @@
         <customLabel>false</customLabel>
         <detailHeading>false</detailHeading>
         <editHeading>true</editHeading>
-        <label>Status & Kondition</label>
+        <label>Status / Kondition</label>
         <layoutColumns>
             <layoutItems>
                 <behavior>Edit</behavior>
@@ -84,7 +84,7 @@
         <customLabel>false</customLabel>
         <detailHeading>false</detailHeading>
         <editHeading>true</editHeading>
-        <label>Kunde & Verkäufer</label>
+        <label>Kunde / Verkäufer</label>
         <layoutColumns>
             <layoutItems>
                 <behavior>Edit</behavior>
