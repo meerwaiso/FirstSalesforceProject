@@ -1,26 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
-    <apiVersion>63.0</apiVersion>
+    <apiVersion>62.0</apiVersion>
     <status>Active</status>
     <label>Laptop Lagerbestandspruefung</label>
     <description>Record-Activated Flow: Nach Genehmigung (Status = Genehmigt) automatisch Lagerbestand pruefen und Status aktualisieren</description>
     <interviewLabel>Laptop Lagerbestandspruefung</interviewLabel>
     <isTemplate>false</isTemplate>
-    <processType>RecordTriggered</processType>
-    <recordTrigger>
-        <object>Laptop__c</object>
-        <triggerType>Update</triggerType>
-        <triggerOrder>2</triggerOrder>
-        <isRecordUpdatedToBeAccessed>true</isRecordUpdatedToBeAccessed>
-        <isRecordUpdatedToBeUpdated>true</isRecordUpdatedToBeUpdated>
-        <filters>
-            <field>Status__c</field>
-            <operator>EqualTo</operator>
-            <value>
-                <stringValue>Genehmigt</stringValue>
-            </value>
-        </filters>
-    </recordTrigger>
     <start>
         <locationX>50</locationX>
         <locationY>0</locationY>
