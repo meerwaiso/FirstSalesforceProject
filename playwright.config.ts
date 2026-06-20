@@ -10,11 +10,14 @@ export default defineConfig({
     ['html', { outputFolder: 'test-report' }],
     ['json', { outputFile: 'test-report/playwright-results.json' }],
   ],
+  globalSetup: './tests/e2e/auth.setup',
   use: {
     baseURL: process.env.SALESFORCE_URL || 'https://empathetic-hawk-kft3g7-dev-ed.trailblaze.my.salesforce.com',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    // Use saved auth state to avoid session timeout
+    storageState: 'auth/storage-state.json',
   },
   projects: [
     {

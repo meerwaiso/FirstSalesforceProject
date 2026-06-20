@@ -12,7 +12,7 @@
         <triggerType>Create</triggerType>
         <triggerOrder>1</triggerOrder>
         <isRecordUpdatedToBeAccessed>true</isRecordUpdatedToBeAccessed>
-        <isRecordUpdatedToBeUpdated>false</isRecordUpdatedToBeUpdated>
+        <isRecordUpdatedToBeUpdated>true</isRecordUpdatedToBeUpdated>
     </recordTrigger>
     <start>
         <locationX>50</locationX>

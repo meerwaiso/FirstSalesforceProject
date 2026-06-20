@@ -2,9 +2,8 @@
 <ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Sonderbegruendung_erforderlich</fullName>
     <active>true</active>
-    <description>Prueft, ob Sonderbegruendung__c ausgefuellt ist, wenn das aktuelle Gerat jünger als 3 Jahre ist (Kaufdatum__c < TODAY() - 1095)</description>
+    <description>Prueft, ob Sonderbegruendung__c ausgefuellt ist, wenn das aktuelle Gerat jünger als 3 Jahre ist (Kaufdatum__c > TODAY() - 1095). ISNEW() wurde entfernt, da es bei Apex-DML nicht zuverlässig feuert.</description>
     <errorConditionFormula>AND(
-    ISNEW(),
     ISBLANK(TEXT(Sonderbegruendung__c)),
     Kaufdatum__c > TODAY() - 1095
 )</errorConditionFormula>
