@@ -1,0 +1,82 @@
+<template>
+    <lightning-card title="Laptop Dashboard" icon-name="standard:computer">
+        <div class="slds-p-around_medium">
+            <!-- Filter Bar -->
+            <div class="slds-grid slds-gutters slds-m-bottom_medium">
+                <div class="slds-col slds-size_1-of-3">
+                    <lightning-combobox
+                        label="Mitarbeiter"
+                        name="kunde"
+                        value={filterKunde}
+                        onchange={handleFilterChange}
+                        placeholder="Nach Mitarbeiter filtern"
+                    ></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-3">
+                    <lightning-combobox
+                        label="Status"
+                        name="status"
+                        value={filterStatus}
+                        onchange={handleFilterChange}
+                        placeholder="Nach Status filtern"
+                    ></lightning-combobox>
+                </div>
+                <div class="slds-col slds-size_1-of-3">
+                    <lightning-combobox
+                        label="Modell"
+                        name="modell"
+                        value={filterModell}
+                        onchange={handleFilterChange}
+                        placeholder="Nach Modell filtern"
+                    ></lightning-combobox>
+                </div>
+            </div>
+
+            <!-- Gesamtwert KPI -->
+            <div class="slds-grid slds-gutters slds-m-bottom_medium">
+                <div class="slds-col">
+                    <lightning-card
+                        title="Gesamtwert genehmigter Laptops"
+                        icon-name="standard:money"
+                        variant="brand"
+                    >
+                        <div class="slds-p-around_medium">
+                            <lightning-formatted-number
+                                value={gesamtwert}
+                                format="currency"
+                            ></lightning-formatted-number>
+                        </div>
+                    </lightning-card>
+                </div>
+            </div>
+
+            <!-- Aktive Gerate Tabelle -->
+            <div class="slds-m-bottom_medium">
+                <h2 class="slds-text-heading_medium slds-m-bottom_small">
+                    Aktive Geräte
+                </h2>
+                <lightning-datatable
+                    key-field="Id"
+                    data={filteredAktiveLaptops}
+                    columns={aktiveColumns}
+                    hide-checkbox-columns
+                    show-row-number-column
+                ></lightning-datatable>
+            </div>
+
+            <!-- Offene Antraege Tabelle -->
+            <div>
+                <h2 class="slds-text-heading_medium slds-m-bottom_small">
+                    Offene Anträge
+                </h2>
+                <lightning-datatable
+                    key-field="Id"
+                    data={filteredOffeneAntraege}
+                    columns={offeneColumns}
+                    hide-checkbox-columns
+                    show-row-number-column
+                ></lightning-datatable>
+            </div>
+        </div>
+    </lightning-card>
+</template>
