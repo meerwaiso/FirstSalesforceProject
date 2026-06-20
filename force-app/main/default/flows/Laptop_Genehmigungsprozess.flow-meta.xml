@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Flow xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>62.0</apiVersion>
+    <status>Active</status>
+    <label>Laptop Genehmigungsprozess</label>
+    <description>Record-Activated Flow: Bei Neuanlage von Laptop__c prueft den Preis und genehmigt automatisch oder startet Approval Process</description>
+    <interviewLabel>Laptop Genehmigungsprozess</interviewLabel>
+    <isTemplate>false</isTemplate>
+    <processType>AutoLaunchedFlow</processType>
+    <recordTrigger>
+        <object>Laptop__c</object>
+        <triggerType>Create</triggerType>
+        <triggerOrder>1</triggerOrder>
+        <isRecordUpdatedToBeAccessed>true</isRecordUpdatedToBeAccessed>
+        <isRecordUpdatedToBeUpdated>false</isRecordUpdatedToBeUpdated>
+    </recordTrigger>
+    <start>
+        <locationX>50</locationX>
+        <locationY>0</locationY>
+        <connector>
+            <targetReference>Decision_Preis_Pruefung</targetReference>
+        </connector>
+    </start>
+    <decision>
+        <name>Decision_Preis_Pruefung</name>
+        <label>Preis Pruefung</label>
+        <locationX>200</locationX>
+        <locationY>140</locationY>
+        <defaultConnector>
+            <targetReference>Update_Status_Ausstehend</targetReference>
+        </defaultConnector>
+        <connector>
+            <targetReference>Update_Status_Genehmigt</targetReference>
+        </connector>
+        <rules>
+            <name>Preis_bis_1500</name>
+            <condition>
+                <leftValueReference>Record.Preis__c</leftValueReference>
+                <operator>LessThanOrEqualTo</operator>
+                <rightValue>
+                    <numberValue>1500.0</numberValue>
+                </rightValue>
+            </condition>
+            <conditionType>And</conditionType>
+        </rules>
+    </decision>
+    <assignment>
+        <name>Update_Status_Genehmigt</name>
+        <label>Status auf Genehmigt setzen</label>
+        <locationX>100</locationX>
+        <locationY>280</locationY>
+        <assignmentItems>
+            <assignToReference>Record.Status__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>Genehmigt</stringValue>
+            </value>
+        </assignmentItems>
+    </assignment>
+    <assignment>
+        <name>Update_Status_Ausstehend</name>
+        <label>Status auf Ausstehend setzen</label>
+        <locationX>300</locationX>
+        <locationY>280</locationY>
+        <assignmentItems>
+            <assignToReference>Record.Status__c</assignToReference>
+            <operator>Assign</operator>
+            <value>
+                <stringValue>Ausstehend</stringValue>
+            </value>
+        </assignmentItems>
+        <connector>
+            <targetReference>Submit_Approval_Request</targetReference>
+        </connector>
+    </assignment>
+    <approval>
+        <name>Submit_Approval_Request</name>
+        <label>Approval Request starten</label>
+        <locationX>450</locationX>
+        <locationY>420</locationY>
+        <approvalEntryCriteriaItems>
+            <leftValueReference>Record.Preis__c</leftValueReference>
+            <operator>GreaterThan</operator>
+            <rightValue>
+                <numberValue>1500.0</numberValue>
+            </rightValue>
+        </approvalEntryCriteriaItems>
+        <processType>Record</processType>
+        <rejectionLabel>Ablehnen</rejectionLabel>
+        <submitter>
+            <type>SubmitterIsRecordOwner</type>
+        </submitter>
+        <steps>
+            <name>Step_Manager_Approval</name>
+            <label>Manager Genehmigung</label>
+            <approverFollower>
+                <type>Lookup</type>
+                <lookupType>Manager</lookupType>
+                <lookupField>OwnerId</lookupField>
+            </approverFollower>
+        </steps>
+        <rejectionActions>
+            <name>On_Rejection_Update</name>
+            <label>Status auf Abgelehnt setzen</label>
+            <action>
+                <name>Update_Rejected</name>
+                <type>FlowAction</type>
+                <flowAction>
+                    <name>Update_Rejected_Record</name>
+                    <label>Abgelehnt Update</label>
+                    <fieldAssignments>
+                        <field>Status__c</field>
+                        <value>
+                            <stringValue>Abgelehnt</stringValue>
+                        </value>
+                    </fieldAssignments>
+                    <recordIdReference>Record.Id</recordIdReference>
+                </flowAction>
+            </action>
+        </rejectionActions>
+        <approvalActions>
+            <name>On_Approval_Update</name>
+            <label>Status auf Genehmigt setzen</label>
+            <action>
+                <name>Update_Approved</name>
+                <type>FlowAction</type>
+                <flowAction>
+                    <name>Update_Approved_Record</name>
+                    <label>Genehmigt Update</label>
+                    <fieldAssignments>
+                        <field>Status__c</field>
+                        <value>
+                            <stringValue>Genehmigt</stringValue>
+                        </value>
+                    </fieldAssignments>
+                    <recordIdReference>Record.Id</recordIdReference>
+                </flowAction>
+            </action>
+        </approvalActions>
+    </approval>
+</Flow>

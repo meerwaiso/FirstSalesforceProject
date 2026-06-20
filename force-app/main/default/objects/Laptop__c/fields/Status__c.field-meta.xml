@@ -29,6 +29,36 @@
                 <default>false</default>
                 <label>Bestellt</label>
             </value>
+            <value>
+                <fullName>Ausstehend</fullName>
+                <default>false</default>
+                <label>Ausstehend</label>
+            </value>
+            <value>
+                <fullName>Genehmigt</fullName>
+                <default>false</default>
+                <label>Genehmigt</label>
+            </value>
+            <value>
+                <fullName>Abgelehnt</fullName>
+                <default>false</default>
+                <label>Abgelehnt</label>
+            </value>
+            <value>
+                <fullName>Auf_Lager</fullName>
+                <default>false</default>
+                <label>Auf Lager</label>
+            </value>
+            <value>
+                <fullName>Zugewiesen</fullName>
+                <default>false</default>
+                <label>Zugewiesen</label>
+            </value>
+            <value>
+                <fullName>Nachbestellung</fullName>
+                <default>false</default>
+                <label>Nachbestellung</label>
+            </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

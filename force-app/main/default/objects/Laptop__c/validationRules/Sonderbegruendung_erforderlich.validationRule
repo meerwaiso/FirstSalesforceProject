@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Sonderbegruendung_erforderlich</fullName>
+    <active>true</active>
+    <description>Prueft, ob Sonderbegruendung__c ausgefuellt ist, wenn das aktuelle Gerat jünger als 3 Jahre ist (Kaufdatum__c < TODAY() - 1095)</description>
+    <errorConditionFormula>AND(
+    ISNEW(),
+    ISBLANK(TEXT(Sonderbegruendung__c)),
+    Kaufdatum__c > TODAY() - 1095
+)</errorConditionFormula>
+    <errorMessage>Ihr aktuelles Gerät ist weniger als 3 Jahre alt. Bitte geben Sie eine Sonderbegründung an.</errorMessage>
+</ValidationRule>

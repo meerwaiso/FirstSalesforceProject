@@ -1,0 +1,34 @@
+<template>
+    <div class="slds-grid slds-grid_pull-padded-small slds-gutters">
+        <!-- Filter: Mitarbeiter -->
+        <div class="slds-col slds-size_1-of-3">
+            <lightning-combobox
+                name="kunde"
+                label="Mitarbeiter"
+                value={filterKunde}
+                options={kundeOptions}
+                onchange={handleFilterChange}
+            ></lightning-combobox>
+        </div>
+        <!-- Filter: Status -->
+        <div class="slds-col slds-size_1-of-3">
+            <lightning-combobox
+                name="status"
+                label="Status"
+                value={filterStatus}
+                options={statusOptions}
+                onchange={handleFilterChange}
+            ></lightning-combobox>
+        </div>
+        <!-- Filter: Modell -->
+        <div class="slds-col slds-size_1-of-3">
+            <lightning-combobox
+                name="modell"
+                label="Modell"
+                value={filterModell}
+                options={modellOptions}
+                onchange={handleFilterChange}
+            ></lightning-combobox>
+        </div>
+    </div>
+</template>
