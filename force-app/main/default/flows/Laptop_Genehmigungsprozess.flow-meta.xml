@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Flow xmlns="http://soap.sforce.com/2006/04/metadata">
-    <apiVersion>62.0</apiVersion>
+    <apiVersion>63.0</apiVersion>
     <status>Active</status>
     <label>Laptop Genehmigungsprozess</label>
     <description>Record-Activated Flow: Bei Neuanlage von Laptop__c prueft den Preis und genehmigt automatisch oder startet Approval Process</description>
     <interviewLabel>Laptop Genehmigungsprozess</interviewLabel>
     <isTemplate>false</isTemplate>
-    <processType>AutoLaunchedFlow</processType>
+    <processType>RecordTriggeredFlow</processType>
     <recordTrigger>
         <object>Laptop__c</object>
         <triggerType>Create</triggerType>
