@@ -2,6 +2,6 @@
 <CustomTab xmlns="http://soap.sforce.com/2006/04/metadata">
     <description>Laptop Dashboard Tab</description>
     <label>Laptop Dashboard</label>
-    <lwc>laptopDashboard</lwc>
+    <tabType>flexipage</tabType>
     <motif>Custom57: Laptop</motif>
 </CustomTab>

@@ -11,8 +11,6 @@
         <object>Laptop__c</object>
         <triggerType>Create</triggerType>
         <triggerOrder>1</triggerOrder>
-        <isRecordUpdatedToBeAccessed>true</isRecordUpdatedToBeAccessed>
-        <isRecordUpdatedToBeUpdated>true</isRecordUpdatedToBeUpdated>
     </recordTrigger>
     <start>
         <locationX>50</locationX>

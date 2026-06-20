@@ -6,7 +6,7 @@
     </flexiPageRegions>
     <masterLabel>Laptop Dashboard</masterLabel>
     <template>
-        <name>one:standardWidthTemplate</name>
+        <name>one:appPageTemplate</name>
     </template>
     <type>AppPage</type>
 </FlexiPage>
