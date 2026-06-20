@@ -587,10 +587,14 @@ Create these in Jira as sub-tasks nested under the parent ticket.
     
    
    5. Notify the relevant agent (Developer or Tester).  
- **When in Salesforce:**  
+ 
+
+
+**When in Salesforce:**  
    
- 1.Allways deploy source code in destination salesforce org after successfull pr merge.  
-2.Before real deployment first dry run deployment. When successfull then real deployment   
+ 1.Allways deploy source code in destination salesforce org. 
+2.Before real deployment first dry run deployment. When successfull then real deployment. Prefer to use salesforce mcp server.
+3.Only when deployment was successfull then  merge pr.     
    
      
    
