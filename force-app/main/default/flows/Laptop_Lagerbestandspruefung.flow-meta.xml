@@ -3,21 +3,47 @@
     <apiVersion>62.0</apiVersion>
     <status>Active</status>
     <label>Laptop Lagerbestandspruefung</label>
-    <description>Record-Activated Flow: Nach Genehmigung (Status = Genehmigt) automatisch Lagerbestand pruefen und Status aktualisieren</description>
+    <description>AutoLaunched Flow: Nach Genehmigung (Status = Genehmigt) automatisch Lagerbestand pruefen und Status aktualisieren</description>
     <interviewLabel>Laptop Lagerbestandspruefung</interviewLabel>
     <isTemplate>false</isTemplate>
+    <processType>AutoLaunchedFlow</processType>
+    <variables>
+        <name>varRecordId</name>
+        <dataType>String</dataType>
+        <isCollection>false</isCollection>
+        <isInput>true</isInput>
+        <isOutput>false</isOutput>
+    </variables>
     <start>
         <locationX>50</locationX>
         <locationY>0</locationY>
         <connector>
-            <targetReference>Get_Lager_Laptops</targetReference>
+            <targetReference>GetRecord</targetReference>
         </connector>
     </start>
     <getRecords>
-        <name>Get_Lager_Laptops</name>
-        <label>Lagerbestand pruefen</label>
+        <name>GetRecord</name>
+        <label>Laptop Record laden</label>
         <locationX>200</locationX>
         <locationY>140</locationY>
+        <connector>
+            <targetReference>Get_Lager_Laptops</targetReference>
+        </connector>
+        <filterItems>
+            <field>Id</field>
+            <operator>EqualTo</operator>
+            <value>
+                <elementReference>varRecordId</elementReference>
+            </value>
+        </filterItems>
+        <object>Laptop__c</object>
+        <storedRecords>varLaptop</storedRecords>
+    </getRecords>
+    <getRecords>
+        <name>Get_Lager_Laptops</name>
+        <label>Lagerbestand pruefen</label>
+        <locationX>350</locationX>
+        <locationY>280</locationY>
         <connector>
             <targetReference>Decision_Lagerbestand</targetReference>
         </connector>
@@ -25,7 +51,7 @@
             <field>Modell__c</field>
             <operator>EqualTo</operator>
             <value>
-                <elementReference>Record.Modell__c</elementReference>
+                <elementReference>varLaptop[0].Modell__c</elementReference>
             </value>
         </filterItems>
         <filterItems>
@@ -41,8 +67,8 @@
     <decision>
         <name>Decision_Lagerbestand</name>
         <label>Lagerbestand Entscheidung</label>
-        <locationX>350</locationX>
-        <locationY>280</locationY>
+        <locationX>500</locationX>
+        <locationY>420</locationY>
         <defaultConnector>
             <targetReference>Update_Nachbestellung</targetReference>
         </defaultConnector>
@@ -62,26 +88,10 @@
             </condition>
         </rules>
     </decision>
-    <assignment>
+    <updateRecords>
         <name>Update_Zugewiesen_Antrag</name>
         <label>Antrag auf Zugewiesen setzen</label>
-        <locationX>200</locationX>
-        <locationY>420</locationY>
-        <assignmentItems>
-            <assignToReference>Record.Status__c</assignToReference>
-            <operator>Assign</operator>
-            <value>
-                <stringValue>Zugewiesen</stringValue>
-            </value>
-        </assignmentItems>
-        <connector>
-            <targetReference>Update_Lager_Laptop_Zugewiesen</targetReference>
-        </connector>
-    </assignment>
-    <updateRecords>
-        <name>Update_Lager_Laptop_Zugewiesen</name>
-        <label>Lager-Laptop auf Zugewiesen setzen</label>
-        <locationX>200</locationX>
+        <locationX>350</locationX>
         <locationY>560</locationY>
         <inputAssignments>
             <field>Status__c</field>
@@ -90,35 +100,43 @@
             </value>
         </inputAssignments>
         <object>Laptop__c</object>
-        <recordId>{!Get_Lager_Laptops_Result[0].Id}</recordId>
+        <recordId>
+            <elementReference>varLaptop[0].Id</elementReference>
+        </recordId>
+        <connector>
+            <targetReference>Update_Lager_Laptop_Zugewiesen</targetReference>
+        </connector>
     </updateRecords>
-    <assignment>
+    <updateRecords>
+        <name>Update_Lager_Laptop_Zugewiesen</name>
+        <label>Lager-Laptop auf Zugewiesen setzen</label>
+        <locationX>350</locationX>
+        <locationY>700</locationY>
+        <inputAssignments>
+            <field>Status__c</field>
+            <value>
+                <stringValue>Zugewiesen</stringValue>
+            </value>
+        </inputAssignments>
+        <object>Laptop__c</object>
+        <recordId>
+            <elementReference>Get_Lager_Laptops_Result[0].Id</elementReference>
+        </recordId>
+    </updateRecords>
+    <updateRecords>
         <name>Update_Nachbestellung</name>
         <label>Antrag auf Nachbestellung setzen</label>
-        <locationX>500</locationX>
-        <locationY>420</locationY>
-        <assignmentItems>
-            <assignToReference>Record.Status__c</assignToReference>
-            <operator>Assign</operator>
+        <locationX>650</locationX>
+        <locationY>560</locationY>
+        <inputAssignments>
+            <field>Status__c</field>
             <value>
                 <stringValue>Nachbestellung</stringValue>
             </value>
-        </assignmentItems>
-        <connector>
-            <targetReference>Send_Email_Einkauf</targetReference>
-        </connector>
-    </assignment>
-    <emailAlert>
-        <name>Send_Email_Einkauf</name>
-        <label>Email an Einkauf senden</label>
-        <locationX>650</locationX>
-        <locationY>560</locationY>
-        <emailTemplate>Laptop_Nachbestellung_Template</emailTemplate>
-        <senderDlpPolicy>OrganizationWideEmailAddress</senderDlpPolicy>
-        <senderType>CurrentUser</senderType>
-        <targets>
-            <targetAddress>einkauf@firma.de</targetAddress>
-            <targetType>EmailAddress</targetType>
-        </targets>
-    </emailAlert>
+        </inputAssignments>
+        <object>Laptop__c</object>
+        <recordId>
+            <elementReference>varLaptop[0].Id</elementReference>
+        </recordId>
+    </updateRecords>
 </Flow>
