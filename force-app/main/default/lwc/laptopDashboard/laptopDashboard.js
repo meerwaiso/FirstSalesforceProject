@@ -1,7 +1,6 @@
 import { LightningElement, wire, track } from 'lwc';
 import { getRecord, getFieldValue } from 'lightning/uiRecordApi';
 import { getListUi } from 'lightning/uiListApi';
-import { getAggregateUi } from 'lightning/uiAggregateApi';
 
 import LAPTOP_OBJECT from '@salesforce/schema/Laptop__c';
 import NAME_FIELD from '@salesforce/schema/Laptop__c.Name';
@@ -87,35 +86,12 @@ export default class LaptopDashboard extends LightningElement {
     }
   }
 
-  // Gesamtwert aller genehmigten Laptops
-  @wire(getAggregateUi, {
-    objectApiName: LAPTOP_OBJECT,
-    groupByAggregates: [],
-    aggregateSelects: [
-      {
-        aggregateSelect: {
-          type: 'sum',
-          fieldApiName: PREIS_FIELD.fieldApiName,
-        },
-        alias: 'Gesamtwert',
-      },
-    ],
-    filterCriteria: {
-      criteria: [
-        {
-          fieldApiName: STATUS_FIELD.fieldApiName,
-          operator: 'eq',
-          value: 'Genehmigt',
-        },
-      ],
-    },
-  })
-  wiredGesamtwert({ data, error }) {
-    if (data) {
-      this.gesamtwert = data.records[0]?.Gesamtwert ?? 0;
-    } else if (error) {
-      console.error('Error loading gesamtwert:', error);
-    }
+  // Gesamtwert aller genehmigten Laptops - wird aus den offenen Antraegen berechnet
+  get gesamtwertBerechnet() {
+    return this.offeneAntraege.reduce((sum, antrag) => {
+      const preis = antrag.Preis__c?.value ?? 0;
+      return sum + (typeof preis === 'number' ? preis : parseFloat(preis) || 0);
+    }, 0);
   }
 
   // Filter-Handler

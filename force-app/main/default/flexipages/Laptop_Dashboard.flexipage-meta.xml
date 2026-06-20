@@ -1,40 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <FlexiPage xmlns="http://soap.sforce.com/2006/04/metadata">
     <flexiPageRegions>
-        <name>header</name>
-        <type>Region</type>
-    </flexiPageRegions>
-    <flexiPageRegions>
-        <name>horizontalTab1</name>
-        <type>Region</type>
-        <components>
-            <component>
-                <componentInstanceProperties>
-                    <name>name</name>
-                    <value>Tab1</value>
-                </componentInstanceProperties>
-                <componentName>Tab1</componentName>
-                <componentType>FrameworkComponent</componentType>
-            </component>
-        </components>
-    </flexiPageRegions>
-    <flexiPageRegions>
-        <name>horizontalTab1:tab1</name>
-        <type>Region</type>
-        <components>
-            <component>
-                <componentName>laptopDashboard</componentName>
-                <componentType>LightningComponent</componentType>
-            </component>
-        </components>
-    </flexiPageRegions>
-    <flexiPageRegions>
-        <name>footer</name>
+        <name>region1</name>
         <type>Region</type>
     </flexiPageRegions>
     <masterLabel>Laptop Dashboard</masterLabel>
     <template>
-        <name>one:appLeftHeaderTemplate</name>
+        <name>one:standardWidthTemplate</name>
     </template>
     <type>AppPage</type>
 </FlexiPage>

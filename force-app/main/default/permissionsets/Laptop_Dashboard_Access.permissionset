@@ -39,10 +39,10 @@
     </fieldPermissions>
     <tabSettings>
         <tab>Laptop__c</tab>
-        <activated>true</activated>
+        <visibility>Visible</visibility>
     </tabSettings>
     <tabSettings>
         <tab>Laptop_Dashboard</tab>
-        <activated>true</activated>
+        <visibility>Visible</visibility>
     </tabSettings>
 </PermissionSet>

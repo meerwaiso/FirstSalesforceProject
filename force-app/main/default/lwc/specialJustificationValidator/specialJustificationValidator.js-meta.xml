@@ -5,14 +5,6 @@
     <masterLabel>Sonderbegruendung Validator</masterLabel>
     <description>Client-seitige Validierung: Prueft, ob Sonderbegruendung ausgefuellt ist, wenn Gerat jünger als 3 Jahre</description>
     <targets>
-        <target>lightning__RecordEditForm</target>
         <target>lightning__RecordPage</target>
     </targets>
-    <targetConfigs>
-        <targetConfig targets="lightning__RecordEditForm">
-            <objects>
-                <object>Laptop__c</object>
-            </objects>
-        </targetConfig>
-    </targetConfigs>
 </LightningComponentBundle>
