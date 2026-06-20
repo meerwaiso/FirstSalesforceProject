@@ -6,7 +6,7 @@
     <description>Record-Activated Flow: Bei Neuanlage von Laptop__c prueft den Preis und genehmigt automatisch oder startet Approval Process</description>
     <interviewLabel>Laptop Genehmigungsprozess</interviewLabel>
     <isTemplate>false</isTemplate>
-    <processType>RecordTriggeredFlow</processType>
+    <processType>RecordTriggered</processType>
     <recordTrigger>
         <object>Laptop__c</object>
         <triggerType>Create</triggerType>

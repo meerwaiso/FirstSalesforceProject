@@ -6,7 +6,7 @@
     <description>Record-Activated Flow: Nach Genehmigung (Status = Genehmigt) automatisch Lagerbestand pruefen und Status aktualisieren</description>
     <interviewLabel>Laptop Lagerbestandspruefung</interviewLabel>
     <isTemplate>false</isTemplate>
-    <processType>RecordTriggeredFlow</processType>
+    <processType>RecordTriggered</processType>
     <recordTrigger>
         <object>Laptop__c</object>
         <triggerType>Update</triggerType>

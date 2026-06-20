@@ -3,6 +3,5 @@
     <description>Laptop Dashboard Tab</description>
     <label>Laptop Dashboard</label>
     <page>Laptop_Dashboard</page>
-    <tabType>flexipage</tabType>
     <motif>Custom57: Laptop</motif>
 </CustomTab>
