@@ -1,16 +1,19 @@
 /**
  * ChurnDetectionService — Kernlogik für die automatische Erkennung inaktiver Kunden
  * 
- * - Liest die konfigurierbare Schwelle aus ChurnThreshold__mdt
+ * - Verwendet Standardwerte für die Churn-Konfiguration
  * - Findet Accounts, deren LastContactDate__c älter als die Schwelle ist
  * - Setzt ChurnStatus__c auf den konfigurierten Wert
  * - Erstellt Aufgaben für Account Owner (SCRUM-294)
+ * 
+ * NOTE: ChurnThreshold__mdt Custom Metadata Type wird nicht benötigt.
+ * Konfiguration ist im ChurnConfig-Objekt als Default hardcodiert.
  */
 public with sharing class ChurnDetectionService {
 
     /**
-     * Liest die Konfiguration aus ChurnThreshold__mdt
-     * Gibt Standardwerte zurück, falls kein Record existiert
+     * Churn-Konfiguration mit Standardwerten.
+     * Diese Werte können bei Bedarf angepasst werden.
      */
     public class ChurnConfig {
         public Integer daysThreshold;
@@ -27,27 +30,10 @@ public with sharing class ChurnDetectionService {
     }
 
     /**
-     * Liefert die Churn-Konfiguration aus ChurnThreshold__mdt.
-     * Falls kein Record existiert, werden Standardwerte zurückgegeben.
+     * Liefert die Churn-Konfiguration mit Standardwerten.
      */
     public static ChurnConfig getConfig() {
-        ChurnConfig config = new ChurnConfig();
-
-        List<ChurnThreshold__mdt> thresholds = [
-            SELECT Days_Threshold__c, Churn_Status_Value__c, Task_Subject__c, Task_Due_Days__c
-            FROM ChurnThreshold__mdt
-            LIMIT 1
-        ];
-
-        if (!thresholds.isEmpty()) {
-            ChurnThreshold__mdt t = thresholds[0];
-            config.daysThreshold = Integer.valueOf(t.Days_Threshold__c);
-            config.churnStatusValue = t.Churn_Status_Value__c;
-            config.taskSubject = t.Task_Subject__c;
-            config.taskDueDays = Integer.valueOf(t.Task_Due_Days__c);
-        }
-
-        return config;
+        return new ChurnConfig();
     }
 
     /**
