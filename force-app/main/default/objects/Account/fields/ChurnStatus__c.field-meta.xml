@@ -3,8 +3,6 @@
     <fullName>Account.ChurnStatus__c</fullName>
     <description>Churn-Status des Kunden: Aktiv, Risikokunde, Churn-Gefahr, Churn</description>
     <label>Churn Status</label>
-    <required>false</required>
-    <trackTrending>false</trackTrending>
     <type>Picklist</type>
     <picklistValues>
         <fullName>Aktiv</fullName>
@@ -26,4 +24,6 @@
         <default>false</default>
         <label>Churn</label>
     </picklistValues>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
 </CustomField>

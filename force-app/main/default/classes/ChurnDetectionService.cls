@@ -1,32 +1,4 @@
 /**
- * ChurnDetectionService — Kernlogik für Churn-Erkennung
- * 
- * Verantwortlichkeiten:
- * - Inaktive Accounts ermitteln (basierend auf LastContactDate__c und konfigurierbarer Schwelle)
- * - ChurnStatus__c auf 'Churn-Gefahr' setzen
- * - Automatische Tasks für Account Owner erstellen (SCRUM-294)
- * 
- * Architektur: Trigger -> Handler -> Service
- */
-public with sharing class ChurnDetectionService {
-
-    /**
-     * Liest die konfigurierbare Inaktivitäts-Schwelle aus dem Custom Metadata Type
-     * 
-     * @return Anzahl der Tage bis ein Account als inaktiv gilt
-     */
-    public static Integer getInactivityThreshold() {
-        List<ChurnThreshold__mdt> thresholds = [
-            SELECT DaysThreshold__c
-            FROM ChurnThreshold__mdt
-            LIMIT 1
-        ];
-
-        if (thresholds.isEmpty() || thresholds[0].DaysThreshold__c == null) {
-            return 90; // Default: 90 Tage
-<write_to_file>
-<path>force-app/main/default/classes/ChurnDetectionService.cls</path>
-<content>/**
  * ChurnDetectionService — Kernlogik für die automatische Erkennung inaktiver Kunden
  * 
  * - Liest die konfigurierbare Schwelle aus ChurnThreshold__mdt
