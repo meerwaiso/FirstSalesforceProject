@@ -20,30 +20,31 @@ public with sharing class ChurnDetectionService {
 
         public ChurnConfig() {
             this.daysThreshold = 90;
-            this.churnStatusValue = 'Churn-Gefahr';
+            this.churnStatusValue = 'Churn_Gefahr';
             this.taskSubject = 'Kunde inaktiv — Churn-Gefahr: {AccountName}';
             this.taskDueDays = 2;
         }
     }
 
     /**
-     * Liefert die Churn-Konfiguration aus Custom Metadata Type
+     * Liefert die Churn-Konfiguration aus ChurnThreshold__mdt.
+     * Falls kein Record existiert, werden Standardwerte zurückgegeben.
      */
     public static ChurnConfig getConfig() {
         ChurnConfig config = new ChurnConfig();
 
         List<ChurnThreshold__mdt> thresholds = [
-            SELECT DaysThreshold__c, ChurnStatusValue__c, TaskSubject__c, TaskDueDays__c
+            SELECT Days_Threshold__c, Churn_Status_Value__c, Task_Subject__c, Task_Due_Days__c
             FROM ChurnThreshold__mdt
             LIMIT 1
         ];
 
         if (!thresholds.isEmpty()) {
             ChurnThreshold__mdt t = thresholds[0];
-            config.daysThreshold = Integer.valueOf(t.DaysThreshold__c);
-            config.churnStatusValue = t.ChurnStatusValue__c;
-            config.taskSubject = t.TaskSubject__c;
-            config.taskDueDays = Integer.valueOf(t.TaskDueDays__c);
+            config.daysThreshold = Integer.valueOf(t.Days_Threshold__c);
+            config.churnStatusValue = t.Churn_Status_Value__c;
+            config.taskSubject = t.Task_Subject__c;
+            config.taskDueDays = Integer.valueOf(t.Task_Due_Days__c);
         }
 
         return config;
@@ -112,10 +113,9 @@ public with sharing class ChurnDetectionService {
                     OwnerId = acc.OwnerId,
                     Subject = config.taskSubject.replace('{AccountName}', acc.Name),
                     Priority = 'High',
-                    Status = 'Not Started',
-                    DueDate = dueDate,
-                    Description = 'Dieser Kunde hat seit längerer Zeit keinen Kontakt mit uns gehabt. Bitte zeitnah Kontakt aufnehmen, um Churn zu verhindern.',
-                    Type = 'Follow Up'
+                    Status = 'In Progress',
+                    ActivityDate = dueDate,
+                    Description = 'Dieser Kunde hat seit längerer Zeit keinen Kontakt mit uns gehabt. Bitte zeitnah Kontakt aufnehmen, um Churn zu verhindern.'
                 );
                 tasksToCreate.add(newTask);
             }

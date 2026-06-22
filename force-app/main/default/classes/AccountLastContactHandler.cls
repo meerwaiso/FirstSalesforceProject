@@ -34,15 +34,15 @@ public with sharing class AccountLastContactHandler {
         if (accountIds.isEmpty()) return;
 
         // Bulk-Update aller betroffenen Accounts
-        List<Account> accountsToUpdate = new List<Account>();
-        for (Account acc : [SELECT Id, LastContactDate__c FROM Account WHERE Id IN :accountIds]) {
+        List<Account> accountsToUpdate = [
+            SELECT Id, LastContactDate__c
+            FROM Account
+            WHERE Id IN :accountIds
+        ];
+        for (Account acc : accountsToUpdate) {
             acc.LastContactDate__c = Date.today();
-            accountsToUpdate.add(acc);
         }
-
-        if (!accountsToUpdate.isEmpty()) {
-            update accountsToUpdate;
-        }
+        update accountsToUpdate;
     }
 
     /**
@@ -78,14 +78,14 @@ public with sharing class AccountLastContactHandler {
 
         if (accountIds.isEmpty()) return;
 
-        List<Account> accountsToUpdate = new List<Account>();
-        for (Account acc : [SELECT Id, LastContactDate__c FROM Account WHERE Id IN :accountIds]) {
+        List<Account> accountsToUpdate = [
+            SELECT Id, LastContactDate__c
+            FROM Account
+            WHERE Id IN :accountIds
+        ];
+        for (Account acc : accountsToUpdate) {
             acc.LastContactDate__c = Date.today();
-            accountsToUpdate.add(acc);
         }
-
-        if (!accountsToUpdate.isEmpty()) {
-            update accountsToUpdate;
-        }
+        update accountsToUpdate;
     }
 }

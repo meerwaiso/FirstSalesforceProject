@@ -1,6 +1,6 @@
 /**
  * SCRUM292ChurnDetectionTest — Apex-Tests für Churn-Erkennung
- * 
+ *
  * Testet:
  * - ChurnDetectionService.getConfig()
  * - ChurnDetectionService.findAndMarkInactiveAccounts()
@@ -13,14 +13,14 @@
 private class SCRUM292ChurnDetectionTest {
 
     /**
-     * Testet, dass getConfig() die Konfiguration aus ChurnThreshold__mdt liest
+     * Testet, dass getConfig() Standardwerte zurückgibt
      */
     @isTest
     static void getConfig_returnsDefaultValues() {
         ChurnDetectionService.ChurnConfig config = ChurnDetectionService.getConfig();
 
         System.assertEquals(90, config.daysThreshold, 'daysThreshold sollte 90 sein');
-        System.assertEquals('Churn-Gefahr', config.churnStatusValue, 'churnStatusValue sollte Churn-Gefahr sein');
+        System.assertEquals('Churn_Gefahr', config.churnStatusValue, 'churnStatusValue sollte Churn_Gefahr sein');
         System.assertEquals(2, config.taskDueDays, 'taskDueDays sollte 2 sein');
         System.assertNotEquals(null, config.taskSubject, 'taskSubject sollte nicht null sein');
     }
@@ -55,7 +55,7 @@ private class SCRUM292ChurnDetectionTest {
         System.assertEquals(1, inactiveCount, 'Es sollte genau 1 inaktiver Account gefunden werden');
 
         Account updatedAcc = [SELECT ChurnStatus__c FROM Account WHERE Id = :acc.Id];
-        System.assertEquals('Churn-Gefahr', updatedAcc.ChurnStatus__c, 'Inaktiver Account sollte als Churn-Gefahr markiert sein');
+        System.assertEquals('Churn_Gefahr', updatedAcc.ChurnStatus__c, 'Inaktiver Account sollte als Churn_Gefahr markiert sein');
 
         Account updatedActiveAcc = [SELECT ChurnStatus__c FROM Account WHERE Id = :activeAcc.Id];
         System.assertEquals('Aktiv', updatedActiveAcc.ChurnStatus__c, 'Aktiver Account sollte unverändert bleiben');
@@ -93,7 +93,7 @@ private class SCRUM292ChurnDetectionTest {
         System.assertEquals(1, inactiveCount, 'Account mit NULL LastContactDate sollte als inaktiv gelten');
 
         Account updatedAcc = [SELECT ChurnStatus__c FROM Account WHERE Id = :acc.Id];
-        System.assertEquals('Churn-Gefahr', updatedAcc.ChurnStatus__c, 'Account sollte als Churn-Gefahr markiert sein');
+        System.assertEquals('Churn_Gefahr', updatedAcc.ChurnStatus__c, 'Account sollte als Churn_Gefahr markiert sein');
     }
 
     /**
@@ -105,7 +105,7 @@ private class SCRUM292ChurnDetectionTest {
         Account acc = new Account(
             Name = 'Bereits markiert',
             LastContactDate__c = Date.today().addDays(-100),
-            ChurnStatus__c = 'Churn-Gefahr'
+            ChurnStatus__c = 'Churn_Gefahr'
         );
         insert acc;
 
@@ -131,13 +131,12 @@ private class SCRUM292ChurnDetectionTest {
         );
         insert acc;
 
-        // Erstellt eine bestehende Churn-Aufgabe
+        // Erstellt eine bestehende Churn-Aufgabe (IsClosed nicht setzen — standardmäßig offen)
         Task existingTask = new Task(
             WhatId = acc.Id,
             Subject = 'Kunde inaktiv — Churn-Gefahr: Mit bestehender Aufgabe',
             Priority = 'High',
-            Status = 'In Progress',
-            IsClosed = false
+            Status = 'In Progress'
         );
         insert existingTask;
 
@@ -177,7 +176,7 @@ private class SCRUM292ChurnDetectionTest {
         System.assertNotEquals(null, jobId, 'Der Scheduler-Job sollte geplant werden');
 
         Account updatedAcc = [SELECT ChurnStatus__c FROM Account WHERE Id = :acc.Id];
-        System.assertEquals('Churn-Gefahr', updatedAcc.ChurnStatus__c, 'Account sollte nach Scheduler-Lauf als Churn-Gefahr markiert sein');
+        System.assertEquals('Churn_Gefahr', updatedAcc.ChurnStatus__c, 'Account sollte nach Scheduler-Lauf als Churn_Gefahr markiert sein');
     }
 
     /**
@@ -189,13 +188,12 @@ private class SCRUM292ChurnDetectionTest {
         Account acc = new Account(Name = 'Kontakt Test');
         insert acc;
 
-        // Act: Erstelle einen Task mit WasId = Account
+        // Act: Erstelle einen Task mit WhatId = Account
         Task task = new Task(
             WhatId = acc.Id,
             Subject = 'Test Kontakt',
             Status = 'Completed',
-            Priority = 'Normal',
-            IsClosed = true
+            Priority = 'Normal'
         );
         insert task;
 
@@ -220,21 +218,19 @@ private class SCRUM292ChurnDetectionTest {
 
         Account acc = new Account(Name = 'Sollte nicht aktualisiert werden');
         insert acc;
-        Id originalLastContact = acc.LastContactDate__c;
 
-        // Act: Task mit WasId = Laptop (nicht Account)
+        // Act: Task mit WhatId = Laptop (nicht Account)
         Task task = new Task(
             WhatId = laptop.Id,
             Subject = 'Laptop Kontakt',
             Status = 'Completed',
-            Priority = 'Normal',
-            IsClosed = true
+            Priority = 'Normal'
         );
         insert task;
 
         // Assert: Account sollte nicht aktualisiert werden
         Account updatedAcc = [SELECT LastContactDate__c FROM Account WHERE Id = :acc.Id];
-        System.assertEquals(originalLastContact, updatedAcc.LastContactDate__c, 'Account sollte nicht aktualisiert werden bei nicht-Account WasId');
+        System.assertEquals(null, updatedAcc.LastContactDate__c, 'Account sollte nicht aktualisiert werden bei nicht-Account WhatId');
     }
 
     /**
@@ -246,7 +242,7 @@ private class SCRUM292ChurnDetectionTest {
         Account acc = new Account(Name = 'Event Kontakt Test');
         insert acc;
 
-        // Act: Erstelle ein Event mit WasId = Account
+        // Act: Erstelle ein Event mit WhatId = Account
         Event event = new Event(
             WhatId = acc.Id,
             Subject = 'Meeting',
@@ -280,8 +276,7 @@ private class SCRUM292ChurnDetectionTest {
                 WhatId = acc.Id,
                 Subject = 'Bulk Kontakt',
                 Status = 'Completed',
-                Priority = 'Normal',
-                IsClosed = true
+                Priority = 'Normal'
             ));
         }
         insert tasks;
