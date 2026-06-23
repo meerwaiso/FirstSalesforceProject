@@ -23,7 +23,7 @@ public with sharing class ChurnDetectionService {
 
         public ChurnConfig() {
             this.daysThreshold = 90;
-            this.churnStatusValue = 'Churn_Gefahr';
+            this.churnStatusValue = 'Churn-Gefahr';
             this.taskSubject = 'Kunde inaktiv — Churn-Gefahr: {AccountName}';
             this.taskDueDays = 2;
         }

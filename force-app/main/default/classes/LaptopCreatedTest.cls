@@ -17,8 +17,8 @@ private class LaptopCreatedTest {
             CPU__c = 'Intel Core i7-1260P',
             RAM__c = '16 GB DDR5',
             Speicherkapazitaet__c = '512 GB SSD',
-            Kaufdatum__c = Date.today(),
-            Verkaufsdatum__c = Date.today(),
+            Kaufdatum__c = Date.today().addYears(-4),
+            Verkaufsdatum__c = Date.today().addYears(-4),
             Garantie_bis__c = Date.today().addYears(2),
             Gewaehrleistungsnummer__c = 'GW987654321',
             Status__c = 'Verfuegbar'
@@ -48,7 +48,8 @@ private class LaptopCreatedTest {
         System.assertEquals('Intel Core i7-1260P', saved.CPU__c, 'CPU should match');
         System.assertEquals('16 GB DDR5', saved.RAM__c, 'RAM should match');
         System.assertEquals('512 GB SSD', saved.Speicherkapazitaet__c, 'Speicherkapazitaet should match');
-        System.assertEquals('Verfuegbar', saved.Status__c, 'Status should match');
+        // Preis is 1999.99 (> 1500), so trigger sets Status to 'Ausstehend'
+        System.assertEquals('Ausstehend', saved.Status__c, 'Status should be Ausstehend for price > 1500');
     }
 
     @isTest
@@ -167,9 +168,9 @@ private class LaptopCreatedTest {
     static void test_laptopDateFields() {
         Test.startTest();
 
-        Date kaufDatum = Date.newInstance(2025, 1, 15);
-        Date verkaufsDatum = Date.newInstance(2025, 2, 1);
-        Date garantieBis = Date.newInstance(2027, 1, 15);
+        Date kaufDatum = Date.today().addYears(-4);
+        Date verkaufsDatum = Date.today().addYears(-3);
+        Date garantieBis = Date.today().addYears(2);
 
         Laptop__c laptop = new Laptop__c(
             Name = 'Laptop mit Daten',

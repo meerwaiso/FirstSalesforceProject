@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>ChurnStatus__c</fullName>
+    <description>Churn-Status des Kunden: Aktiv, Risikokunde, Churn-Gefahr, Churn</description>
     <label>Churn Status</label>
     <required>false</required>
-    <trackFeedHistory>false</trackFeedHistory>
     <type>Picklist</type>
     <valueSet>
         <restricted>true</restricted>
@@ -20,7 +20,7 @@
                 <label>Risikokunde</label>
             </value>
             <value>
-                <fullName>Churn_Gefahr</fullName>
+                <fullName>Churn-Gefahr</fullName>
                 <default>false</default>
                 <label>Churn-Gefahr</label>
             </value>

@@ -46,3 +46,13 @@ $RECYCLE.BIN/
 **/__pycache__/
 **/.venv/
 **/venv/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# Playwright Screenshots und Videos (falls sie außerhalb von test-results landen)
+**/screenshots/
+**/videos/
