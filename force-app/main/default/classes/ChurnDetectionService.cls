@@ -58,11 +58,11 @@ public with sharing class ChurnDetectionService {
         ChurnConfig config = getConfig();
         Date thresholdDate = Date.today().addDays(-config.daysThreshold);
 
-        // Finde Accounts mit LastContactDate__c älter als die Schwelle (oder NULL)
+        // Finde Accounts mit LastContactDate__c älter oder gleich der Schwelle (oder NULL)
         List<Account> inactiveAccounts = [
             SELECT Id, Name, OwnerId, LastContactDate__c, ChurnStatus__c
             FROM Account
-            WHERE (LastContactDate__c < :thresholdDate OR LastContactDate__c = NULL)
+            WHERE (LastContactDate__c <= :thresholdDate OR LastContactDate__c = NULL)
               AND ChurnStatus__c != :config.churnStatusValue
         ];
 
