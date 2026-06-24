@@ -358,7 +358,7 @@ private class SCRUM292ChurnDetectionTest {
 
     /**
      * SCRUM-294: Task-Fälligkeitsdatum verwendet Werktage (Business Days), nicht Kalendertage
-     * Wenn heute Freitag ist, sollte 2 Werktage = Mittwoch (nächste Woche)
+     * format('c') returns 1=Sunday, 2=Monday, ..., 7=Saturday
      */
     @isTest
     static void taskDueDate_usesBusinessDays_notCalendarDays() {
@@ -384,33 +384,35 @@ private class SCRUM292ChurnDetectionTest {
             LIMIT 1
         ];
 
-        Integer todayDow = Date.today().dayOfWeek(); // 1=Monday .. 7=Sunday
+        // Datetime formatGmt('E') returns 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+        Datetime now = Datetime.now();
+        String todayDow = now.formatGmt('E');
 
-        if (todayDow == 6) {
+        if (todayDow == 'Sat') {
             // Saturday: 2 business days = Monday (3 calendar days away)
             System.assertEquals(Date.today().addDays(3), churnTask.ActivityDate,
                 'Samstag + 2 Werktage sollte Montag sein');
-        } else if (todayDow == 7) {
+        } else if (todayDow == 'Sun') {
             // Sunday: 2 business days = Tuesday (4 calendar days away)
             System.assertEquals(Date.today().addDays(4), churnTask.ActivityDate,
                 'Sonntag + 2 Werktage sollte Dienstag sein');
-        } else if (todayDow == 1) {
+        } else if (todayDow == 'Mon') {
             // Monday: 2 business days = Wednesday (2 calendar days away)
             System.assertEquals(Date.today().addDays(2), churnTask.ActivityDate,
                 'Montag + 2 Werktage sollte Mittwoch sein');
-        } else if (todayDow == 2) {
+        } else if (todayDow == 'Tue') {
             // Tuesday: 2 business days = Thursday
             System.assertEquals(Date.today().addDays(2), churnTask.ActivityDate,
                 'Dienstag + 2 Werktage sollte Donnerstag sein');
-        } else if (todayDow == 3) {
+        } else if (todayDow == 'Wed') {
             // Wednesday: 2 business days = Friday
             System.assertEquals(Date.today().addDays(2), churnTask.ActivityDate,
                 'Mittwoch + 2 Werktage sollte Freitag sein');
-        } else if (todayDow == 4) {
+        } else if (todayDow == 'Thu') {
             // Thursday: 2 business days = Monday (skip weekend)
             System.assertEquals(Date.today().addDays(4), churnTask.ActivityDate,
                 'Donnerstag + 2 Werktage sollte Montag sein (Wochenende übersprungen)');
-        } else if (todayDow == 5) {
+        } else if (todayDow == 'Fri') {
             // Friday: 2 business days = Monday (skip weekend)
             System.assertEquals(Date.today().addDays(3), churnTask.ActivityDate,
                 'Freitag + 2 Werktage sollte Montag sein (Wochenende übersprungen)');

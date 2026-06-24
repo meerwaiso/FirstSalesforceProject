@@ -87,14 +87,19 @@ public with sharing class ChurnDetectionService {
     /**
      * Berechnet das Fälligkeitsdatum in Werktagen (Montag–Freitag, keine Feiertagsprüfung).
      * Startet ab morgen (TODAY + 1), da heute bereits ein Arbeitstag verbraucht ist.
+     *
+     * Verwendet Datetime.newInstance() + formatGmt('E') für den Wochentag:
+     * Gibt 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun' zurück.
+     * Werktage sind Montag–Freitag (nicht Sat/Sun).
      */
     private static Date addBusinessDays(Date startDate, Integer businessDays) {
         Date result = startDate;
         Integer added = 0;
         while (added < businessDays) {
             result = result.addDays(1);
-            // Monday=1 .. Sunday=7 — only count Mon–Fri
-            if (result.dayOfWeek() != 7 && result.dayOfWeek() != 1) {
+            Datetime dt = Datetime.newInstance(result, Time.newInstance(0, 0, 0, 0));
+            String dayName = dt.formatGmt('E'); // 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+            if (dayName != 'Sat' && dayName != 'Sun') {
                 added++;
             }
         }
