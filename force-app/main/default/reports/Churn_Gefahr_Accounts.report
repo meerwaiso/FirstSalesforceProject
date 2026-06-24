@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Churn_Gefahr_Accounts</fullName>
+    <chart>
+        <backgroundColor1>#FFFFFF</backgroundColor1>
+        <backgroundColor2>#FFFFFF</backgroundColor2>
+        <backgroundFadeDirection>Diagonal</backgroundFadeDirection>
+        <chartSubType>Metric</chartSubType>
+        <chartType>VerticalBar</chartType>
+        <enableHoverLabels>false</enableHoverLabels>
+        <expandOthers>false</expandOthers>
+        <label>Churn-Gefahr Accounts</label>
+        <showAxisLabels>true</showAxisLabels>
+        <showPercentage>true</showPercentage>
+        <showTotal>true</showTotal>
+        <showValues>true</showValues>
+        <title>Churn-Gefahr Accounts</title>
+        <xAxisTitle>Churn-Gefahr</xAxisTitle>
+    </chart>
+    <description>Anzahl der Accounts mit ChurnStatus = Churn-Gefahr</description>
+    <folder>shared</folder>
+    <format>Tabular</format>
+    <groupingsDown>
+        <dateGranularity>Day</dateGranularity>
+        <field>Account.ChurnStatus__c</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <name>Churn Gefahr Accounts</name>
+    <params>
+        <name>co</name>
+        <value>1</value>
+    </params>
+    <reportType>AccountList</reportType>
+    <scope>organization</scope>
+    <showDetails>true</showDetails>
+    <showGrandTotal>true</showGrandTotal>
+    <showSubTotals>true</showSubTotals>
+    <timeFrameFilter>
+        <dateColumn>Account.CREATEDDATE</dateColumn>
+        <interval>YTD</interval>
+    </timeFrameFilter>
+    <filters>
+        <field>Account.ChurnStatus__c</field>
+        <operation>equals</operation>
+        <value>Churn_Gefahr</value>
+    </filters>
+</Report>

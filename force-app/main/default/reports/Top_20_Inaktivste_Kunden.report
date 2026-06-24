@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Top_20_Inaktivste_Kunden</fullName>
+    <chart>
+        <backgroundColor1>#FFFFFF</backgroundColor1>
+        <backgroundColor2>#FFFFFF</backgroundColor2>
+        <backgroundFadeDirection>Diagonal</backgroundFadeDirection>
+        <chartSubType>None</chartSubType>
+        <chartType>None</chartType>
+        <enableHoverLabels>false</enableHoverLabels>
+        <expandOthers>false</expandOthers>
+        <label>Top 20 inaktivste Kunden</label>
+        <showAxisLabels>true</showAxisLabels>
+        <showPercentage>false</showPercentage>
+        <showTotal>false</showTotal>
+        <showValues>false</showValues>
+        <title>Top 20 inaktivste Kunden</title>
+    </chart>
+    <description>Top 20 Kunden mit den aeltesten Kontaktdaten (nach Tagen ohne Kontakt)</description>
+    <folder>shared</folder>
+    <format>Tabular</format>
+    <name>Top 20 Inaktivste Kunden</name>
+    <params>
+        <name>co</name>
+        <value>1</value>
+    </params>
+    <reportType>AccountList</reportType>
+    <scope>organization</scope>
+    <sortOrder>Asc</sortOrder>
+    <showDetails>true</showDetails>
+    <showGrandTotal>true</showGrandTotal>
+    <showSubTotals>true</showSubTotals>
+    <timeFrameFilter>
+        <dateColumn>Account.CREATEDDATE</dateColumn>
+        <interval>YTD</interval>
+    </timeFrameFilter>
+    <filters>
+        <field>Account.LastContactDate__c</field>
+        <operation>isNotNull</operation>
+    </filters>
+    <groupingsDown>
+        <dateGranularity>Day</dateGranularity>
+        <field>Account.LastContactDate__c</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+</Report>
