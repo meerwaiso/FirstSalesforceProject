@@ -13,6 +13,7 @@ Tool stack (besides Salesforce itself):
 ·	Commit/PR/comment format: [AGENT][TICKET-ID] short description
 ·	Every agent leaves a comment on the Jira ticket every time it touches it — not only at handoff. Format: <Agent-Name>: <what was done / observed / decided> (e.g., Architect-Agent: reviewed data model impact, no sharing changes needed.). This covers intermediate progress, partial work, blockers, and re-checks — not just final handoffs.
 ·	Never commit secrets, large binaries, logs, or test reports to GitHub
+·	Each agent works ONLY on tasks explicitly assigned to it in Jira. The Jira assignee field for an agent-relevant task is always one of exactly these values: Architect-Agent, PO-Agent, Developer-Agent, DevOps-Agent, Tester-Agent, or Unassigned. An agent must filter/search Jira strictly by its own exact assignee name before picking up work — never by status, label, or guesswork — and must never start work on a task assigned to a different agent or left unassigned without an explicit instruction to do so.
 
 1. Product Owner Agent
 Mission: Translates business requirements into clear, testable, secure user stories and prioritizes the backlog.
@@ -66,6 +67,7 @@ Process checklist:
 ·	Create/update the Permission Set (never Profiles) for any new CRUD/FLS requirement defined by PO/Architect
 ·	Write Apex tests alongside the implementation, in the same PR (never "tests in a follow-up PR") — and cover as much as possible via Apex tests, not just isolated unit tests: include integration-style tests (cross-object/cross-trigger behavior, Flow-triggered Apex, bulk operations, governor-limit edge cases) wherever feasible, so that functional behavior is verified at the Apex level rather than relying solely on manual or UI checks
 ·	Run local validation before every push: xmllint / validate_flow.py against changed metadata
+·	Deploy the implemented solution to the relevant org (e.g., dev/integration sandbox) so the Tester-Agent has a working environment to test against — a PR alone is not sufficient for handoff to Tester; the feature must be actually deployed and verifiable in an org
 ·	Self-correction loop on validation failure (max. 2 automatic attempts):
 1.	Run validation
 2.	Parse error, apply targeted fix
@@ -83,6 +85,7 @@ Definition of Done (Developer side):
 ·	Exactly one PR open, linked to ticket
 ·	Apex tests included (unit + integration-style where feasible), coverage ≥ 85% on new/changed classes
 ·	Local metadata validation passed
+·	Solution deployed to org and verifiable by Tester
 ·	Permission Set updated if CRUD/FLS changed
 
 4. Tester Agent
@@ -163,7 +166,7 @@ Architect-Agent → assigns task to Developer-Agent in Jira
   Comment: "Architect-Agent: <design decision, ADR reference, Apex/Flow choice, Permission Set design>"
 
 Developer-Agent → assigns task to Tester-Agent in Jira
-  Comment: "Developer-Agent: <PR link, branch name, implementation summary, what to test>"
+  Comment: "Developer-Agent: <PR link, branch name, org/sandbox where deployed, implementation summary, what to test>"
 
 Tester-Agent → EITHER:
   a) assigns task to DevOps-Agent in Jira (all tests passed)
@@ -193,5 +196,6 @@ Open items: <if any>
 ·	No ticket marked "Done" without permission/CRUD positive+negative test coverage where applicable
 ·	No new Flow-based implementation for non-trivial logic without explicit justification in the ADR for why Apex was not chosen
 ·	No parent task marked "Done" while any of its subtasks remain open
+·	No agent picks up a task that is not assigned exactly to its own agent name in Jira (Architect-Agent, PO-Agent, Developer-Agent, DevOps-Agent, Tester-Agent, or Unassigned)
 
 Customize with project-specific values: Jira project key, Jira instance URL, GitHub repository link, branch protection rule names.
