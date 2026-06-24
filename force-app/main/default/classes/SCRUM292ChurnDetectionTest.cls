@@ -26,7 +26,7 @@ private class SCRUM292ChurnDetectionTest {
     }
 
     /**
-     * Testet, dass inaktive Accounts (LastContactDate < threshold) als Churn-Gefahr markiert werden
+     * Testet, dass inaktive Accounts (LastContactDate <= threshold) als Churn-Gefahr markiert werden
      */
     @isTest
     static void findAndMarkInactiveAccounts_marksInactiveAccounts() {
@@ -69,6 +69,69 @@ private class SCRUM292ChurnDetectionTest {
         ];
         System.assertEquals(1, churnTasks.size(), 'Es sollte genau 1 Churn-Task erstellt werden');
         System.assertEquals('High', churnTasks[0].Priority, 'Task-Priorität sollte High sein');
+    }
+
+    /**
+     * SCRUM-305 Boundary-Test: Account mit exakt 90 Tagen ohne Kontakt
+     * muss mit <= Operator als inaktiv markiert werden.
+     * Mit dem alten < Operator wäre dieser Account NICHT erfasst worden.
+     */
+    @isTest
+    static void findAndMarkInactiveAccounts_boundaryExactly90Days() {
+        // Arrange: Account mit LastContactDate exakt 90 Tage zurück
+        Account exactly90DaysAcc = new Account(
+            Name = 'Exakt 90 Tage inaktiv',
+            LastContactDate__c = Date.today().addDays(-90),
+            ChurnStatus__c = 'Aktiv'
+        );
+        insert exactly90DaysAcc;
+
+        // Arrange: Account mit 89 Tagen — sollte NICHT als inaktiv gelten
+        Account eightyNineDaysAcc = new Account(
+            Name = '89 Tage inaktiv',
+            LastContactDate__c = Date.today().addDays(-89),
+            ChurnStatus__c = 'Aktiv'
+        );
+        insert eightyNineDaysAcc;
+
+        // Act
+        Test.startTest();
+        Integer inactiveCount = ChurnDetectionService.findAndMarkInactiveAccounts();
+        Test.stopTest();
+
+        // Assert: Nur der Account mit exakt 90 Tagen sollte markiert sein
+        System.assertEquals(1, inactiveCount, 'Nur der Account mit exakt 90 Tagen sollte als inaktiv gelten');
+
+        Account updated90 = [SELECT ChurnStatus__c FROM Account WHERE Id = :exactly90DaysAcc.Id];
+        System.assertEquals('Churn_Gefahr', updated90.ChurnStatus__c, 'Account mit exakt 90 Tagen sollte als Churn_Gefahr markiert sein (SCRUM-305)');
+
+        Account updated89 = [SELECT ChurnStatus__c FROM Account WHERE Id = :eightyNineDaysAcc.Id];
+        System.assertEquals('Aktiv', updated89.ChurnStatus__c, 'Account mit 89 Tagen sollte aktiv bleiben');
+    }
+
+    /**
+     * SCRUM-305 Boundary-Test: Account mit 91 Tagen — sollte ebenfalls markiert werden
+     */
+    @isTest
+    static void findAndMarkInactiveAccounts_boundary91Days() {
+        // Arrange
+        Account ninetyOneDaysAcc = new Account(
+            Name = '91 Tage inaktiv',
+            LastContactDate__c = Date.today().addDays(-91),
+            ChurnStatus__c = 'Aktiv'
+        );
+        insert ninetyOneDaysAcc;
+
+        // Act
+        Test.startTest();
+        Integer inactiveCount = ChurnDetectionService.findAndMarkInactiveAccounts();
+        Test.stopTest();
+
+        // Assert
+        System.assertEquals(1, inactiveCount, 'Account mit 91 Tagen sollte als inaktiv gelten');
+
+        Account updated = [SELECT ChurnStatus__c FROM Account WHERE Id = :ninetyOneDaysAcc.Id];
+        System.assertEquals('Churn_Gefahr', updated.ChurnStatus__c, 'Account mit 91 Tagen sollte als Churn_Gefahr markiert sein');
     }
 
     /**
