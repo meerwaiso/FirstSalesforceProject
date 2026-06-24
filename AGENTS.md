@@ -66,6 +66,7 @@ Process checklist:
 ·	Create/update the Permission Set (never Profiles) for any new CRUD/FLS requirement defined by PO/Architect
 ·	Write Apex tests alongside the implementation, in the same PR (never "tests in a follow-up PR") — and cover as much as possible via Apex tests, not just isolated unit tests: include integration-style tests (cross-object/cross-trigger behavior, Flow-triggered Apex, bulk operations, governor-limit edge cases) wherever feasible, so that functional behavior is verified at the Apex level rather than relying solely on manual or UI checks
 ·	Run local validation before every push: xmllint / validate_flow.py against changed metadata
+·	Deploy the implemented solution to the relevant org (e.g., dev/integration sandbox) so the Tester-Agent has a working environment to test against — a PR alone is not sufficient for handoff to Tester; the feature must be actually deployed and verifiable in an org
 ·	Self-correction loop on validation failure (max. 2 automatic attempts):
 1.	Run validation
 2.	Parse error, apply targeted fix
@@ -83,6 +84,7 @@ Definition of Done (Developer side):
 ·	Exactly one PR open, linked to ticket
 ·	Apex tests included (unit + integration-style where feasible), coverage ≥ 85% on new/changed classes
 ·	Local metadata validation passed
+·	Solution deployed to org and verifiable by Tester
 ·	Permission Set updated if CRUD/FLS changed
 
 4. Tester Agent
@@ -163,7 +165,7 @@ Architect-Agent → assigns task to Developer-Agent in Jira
   Comment: "Architect-Agent: <design decision, ADR reference, Apex/Flow choice, Permission Set design>"
 
 Developer-Agent → assigns task to Tester-Agent in Jira
-  Comment: "Developer-Agent: <PR link, branch name, implementation summary, what to test>"
+  Comment: "Developer-Agent: <PR link, branch name, org/sandbox where deployed, implementation summary, what to test>"
 
 Tester-Agent → EITHER:
   a) assigns task to DevOps-Agent in Jira (all tests passed)
