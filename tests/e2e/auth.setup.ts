@@ -1,4 +1,4 @@
-import { test as setup } from '@playwright/test';
+import { chromium } from '@playwright/test';
 
 /**
  * Auth setup for Salesforce E2E tests.
@@ -6,16 +6,19 @@ import { test as setup } from '@playwright/test';
  * If already logged in, saves the session immediately.
  * If on the login page, waits for manual login by the user.
  */
-setup('authenticate', async ({ page }) => {
+export default async function setup() {
+  const browser = await chromium.launch();
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
   const sfUrl = process.env.SALESFORCE_URL || 'https://empathetic-hawk-kft3g7-dev-ed.trailblaze.my.salesforce.com';
 
-  await page.goto(sfUrl);
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(5000);
+  await page.goto(sfUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.waitForTimeout(10000);
 
   // Check if we're on the login page by looking for username/password fields
-  const loginPage = page.locator('input[type="email"], input[type="text"][id="username"]');
-  const isLoginPage = await loginPage.count();
+  const loginField = page.locator('input[type="email"], input[id="username"]');
+  const isLoginPage = await loginField.count();
 
   if (isLoginPage > 0) {
     // Login page detected - check for environment credentials
@@ -24,22 +27,23 @@ setup('authenticate', async ({ page }) => {
 
     if (username && password) {
       // Auto-login with credentials from environment
-      await loginPage.first().fill(username);
+      await loginField.first().fill(username);
       const passwordField = page.locator('input[type="password"]').first();
       await passwordField.fill(password);
       await page.getByRole('button', { name: /Sign in|Anmelden/i }).click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(5000);
     } else {
       // No credentials - user must log in manually
       console.log('No Salesforce credentials found in environment. Please log in manually.');
       // Wait for the page to no longer be the login page (user logged in manually)
-      await page.waitForSelector('input[type="email"], input[type="text"][id="username"]', { state: 'hidden' });
-      await page.waitForLoadState('networkidle');
+      await loginField.waitFor({ state: 'hidden', timeout: 60000 });
       await page.waitForTimeout(5000);
     }
   }
 
   // Save the authenticated state to storageState file
-  await page.context().storageState({ path: 'auth/storage-state.json' });
-});
+  await context.storageState({ path: 'auth/storage-state.json' });
+
+  await browser.close();
+}

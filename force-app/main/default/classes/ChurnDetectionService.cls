@@ -85,6 +85,23 @@ public with sharing class ChurnDetectionService {
     }
 
     /**
+     * Berechnet das Fälligkeitsdatum in Werktagen (Montag–Freitag, keine Feiertagsprüfung).
+     * Startet ab morgen (TODAY + 1), da heute bereits ein Arbeitstag verbraucht ist.
+     */
+    private static Date addBusinessDays(Date startDate, Integer businessDays) {
+        Date result = startDate;
+        Integer added = 0;
+        while (added < businessDays) {
+            result = result.addDays(1);
+            // Monday=1 .. Sunday=7 — only count Mon–Fri
+            if (result.dayOfWeek() != 7 && result.dayOfWeek() != 1) {
+                added++;
+            }
+        }
+        return result;
+    }
+
+    /**
      * Erstellt eine Churn-Aufgabe für jeden inaktiven Account,
      * falls noch keine offene Aufgabe existiert
      */
@@ -104,10 +121,27 @@ public with sharing class ChurnDetectionService {
 
         // Erstelle neue Aufgaben nur für Accounts ohne offene Aufgabe
         List<Task> tasksToCreate = new List<Task>();
-        Date dueDate = Date.today().addDays(config.taskDueDays);
+        // Fälligkeitsdatum: config.taskDueDays Werktage ab morgen
+        Date dueDate = addBusinessDays(Date.today(), config.taskDueDays);
 
         for (Account acc : accounts) {
             if (!accountsWithOpenTask.contains(acc.Id)) {
+                // Berechne Inaktivitätsdauer für Kontext-Beschreibung
+                Integer inactiveDays;
+                if (acc.LastContactDate__c != null) {
+                    inactiveDays = Integer.valueOf(Date.today().daysBetween(acc.LastContactDate__c));
+                } else {
+                    inactiveDays = null; // kein Kontakt-Datum vorhanden
+                }
+
+                // Baue Beschreibung mit Kontext
+                String description = 'Dieser Kunde hat seit längerer Zeit keinen Kontakt mit uns gehabt. Bitte zeitnah Kontakt aufnehmen, um Churn zu verhindern.';
+                if (inactiveDays != null) {
+                    description += ' Letzter Kontakt: ' + String.valueOf(acc.LastContactDate__c) + ' (' + inactiveDays + ' Tage her).';
+                } else {
+                    description += ' Kein letzter Kontakt-Datum vorhanden.';
+                }
+
                 Task newTask = new Task(
                     WhatId = acc.Id,
                     OwnerId = acc.OwnerId,
@@ -115,7 +149,7 @@ public with sharing class ChurnDetectionService {
                     Priority = 'High',
                     Status = 'In Progress',
                     ActivityDate = dueDate,
-                    Description = 'Dieser Kunde hat seit längerer Zeit keinen Kontakt mit uns gehabt. Bitte zeitnah Kontakt aufnehmen, um Churn zu verhindern.'
+                    Description = description
                 );
                 tasksToCreate.add(newTask);
             }
