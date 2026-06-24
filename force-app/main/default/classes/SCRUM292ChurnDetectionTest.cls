@@ -290,4 +290,132 @@ private class SCRUM292ChurnDetectionTest {
             System.assertEquals(Date.today(), acc.LastContactDate__c, 'Account ' + acc.Id + ' sollte aktualisiert sein');
         }
     }
+
+    // ============================================================
+    // SCRUM-294 spezifische Tests
+    // ============================================================
+
+    /**
+     * SCRUM-294: Task-Beschreibung enthält Kontext (Inaktivitätsdauer, letzter Kontakt)
+     */
+    @isTest
+    static void taskDescription_containsContextWithInactiveDays() {
+        // Arrange
+        Account acc = new Account(
+            Name = 'Kontext-Test Kunde',
+            LastContactDate__c = Date.today().addDays(-100),
+            ChurnStatus__c = 'Aktiv'
+        );
+        insert acc;
+
+        // Act
+        Test.startTest();
+        ChurnDetectionService.findAndMarkInactiveAccounts();
+        Test.stopTest();
+
+        // Assert
+        Task churnTask = [
+            SELECT Subject, Priority, Description, ActivityDate
+            FROM Task
+            WHERE WhatId = :acc.Id
+              AND Subject LIKE '%Churn-Gefahr%'
+            LIMIT 1
+        ];
+
+        System.assert(churnTask.Description.contains('Letzter Kontakt:'), 'Beschreibung sollte "Letzter Kontakt:" enthalten');
+        System.assert(churnTask.Description.contains('100 Tage her'), 'Beschreibung sollte "100 Tage her" enthalten');
+    }
+
+    /**
+     * SCRUM-294: Task-Beschreibung bei NULL LastContactDate
+     */
+    @isTest
+    static void taskDescription_handlesNullLastContactDate() {
+        // Arrange
+        Account acc = new Account(
+            Name = 'Kein Datum Kunde',
+            LastContactDate__c = null,
+            ChurnStatus__c = 'Aktiv'
+        );
+        insert acc;
+
+        // Act
+        Test.startTest();
+        ChurnDetectionService.findAndMarkInactiveAccounts();
+        Test.stopTest();
+
+        // Assert
+        Task churnTask = [
+            SELECT Description
+            FROM Task
+            WHERE WhatId = :acc.Id
+              AND Subject LIKE '%Churn-Gefahr%'
+            LIMIT 1
+        ];
+
+        System.assert(churnTask.Description.contains('Kein letzter Kontakt-Datum vorhanden.'), 'Beschreibung sollte fehlendes Datum melden');
+    }
+
+    /**
+     * SCRUM-294: Task-Fälligkeitsdatum verwendet Werktage (Business Days), nicht Kalendertage
+     * format('c') returns 1=Sunday, 2=Monday, ..., 7=Saturday
+     */
+    @isTest
+    static void taskDueDate_usesBusinessDays_notCalendarDays() {
+        // Arrange
+        Account acc = new Account(
+            Name = 'Business Days Kunde',
+            LastContactDate__c = Date.today().addDays(-100),
+            ChurnStatus__c = 'Aktiv'
+        );
+        insert acc;
+
+        // Act
+        Test.startTest();
+        ChurnDetectionService.findAndMarkInactiveAccounts();
+        Test.stopTest();
+
+        // Assert
+        Task churnTask = [
+            SELECT ActivityDate
+            FROM Task
+            WHERE WhatId = :acc.Id
+              AND Subject LIKE '%Churn-Gefahr%'
+            LIMIT 1
+        ];
+
+        // Datetime formatGmt('E') returns 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+        Datetime now = Datetime.now();
+        String todayDow = now.formatGmt('E');
+
+        if (todayDow == 'Sat') {
+            // Saturday: 2 business days = Monday (3 calendar days away)
+            System.assertEquals(Date.today().addDays(3), churnTask.ActivityDate,
+                'Samstag + 2 Werktage sollte Montag sein');
+        } else if (todayDow == 'Sun') {
+            // Sunday: 2 business days = Tuesday (4 calendar days away)
+            System.assertEquals(Date.today().addDays(4), churnTask.ActivityDate,
+                'Sonntag + 2 Werktage sollte Dienstag sein');
+        } else if (todayDow == 'Mon') {
+            // Monday: 2 business days = Wednesday (2 calendar days away)
+            System.assertEquals(Date.today().addDays(2), churnTask.ActivityDate,
+                'Montag + 2 Werktage sollte Mittwoch sein');
+        } else if (todayDow == 'Tue') {
+            // Tuesday: 2 business days = Thursday
+            System.assertEquals(Date.today().addDays(2), churnTask.ActivityDate,
+                'Dienstag + 2 Werktage sollte Donnerstag sein');
+        } else if (todayDow == 'Wed') {
+            // Wednesday: 2 business days = Friday
+            System.assertEquals(Date.today().addDays(2), churnTask.ActivityDate,
+                'Mittwoch + 2 Werktage sollte Freitag sein');
+        } else if (todayDow == 'Thu') {
+            // Thursday: 2 business days = Monday (skip weekend)
+            System.assertEquals(Date.today().addDays(4), churnTask.ActivityDate,
+                'Donnerstag + 2 Werktage sollte Montag sein (Wochenende übersprungen)');
+        } else if (todayDow == 'Fri') {
+            // Friday: 2 business days = Monday (skip weekend)
+            System.assertEquals(Date.today().addDays(3), churnTask.ActivityDate,
+                'Freitag + 2 Werktage sollte Montag sein (Wochenende übersprungen)');
+        }
+    }
 }
