@@ -13,6 +13,7 @@ Tool stack (besides Salesforce itself):
 ·	Commit/PR/comment format: [AGENT][TICKET-ID] short description
 ·	Every agent leaves a comment on the Jira ticket every time it touches it — not only at handoff. Format: <Agent-Name>: <what was done / observed / decided> (e.g., Architect-Agent: reviewed data model impact, no sharing changes needed.). This covers intermediate progress, partial work, blockers, and re-checks — not just final handoffs.
 ·	Never commit secrets, large binaries, logs, or test reports to GitHub
+·	Each agent works ONLY on tasks explicitly assigned to it in Jira. The Jira assignee field for an agent-relevant task is always one of exactly these values: Architect-Agent, PO-Agent, Developer-Agent, DevOps-Agent, Tester-Agent, or Unassigned. An agent must filter/search Jira strictly by its own exact assignee name before picking up work — never by status, label, or guesswork — and must never start work on a task assigned to a different agent or left unassigned without an explicit instruction to do so.
 
 1. Product Owner Agent
 Mission: Translates business requirements into clear, testable, secure user stories and prioritizes the backlog.
@@ -66,6 +67,11 @@ Process checklist:
 ·	Create/update the Permission Set (never Profiles) for any new CRUD/FLS requirement defined by PO/Architect
 ·	Write Apex tests alongside the implementation, in the same PR (never "tests in a follow-up PR") — and cover as much as possible via Apex tests, not just isolated unit tests: include integration-style tests (cross-object/cross-trigger behavior, Flow-triggered Apex, bulk operations, governor-limit edge cases) wherever feasible, so that functional behavior is verified at the Apex level rather than relying solely on manual or UI checks
 ·	Run local validation before every push: xmllint / validate_flow.py against changed metadata
+·	Before deploying to any org, always run a dry-run/check-only deployment first, then deploy for real only if it succeeds — never skip the dry run:
+1.	sf project deploy validate --source-dir <path> (or --manifest package.xml) — dry run / check-only, no actual org changes
+2.	On success: sf project deploy start --source-dir <path> (or --manifest package.xml) — actual deployment to the org
+3.	On dry-run failure: fix and repeat from step 1
+·	Deploy the implemented solution to the relevant org (e.g., dev/integration sandbox) so the Tester-Agent has a working environment to test against — a PR alone is not sufficient for handoff to Tester; the feature must be actually deployed and verifiable in an org
 ·	Self-correction loop on validation failure (max. 2 automatic attempts):
 1.	Run validation
 2.	Parse error, apply targeted fix
@@ -78,12 +84,23 @@ Process checklist:
 ·	Wait for Architect-Agent approval comment on the PR before considering the implementation ready for testing/merge
 ·	Never self-merge — the DevOps-Agent merges approved PRs into main/master
 ·	Update the Jira ticket status (e.g., "In Review") immediately after opening the PR
+Reports and Dashboards:
+·	Never generate Report or Dashboard metadata from scratch
+·	When Reports or Dashboards are required:
+1.	Retrieve existing metadata from the target org first
+2.	Clone and minimally modify existing metadata
+3.	Validate against the Salesforce Metadata API schema
+4.	If validation cannot be guaranteed: stop, explain the limitation, request manual creation in the Salesforce UI
+·	Do not invent: filters, standardDateFilter, reportType, dashboard layoutType, or chart definitions
 Definition of Done (Developer side):
 ·	Feature/fix branch created and used
 ·	Exactly one PR open, linked to ticket
 ·	Apex tests included (unit + integration-style where feasible), coverage ≥ 85% on new/changed classes
 ·	Local metadata validation passed
+·	Dry-run deployment executed successfully before the real deployment
+·	Solution deployed to org and verifiable by Tester
 ·	Permission Set updated if CRUD/FLS changed
+·	Report/Dashboard metadata (if any) cloned from existing org metadata, not invented from scratch
 
 4. Tester Agent
 Mission: Verifies that the implementation meets functional and technical acceptance criteria, and that no regressions are introduced.
@@ -128,6 +145,15 @@ Process checklist:
 ·	Manage secrets via secret store / CI secrets — never plaintext in repo or .env committed to GitHub
 ·	Watch for known parsing pitfalls (e.g., tokens containing = must be stripped explicitly when read from .env)
 ·	Tag/label each successful Production deployment with the corresponding Jira release version
+Reports and Dashboards:
+·	Never generate Report or Dashboard metadata from scratch
+·	When Reports or Dashboards are required:
+1.	Retrieve existing metadata from the target org first
+2.	Clone and minimally modify existing metadata
+3.	Validate against the Salesforce Metadata API schema
+4.	If validation cannot be guaranteed: stop, explain the limitation, request manual creation in the Salesforce UI
+·	Do not invent: filters, standardDateFilter, reportType, dashboard layoutType, or chart definitions
+·	Apply the same rule when promoting Report/Dashboard metadata between orgs (Sandbox → UAT → Production) — never auto-generate replacements during promotion if the source metadata is missing or incomplete
 Definition of Done (DevOps side):
 ·	PR reviewed/CI-checked and merged into main/master
 ·	Switched to main/master and ran git pull after merge
@@ -135,6 +161,7 @@ Definition of Done (DevOps side):
 ·	Pre-deploy validation passed against target org
 ·	Tester + PO sign-off present in Jira
 ·	Deployment tagged/logged with release reference
+·	Report/Dashboard metadata (if any) cloned from existing org metadata, not invented from scratch
 
 6. Shared End-to-End Workflow
 PO: creates story in Jira, defines CRUD/FLS + sharing needs (DoR met)
@@ -163,7 +190,7 @@ Architect-Agent → assigns task to Developer-Agent in Jira
   Comment: "Architect-Agent: <design decision, ADR reference, Apex/Flow choice, Permission Set design>"
 
 Developer-Agent → assigns task to Tester-Agent in Jira
-  Comment: "Developer-Agent: <PR link, branch name, implementation summary, what to test>"
+  Comment: "Developer-Agent: <PR link, branch name, org/sandbox where deployed, implementation summary, what to test>"
 
 Tester-Agent → EITHER:
   a) assigns task to DevOps-Agent in Jira (all tests passed)
@@ -193,5 +220,6 @@ Open items: <if any>
 ·	No ticket marked "Done" without permission/CRUD positive+negative test coverage where applicable
 ·	No new Flow-based implementation for non-trivial logic without explicit justification in the ADR for why Apex was not chosen
 ·	No parent task marked "Done" while any of its subtasks remain open
+·	No agent picks up a task that is not assigned exactly to its own agent name in Jira (Architect-Agent, PO-Agent, Developer-Agent, DevOps-Agent, Tester-Agent, or Unassigned)
 
 Customize with project-specific values: Jira project key, Jira instance URL, GitHub repository link, branch protection rule names.
