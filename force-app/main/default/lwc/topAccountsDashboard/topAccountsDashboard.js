@@ -30,6 +30,7 @@ export default class TopAccountsDashboard extends LightningElement {
   ];
 
   // Lade Accounts via getListUi
+  // Arrow Function ensures `this` is lexically bound — prevents "Cannot read properties of undefined" errors
   @wire(getListUi, {
     objectApiName: ACCOUNT_OBJECT,
     listViewApiName: 'AllAccounts',
@@ -37,15 +38,15 @@ export default class TopAccountsDashboard extends LightningElement {
     sortOrder: -1,
     pageSize: 50,
   })
-  wiredAccounts({ data, error }) {
+  wiredAccounts = ({ data, error }) => {
     this.isLoading = false;
-    if (data) {
+    if (data && data.records) {
       this.processAccounts(data.records);
     } else if (error) {
       this.error = error;
       console.error('Error loading accounts:', error);
     }
-  }
+  };
 
   /**
    * Verarbeitet die geladenen Accounts:
@@ -55,6 +56,12 @@ export default class TopAccountsDashboard extends LightningElement {
    * - Fuegt Rank-Nummer hinzu
    */
   processAccounts(records) {
+    if (!Array.isArray(records)) {
+      console.error('processAccounts: expected array, got:', records);
+      this.accounts = [];
+      return;
+    }
+
     const accountsWithRevenue = records
       .map((record) => {
         const fields = record.fields;
