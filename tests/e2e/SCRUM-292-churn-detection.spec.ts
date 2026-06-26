@@ -5,6 +5,7 @@ test.describe('[SCRUM-292] Inaktive Kunden (90+ Tage ohne Kontakt) automatisch e
   test('Acceptance Criterion 1: Account shows LastContactDate__c field', async ({ page }) => {
     // Arrange
     await page.goto('/one/one.app#/sObject/001/view');
+    await page.waitForLoadState('networkidle');
 
     // Act & Assert - Account page should load and show the LastContactDate__c field
     await expect(page).toHaveTitle(/Salesforce/);
@@ -16,6 +17,7 @@ test.describe('[SCRUM-292] Inaktive Kunden (90+ Tage ohne Kontakt) automatisch e
   test('Acceptance Criterion 2: Account shows ChurnStatus__c field', async ({ page }) => {
     // Arrange
     await page.goto('/one/one.app#/sObject/001/view');
+    await page.waitForLoadState('networkidle');
 
     // Act & Assert - Account page should load and show the ChurnStatus__c field
     await expect(page).toHaveTitle(/Salesforce/);
@@ -27,6 +29,7 @@ test.describe('[SCRUM-292] Inaktive Kunden (90+ Tage ohne Kontakt) automatisch e
   test('Acceptance Criterion 3: ChurnThreshold Custom Metadata Type exists', async ({ page }) => {
     // Arrange
     await page.goto('/one/one.app#/sObject/ChurnThreshold__mdt/list');
+    await page.waitForLoadState('networkidle');
 
     // Act & Assert - Custom Metadata Type should be accessible
     await expect(page).toHaveTitle(/Salesforce/);
@@ -38,6 +41,7 @@ test.describe('[SCRUM-292] Inaktive Kunden (90+ Tage ohne Kontakt) automatisch e
   test('Acceptance Criterion 4: Task creation updates Account LastContactDate__c', async ({ page }) => {
     // Arrange - Navigate to Tasks
     await page.goto('/one/one.app#/sObject/00T/home');
+    await page.waitForLoadState('networkidle');
 
     // Act - Create a new task linked to an account
     await page.getByRole('link', { name: 'New Task' }).first().click();
@@ -65,6 +69,7 @@ test.describe('[SCRUM-292] Inaktive Kunden (90+ Tage ohne Kontakt) automatisch e
   test('Edge Case: ChurnThreshold__mdt Standard_Churn_Threshold record exists with 90-day threshold', async ({ page }) => {
     // Arrange
     await page.goto('/one/one.app#/sObject/ChurnThreshold__mdt/list');
+    await page.waitForLoadState('networkidle');
 
     // Act & Assert - The default record should exist
     await expect(page).toHaveTitle(/Salesforce/);

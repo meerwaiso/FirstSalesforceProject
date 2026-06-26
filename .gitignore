@@ -46,3 +46,9 @@ $RECYCLE.BIN/
 **/__pycache__/
 **/.venv/
 **/venv/
+
+# Test reports and playwright artifacts (CI artifacts only, never committed)
+test-report/
+playwright-report/
+playwright-results.json
+test-results/

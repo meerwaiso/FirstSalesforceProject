@@ -1,7 +1,5 @@
 import { LightningElement, wire, track } from 'lwc';
-import { getListUi } from 'lightning/uiListApi';
-
-import ACCOUNT_OBJECT from '@salesforce/schema/Account';
+import getTopAccounts from '@salesforce/apex/TopAccountsService.getTopAccounts';
 
 /**
  * Top Accounts Dashboard Komponente
@@ -29,63 +27,16 @@ export default class TopAccountsDashboard extends LightningElement {
     },
   ];
 
-  // Lade Accounts via getListUi
-  // Arrow Function ensures `this` is lexically bound — prevents "Cannot read properties of undefined" errors
-  @wire(getListUi, {
-    objectApiName: ACCOUNT_OBJECT,
-    listViewApiName: 'AllAccounts',
-    sortBy: 'AnnualRevenue',
-    sortOrder: -1,
-    pageSize: 50,
-  })
-  wiredAccounts = ({ data, error }) => {
+  // Lade Accounts via Apex — zuverlässig, unabhaengig von List View Konfiguration
+  @wire(getTopAccounts)
+  wiredAccounts({ data, error }) {
     this.isLoading = false;
-    if (data && data.records) {
-      this.processAccounts(data.records);
+    if (data) {
+      this.accounts = data;
     } else if (error) {
       this.error = error;
       console.error('Error loading accounts:', error);
     }
-  };
-
-  /**
-   * Verarbeitet die geladenen Accounts:
-   * - Filtert Accounts mit AnnualRevenue > 0
-   * - Sortiert nach AnnualRevenue DESC, dann Name ASC bei Gleichstand
-   * - Begrenzt auf Top 3
-   * - Fuegt Rank-Nummer hinzu
-   */
-  processAccounts(records) {
-    if (!Array.isArray(records)) {
-      console.error('processAccounts: expected array, got:', records);
-      this.accounts = [];
-      return;
-    }
-
-    const accountsWithRevenue = records
-      .map((record) => {
-        const fields = record.fields;
-        const name = fields.Name?.value ?? '';
-        const annualRevenue = fields.AnnualRevenue?.value ?? 0;
-        return { name, annualRevenue };
-      })
-      .filter((a) => a.annualRevenue > 0);
-
-    // Sortierung: AnnualRevenue DESC, bei Gleichstand Name ASC
-    accountsWithRevenue.sort((a, b) => {
-      if (b.annualRevenue !== a.annualRevenue) {
-        return b.annualRevenue - a.annualRevenue;
-      }
-      // Gleichstand: alphabetisch nach Name (A-Z)
-      return a.name.localeCompare(b.name);
-    });
-
-    // Begrenzen auf Top 3 und Rank hinzufuegen
-    this.accounts = accountsWithRevenue.slice(0, 3).map((a, index) => ({
-      rank: index + 1,
-      accountName: a.name,
-      annualRevenue: a.annualRevenue,
-    }));
   }
 
   // Leerer Zustand: keine Accounts mit Umsatz
