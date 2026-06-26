@@ -1,0 +1,75 @@
+{
+  "cookies": [
+    {
+      "name": "sid",
+      "value": "[REDACTED] Use 'sf org auth show-access-token' to view",
+      "domain": "empathetic-hawk-kft3g7-dev-ed.trailblaze.my.salesforce.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "CookieConsentPolicy",
+      "value": "0:1",
+      "domain": "empathetic-hawk-kft3g7-dev-ed.trailblaze.my.salesforce.com",
+      "path": "/",
+      "expires": 1813954472.953467,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "LSKey-c$CookieConsentPolicy",
+      "value": "0:1",
+      "domain": "empathetic-hawk-kft3g7-dev-ed.trailblaze.my.salesforce.com",
+      "path": "/",
+      "expires": 1813954472.953574,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "BrowserId",
+      "value": "erIUEHDSEfGxKSkeXi_Ksg",
+      "domain": ".salesforce.com",
+      "path": "/",
+      "expires": 1813954472.953606,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "CookieConsentPolicy",
+      "value": "0:0",
+      "domain": "login.salesforce.com",
+      "path": "/",
+      "expires": 1813954474.285125,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "LSKey-c$CookieConsentPolicy",
+      "value": "0:0",
+      "domain": "login.salesforce.com",
+      "path": "/",
+      "expires": 1813954474.285177,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "session",
+      "value": "1782418474320",
+      "domain": "login.salesforce.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "None"
+    }
+  ],
+  "origins": []
+}
