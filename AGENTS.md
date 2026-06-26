@@ -107,6 +107,25 @@ Mission: Verifies that the implementation meets functional and technical accepta
 Process checklist:
 ·	Write/update Apex test classes for new logic, covering as much as possible at the Apex level — not just isolated unit tests, but also integration-style coverage (cross-object behavior, trigger/Flow interactions, bulk/batch scenarios) wherever feasible (validate both happy path and negative/error path)
 ·	Write/update Playwright E2E tests for any user-facing flow (LWC, Experience Cloud, multi-step UI processes)
+·	Authenticate all Playwright UI test scripts via an injected session cookie (sid) — never via a login page or frontdoor URL. Implement every UI test using this exact pattern:
+1.	Use child_process.execSync to run sf org display --json and fetch current org data
+2.	Parse the JSON result and extract accessToken and instanceUrl from the result object
+3.	Create a fresh Playwright browser context
+4.	Inject the Salesforce session cookie directly into that context with these properties:
+§	name: 'sid'
+§	value: <accessToken>
+§	domain: <instanceUrl with 'https://' stripped>
+§	path: '/'
+§	httpOnly: true
+§	secure: true
+5.	Use the page to navigate directly to the target record page URL, constructed dynamically from instanceUrl and the record's specific path
+6.	After page.goto(), always include await page.waitForLoadState('networkidle') so the Lightning UI and all dynamic layout elements finish loading before any assertions run
+o	This applies to all UI test scripts, with no exceptions for simpler flows
+·	Known pitfalls with this approach (watch for these, don't treat as random flakiness):
+o	The access token from sf org display has a limited lifetime (depends on Connected App session policy). In long-running CI pipelines this can cause sporadic 401s or unexpected redirects to the login page — recognize this as a known failure class and refresh the token if it recurs, rather than just retrying the test
+o	waitForLoadState('networkidle') is not fully reliable on Lightning pages: some components poll continuously in the background (live updates, analytics beacons), which can prevent networkidle from ever firing or cause unnecessarily long waits. If timeouts occur, add an explicit waitForSelector on a concrete UI element as a fallback — only introduce this once it's actually observed in practice, not preemptively
+o	httpOnly: true makes the cookie invisible to document.cookie in the page context — correct for pure authentication purposes, but keep in mind if a test ever needs to read the cookie value client-side
+o	The access token is effectively a session credential: never let it appear in test logs, console output, or HTML test reports — ensure it's masked/excluded from any report or CI log output
 ·	Explicitly test permission boundaries: verify a user WITHOUT the new Permission Set cannot perform the action, and a user WITH it can (positive + negative CRUD/FLS test)
 ·	Run full regression suite when a change touches shared/existing automations (Flows, triggers, validation rules)
 ·	Test in a sandbox that mirrors production sharing/permission configuration, not just an open dev sandbox
@@ -123,6 +142,7 @@ Definition of Done (Tester side):
 ·	Functional acceptance criteria verified
 ·	Technical acceptance criteria verified
 ·	Permission/CRUD positive + negative test passed
+·	All Playwright UI tests use injected sid session-cookie authentication (no login page/frontdoor URL)
 ·	Regression suite green
 ·	HTML test report generated and linked in Jira (as CI artifact, not committed)
 ·	No artifacts/reports committed to repo
