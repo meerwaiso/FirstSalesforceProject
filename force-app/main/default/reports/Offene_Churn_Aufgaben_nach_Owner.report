@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Offene_Churn_Aufgaben_nach_Owner</fullName>
+    <chart>
+        <backgroundColor1>#FFFFFF</backgroundColor1>
+        <backgroundColor2>#FFFFFF</backgroundColor2>
+        <backgroundFadeDirection>Diagonal</backgroundFadeDirection>
+        <chartSubType>Normal</chartSubType>
+        <chartType>VerticalBar</chartType>
+        <enableHoverLabels>false</enableHoverLabels>
+        <expandOthers>false</expandOthers>
+        <label>Offene Churn-Aufgaben nach Owner</label>
+        <legendPosition>Right</legendPosition>
+        <showAxisLabels>true</showAxisLabels>
+        <showPercentage>false</showPercentage>
+        <showTotal>false</showTotal>
+        <showValues>true</showValues>
+        <title>Offene Churn-Aufgaben nach Owner</title>
+        <xAxisPosition>Auto</xAxisPosition>
+        <yAxisPosition>Auto</yAxisPosition>
+    </chart>
+    <description>Offene Churn-Aufgaben gruppiert nach Account Owner</description>
+    <folder>shared</folder>
+    <format>Summary</format>
+    <groupingsDown>
+        <dateGranularity>Day</dateGranularity>
+        <field>Task.Owner.Name</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <name>Offene Churn Aufgaben nach Owner</name>
+    <params>
+        <name>co</name>
+        <value>1</value>
+    </params>
+    <reportType>TaskList</reportType>
+    <scope>organization</scope>
+    <showDetails>true</showDetails>
+    <showGrandTotal>true</showGrandTotal>
+    <showSubTotals>true</showSubTotals>
+    <timeFrameFilter>
+        <dateColumn>Task.ActivityDate</dateColumn>
+        <interval>YTD</interval>
+    </timeFrameFilter>
+    <filters>
+        <field>Task.IsClosed</field>
+        <operation>equals</operation>
+        <value>0</value>
+    </filters>
+    <filters>
+        <field>Task.Subject</field>
+        <operation>contains</operation>
+        <value>Churn</value>
+    </filters>
+</Report>
