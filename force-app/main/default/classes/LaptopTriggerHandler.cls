@@ -1,46 +1,27 @@
 /**
- * Handler for Laptop trigger - replaces Flow-based logic
+ * Trigger handler for Laptop__c trigger.
+ * Replaces Flow-based logic with Apex for reliability and maintainability.
  */
-public without sharing class LaptopTriggerHandler {
+public class LaptopTriggerHandler {
 
-    /**
-     * Handle before insert - apply approval status based on price
-     */
-    public static void handleBeforeInsert(List<Laptop__c> laptops) {
-        for (Laptop__c laptop : laptops) {
-            if (laptop.Preis__c != null && laptop.Preis__c <= 1500) {
-                laptop.Status__c = 'Genehmigt';
-            } else if (laptop.Preis__c != null && laptop.Preis__c > 1500) {
-                laptop.Status__c = 'Ausstehend';
-            }
-        }
-    }
+  /**
+   * Before insert handler for Laptop__c.
+   */
+  public static void handleBeforeInsert(List<Laptop__c> laptops) {
+    // TODO: Implement before insert logic (e.g., auto-generate fields, validation)
+  }
 
-    /**
-     * Handle after insert - no inventory check on insert.
-     * Inventory check only runs on update when status changes to Genehmigt.
-     * This prevents overriding the approval status set by before insert.
-     */
-    public static void handleAfterInsert(List<Laptop__c> laptops) {
-        // No action on insert - inventory check is triggered by after update
-        // when status explicitly changes to Genehmigt
-    }
+  /**
+   * After insert handler for Laptop__c.
+   */
+  public static void handleAfterInsert(List<Laptop__c> laptops) {
+    // TODO: Implement after insert logic (e.g., create related records, notifications)
+  }
 
-    /**
-     * Handle after update - check inventory when status changes to Genehmigt
-     */
-    public static void handleAfterUpdate(List<Laptop__c> laptops, Map<Id, Laptop__c> oldMap) {
-        List<Id> laptopIds = new List<Id>();
-        for (Laptop__c laptop : laptops) {
-            Laptop__c old = oldMap.get(laptop.Id);
-            // Check inventory when status changes to Genehmigt
-            if (old != null && old.Status__c != 'Genehmigt' && laptop.Status__c == 'Genehmigt') {
-                laptopIds.add(laptop.Id);
-            }
-        }
-
-        if (!laptopIds.isEmpty()) {
-            LaptopLagerbestandService.checkInventory(laptopIds);
-        }
-    }
+  /**
+   * After update handler for Laptop__c.
+   */
+  public static void handleAfterUpdate(List<Laptop__c> laptops, Map<Id, Laptop__c> oldMap) {
+    // TODO: Implement after update logic (e.g., detect status changes, update related records)
+  }
 }

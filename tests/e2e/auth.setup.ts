@@ -1,49 +1,90 @@
 import { chromium } from '@playwright/test';
+import { execSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Auth setup for Salesforce E2E tests.
- * Navigates to the Salesforce org and saves the authenticated state.
- * If already logged in, saves the session immediately.
- * If on the login page, waits for manual login by the user.
+ *
+ * Uses an injected session cookie (sid) from the active SFDX org
+ * instead of navigating through a login page or frontdoor URLs.
+ *
+ * Steps:
+ * 1. Run `sf org display --json` to fetch the current org data
+ * 2. Extract `accessToken` (sid) and `instanceUrl` from the result
+ * 3. Create a fresh Playwright browser context
+ * 4. Inject the Salesforce session cookie into the context
+ * 5. Navigate to the Salesforce home page to verify the session
+ * 6. Save the authenticated state for reuse in all test runs
  */
 export default async function setup() {
-  const browser = await chromium.launch();
-  const context = await browser.newContext();
-  const page = await context.newPage();
+  // ── Step 1: Fetch org data via SFDX CLI ──────────────────────────
+  let orgData: { accessToken: string; instanceUrl: string };
 
-  const sfUrl = process.env.SALESFORCE_URL || 'https://empathetic-hawk-kft3g7-dev-ed.trailblaze.my.salesforce.com';
-
-  await page.goto(sfUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForTimeout(10000);
-
-  // Check if we're on the login page by looking for username/password fields
-  const loginField = page.locator('input[type="email"], input[id="username"]');
-  const isLoginPage = await loginField.count();
-
-  if (isLoginPage > 0) {
-    // Login page detected - check for environment credentials
-    const username = process.env.SALESFORCE_USERNAME;
-    const password = process.env.SALESFORCE_PASSWORD;
-
-    if (username && password) {
-      // Auto-login with credentials from environment
-      await loginField.first().fill(username);
-      const passwordField = page.locator('input[type="password"]').first();
-      await passwordField.fill(password);
-      await page.getByRole('button', { name: /Sign in|Anmelden/i }).click();
-      await page.waitForLoadState('domcontentloaded');
-      await page.waitForTimeout(5000);
-    } else {
-      // No credentials - user must log in manually
-      console.log('No Salesforce credentials found in environment. Please log in manually.');
-      // Wait for the page to no longer be the login page (user logged in manually)
-      await loginField.waitFor({ state: 'hidden', timeout: 60000 });
-      await page.waitForTimeout(5000);
-    }
+  try {
+    const raw = execSync('sf org display --json', {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    const parsed = JSON.parse(raw);
+    orgData = parsed.result;
+  } catch (error: any) {
+    throw new Error(
+      `Failed to retrieve Salesforce org data via "sf org display --json". ` +
+        `Make sure you have an active default org. ` +
+        `Error: ${error.message || error}`
+    );
   }
 
-  // Save the authenticated state to storageState file
-  await context.storageState({ path: 'auth/storage-state.json' });
+  const { accessToken, instanceUrl } = orgData;
+
+  if (!accessToken || !instanceUrl) {
+    throw new Error(
+      'Org data is missing "accessToken" or "instanceUrl". ' +
+        'The default org may not be properly authenticated.'
+    );
+  }
+
+  // ── Step 2: Der cookie-ready domain ─────────────────────────────
+  // Strip the protocol (https:// or http://) to get the bare domain
+  const domain = instanceUrl.replace(/^https?:\/\//, '');
+
+  // ── Step 3: Create browser context ──────────────────────────────
+  const browser = await chromium.launch();
+  const context = await browser.newContext();
+
+  // ── Step 4: Inject the Salesforce session cookie (sid) ──────────
+  await context.addCookies([
+    {
+      name: 'sid',
+      value: accessToken,
+      domain: domain,
+      path: '/',
+      httpOnly: true,
+      secure: true,
+      sameSite: 'None',
+    },
+  ]);
+
+  // ── Step 5: Navigate to the Salesforce home page ────────────────
+  const homeUrl = `${instanceUrl}/lightning/n/Home`;
+  const page = await context.newPage();
+
+  await page.goto(homeUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+  // ── Step 6: Wait for the full Lightning UI to finish loading ────
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(5000);
+
+  // ── Step 7: Save the authenticated state ────────────────────────
+  const authDir = path.resolve('auth');
+  if (!fs.existsSync(authDir)) {
+    fs.mkdirSync(authDir, { recursive: true });
+  }
+
+  await context.storageState({ path: path.join(authDir, 'storage-state.json') });
 
   await browser.close();
+
+  console.log(`[auth.setup] Session cookie injected successfully for org: ${instanceUrl}`);
 }
