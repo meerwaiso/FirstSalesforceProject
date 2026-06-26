@@ -5,7 +5,7 @@
  */
 public with sharing class OpportunityClosedLostHandler {
     // Static flag to prevent trigger recursion
-    private static Boolean _hasFired = false;
+    @testVisible private static Boolean hasFired = false;
 
     /**
      * After-update handler: collects qualifying opportunities and enqueues notification.
@@ -14,20 +14,20 @@ public with sharing class OpportunityClosedLostHandler {
      * @param oldMap     Map of Id to Opportunity records (old version)
      */
     public static void handleAfterUpdate(List<Opportunity> newRecords, Map<Id, Opportunity> oldMap) {
-        if (_hasFired) {
+        if (hasFired) {
             return;
         }
-        _hasFired = true;
+        hasFired = true;
 
         List<Id> qualifyingOpportunityIds = new List<Id>();
 
         for (Opportunity opp : newRecords) {
             Opportunity oldOpp = oldMap.get(opp.Id);
 
-            // Status must have changed to "Closed Lost"
+            // StageName must have changed to "Closed Lost"
             if (oldOpp != null
-                    && String.valueOf(oldOpp.Status) != 'Closed Lost'
-                    && String.valueOf(opp.Status) == 'Closed Lost') {
+                    && String.valueOf(oldOpp.StageName) != 'Closed Lost'
+                    && String.valueOf(opp.StageName) == 'Closed Lost') {
                 // Amount must be greater than 50,000
                 if (opp.Amount != null && opp.Amount > 50000) {
                     qualifyingOpportunityIds.add(opp.Id);

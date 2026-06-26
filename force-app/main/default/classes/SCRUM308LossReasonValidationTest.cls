@@ -212,7 +212,7 @@ private class SCRUM308LossReasonValidationTest {
         update opp;
 
         // Reset the static flag for the second update
-        OpportunityClosedLostHandler._hasFired = false;
+        OpportunityClosedLostHandler.hasFired = false;
 
         // Now update another field while still Closed Lost — trigger should NOT re-fire
         Test.startTest();

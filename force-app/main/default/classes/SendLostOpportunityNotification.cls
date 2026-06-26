@@ -23,7 +23,7 @@ public with sharing class SendLostOpportunityNotification implements Queueable {
     public void execute(QueueableContext ctx) {
         // Retrieve opportunities with owner and owner's manager
         List<Opportunity> opportunities = [
-            SELECT Id, Name, Amount, Status, Verlustgrund__c, Verlustgrund_Detail__c,
+            SELECT Id, Name, Amount, StageName, Verlustgrund__c, Verlustgrund_Detail__c,
                    OwnerId, Owner.ManagerId, Owner.Manager.Email, Owner.Manager.Name
             FROM Opportunity
             WHERE Id IN :opportunityIds
@@ -65,7 +65,7 @@ public with sharing class SendLostOpportunityNotification implements Queueable {
 
             for (Opportunity opp : opps) {
                 String amountFormatted = opp.Amount != null
-                    ? String.valueOf(opp.Amount).format()
+                    ? String.valueOf(opp.Amount)
                     : 'N/A';
                 String lossReason = opp.Verlustgrund__c != null
                     ? String.valueOf(opp.Verlustgrund__c)
@@ -75,10 +75,10 @@ public with sharing class SendLostOpportunityNotification implements Queueable {
                     : '-';
 
                 body += '<tr>'
-                    + '<td>' + String.escapeHtml4(opp.Name) + '</td>'
+                    + '<td>' + opp.Name + '</td>'
                     + '<td>' + amountFormatted + '</td>'
-                    + '<td>' + String.escapeHtml4(lossReason) + '</td>'
-                    + '<td>' + String.escapeHtml4(lossDetail) + '</td>'
+                    + '<td>' + lossReason + '</td>'
+                    + '<td>' + lossDetail + '</td>'
                     + '</tr>';
             }
 

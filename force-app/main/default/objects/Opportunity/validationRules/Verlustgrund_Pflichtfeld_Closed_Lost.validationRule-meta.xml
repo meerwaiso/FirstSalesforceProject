@@ -4,7 +4,7 @@
     <active>true</active>
     <description>Blocks saving an Opportunity with status &quot;Closed Lost&quot; if the Loss Reason (Verlustgrund) field is empty.</description>
     <errorConditionFormula>AND(
-  ISPICKVAL(Status, &quot;Closed Lost&quot;),
+  ISPICKVAL(StageName, &quot;Closed Lost&quot;),
   ISBLANK(TEXT(Verlustgrund__c))
 )</errorConditionFormula>
     <errorMessage>Verlustgrund ist bei &quot;Closed Lost&quot; erforderlich. Bitte wählen Sie einen Verlustgrund aus.</errorMessage>
