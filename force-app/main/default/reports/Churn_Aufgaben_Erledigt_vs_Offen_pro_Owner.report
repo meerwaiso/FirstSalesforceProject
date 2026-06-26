@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Churn_Aufgaben_Erledigt_vs_Offen_pro_Owner</fullName>
+    <description>Churn-Aufgaben erledigt vs. offen pro Owner</description>
+    <format>Summary</format>
+    <groupingsDown>
+        <dateGranularity>Day</dateGranularity>
+        <field>Task.Owner.Name</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <groupingsAcross>
+        <dateGranularity>Day</dateGranularity>
+        <field>Task.IsClosed</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsAcross>
+    <name>Churn Aufgaben Erledigt vs Offen pro Owner</name>
+    <reportType>TaskList</reportType>
+    <scope>organization</scope>
+    <showDetails>true</showDetails>
+    <showGrandTotal>true</showGrandTotal>
+    <showSubTotals>true</showSubTotals>
+    <filter>
+        <field>Task.Subject</field>
+        <operation>contains</operation>
+        <value>Churn</value>
+    </filter>
+</Report>

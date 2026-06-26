@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Churn_Gefahr_Accounts</fullName>
+    <description>Anzahl der Accounts mit ChurnStatus = Churn-Gefahr</description>
+    <format>Tabular</format>
+    <groupingsDown>
+        <dateGranularity>Day</dateGranularity>
+        <field>Account.ChurnStatus__c</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <name>Churn Gefahr Accounts</name>
+    <reportType>AccountList</reportType>
+    <scope>organization</scope>
+    <showDetails>true</showDetails>
+    <showGrandTotal>true</showGrandTotal>
+    <showSubTotals>true</showSubTotals>
+    <filter>
+        <field>Account.ChurnStatus__c</field>
+        <operation>equals</operation>
+        <value>Churn_Gefahr</value>
+    </filter>
+</Report>
