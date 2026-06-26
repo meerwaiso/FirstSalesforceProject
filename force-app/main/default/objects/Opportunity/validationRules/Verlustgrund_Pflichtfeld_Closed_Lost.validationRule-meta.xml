@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Verlustgrund_Pflichtfeld_Closed_Lost</fullName>
+    <active>true</active>
+    <description>Blocks saving an Opportunity with status &quot;Closed Lost&quot; if the Loss Reason (Verlustgrund) field is empty.</description>
+    <errorConditionFormula>AND(
+  ISPICKVAL(StageName, &quot;Closed Lost&quot;),
+  ISBLANK(TEXT(Verlustgrund__c))
+)</errorConditionFormula>
+    <errorMessage>Verlustgrund ist bei &quot;Closed Lost&quot; erforderlich. Bitte wählen Sie einen Verlustgrund aus.</errorMessage>
+</ValidationRule>

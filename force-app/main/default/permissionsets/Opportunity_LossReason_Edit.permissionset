@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Opportunity Loss Reason Edit</label>
+    <description>Grants Read/Edit permissions on Verlustgrund__c and Verlustgrund_Detail__c fields on Opportunity for sales representatives.</description>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Opportunity.Verlustgrund__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Opportunity.Verlustgrund_Detail__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+</PermissionSet>
