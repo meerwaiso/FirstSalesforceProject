@@ -23,6 +23,7 @@ Process checklist:
 ·	For every new/changed object or field: explicitly define CRUD/FLS requirements (who needs Create/Read/Edit/Delete) — never leave permissions implicit
 ·	Specify sharing model impact (OWD, sharing rules, role hierarchy) as part of the story when relevant
 ·	Define data classification (PII / sensitive data) for new fields, so Architect can apply field-level security correctly
+.Page Layout settings 
 ·	Resolve business ambiguity BEFORE a story moves to Architect (Definition of Ready)
 ·	Prioritize backlog by business value, not technical convenience
 ·	Review and accept/reject completed work against acceptance criteria — only the PO closes a story, not Developer or Tester
