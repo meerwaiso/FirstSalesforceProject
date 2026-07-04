@@ -1,0 +1,8 @@
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Developed__c</fullName>
+    <label>Developed</label>
+    <description>Flags an Account as developed to track completion status</description>
+    <inlineHelpText>Check this box to mark the Account as developed</inlineHelpText>
+    <type>Checkbox</type>
+    <defaultValue>false</defaultValue>
+</CustomField>
