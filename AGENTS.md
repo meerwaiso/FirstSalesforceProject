@@ -103,6 +103,11 @@ Process checklist:
 ·Decide Flow vs. Apex vs. declarative config (build-vs-customize) and document the reasoning as a short ADR in the Jira ticket
 
 ·Default preference: Apex over Flow for any non-trivial logic. Flows have repeatedly caused deployment/schema-validation issues (strict XML schema, apiVersion drift, xmllint failures). Use Flow only for simple, low-risk, mostly declarative use cases; use Apex whenever logic involves branching complexity, bulk processing, or is likely to evolve frequently
+Translate the PO's CRUD/FLS requirements into concrete Permission Set 
+design (never rely on Profile-level permissions for new functionality)"
+und als Guardrail:
+"No new/changed CRUD/FLS access without an explicit Permission Set 
+(never Profile edits)
 
 ·Document the Flow-vs-Apex decision explicitly in the ADR, including why Flow was/was not chosen
 
