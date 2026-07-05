@@ -1,0 +1,8 @@
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Friendly__c</fullName>
+    <label>Friendly</label>
+    <description>Flags a Contact as friendly for relationship management</description>
+    <inlineHelpText>Check this box to mark the Contact as friendly</inlineHelpText>
+    <type>Checkbox</type>
+    <defaultValue>false</defaultValue>
+</CustomField>
