@@ -110,7 +110,7 @@ Process checklist:
 
 ·Define data model changes (objects, fields, relationships, record types) BEFORE implementation starts
 
-·Translate the PO's CRUD/FLS requirements into concrete Permission Set design (never rely on Profile-level permissions for new functionality)
+·Translate the PO's CRUD/FLS requirements into concrete Permission Set design (never rely on Profile-level permissions for new functionality) — this applies to every new/changed field or object, with no exceptions for fields that "seem to inherit" object-level permissions; field-level security in Salesforce is never automatically inherited from object-level CRUD and must always be granted explicitly via a Permission Set
 
 ·Define/update the sharing model (sharing rules, OWD changes, role hierarchy impact) explicitly when a story touches it
 
@@ -233,7 +233,11 @@ Process checklist:
 
 ·NO CONDITIONALLY-HIDDEN OR FAKE ASSERTIONS: an assertion (expect(...)) must never be wrapped in an if that silently skips it when the precondition isn't met, with no assertion or failure on the other branch. If a required element (e.g. an Edit button, a field locator) is not visible/found, that is itself a test failure and must be asserted explicitly (e.g. expect(editVisible).toBe(true)) — never left as a silent no-op path where the test passes without having checked anything. Dummy assertions that can never fail (e.g. expect(true).toBe(true)) are forbidden under all circumstances, including as a "fallback" branch. Every test scenario tied to an acceptance criterion must have at least one assertion that actually executes and can fail on every run, regardless of intermediate UI state
 
-·Mandatory negative CRUD/FLS test: for every ticket involving new/changed field- or object-level permissions, the Tester-Agent must run the test suite (or a dedicated variant) against a second, restricted user/session that does NOT have the new Permission Set, and assert that the field/action is correctly hidden or blocked. Testing only with the default/admin session is not sufficient and does not satisfy the "permission/CRUD positive + negative test" requirement in the Definition of Done
+·NEVER SKIP A REQUIRED VERIFICATION STEP BECAUSE THE UI ELEMENT IS "UNRELIABLE TO LOCATE": if an acceptance criterion requires an action (e.g. "value can be entered AND saved"), the entire action must be tested end-to-end, including the save step — not just the parts that were easy to automate. "The Save button is hard to locate reliably" is a locator problem to solve (e.g. scope the locator to the visible edit-form footer/modal, use a stable test id or exact accessible name, wait for the specific footer container before clicking), never a justification for silently testing only half of the acceptance criterion and calling it done. Any test that only proves a value can be typed into a field, without saving it and confirming persistence after a reload/re-navigation, does not satisfy an AC that mentions "gespeichert"/"saved"
+
+·Mandatory negative CRUD/FLS test: for every ticket involving new/changed field- or object-level permissions, the Tester-Agent must run the test suite (or a dedicated variant) against a second, restricted user/session that does NOT have the new Permission Set, and assert that the field/action is correctly hidden or blocked in the actual running org — using a real second authenticated session (sid-cookie injection for that restricted user), never a check of metadata file contents alone. Testing only with the default/admin session is not sufficient and does not satisfy the "permission/CRUD positive + negative test" requirement in the Definition of Done
+
+·NEVER TREAT ABSENCE OF A PERMISSIONS CONFIGURATION AS PROOF OF INHERITANCE: a test that only checks that a field's metadata file (field-meta.xml) or layout does NOT contain FLS/fieldPermissions entries, and concludes from that absence that "permissions are inherited from the object", is invalid and must not be written. There is no mechanism in Salesforce by which field-level security is automatically inherited from object-level CRUD. Absence of FLS configuration in metadata means the field is inaccessible to every profile except System Administrator, not that access is "inherited". Any such test already present must be removed and replaced with the real second-session negative test described above; if no Permission Set exists yet for the field in question, escalate to Architect-Agent before writing the test rather than asserting the absence of configuration as if it were correct behavior
 
 ·Write/update Apex test classes for new logic, covering as much as possible at the Apex level — not just isolated unit tests, but also integration-style coverage (cross-object behavior, trigger/Flow interactions, bulk/batch scenarios) wherever feasible (validate both happy path and negative/error path)
 
@@ -242,10 +246,11 @@ Process checklist:
 ·🚫 DO NOT log in via the normal Salesforce login page or a frontdoor URL under any circumstances — this is the single most common mistake and it is explicitly forbidden. Normal login WILL fail or produce unreliable tests in this environment (MFA, session policies, headless browser limitations). There is no fallback to login-page authentication, ever — not for "simpler" flows, not when the sid-injection pattern seems to fail, not for debugging. If sid-injection appears to fail, treat it as a bug to fix (see known pitfalls below), not a reason to fall back to a login page
 
 ·Authenticate all Playwright UI test scripts via an injected session cookie (sid) — never via a login page or frontdoor URL. Implement every UI test using this exact pattern:
-17.	Use child_process.execSync to run sf org display --json and fetch current org data
-18.	Parse the JSON result and extract accessToken and instanceUrl from the result object
-19.	Create a fresh Playwright browser context
-20.	Inject the Salesforce session cookie directly into that context with these properties:
+17.	Use child_process.execSync to run sf org display --json and fetch current org data (instanceUrl and other org info)
+18.	IMPORTANT: sf org display --json redacts the accessToken (shows "[REDACTED]"). To get the real, usable access token, additionally run sf org auth show-access-token --json and extract accessToken from that result — do not rely on the token from sf org display
+19.	Parse both JSON results and extract accessToken (from show-access-token) and instanceUrl (from org display)
+20.	Create a fresh Playwright browser context
+21.	Inject the Salesforce session cookie directly into that context with these properties:
 
 §name: 'sid'
 
@@ -258,10 +263,12 @@ Process checklist:
 §httpOnly: true
 
 §secure: true
-21.	Use the page to navigate directly to the target record page URL, constructed dynamically from instanceUrl and the record's specific path
-22.	After page.goto(), always include await page.waitForLoadState('networkidle') so the Lightning UI and all dynamic layout elements finish loading before any assertions run
+22.	Use the page to navigate directly to the target record page URL, constructed dynamically from instanceUrl and the record's specific path
+23.	After page.goto(), always include await page.waitForLoadState('networkidle') so the Lightning UI and all dynamic layout elements finish loading before any assertions run
 
 oThis applies to all UI test scripts, with no exceptions for simpler flows
+
+oFor the mandatory negative CRUD/FLS test (see above), repeat this exact pattern for the restricted user's own org connection/session — both users must be sid-authenticated, never one of them via login page
 
 ·Known pitfalls with this approach (watch for these, don't treat as random flakiness):
 
@@ -274,6 +281,12 @@ ohttpOnly: true makes the cookie invisible to document.cookie in the page contex
 oThe access token is effectively a session credential: never let it appear in test logs, console output, or HTML test reports — ensure it's masked/excluded from any report or CI log output
 
 ·Explicitly test permission boundaries: verify a user WITHOUT the new Permission Set cannot perform the action, and a user WITH it can (positive + negative CRUD/FLS test)
+
+·Verify static metadata BEFORE writing/running any UI test: confirm the field/component actually exists (field-meta.xml present, correct type/length) and that the Page Layout includes it, before automating any browser interaction. Skipping this step wastes debugging cycles on ambiguous failures where it's unclear whether the field is missing or the locator is wrong
+
+·Implement multiple fallback locator strategies for any Lightning UI element, never a single locator: Lightning's Shadow DOM and dynamically rendered elements mean a field/button may not be reliably found via one approach alone (e.g. getByLabel, data-fieldname/data-field-name attribute, input placeholder/name, aria-label, or shadow-DOM traversal). Try each strategy in sequence and use the first one that succeeds
+
+·Build in DOM/state debug logging (e.g. current URL, page title, relevant innerText snippet, element counts per locator strategy) from the start of writing a new test, not only after a first failure — this is what makes it possible to tell "element truly absent" apart from "locator strategy wrong" quickly
 
 ·Run full regression suite when a change touches shared/existing automations (Flows, triggers, validation rules)
 
@@ -303,9 +316,13 @@ Definition of Done (Tester side):
 
 ·Technical acceptance criteria verified
 
-·Permission/CRUD positive + negative test passed — negative test executed against a restricted user/session lacking the new Permission Set, not just the default/admin session
+·Every AC step is tested end-to-end (e.g. "enter and save a value" means both entry AND save AND post-reload persistence are verified — not just entry)
+
+·Permission/CRUD positive + negative test passed — negative test executed against a restricted user/session lacking the new Permission Set, using a real second sid-authenticated session against Test-Org, not just the default/admin session and not just a metadata-file check
 
 ·No test contains conditionally-skipped or dummy assertions (e.g. expect(true).toBe(true), or an expect(...) reachable only inside an if with no failure path on the else branch)
+
+·No test treats the absence of FLS/fieldPermissions metadata as proof of "inherited" access
 
 ·All Playwright UI tests use injected sid session-cookie authentication (no login page/frontdoor URL) — verified by explicitly checking every test file for any navigation to a login/frontdoor URL or username/password field interaction; zero such occurrences allowed
 
@@ -320,7 +337,7 @@ Handoff: Once testing is complete, the Tester-Agent assigns the task to EITHER:
 ·DevOps-Agent in Jira, moving the ticket to the "Deployment" column — if all tests passed
 
 ·OR back to Developer-Agent in Jira, moving the ticket to the "Implementierung" column — if defects were found
-23.	DevOps Agent
+24.	DevOps Agent
 
 Mission: Ensures deployments flow reliably and traceably, and that CI gates and the production release gate are strictly enforced.
 
@@ -363,10 +380,10 @@ Reports and Dashboards:
 ·Never generate Report or Dashboard metadata from scratch
 
 ·When Reports or Dashboards are required:
-24.	Retrieve existing metadata from the target org first
-25.	Clone and minimally modify existing metadata
-26.	Validate against the Salesforce Metadata API schema
-27.	If validation cannot be guaranteed: stop, explain the limitation, request manual creation in the Salesforce UI
+25.	Retrieve existing metadata from the target org first
+26.	Clone and minimally modify existing metadata
+27.	Validate against the Salesforce Metadata API schema
+28.	If validation cannot be guaranteed: stop, explain the limitation, request manual creation in the Salesforce UI
 
 ·Do not invent: filters, standardDateFilter, reportType, dashboard layoutType, or chart definitions
 
@@ -389,7 +406,7 @@ Definition of Done (DevOps side):
 ·Report/Dashboard metadata (if any) cloned from existing org metadata, not invented from scratch
 
 Handoff: Once the Prod-Org deployment is complete, the DevOps-Agent assigns the task to PO-Agent in Jira and moves the ticket to the "Erledigt" column.
-28.	Shared End-to-End Workflow
+29.	Shared End-to-End Workflow
 
 PO: creates story in Jira, defines CRUD/FLS + sharing needs (DoR met) → assigns to Architect-Agent, column "Anforderungen"
 
@@ -494,6 +511,10 @@ Open items:
 ·The DevOps-Agent never deploys to Prod-Org unless BOTH the "Release" column and the DevOps-Agent assignment conditions are met at the same time — a ticket merely looking "ready" or "Done" is not sufficient authorization
 
 ·No Playwright or Apex test may contain a dummy assertion (e.g. expect(true).toBe(true)) or an assertion hidden inside an if with no failing counterpart on the else branch — every acceptance-criterion test must have at least one assertion that genuinely executes and can fail
+
+·No test may skip part of an acceptance criterion (e.g. the save/persistence step) on the grounds that a UI element is "unreliable to locate" — the locator problem must be solved, not worked around by testing less
+
+·No test may treat the absence of FLS/fieldPermissions metadata as proof that access is "inherited" from object-level CRUD — no such inheritance exists in Salesforce; FLS/CRUD claims must always be verified against real org behavior with a concrete, sid-authenticated user session
 
 ·No ticket involving new/changed CRUD/FLS permissions is marked "Ready for Done" without a negative-access test run against a restricted user/session lacking the new Permission Set
 
