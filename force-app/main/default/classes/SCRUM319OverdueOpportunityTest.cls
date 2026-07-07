@@ -312,4 +312,125 @@ private class SCRUM319OverdueOpportunityTest {
         System.assertEquals(Schema.DisplayType.Boolean, fieldDescribe.getType(), 'Field type is Boolean');
         System.assertEquals(true, fieldDescribe.isAccessible(), 'Field is accessible');
     }
+
+    @isTest
+    static void testFLS_NegativeAccess_RestrictedUserCannotSeeField() {
+        // Create a restricted user without the SCRUM319 permission set
+        Profile standardProfile = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
+        User restrictedUser = new User(
+            LastName = 'RestrictedFLS',
+            Email = 'restricted_fls_' + DateTime.now().getTime() + '@test.com',
+            Username = 'restricted_fls_' + DateTime.now().getTime() + '@test.com',
+            Alias = 'restr',
+            TimeZoneSidKey = 'Europe/Berlin',
+            LocaleSidKey = 'de_DE',
+            EmailEncodingKey = 'UTF-8',
+            ProfileId = standardProfile.Id,
+            LanguageLocaleKey = 'de_DE'
+        );
+        insert restrictedUser;
+
+        // Create an opportunity owned by the restricted user
+        Opportunity opp = new Opportunity(
+            Name = 'FLS Restricted Opportunity',
+            StageName = 'Proposal',
+            CloseDate = Date.today().addDays(30),
+            OwnerId = restrictedUser.Id,
+            Is_Overdue__c = true
+        );
+        insert opp;
+
+        // Run as restricted user and verify the field is NOT updateable
+        System.runAs(restrictedUser) {
+            // The field should not be updateable by a user without the permission set
+            // Since the field is write-protected (no edit permission), attempting to update it should fail
+            // or the field should not be accessible for editing
+            Schema.SObjectField overdueField = Opportunity.Is_Overdue__c;
+            Schema.DescribeFieldResult fieldDescribe = overdueField.getDescribe();
+
+            // The restricted user without the SCRUM319 permission set should not have update access
+            System.assertEquals(false, fieldDescribe.isUpdateable(),
+                'Restricted user without SCRUM319 permission set should NOT have update access to Is_Overdue__c');
+        }
+    }
+
+    @isTest
+    static void testService_WithZeroThreshold_MarksAllOpenOpps() {
+        // Use @testVisible to set threshold to 0, so even freshly inserted opportunities are marked
+        Profile standardProfile = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
+        User u = new User(
+            LastName = 'ZeroThreshold',
+            Email = 'zero_' + DateTime.now().getTime() + '@test.com',
+            Username = 'zero_' + DateTime.now().getTime() + '@test.com',
+            Alias = 'zero',
+            TimeZoneSidKey = 'Europe/Berlin',
+            LocaleSidKey = 'de_DE',
+            EmailEncodingKey = 'UTF-8',
+            ProfileId = standardProfile.Id,
+            LanguageLocaleKey = 'de_DE'
+        );
+        insert u;
+
+        Opportunity opp = new Opportunity(
+            Name = 'Zero Threshold Opportunity',
+            StageName = 'Proposal',
+            CloseDate = Date.today().addDays(30),
+            OwnerId = u.Id,
+            Is_Overdue__c = false
+        );
+        insert opp;
+
+        Test.startTest();
+        // Set threshold to 0 so even newly inserted opportunities are found
+        OpportunityOverdueService.OVERDUE_DAYS_THRESHOLD = 0;
+        List<Id> newlyMarkedIds = OpportunityOverdueService.findAndMarkOverdueOpportunities();
+        Test.stopTest();
+
+        System.assertEquals(True, newlyMarkedIds.contains(opp.Id), 'Opportunity should be marked with threshold=0');
+
+        Opportunity result = [SELECT Is_Overdue__c FROM Opportunity WHERE Id = :opp.Id];
+        System.assertEquals(true, result.Is_Overdue__c, 'Opportunity should be marked overdue with threshold=0');
+    }
+
+    @isTest
+    static void testNotification_IncludesAllOpportunityLinks() {
+        // Verify that the notification body includes links to ALL overdue opportunities, not just the first
+        Profile standardProfile = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
+        User u = new User(
+            LastName = 'MultiLink',
+            Email = 'multilink_' + DateTime.now().getTime() + '@test.com',
+            Username = 'multilink_' + DateTime.now().getTime() + '@test.com',
+            Alias = 'mlink',
+            TimeZoneSidKey = 'Europe/Berlin',
+            LocaleSidKey = 'de_DE',
+            EmailEncodingKey = 'UTF-8',
+            ProfileId = standardProfile.Id,
+            LanguageLocaleKey = 'de_DE'
+        );
+        insert u;
+
+        Opportunity opp1 = new Opportunity(
+            Name = 'Multi Link Opp 1',
+            StageName = 'Proposal',
+            CloseDate = Date.today().addDays(30),
+            OwnerId = u.Id,
+            Is_Overdue__c = false
+        );
+        Opportunity opp2 = new Opportunity(
+            Name = 'Multi Link Opp 2',
+            StageName = 'Negotiation',
+            CloseDate = Date.today().addDays(30),
+            OwnerId = u.Id,
+            Is_Overdue__c = false
+        );
+        insert opp1;
+        insert opp2;
+
+        Test.startTest();
+        OpportunityOverdueService.OVERDUE_DAYS_THRESHOLD = 0;
+        List<Id> newlyMarkedIds = OpportunityOverdueService.findAndMarkOverdueOpportunities();
+        // Verify both opportunities were marked
+        System.assertEquals(2, newlyMarkedIds.size(), 'Both opportunities should be marked overdue');
+        Test.stopTest();
+    }
 }

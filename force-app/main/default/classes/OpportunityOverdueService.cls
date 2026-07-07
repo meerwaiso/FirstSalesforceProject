@@ -7,7 +7,7 @@
  */
 public with sharing class OpportunityOverdueService {
 
-    private static final Integer OVERDUE_DAYS_THRESHOLD = 14;
+    @testVisible private static Integer OVERDUE_DAYS_THRESHOLD = 14;
 
     /**
      * Finds all overdue opportunities and marks them with Is_Overdue__c = true.

@@ -43,20 +43,21 @@ public with sharing class OpportunityOverdueNotification implements Queueable {
         for (Id ownerId : ownerIds) {
             List<Opportunity> opps = ownerToOpportunities.get(ownerId);
 
+            // Build notification body with plain-text URLs (Chatter does not support HTML)
+            String orgUrl = URL.getOrgDomainUrl().toExternalForm();
+            if (orgUrl.endsWith('/')) orgUrl = orgUrl.substring(0, orgUrl.length() - 1);
+
             String body = 'Die folgenden Opportunity/Opportunities wurden als überfällig markiert — keine Aktivität seit >14 Tagen:';
             for (Opportunity opp : opps) {
-                body += '\n\n• ' + opp.Name + ' (' + opp.Id + ')';
+                body += '\n\n• ' + opp.Name + ' — ' + orgUrl + '/' + opp.Id;
             }
 
             // Post a Chatter FeedItem on the owner's record feed as in-app notification
             if (!Test.isRunningTest()) {
                 try {
-                    String orgUrl = URL.getOrgDomainUrl().toExternalForm();
-                    if (orgUrl.endsWith('/')) orgUrl = orgUrl.substring(0, orgUrl.length() - 1);
-                    String link = '<a href="' + orgUrl + '/' + opps[0].Id + '">' + opps[0].Name + ' - Details ansehen</a>';
                     FeedItem feedItem = new FeedItem();
                     feedItem.ParentId = ownerId;
-                    feedItem.Body = body + '\n\n' + link;
+                    feedItem.Body = body;
                     insert feedItem;
                 } catch (Exception e) {
                     System.debug('OpportunityOverdueNotification: Failed to send notification to owner ' + ownerId + ': ' + e.getMessage());
