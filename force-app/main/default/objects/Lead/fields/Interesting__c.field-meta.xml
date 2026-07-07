@@ -1,0 +1,8 @@
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Interesting__c</fullName>
+    <label>Interesting</label>
+    <description>Flags a Lead as interesting for targeted filtering</description>
+    <inlineHelpText>Check this box to mark the Lead as interesting</inlineHelpText>
+    <type>Checkbox</type>
+    <defaultValue>false</defaultValue>
+</CustomField>
