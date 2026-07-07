@@ -24,7 +24,7 @@ public with sharing class OpportunityOverdueService {
             FROM Opportunity
             WHERE StageName != 'Closed Won'
               AND StageName != 'Closed Lost'
-              AND LastModifiedDate < :thresholdDate
+               AND LastModifiedDate <= :thresholdDate
               AND Is_Overdue__c = false
         ];
 
