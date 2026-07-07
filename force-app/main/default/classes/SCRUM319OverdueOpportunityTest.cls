@@ -89,7 +89,7 @@ private class SCRUM319OverdueOpportunityTest {
 
         Opportunity result = [SELECT Is_Overdue__c FROM Opportunity WHERE Name = 'Old Open Opportunity' LIMIT 1];
         System.assertEquals(true, result.Is_Overdue__c, 'Old open opportunity should be marked overdue');
-        System.contains(newlyMarkedIds, result.Id, 'Newly marked list should contain the old open opportunity');
+        System.assertEquals(True, newlyMarkedIds.contains(result.Id), 'Newly marked list should contain the old open opportunity');
     }
 
     @isTest
@@ -129,7 +129,7 @@ private class SCRUM319OverdueOpportunityTest {
         Test.stopTest();
 
         Opportunity alreadyMarked = [SELECT Id FROM Opportunity WHERE Name = 'Already Marked Opportunity' LIMIT 1];
-        System.assertNotContains(newlyMarkedIds, alreadyMarked.Id, 'Already marked opportunity should not appear in newly marked list');
+        System.assertEquals(False, newlyMarkedIds.contains(alreadyMarked.Id), 'Already marked opportunity should not appear in newly marked list');
     }
 
     @isTest
@@ -309,7 +309,7 @@ private class SCRUM319OverdueOpportunityTest {
         Schema.DescribeFieldResult fieldDescribe = overdueField.getDescribe();
 
         System.assertEquals('Is_Overdue__c', fieldDescribe.getName(), 'Field API name matches');
-        System.assertEquals(Boolean.class, fieldDescribe.getType(), 'Field type is Boolean');
+        System.assertEquals(Schema.DisplayType.Boolean, fieldDescribe.getType(), 'Field type is Boolean');
         System.assertEquals(true, fieldDescribe.isAccessible(), 'Field is accessible');
     }
 }

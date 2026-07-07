@@ -12,7 +12,7 @@ export default defineConfig({
   ],
   globalSetup: './tests/e2e/auth.setup',
   use: {
-    baseURL: process.env.SALESFORCE_URL || 'https://empathetic-hawk-kft3g7-dev-ed.trailblaze.my.salesforce.com',
+    baseURL: process.env.SALESFORCE_URL || 'https://resourceful-bear-6f1u4j-dev-ed.trailblaze.my.salesforce.com',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

@@ -48,32 +48,16 @@ public with sharing class OpportunityOverdueNotification implements Queueable {
                 body += '\n\n• ' + opp.Name + ' (' + opp.Id + ')';
             }
 
-            // Use ConnectApi to create a Chatter post on the owner's feed as in-app notification
+            // Post a Chatter FeedItem on the owner's record feed as in-app notification
             if (!Test.isRunningTest()) {
                 try {
-                    ConnectApi.FeedItemInput feedItemInput = new ConnectApi.FeedItemInput();
-                    feedItemInput.body = new ConnectApi.MessageBodyInput();
-                    feedItemInput.body.messageSegments = new List<ConnectApi.MessageSegmentInput>();
-
-                    // Text segment
-                    ConnectApi.TextOnlyInput textInput = new ConnectApi.TextOnlyInput();
-                    textInput.text = body;
-                    feedItemInput.body.messageSegments.add(textInput);
-
-                    // Link segment to the first opportunity
-                    ConnectApi.MentionSegmentInput mentionInput = new ConnectApi.LinkSegmentInput();
-                    mentionInput.label = opps[0].Name + ' - Details ansehen';
-                    mentionInput.url = '/' + opps[0].Id;
-
-                    feedItemInput.body.messageSegments.add(mentionInput);
-                    feedItemInput.feedElementType = ConnectApi.FeedElementType.FeedItem;
-
-                    ConnectApi.FeedElement result = ConnectApi.ChatterUsers.postToFeed(
-                        null,
-                        ConnectApi.FeedType.UserProfile,
-                        ownerId,
-                        feedItemInput
-                    );
+                    String orgUrl = URL.getOrgDomainUrl().toExternalForm();
+                    if (orgUrl.endsWith('/')) orgUrl = orgUrl.substring(0, orgUrl.length() - 1);
+                    String link = '<a href="' + orgUrl + '/' + opps[0].Id + '">' + opps[0].Name + ' - Details ansehen</a>';
+                    FeedItem feedItem = new FeedItem();
+                    feedItem.ParentId = ownerId;
+                    feedItem.Body = body + '\n\n' + link;
+                    insert feedItem;
                 } catch (Exception e) {
                     System.debug('OpportunityOverdueNotification: Failed to send notification to owner ' + ownerId + ': ' + e.getMessage());
                 }
