@@ -16,7 +16,12 @@ public with sharing class OpportunityOverdueService {
      * @return List of Ids of newly marked overdue opportunities
      */
     public static List<Id> findAndMarkOverdueOpportunities() {
-        Date thresholdDate = Date.today().addDays(-OVERDUE_DAYS_THRESHOLD);
+        // Use Date.today().addDays(-threshold + 1) with < comparison to correctly handle
+        // DateTime vs Date boundary: LastModifiedDate includes time component,
+        // so "today 14:00 <= today 00:00" is false. Adding 1 day offset fixes this.
+        // For threshold=0: Date.today()+1 means "changed before tomorrow midnight" = all existing records.
+        // For threshold=14: Date.today()-13 means "changed before 13 days ago midnight" = 14+ days old.
+        Date thresholdDate = Date.today().addDays(-OVERDUE_DAYS_THRESHOLD + 1);
 
         // Find open opportunities that are older than the threshold and not already marked
         List<Opportunity> overdueOpportunities = [
@@ -24,7 +29,7 @@ public with sharing class OpportunityOverdueService {
             FROM Opportunity
             WHERE StageName != 'Closed Won'
               AND StageName != 'Closed Lost'
-               AND LastModifiedDate <= :thresholdDate
+              AND LastModifiedDate < :thresholdDate
               AND Is_Overdue__c = false
         ];
 
