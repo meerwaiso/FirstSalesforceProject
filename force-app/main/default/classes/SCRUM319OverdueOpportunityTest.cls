@@ -26,7 +26,7 @@ private class SCRUM319OverdueOpportunityTest {
             LocaleSidKey = 'de_DE',
             EmailEncodingKey = 'UTF-8',
             ProfileId = standardProfile.Id,
-            LanguageLocaleKey = 'de_DE'
+            LanguageLocaleKey = 'en_US'
         );
         insert testUser;
 
@@ -144,7 +144,7 @@ private class SCRUM319OverdueOpportunityTest {
             LocaleSidKey = 'de_DE',
             EmailEncodingKey = 'UTF-8',
             ProfileId = standardProfile.Id,
-            LanguageLocaleKey = 'de_DE'
+            LanguageLocaleKey = 'en_US'
         );
         insert u;
 
@@ -176,7 +176,7 @@ private class SCRUM319OverdueOpportunityTest {
             LocaleSidKey = 'de_DE',
             EmailEncodingKey = 'UTF-8',
             ProfileId = standardProfile.Id,
-            LanguageLocaleKey = 'de_DE'
+            LanguageLocaleKey = 'en_US'
         );
         insert u;
 
@@ -210,7 +210,7 @@ private class SCRUM319OverdueOpportunityTest {
             LocaleSidKey = 'de_DE',
             EmailEncodingKey = 'UTF-8',
             ProfileId = standardProfile.Id,
-            LanguageLocaleKey = 'de_DE'
+            LanguageLocaleKey = 'en_US'
         );
         insert u;
 
@@ -244,7 +244,7 @@ private class SCRUM319OverdueOpportunityTest {
             LocaleSidKey = 'de_DE',
             EmailEncodingKey = 'UTF-8',
             ProfileId = standardProfile.Id,
-            LanguageLocaleKey = 'de_DE'
+            LanguageLocaleKey = 'en_US'
         );
         insert u;
 
@@ -277,7 +277,7 @@ private class SCRUM319OverdueOpportunityTest {
             LocaleSidKey = 'de_DE',
             EmailEncodingKey = 'UTF-8',
             ProfileId = standardProfile.Id,
-            LanguageLocaleKey = 'de_DE'
+            LanguageLocaleKey = 'en_US'
         );
         insert u;
 
@@ -326,7 +326,7 @@ private class SCRUM319OverdueOpportunityTest {
             LocaleSidKey = 'de_DE',
             EmailEncodingKey = 'UTF-8',
             ProfileId = standardProfile.Id,
-            LanguageLocaleKey = 'de_DE'
+            LanguageLocaleKey = 'en_US'
         );
         insert restrictedUser;
 
@@ -367,7 +367,7 @@ private class SCRUM319OverdueOpportunityTest {
             LocaleSidKey = 'de_DE',
             EmailEncodingKey = 'UTF-8',
             ProfileId = standardProfile.Id,
-            LanguageLocaleKey = 'de_DE'
+            LanguageLocaleKey = 'en_US'
         );
         insert u;
 
@@ -405,7 +405,7 @@ private class SCRUM319OverdueOpportunityTest {
             LocaleSidKey = 'de_DE',
             EmailEncodingKey = 'UTF-8',
             ProfileId = standardProfile.Id,
-            LanguageLocaleKey = 'de_DE'
+            LanguageLocaleKey = 'en_US'
         );
         insert u;
 
