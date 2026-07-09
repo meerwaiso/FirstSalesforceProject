@@ -101,6 +101,10 @@
                 <behavior>Edit</behavior>
                 <field>TestFeld__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Required</behavior>
+                <field>MeinNeuesFeld__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>
