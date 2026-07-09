@@ -3,7 +3,6 @@
     <fieldPermissions>
         <editable>true</editable>
         <field>Opportunity.MeinNeuesFeld__c</field>
-        <readable>true</readable>
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>SCRUM321_MeinNeuesFeld</label>

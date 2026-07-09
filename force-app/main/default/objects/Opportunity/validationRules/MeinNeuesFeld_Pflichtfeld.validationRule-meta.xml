@@ -3,6 +3,6 @@
     <fullName>MeinNeuesFeld_Pflichtfeld</fullName>
     <active>true</active>
     <description>Blocks saving an Opportunity if the MeinNeuesFeld field is empty (required field validation).</description>
-    <errorConditionFormula>ISBLANK(TEXT(MeinNeuesFeld__c))</errorConditionFormula>
+    <errorConditionFormula>ISBLANK(MeinNeuesFeld__c)</errorConditionFormula>
     <errorMessage>MeinNeuesFeld ist ein Pflichtfeld. Bitte geben Sie einen Wert ein.</errorMessage>
 </ValidationRule>
