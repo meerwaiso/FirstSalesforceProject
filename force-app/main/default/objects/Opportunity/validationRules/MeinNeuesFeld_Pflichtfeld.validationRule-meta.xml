@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>MeinNeuesFeld_Pflichtfeld</fullName>
+    <active>true</active>
+    <description>Blocks saving an Opportunity if the MeinNeuesFeld field is empty (required field validation).</description>
+    <errorConditionFormula>ISBLANK(MeinNeuesFeld__c)</errorConditionFormula>
+    <errorMessage>MeinNeuesFeld ist ein Pflichtfeld. Bitte geben Sie einen Wert ein.</errorMessage>
+</ValidationRule>
+
