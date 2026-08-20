@@ -61,6 +61,10 @@
                 <behavior>Edit</behavior>
                 <field>Email</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>Testfeld2008__c</field>
+            </layoutItems>
         </layoutColumns>
         <style>TwoColumnsTopToBottom</style>
     </layoutSections>
