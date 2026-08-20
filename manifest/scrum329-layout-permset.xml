@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-329 Stage 2: Layout + Permission Set (erst NACH Stage 1 — beide referenzieren Contact.Testfeld2008__c) -->
+    <types>
+        <members>Contact-Contact Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>SCRUM329_Testfeld2008</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>

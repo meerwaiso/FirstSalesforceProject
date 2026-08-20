@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-329: Contact-Objekt Neues Feld testfeld2008 (Text 255) -->
+
+    <!-- Stage 1: Custom Field (qualifiziert f. Standard-Objekt Contact) -->
+    <types>
+        <members>Contact.Testfeld2008__c</members>
+        <name>CustomField</name>
+    </types>
+
+    <!-- Stage 2: Layout + Permission Set (referenzieren das Feld) -->
+    <types>
+        <members>Contact-Contact Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>SCRUM329_Testfeld2008</members>
+        <name>PermissionSet</name>
+    </types>
+
+    <version>67.0</version>
+</Package>
