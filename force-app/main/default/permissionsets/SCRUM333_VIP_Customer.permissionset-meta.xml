@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>SCRUM333 VIP Customer</label>
+    <description>FLS: read+write VIP_Customer__c auf Account (SCRUM-333 Auto-Prioritization)</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Account.VIP_Customer__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+</PermissionSet>
