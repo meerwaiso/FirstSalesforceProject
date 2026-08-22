@@ -14,7 +14,7 @@ test.describe('[SCRUM-306] Top Accounts Dashboard — direkter Komponententest',
   test('LWC Komponente laedt und zeigt Daten', async ({ page, baseURL }) => {
     // Direkt zur LWC-Komponente navigieren via App Page
     await page.goto(`${baseURL}/lightning/n/TopAccountsDashboard`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(5000);
 
     // Page sollte geladen sein
@@ -51,7 +51,7 @@ test.describe('[SCRUM-306] Top Accounts Dashboard — direkter Komponententest',
 
   test('LWC Komponente via App Page — Read-Only', async ({ page, baseURL }) => {
     await page.goto(`${baseURL}/lightning/n/TopAccountsDashboard`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(5000);
 
     // Kein Edit-Button

@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { resolveOrg } from './tests/e2e/org';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -12,7 +13,10 @@ export default defineConfig({
   ],
   globalSetup: './tests/e2e/auth.setup',
   use: {
-    baseURL: process.env.SALESFORCE_URL || 'https://resourceful-bear-6f1u4j-dev-ed.trailblaze.my.salesforce.com',
+    // The Lightning UI lives on *.lightning.force.com. Pointing baseURL at the
+    // *.my.salesforce.com instance host makes every relative /lightning/... goto
+    // bounce through the cross-domain session handshake and land on the login page.
+    baseURL: resolveOrg().lightningUrl,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

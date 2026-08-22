@@ -13,7 +13,11 @@
     "prettier": "prettier --write \"**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}\"",
     "prettier:verify": "prettier --check \"**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}\"",
     "prepare": "husky || true",
-    "precommit": "lint-staged"
+    "precommit": "lint-staged",
+    "test:e2e": "playwright test -c playwright.config.ts",
+    "test:e2e:smoke": "playwright test -c playwright.config.ts --grep \"\\\\[SMOKE\\\\]\"",
+    "test:e2e:ui": "playwright test -c playwright.config.ts --ui",
+    "probe": "node scripts/probe-locators.js"
   },
   "devDependencies": {
     "@lwc/eslint-plugin-lwc": "^3.1.0",

@@ -23,7 +23,7 @@ test.describe('[SCRUM-306] Top Accounts Dashboard UI-Tests', () => {
     page: import('@playwright/test').Page
   ): Promise<void> {
     await page.goto('/lightning/n/Home');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(10000);
   }
 

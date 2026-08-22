@@ -53,3 +53,7 @@ playwright-report/
 playwright-results.json
 test-results/
 .playwright-mcp/
+
+# Live Salesforce session cookies and access tokens — never commit
+auth/
+tests/playwright/org-creds.json

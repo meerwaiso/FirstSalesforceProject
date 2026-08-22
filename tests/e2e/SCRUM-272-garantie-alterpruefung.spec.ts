@@ -13,28 +13,27 @@ import { test, expect } from '@playwright/test';
  * AC5: Klare Fehlermeldung bei fehlender Sonderbegründung
  */
 
-const SALESFORCE_URL = process.env.SALESFORCE_URL || 'https://empathetic-hawk-kft3g7-dev-ed.trailblaze.my.salesforce.com';
 
 // Helper: Open Smartphone Management app via App Launcher
 async function openSmartphoneApp(page: import('@playwright/test').Page) {
-  await page.goto(SALESFORCE_URL);
-  await page.waitForLoadState('networkidle');
+  await page.goto('/lightning/page/home');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(3000);
 
   // Open App Launcher
-  const appLauncher = page.getByLabel('App Launcher').first();
+  const appLauncher = page.getByRole('button', { name: 'App Launcher' }).first();
   await appLauncher.click();
   await page.waitForTimeout(1000);
 
   // Search for Smartphone Management app
-  const searchBox = page.getByRole('textbox', { name: /Search apps/i }).first();
+  const searchBox = page.getByPlaceholder(/Search apps/i).first();
   await searchBox.fill('Smartphone');
   await page.waitForTimeout(500);
 
   // Click on the app
   const appOption = page.getByRole('option', { name: /Smartphone Management/i }).first();
   await appOption.click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(3000);
 }
 
@@ -43,7 +42,7 @@ async function navigateToLaptopTab(page: import('@playwright/test').Page) {
   const laptopTab = page.getByRole('tab', { name: /Laptop/i });
   if (await laptopTab.isVisible().catch(() => false)) {
     await laptopTab.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
   }
 }
@@ -52,7 +51,7 @@ async function navigateToLaptopTab(page: import('@playwright/test').Page) {
 async function openNewLaptopForm(page: import('@playwright/test').Page) {
   const newButton = page.getByRole('button', { name: /New/i }).first();
   await newButton.click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(2000);
 }
 
@@ -93,7 +92,7 @@ test.describe('[SCRUM-272] Garantie- und Altersprüfung bei Laptop-Anträgen', (
     // Save without filling Sonderbegründung
     const saveButton = page.getByRole('button', { name: /Save/i }).first();
     await saveButton.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(5000);
 
     // Assert: Record was created successfully (no validation error)
@@ -118,7 +117,7 @@ test.describe('[SCRUM-272] Garantie- und Altersprüfung bei Laptop-Anträgen', (
     // Leave Sonderbegründung empty and try to save
     const saveButton = page.getByRole('button', { name: /Save/i }).first();
     await saveButton.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(5000);
 
     // Assert: Validation error should appear
@@ -150,7 +149,7 @@ test.describe('[SCRUM-272] Garantie- und Altersprüfung bei Laptop-Anträgen', (
     // Try to save without Sonderbegründung
     const saveButton = page.getByRole('button', { name: /Save/i }).first();
     await saveButton.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(5000);
 
     // Assert: Specific error message is displayed
@@ -188,7 +187,7 @@ test.describe('[SCRUM-272] Garantie- und Altersprüfung bei Laptop-Anträgen', (
     // Save
     const saveButton = page.getByRole('button', { name: /Save/i }).first();
     await saveButton.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(5000);
 
     // Assert: Record was created successfully
@@ -212,7 +211,7 @@ test.describe('[SCRUM-272] Garantie- und Altersprüfung bei Laptop-Anträgen', (
     // Try to save without Sonderbegründung
     const saveButton = page.getByRole('button', { name: /Save/i }).first();
     await saveButton.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(5000);
 
     // Assert: Validation error should appear

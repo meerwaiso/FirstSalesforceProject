@@ -5,7 +5,7 @@ test.describe('[SCRUM-293] Inaktive Kunden automatisch als Churn-Gefahr markiere
   test('AC1: ChurnStatus__c field exists with correct picklist values', async ({ page }) => {
     // Arrange
     await page.goto('/one/one.app#/sObject/001/view');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Act & Assert
     await expect(page).toHaveTitle(/Salesforce/);
@@ -16,7 +16,7 @@ test.describe('[SCRUM-293] Inaktive Kunden automatisch als Churn-Gefahr markiere
   test('AC2: Account with 90+ days inactivity is marked as Churn-Gefahr', async ({ page }) => {
     // Arrange - Query an account that is 90+ days inactive
     await page.goto('/one/one.app#/%2F001/o');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Act & Assert - The account list should load
     await expect(page).toHaveTitle(/Salesforce/);
@@ -31,7 +31,7 @@ test.describe('[SCRUM-293] Inaktive Kunden automatisch als Churn-Gefahr markiere
   test('AC3: Scheduled Apex Job runs and updates ChurnStatus', async ({ page }) => {
     // Arrange - Navigate to Apex Jobs to verify the scheduled job
     await page.goto('/one/one.app#/sObject/00E/view');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Act & Assert - Job list should load
     await expect(page).toHaveTitle(/Salesforce/);
@@ -46,7 +46,7 @@ test.describe('[SCRUM-293] Inaktive Kunden automatisch als Churn-Gefahr markiere
   test('AC4: Manual override of ChurnStatus is possible', async ({ page }) => {
     // Arrange - Navigate to an account and try to edit the ChurnStatus
     await page.goto('/one/one.app#/sObject/001/view');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Act - Try to edit the account
     await expect(page).toHaveTitle(/Salesforce/);
@@ -74,7 +74,7 @@ test.describe('[SCRUM-293] Inaktive Kunden automatisch als Churn-Gefahr markiere
   test('AC5: No Flow is used for ChurnStatus automation', async ({ page }) => {
     // Arrange - Navigate to Flow setup
     await page.goto('/one/one.app#/sObject/Flow/o');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Act & Assert - Flow list should load
     await expect(page).toHaveTitle(/Salesforce/);
@@ -90,7 +90,7 @@ test.describe('[SCRUM-293] Inaktive Kunden automatisch als Churn-Gefahr markiere
   test('Edge Case: New account has default ChurnStatus "Aktiv"', async ({ page }) => {
     // Arrange - Navigate to create a new account
     await page.goto('/one/one.app#/%2F001/e');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Act & Assert
     await expect(page).toHaveTitle(/Salesforce/);
@@ -108,7 +108,7 @@ test.describe('[SCRUM-293] Inaktive Kunden automatisch als Churn-Gefahr markiere
   test('Edge Case: ChurnThreshold__mdt record is configurable', async ({ page }) => {
     // Arrange
     await page.goto('/one/one.app#/sObject/ChurnThreshold__mdt/list');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Act & Assert
     await expect(page).toHaveTitle(/Salesforce/);

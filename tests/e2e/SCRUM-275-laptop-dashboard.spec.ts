@@ -20,7 +20,7 @@ test.describe('[SCRUM-275] Laptop-Dashboard UI-Tests', () => {
   async function openLaptopDashboard(page: import('@playwright/test').Page) {
     // Direct navigation to the dashboard page - avoids App Launcher click issues
     await page.goto('/lightning/n/Laptop_Dashboard');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(5000);
   }
 

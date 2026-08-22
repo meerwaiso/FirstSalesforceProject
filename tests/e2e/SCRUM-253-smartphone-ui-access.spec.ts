@@ -46,25 +46,24 @@ const TEST_DATA = {
 test.describe('[SCRUM-253] Smartphone-Objekt UI-Zugriff', () => {
   // Helper: Open Smartphone Management app via App Launcher
   async function openSmartphoneApp(page: import('@playwright/test').Page) {
-    const sfUrl = process.env.SALESFORCE_URL || 'https://empathetic-hawk-kft3g7-dev-ed.trailblaze.my.salesforce.com';
-    await page.goto(sfUrl);
-    await page.waitForLoadState('networkidle');
+    await page.goto('/lightning/page/home');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(3000);
 
     // Open App Launcher (three-dot grid icon)
-    const appLauncher = page.getByLabel('App Launcher').first();
+    const appLauncher = page.getByRole('button', { name: 'App Launcher' }).first();
     await appLauncher.click();
     await page.waitForTimeout(1000);
 
     // Search for Smartphone Management app
-    const searchBox = page.getByRole('textbox', { name: /Search apps/i }).first();
+    const searchBox = page.getByPlaceholder(/Search apps/i).first();
     await searchBox.fill('Smartphone');
     await page.waitForTimeout(500);
 
     // Click on the app
     const appOption = page.getByRole('option', { name: /Smartphone Management/i }).first();
     await appOption.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(3000);
   }
 
@@ -91,7 +90,7 @@ test.describe('[SCRUM-253] Smartphone-Objekt UI-Zugriff', () => {
     // Click New button to open create form
     const newButton = page.getByRole('button', { name: /New/i }).first();
     await newButton.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
 
     // Assert: All 14 fields are present on the layout
@@ -117,7 +116,7 @@ test.describe('[SCRUM-253] Smartphone-Objekt UI-Zugriff', () => {
 
     const newButton = page.getByRole('button', { name: /New/i }).first();
     await newButton.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
 
     // Fill required Name field
@@ -137,7 +136,7 @@ test.describe('[SCRUM-253] Smartphone-Objekt UI-Zugriff', () => {
     // Save
     const saveButton = page.getByRole('button', { name: /Save/i }).first();
     await saveButton.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(3000);
 
     // Assert: Record was created - name should be visible on detail page
@@ -150,7 +149,7 @@ test.describe('[SCRUM-253] Smartphone-Objekt UI-Zugriff', () => {
 
     const newButton = page.getByRole('button', { name: /New/i }).first();
     await newButton.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
 
     // Test Name field
@@ -188,7 +187,7 @@ test.describe('[SCRUM-253] Smartphone-Objekt UI-Zugriff', () => {
 
     const newButton = page.getByRole('button', { name: /New/i }).first();
     await newButton.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
 
     // Try to save without filling Name
@@ -214,7 +213,7 @@ test.describe('[SCRUM-253] Smartphone-Objekt UI-Zugriff', () => {
 
     const newButton = page.getByRole('button', { name: /New/i }).first();
     await newButton.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
 
     // Fill ONLY Name and save
@@ -223,7 +222,7 @@ test.describe('[SCRUM-253] Smartphone-Objekt UI-Zugriff', () => {
 
     const saveButton = page.getByRole('button', { name: /Save/i }).first();
     await saveButton.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(3000);
 
     // Assert: Record created with only Name

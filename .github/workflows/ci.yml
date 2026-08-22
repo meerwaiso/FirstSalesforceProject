@@ -1,0 +1,131 @@
+name: CI
+
+# The gates AGENTS.md names before a merge: metadata validation, Apex tests,
+# and the Playwright session smoke test. The full E2E suite is deliberately NOT
+# run here — it currently fails on metadata that is not deployed to Test-Org,
+# and a permanently red pipeline is worse than none. Add it once it is green.
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------- advisory
+  static:
+    name: Lint & Format (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Both currently report pre-existing debt (11 lint errors, ~194 files
+      # unformatted, mostly under force-app/). Kept non-blocking so the debt is
+      # visible without blocking every PR. Flip continue-on-error to false once
+      # the backlog is cleared.
+      - name: ESLint
+        continue-on-error: true
+        run: npm run lint
+
+      - name: Prettier
+        continue-on-error: true
+        run: npm run prettier:verify
+
+  # ------------------------------------------------------------- merge gate
+  org:
+    name: Metadata, Apex & Session Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check for org credentials
+        id: guard
+        run: |
+          if [ -z "$SFDX_AUTH_URL" ]; then
+            echo "has_auth=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Org checks skipped::Repository secret SFDX_AUTH_URL is not set. Metadata validation, Apex tests and the session smoke test did not run. See .github/workflows/README.md."
+          else
+            echo "has_auth=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - run: npm ci
+        if: steps.guard.outputs.has_auth == 'true'
+
+      - name: Install Salesforce CLI
+        if: steps.guard.outputs.has_auth == 'true'
+        run: npm install --global @salesforce/cli@2
+
+      - name: Authenticate to Test-Org
+        if: steps.guard.outputs.has_auth == 'true'
+        run: |
+          printf '%s' "$SFDX_AUTH_URL" > "$RUNNER_TEMP/sfdx-auth.txt"
+          sf org login sfdx-url --sfdx-url-file "$RUNNER_TEMP/sfdx-auth.txt" \
+            --set-default --alias Test-Org
+          rm -f "$RUNNER_TEMP/sfdx-auth.txt"
+
+      # Gate 1 — metadata validates against the org without deploying anything
+      - name: Validate metadata (check-only)
+        if: steps.guard.outputs.has_auth == 'true'
+        run: |
+          sf project deploy validate \
+            --manifest manifest/package.xml \
+            --test-level NoTestRun \
+            --wait 30
+
+      # Gate 2 — Apex tests with coverage (AGENTS.md requires >= 85% on new code)
+      - name: Run Apex tests
+        if: steps.guard.outputs.has_auth == 'true'
+        run: |
+          sf apex run test \
+            --test-level RunLocalTests \
+            --code-coverage \
+            --result-format human \
+            --output-dir apex-test-results \
+            --wait 30
+
+      # Gate 3 — proves the Playwright auth layer still works against this org
+      - name: Install Chromium
+        if: steps.guard.outputs.has_auth == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright session smoke
+        if: steps.guard.outputs.has_auth == 'true'
+        run: npm run test:e2e:smoke
+
+      # AGENTS.md requires the HTML report as a CI artifact, never committed
+      - name: Upload Playwright report
+        if: always() && steps.guard.outputs.has_auth == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: test-report/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload Apex test results
+        if: always() && steps.guard.outputs.has_auth == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: apex-test-results
+          path: apex-test-results/
+          retention-days: 14
+          if-no-files-found: ignore
