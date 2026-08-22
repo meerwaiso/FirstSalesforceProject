@@ -10,6 +10,9 @@ on:
     branches: [master]
   push:
     branches: [master]
+  # Erlaubt einen Lauf per Knopfdruck (Actions-Tab oder `gh workflow run CI`),
+  # um das Gate zu pruefen, ohne dafuer committen zu muessen
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
