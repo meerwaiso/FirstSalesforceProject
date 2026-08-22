@@ -1,6 +1,8 @@
 /**
  * SCRUM-333: VIP case priority service (with Contact fallback).
  *
+ * Bulk-safe: 2 SOQL + 1 DML per batch (max).
+ *
  * Case -> Account resolution:
  *   1. Direct: Case.AccountId
  *   2. Fallback: Case.ContactId -> Contact.AccountId (case linked to a Contact only)
@@ -22,13 +24,13 @@ public without sharing class CasePriorityTrigger {
         if (newCases == null || newCases.isEmpty()) {
             return;
         }
-        Set<Id> vipAccountIds = findVipAccountsForCases(newCases);
-        if (vipAccountIds.isEmpty()) {
+        BatchData data = buildBatchData(newCases);
+        if (data.vipAccountIds.isEmpty()) {
             return;
         }
         for (Case c : newCases) {
-            Id linkedAcct = resolveCaseAccountId(c, newCases);
-            if (linkedAcct != null && vipAccountIds.contains(linkedAcct)) {
+            Id linkedAcct = resolveCaseAccountId(c, data.contactIdToAccountId);
+            if (linkedAcct != null && data.vipAccountIds.contains(linkedAcct)) {
                 c.Priority = 'High';
             }
         }
@@ -38,14 +40,14 @@ public without sharing class CasePriorityTrigger {
         if (newCases == null || newCases.isEmpty()) {
             return;
         }
-        Set<Id> vipAccountIds = findVipAccountsForCases(newCases);
-        if (vipAccountIds.isEmpty()) {
+        BatchData data = buildBatchData(newCases);
+        if (data.vipAccountIds.isEmpty()) {
             return;
         }
         List<Case> vipCases = new List<Case>();
         for (Case c : newCases) {
-            Id linkedAcct = resolveCaseAccountId(c, newCases);
-            if (c.Id != null && linkedAcct != null && vipAccountIds.contains(linkedAcct)) {
+            Id linkedAcct = resolveCaseAccountId(c, data.contactIdToAccountId);
+            if (c.Id != null && linkedAcct != null && data.vipAccountIds.contains(linkedAcct)) {
                 vipCases.add(c);
             }
         }
@@ -53,68 +55,80 @@ public without sharing class CasePriorityTrigger {
             return;
         }
         List<FeedItem> feedItems = new List<FeedItem>();
-        List<CaseComment> fallbacks = new List<CaseComment>();
         for (Case c : vipCases) {
             feedItems.add(new FeedItem(
                 ParentId = c.Id,
                 Type = 'TextPost',
                 Body = VIP_CASE_MESSAGE
             ));
-            fallbacks.add(new CaseComment(
-                ParentId = c.Id,
-                CommentBody = VIP_CASE_MESSAGE
-            ));
         }
         try {
             insert feedItems;
         } catch (Exception e) {
+            List<CaseComment> fallbacks = new List<CaseComment>();
+            for (Case c : vipCases) {
+                fallbacks.add(new CaseComment(
+                    ParentId = c.Id,
+                    CommentBody = VIP_CASE_MESSAGE
+                ));
+            }
             insert fallbacks;
         }
     }
 
-    private static Set<Id> findVipAccountsForCases(List<Case> cases) {
+    private class BatchData {
+        public Set<Id> vipAccountIds;
+        public Map<Id, Id> contactIdToAccountId;
+    }
+
+    private static BatchData buildBatchData(List<Case> cases) {
+        BatchData data = new BatchData();
+        data.contactIdToAccountId = new Map<Id, Id>();
+
         Set<Id> accountIds = new Set<Id>();
-        Map<Id, Id> caseIdToContact = new Map<Id, Id>();
+        Set<Id> contactIds = new Set<Id>();
         for (Case c : cases) {
             if (c.AccountId != null) {
                 accountIds.add(c.AccountId);
             }
             if (c.ContactId != null) {
-                caseIdToContact.put(c.ContactId, c.ContactId);
+                contactIds.add(c.ContactId);
             }
         }
-        Set<Id> contactIds = new Set<Id>(caseIdToContact.keySet());
+
+        // Bulk 1: Contact -> AccountId (fallback path)
         if (!contactIds.isEmpty()) {
-            for (Contact ct : [SELECT AccountId FROM Contact WHERE Id IN :contactIds]) {
+            for (Contact ct : [SELECT Id, AccountId FROM Contact WHERE Id IN :contactIds]) {
                 if (ct.AccountId != null) {
+                    data.contactIdToAccountId.put(ct.Id, ct.AccountId);
                     accountIds.add(ct.AccountId);
                 }
             }
         }
-        if (accountIds.isEmpty()) {
-            return new Set<Id>();
+
+        // Bulk 2: Account VIP filter
+        if (!accountIds.isEmpty()) {
+            data.vipAccountIds = new Set<Id>();
+            for (Account a : [
+                SELECT Id
+                FROM Account
+                WHERE Id IN :accountIds AND VIP_Customer__c = true
+            ]) {
+                data.vipAccountIds.add(a.Id);
+            }
+        } else {
+            data.vipAccountIds = new Set<Id>();
         }
-        Set<Id> vipIds = new Set<Id>();
-        for (Account a : [
-            SELECT Id
-            FROM Account
-            WHERE Id IN :accountIds AND VIP_Customer__c = true
-        ]) {
-            vipIds.add(a.Id);
-        }
-        return vipIds;
+
+        return data;
     }
 
-    private static Id resolveCaseAccountId(Case c, List<Case> allCases) {
+    private static Id resolveCaseAccountId(Case c, Map<Id, Id> contactIdToAccountId) {
         if (c.AccountId != null) {
             return c.AccountId;
         }
-        if (c.ContactId != null) {
-            for (Contact ct : [SELECT AccountId FROM Contact WHERE Id = :c.ContactId LIMIT 1]) {
-                if (ct.AccountId != null) {
-                    return ct.AccountId;
-                }
-            }
+        if (c.ContactId != null && contactIdToAccountId != null) {
+            return contactIdToAccountId.get(c.ContactId);
         }
         return null;
     }
