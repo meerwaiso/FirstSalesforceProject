@@ -13,9 +13,9 @@
  */
 trigger CasePriorityTrigger on Case (before insert, after insert) {
     if (Trigger.isBefore && Trigger.isInsert) {
-        CasePriorityService.beforeInsert(Trigger.new);
+        CasePriorityTrigger.beforeInsert(Trigger.new);
     }
     if (Trigger.isAfter && Trigger.isInsert) {
-        CasePriorityService.afterInsert(Trigger.new);
+        CasePriorityTrigger.afterInsert(Trigger.new);
     }
 }

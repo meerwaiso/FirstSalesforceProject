@@ -13,7 +13,7 @@
  * @author developer-agent
  * @date 2026-08-21
  */
-public without sharing class CasePriorityService {
+public without sharing class CasePriorityTrigger {
 
     private static final String VIP_CASE_MESSAGE =
         'VIP-Kunde \u2013 bitte innerhalb von 2 Stunden reagieren';
