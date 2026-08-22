@@ -57,3 +57,12 @@ test-results/
 # Live Salesforce session cookies and access tokens — never commit
 auth/
 tests/playwright/org-creds.json
+
+# Testergebnisse gehoeren nicht ins Repo — als CI-Artefakt hochladen
+apex-results.json
+playwright-results.json
+apex-test-results/
+temp-retrieve/
+
+# verwaiste Sperrdateien von Office-Programmen
+.~lock.*
