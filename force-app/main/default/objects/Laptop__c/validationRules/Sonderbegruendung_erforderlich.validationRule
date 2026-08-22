@@ -1,4 +1,0 @@
-AND(
-    ISBLANK(Sonderbegruendung__c),
-    Kaufdatum__c > TODAY() - 1095
-)

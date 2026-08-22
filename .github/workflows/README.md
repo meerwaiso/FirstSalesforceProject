@@ -32,9 +32,9 @@ Danach laufen die Org-Prüfungen bei jedem Pull Request gegen `master`.
 | Job | Prüfung | Blockierend |
 |---|---|---|
 | `static` | ESLint, Prettier | nein — siehe unten |
-| `org` | `sf project deploy validate` gegen die Test-Org | ja |
-| `org` | Apex-Tests (`RunLocalTests`) mit Coverage | ja |
-| `org` | Playwright-Session-Smoke | ja |
+| `org` | Apex-Tests (`RunLocalTests`) mit Coverage | **ja** |
+| `org` | Playwright-Session-Smoke | **ja** |
+| `org` | `sf project deploy validate` gegen die Test-Org | nein — siehe unten |
 
 Berichte werden als Artefakte hochgeladen (`playwright-report`,
 `apex-test-results`), nie ins Repository committet — so verlangt es AGENTS.md.
@@ -46,6 +46,13 @@ Metadaten, die in der Test-Org nicht deployt sind (etwa die App „Smartphone
 Management"). Eine dauerhaft rote Pipeline ist schlechter als keine, weil sie
 das Gate wertlos macht. Sobald `npm run test:e2e` lokal grün ist, kann sie in
 den `org`-Job aufgenommen werden.
+
+**Die Metadaten-Validierung blockiert nicht.** Salesforce verlangt bei einem
+Deployment mindestens 75 % Testabdeckung. Die Org liegt bei 37 %, und
+`CasePriorityTrigger` hat gar keine Testklasse — die Arbeit an SCRUM-333 wurde
+nie fertig. Sobald die Abdeckung über 75 % liegt, in `ci.yml` auf
+`continue-on-error: false` stellen: Dann ist dieser Schritt das ehrliche
+Pre-Deploy-Gate, weil ein Produktivdeployment genau diese Schwelle erzwingt.
 
 **ESLint und Prettier blockieren nicht.** Beide melden Altlasten: 11
 Lint-Fehler und rund 194 nicht formatierte Dateien, überwiegend unter
