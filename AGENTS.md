@@ -9,7 +9,7 @@ Tool stack (besides Salesforce itself):
 - GitHub — version control, branching, pull requests, CI
 
 - Playwright — UI/end-to-end testing (LWC, Experience Cloud, browser-based flows)
-Jira columns used across the workflow (in order): Anforderungen → Implementierung → Review → Testen → Deployment → Erledigt → Release.
+Jira columns used across the workflow (in order): Anforderungen → Implementierung → Review → Testen → Deployment → Erledigt → Release. CAUTION: the first three columns carry differently-named statuses — Anforderungen = "Zu erledigen", Implementierung = "In Bearbeitung", Review = "In Überprüfung"; the rest match. A transition takes the STATUS name, never the column name.
 ## Core Principles (apply to ALL agents)
 
 - Jira is the single source of truth — every decision is documented in the ticket, not only in chat/Telegram
@@ -26,7 +26,7 @@ Jira columns used across the workflow (in order): Anforderungen → Implementier
 
 - Never commit secrets, large binaries, logs, or test reports to GitHub
 
-- Each agent works ONLY on tasks explicitly assigned to it in Jira. The Jira assignee field for an agent-relevant task is always one of exactly these values: Architect-Agent, PO-Agent, Developer-Agent, DevOps-Agent, Tester-Agent, or Unassigned. An agent must filter/search Jira strictly by its own exact assignee name before picking up work — never by status, label, or guesswork — and must never start work on a task assigned to a different agent or left unassigned without an explicit instruction to do so.
+- Each agent works ONLY on tasks assigned to it in Jira. Valid assignees are exactly: Architect-Agent, PO-Agent, Developer-Agent, DevOps-Agent, Tester-Agent, Unassigned. Filter by your own exact assignee name — never by status, label or guesswork — and never start work on another agent's task or an unassigned one without being told to.
 
 - The PO-Agent NEVER implements. It never writes or modifies Flows, Apex, LWC, Permission Sets, or any other org metadata/code. Its output is limited to requirements, acceptance criteria, and backlog decisions.
 
@@ -356,7 +356,7 @@ Test integrity — these four rules are what separate a real test from a green l
 - NO CONDITIONALLY-HIDDEN OR FAKE ASSERTIONS. An `expect(...)` must never sit inside an `if` that silently skips it with no failing branch. If a required element is not found, that IS the failure and must be asserted (`expect(editVisible).toBe(true)`). Dummy assertions such as `expect(true).toBe(true)` are forbidden in every circumstance, including as a fallback branch. Every scenario tied to an acceptance criterion needs at least one assertion that actually runs and can fail
 - NEVER SKIP PART OF AN ACCEPTANCE CRITERION because a UI element is "unreliable to locate". If the AC says a value can be entered AND saved, then entry, save and post-reload persistence must all be verified. A hard-to-find Save button is a locator problem to solve, never a licence to test half the criterion
 - NEVER TREAT ABSENCE OF FLS METADATA AS PROOF OF INHERITANCE. Salesforce has no mechanism by which field-level security is inherited from object-level CRUD. A field with no `fieldPermissions` entry is invisible to everyone except System Administrator. Verify against a real session; if no Permission Set exists yet, escalate to Architect-Agent
-- MANDATORY NEGATIVE CRUD/FLS TEST for every ticket touching field- or object-level permissions: run against a second, restricted user session that lacks the new Permission Set and assert the field or action is genuinely blocked in the running org. That session needs its own frontdoor.jsp exchange and its own storageState, which in turn needs the restricted user authenticated in the sf CLI under a separate alias. If that alias does not exist, escalate — never substitute a metadata-file check
+- MANDATORY NEGATIVE CRUD/FLS TEST for every ticket touching field- or object-level permissions: assert against real org behaviour that a user WITHOUT the new Permission Set is genuinely blocked. A metadata-file check never satisfies this. Two valid routes: (a) an Apex test using `System.runAs()` with a user on a restricted profile, asserting `getDescribe().isAccessible()`/`isUpdateable()` — this needs no licence and is the DEFAULT here, because a Developer Edition org has only 2 Salesforce licences and both are taken by admins; (b) a second Playwright session with its own frontdoor.jsp exchange and storageState, which requires a real licensed user under a separate sf CLI alias. Use (b) only when the acceptance criterion is explicitly about the UI
 
 Playwright rules (mechanics in the skill):
 
@@ -381,7 +381,7 @@ Definition of Done (Tester side):
 
 - Functional and technical acceptance criteria verified
 - Every AC step tested end-to-end, including save and post-reload persistence where the AC says "saved"
-- Permission/CRUD positive + negative test passed, the negative one against a real restricted session
+- Permission/CRUD positive + negative test passed, the negative one against real org behaviour (Apex `System.runAs()`, or a second UI session where the AC demands it)
 - No conditionally-skipped or dummy assertions anywhere
 - No test treating absent FLS metadata as inherited access
 - All Playwright tests inherit auth from globalSetup via storageState — verified by checking every spec for login navigation, username/password interaction, or an `addCookies` call injecting `sid`; zero occurrences allowed
