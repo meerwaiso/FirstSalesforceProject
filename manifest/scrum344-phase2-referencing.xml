@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-344 Phase 2: referenzierende Komponenten (erst nach Phase 1) -->
+    <types>
+        <members>SCRUM344_DetailedComment</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Contact-Contact Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>
