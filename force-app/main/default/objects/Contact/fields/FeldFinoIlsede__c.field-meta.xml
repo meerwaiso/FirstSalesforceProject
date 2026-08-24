@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>FeldFinoIlsede__c</fullName>
+    <label>FeldFinoIlsede</label>
+    <description>Contact-spezifisches Informationsfeld (Text, max. 255 Zeichen)</description>
+    <length>255</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+</CustomField>
