@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>NewsletterConsent_DatumPflicht</fullName>
+    <active>true</active>
+    <description>SCRUM-359: Bei gesetzter Newsletter-Einwilligung ist das Einwilligungsdatum Pflicht. Greift nur bei gesetzter Checkbox, damit ein historisches Datum bei ausgeschalteter Checkbox unangetastet bleibt.</description>
+    <errorConditionFormula>AND(NewsletterConsent__c = true, ISBLANK(ConsentDate__c))</errorConditionFormula>
+    <errorMessage>Newsletter-Einwilligung gesetzt: Bitte das Einwilligungsdatum ausfüllen. Das Feld Einwilligung am ist dann Pflicht.</errorMessage>
+</ValidationRule>

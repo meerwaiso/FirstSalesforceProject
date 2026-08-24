@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-359 Phase 1: neue Felder und ValidationRules -->
+    <types>
+        <members>Contact.NewsletterConsent__c</members>
+        <members>Contact.ConsentDate__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Contact.NewsletterConsent_DatumPflicht</members>
+        <members>Contact.NewsletterConsent_DatumKeineZukunft</members>
+        <name>ValidationRule</name>
+    </types>
+    <version>67.0</version>
+</Package>

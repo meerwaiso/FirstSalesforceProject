@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>NewsletterConsent_DatumKeineZukunft</fullName>
+    <active>true</active>
+    <description>SCRUM-359: Das Einwilligungsdatum darf keine Zukunft sein. Greift nur bei gesetzter Checkbox.</description>
+    <errorConditionFormula>AND(NewsletterConsent__c = true, NOT(ISBLANK(ConsentDate__c)), ConsentDate__c &gt; TODAY())</errorConditionFormula>
+    <errorMessage>Das Einwilligungsdatum darf nicht in der Zukunft liegen. Eine Einwilligung, die noch nicht erteilt wurde, gibt es nicht. Bitte ein heutiges oder früheres Datum wählen.</errorMessage>
+</ValidationRule>
