@@ -36,6 +36,10 @@
                 <field>Birthdate</field>
             </layoutItems>
             <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Open_Cases_Count__c</field>
+            </layoutItems>
+            <layoutItems>
                 <behavior>Edit</behavior>
                 <field>NewsletterConsent__c</field>
             </layoutItems>
