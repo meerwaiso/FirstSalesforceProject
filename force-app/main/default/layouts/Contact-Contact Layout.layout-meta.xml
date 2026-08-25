@@ -35,6 +35,10 @@
                 <behavior>Edit</behavior>
                 <field>Birthdate</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>NewsletterConsent__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>
@@ -60,6 +64,10 @@
             <layoutItems>
                 <behavior>Edit</behavior>
                 <field>Email</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>ConsentDate__c</field>
             </layoutItems>
         </layoutColumns>
         <style>TwoColumnsTopToBottom</style>
