@@ -35,11 +35,15 @@ private class SCRUM365OpenCasesCountTest {
     /**
      * AC (Feld immer stimmt / Create): Ein neuer (offener) Fall erhöht die Zahl
      * des Kontakts um 1. «offen» = Status != Closed (Neu = 'New').
+     * Der Startwert wird ROH assertet (kein countOf()): ohne Feld-Default 0
+     * wäre er NULL und dieser Test scheitert — das AC «Kontakt ohne Fälle → 0»
+     * ist ein echtes Gate (Review SCRUM-365, Round 2).
      */
     @isTest
     static void createNewCase_incrementsCount() {
         Id a = newContact('Create');
-        System.assertEquals(0, countOf(a), 'Startwert muss 0 sein');
+        Contact a0 = [SELECT Open_Cases_Count__c FROM Contact WHERE Id = :a LIMIT 1];
+        System.assertEquals(0, a0.Open_Cases_Count__c, 'Roh-Startwert muss 0 sein (Feld-Default), nicht NULL');
 
         insert new Case(ContactId = a, Status = 'New', Subject = 'c1');
         System.assertEquals(1, countOf(a), 'Ein neuer offener Fall muss die Zahl auf 1 setzen');

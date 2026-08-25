@@ -10,4 +10,5 @@
     <trackTrending>false</trackTrending>
     <type>Number</type>
     <unique>false</unique>
+    <defaultValue>0</defaultValue>
 </CustomField>
