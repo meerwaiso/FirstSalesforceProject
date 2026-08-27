@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-367 Phase 2: alles, was das Lauf-Log-Objekt referenziert
+         (gleiche 2-Phasen-Regel wie SCRUM-365: erst Objekt/Felder, dann Referenzierendes). -->
+    <types>
+        <members>CaseOpenCountRebuilder</members>
+        <members>SCRUM367OpenCasesRebuildTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>CaseOpenCountTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <types>
+        <members>Rebuild_Offene_Faelle</members>
+        <name>WebLink</name>
+    </types>
+    <types>
+        <members>Contact-Contact Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>SCRUM367_OffenCasesRebuild</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>

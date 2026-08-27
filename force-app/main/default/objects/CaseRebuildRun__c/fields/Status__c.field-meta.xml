@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Status__c</fullName>
+    <description>Lebenszyklus des Laufs: Laeuft, Abgeschlossen oder Fehler.</description>
+    <externalId>false</externalId>
+    <label>Status</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <inlineHelpText>Laeuft (Batch aktiv), Abgeschlossen (finish() geschrieben), Fehler (Batch-Abbruch).</inlineHelpText>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Laeuft</fullName>
+                <default>true</default>
+                <label>Laeuft</label>
+            </value>
+            <value>
+                <fullName>Abgeschlossen</fullName>
+                <default>false</default>
+                <label>Abgeschlossen</label>
+            </value>
+            <value>
+                <fullName>Fehler</fullName>
+                <default>false</default>
+                <label>Fehler</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

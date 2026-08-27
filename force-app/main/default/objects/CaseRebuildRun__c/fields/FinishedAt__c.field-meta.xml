@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>FinishedAt__c</fullName>
+    <description>Zeitpunkt, an dem der Batch seine finish()-Methode geschrieben hat. Bei Batch-Abbruch leer (Status bleibt Laeuft; Batch-Id in BatchId__c).</description>
+    <externalId>false</externalId>
+    <label>Abgeschlossen am</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>

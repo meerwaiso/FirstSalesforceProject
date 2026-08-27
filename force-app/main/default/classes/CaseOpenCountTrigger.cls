@@ -35,10 +35,13 @@ public without sharing class CaseOpenCountTrigger {
      * die Kontakte, deren Open_Cases_Count__c sich geändert hat.
      *
      * @param contactIds die betroffenen Contact-Ids (alter + neuer Kontakt beim Reassign)
+     * @return Anzahl der tatsächlich aktualisierten Kontakte (0 = kein Wert geändert).
+     *         SCRUM-367: Rückgabewert ist aufruf-kompatibel zum Trigger (der ignoriert
+     *         ihn) und macht die Methode für den Batch-Rebuilder verwendbar.
      */
-    public static void recompute(Set<Id> contactIds) {
+    public static Integer recompute(Set<Id> contactIds) {
         if (contactIds == null || contactIds.isEmpty()) {
-            return;
+            return 0;
         }
 
         // 1 SOQL: exakte offene Fälle pro Kontakt.
@@ -79,5 +82,6 @@ public without sharing class CaseOpenCountTrigger {
         if (!toUpdate.isEmpty()) {
             update toUpdate;
         }
+        return toUpdate.size();
     }
 }
