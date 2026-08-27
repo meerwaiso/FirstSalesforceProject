@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Contact.Open_Cases_Count__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM365_OpenCasesCount</label>
+    <description>Read-only FLS für Contact.Open_Cases_Count__c (SCRUM-365). Feld ist systemmaintained (Case-Trigger) — kein Update für irgendwen. Systemwrites laufen im System-Modus und umgehen FLS. PO-Festlegung: Zugriff nur Service/Support.</description>
+</PermissionSet>
