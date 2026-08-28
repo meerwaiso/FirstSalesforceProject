@@ -4,6 +4,7 @@
          (gleiche 2-Phasen-Regel wie SCRUM-365: erst Objekt/Felder, dann Referenzierendes). -->
     <types>
         <members>CaseOpenCountRebuilder</members>
+        <members>CaseOpenCountTrigger</members>
         <members>SCRUM367OpenCasesRebuildTest</members>
         <name>ApexClass</name>
     </types>
@@ -12,7 +13,8 @@
         <name>ApexTrigger</name>
     </types>
     <types>
-        <members>Rebuild_Offene_Faelle</members>
+        <!-- WebLink ist Kind-Typ von CustomObject -> qualifiziertes Member pflicht. -->
+        <members>Contact.Rebuild_Offene_Faelle</members>
         <name>WebLink</name>
     </types>
     <types>

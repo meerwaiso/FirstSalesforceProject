@@ -78,28 +78,31 @@ private class SCRUM367OpenCasesRebuildTest {
         Id c = staleContactWithOpenCases('Gamma', 2);   // NULL → erwartet 2
 
         // No-Code-Auslösung — exakt der Custom-Button-Weg (sforce.apex.execute).
-        // Timestamp-Grenze: die Verifikations-Läufe IM Test-Org hinterlegen
-        // dauerhafte Log-Zeilen — daher zählt dieser Test nur ZEILEN ab hier.
-        DateTime beforeRun = DateTime.now();
-
+        // Test-Konstraint: Test.startTest() ist pro Test-Methode NUR EINMAL
+        // erlaubt — eine zweite Anwendung wirft System.FinalException («Testing
+        // already started»). Beide Rebuild-Läufe starten daher in EINEM Block;
+        // die Batches laufen Start-reihenfolgegetreu in eigenen Transaktionen.
+        // Lauf-Log-Zeilen werden über die BatchId__c unterschieden statt über
+        // Timestamps (Verifikations-Läufe im Test-Org hinterlegen dauerhafte
+        // Zeilen — mit anderen Batch-Ids).
         String batchId;
+        String batchId2;
         Test.startTest();
         batchId = CaseOpenCountRebuilder.startRebuild();
+        batchId2 = CaseOpenCountRebuilder.startRebuild();
         Test.stopTest();
 
         System.assert(String.isNotBlank(batchId),
                 'startRebuild muss eine Batch-Id liefern');
 
-        // Lauf-Log-Zeile (AC 6): genau 1 Abgeschlossene SEIT dem Lauf,
-        // Batch-Id + FinishedAt gefüllt.
+        // Lauf-Log-Zeile (AC 6): genau 1 Abgeschlossene mit der Batch-Id des
+        // ersten Laufs, FinishedAt gefüllt.
         List<CaseRebuildRun__c> done = [
             SELECT Id, Status__c, ContactsProcessed__c, ContactsCorrected__c,
                    FinishedAt__c, BatchId__c
             FROM CaseRebuildRun__c
             WHERE Status__c = :CaseOpenCountRebuilder.STATUS_DONE
-              AND CreatedDate >= :beforeRun
-            ORDER BY CreatedDate DESC, Id DESC
-            LIMIT 1
+              AND BatchId__c = :batchId
         ];
         System.assertEquals(1, done.size(),
                 'Nach 1. Lauf genau 1 Abgeschlossene-Zeile erwartet');
@@ -129,19 +132,13 @@ private class SCRUM367OpenCasesRebuildTest {
         System.assertEquals(0, countNullContacts(),
                 'Nach dem 1. Lauf darf KEIN Kontakt mehr ein NULL-Feld haben — der Rebuilder queryt ohne LastModified-Filter');
 
-        // Zweiter Lauf: idempotent (AC 3).
-        DateTime beforeSecondRun = DateTime.now();
-        Test.startTest();
-        CaseOpenCountRebuilder.startRebuild();
-        Test.stopTest();
-
+        // Zweiter Lauf: idempotent (AC 3). Sein Batch (batchId2) ist bereits in
+        // dem Block oben gestartet und lief direkt nach dem ersten.
         List<CaseRebuildRun__c> done2 = [
             SELECT Id, ContactsProcessed__c, ContactsCorrected__c
             FROM CaseRebuildRun__c
             WHERE Status__c = :CaseOpenCountRebuilder.STATUS_DONE
-              AND CreatedDate >= :beforeSecondRun
-            ORDER BY CreatedDate DESC, Id DESC
-            LIMIT 1
+              AND BatchId__c = :batchId2
         ];
         System.assertEquals(1, done2.size(), 'Nach 2. Lauf die 2. Abgeschlossene-Zeile erwartet');
         CaseRebuildRun__c run2 = done2.get(0);
