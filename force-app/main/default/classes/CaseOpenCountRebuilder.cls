@@ -88,13 +88,15 @@ public without sharing class CaseOpenCountRebuilder
         run.Status__c = STATUS_RUNNING;
         insert run;
 
-        Database.BatchableContext bc =
+        // Database.executeBatch() liefert die Batch-Job-Id (String, 18) —
+        // kein BatchableContext. Kein getId(): die Id ist der Return-Wert.
+        String batchId =
                 Database.executeBatch(new CaseOpenCountRebuilder(run.Id), DEFAULT_BATCH_SIZE);
 
-        run.BatchId__c = bc.getId();
+        run.BatchId__c = batchId;
         update run;
 
-        return bc.getId();
+        return batchId;
     }
 
     public Database.QueryLocator start(Database.BatchableContext ctx) {
