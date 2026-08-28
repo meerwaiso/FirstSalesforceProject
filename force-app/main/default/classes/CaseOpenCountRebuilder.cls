@@ -33,7 +33,7 @@
  * @date 2026-08-27
  */
 public without sharing class CaseOpenCountRebuilder
-        implements Database.Batchable<SObject>, Database.Stateable {
+        implements Database.Batchable<SObject>, Database.Stateful {
 
     /** Laufende Status-Werte für CaseRebuildRun__c.Status__c. */
     public static final String STATUS_RUNNING = 'Laeuft';

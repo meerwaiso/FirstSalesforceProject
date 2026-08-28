@@ -4,7 +4,7 @@
         <apexClass>CaseOpenCountRebuilder</apexClass>
         <enabled>true</enabled>
     </classAccesses>
-    <description>SCRUM-367: Sichtbarkeit des Korrekturlaufs «Offene Fälle» für Servicemitarbeiter (AC 6). Liest CaseRebuildRun__c (viewAllRecords), startet den Rebuilder per Apex-Klasse (Custom Button auf dem Contact-Layout). Das systemmaintainede Contact.Open_Cases_Count__c bekommt KEIN Edit-FLS — nur der Trigger/Batch darf schreiben.</description>
+    <description>SCRUM-367: Sichtbarkeitsrechte für den Korrekturlauf »Offene Fälle« (AC 6). View von CaseRebuildRun__c + Start des Rebuilders über den Custom Button. KEIN Edit-FLS auf Contact.Open_Cases_Count__c — nur Trigger/Batch schreiben.</description>
     <fieldPermissions>
         <editable>false</editable>
         <field>CaseRebuildRun__c.BatchId__c</field>

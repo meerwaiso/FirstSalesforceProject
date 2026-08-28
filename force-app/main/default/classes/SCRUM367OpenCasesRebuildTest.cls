@@ -32,7 +32,7 @@ private class SCRUM367OpenCasesRebuildTest {
 
     /** Zählt die aktuellen NULL-Kontakte im ganzen Stock (Vollkorrektur-Gate). */
     private static Integer countNullContacts() {
-        return [SELECT COUNT(Id) FROM Contact WHERE Open_Cases_Count__c = null];
+        return [SELECT COUNT() FROM Contact WHERE Open_Cases_Count__c = null];
     }
 
     /**
@@ -183,10 +183,11 @@ private class SCRUM367OpenCasesRebuildTest {
 
         // No-op: bereits korrekter Wert → 0, und LastModified ändert sich NICHT
         // (weil die DML unterdrückt wird — wichtig für AC 4, laufende Prozesse).
-        Date prior = [SELECT LastModifiedDate FROM Contact WHERE Id = :a].LastModifiedDate;
+        // LastModifiedDate ist ein DateTime.
+        DateTime prior = [SELECT LastModifiedDate FROM Contact WHERE Id = :a].LastModifiedDate;
         Integer noOp = CaseOpenCountTrigger.recompute(new Set<Id>{a, b.Id});
         System.assertEquals(0, noOp, 'No-op (alle Werte korrekt) => 0');
-        Date after = [SELECT LastModifiedDate FROM Contact WHERE Id = :a].LastModifiedDate;
+        DateTime after = [SELECT LastModifiedDate FROM Contact WHERE Id = :a].LastModifiedDate;
         System.assertEquals(prior, after,
                 'No-op darf keine neue LastModified erzeugen (DML wird unterdrückt)');
     }
