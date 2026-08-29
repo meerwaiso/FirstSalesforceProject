@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Open_Cases_Rating__c</fullName>
+    <description>Abgeleitete Einstufung aus der Anzahl offener Faelle (SCRUM-370): 0 = Unauffaellig, 1 bis 2 = Normal, 3 bis 4 = Erhoeht, 5 oder mehr = Kritisch. Ausschliesslich vom System gepflegt (CaseOpenCountTrigger.recompute, SCRUM-365/370) — von Hand nicht aenderbar.</description>
+    <externalId>false</externalId>
+    <label>Einstufung Offene Faelle</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Unauffaellig</fullName>
+                <default>true</default>
+                <label>Unauffaellig (0)</label>
+            </value>
+            <value>
+                <fullName>Normal</fullName>
+                <default>false</default>
+                <label>Normal (1-2)</label>
+            </value>
+            <value>
+                <fullName>Erhoeht</fullName>
+                <default>false</default>
+                <label>Erhoeht (3-4)</label>
+            </value>
+            <value>
+                <fullName>Kritisch</fullName>
+                <default>false</default>
+                <label>Kritisch (5 oder mehr)</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>
