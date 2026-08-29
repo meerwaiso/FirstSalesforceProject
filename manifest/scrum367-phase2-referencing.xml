@@ -19,7 +19,14 @@
     </types>
     <types>
         <members>Contact-Contact Layout</members>
+        <!-- SCRUM-369: Lauf-Log-Layout mit Ergebnisfeldern (AC6) -->
+        <members>CaseRebuildRun__c-Korrekturlauf Offene Faelle Layout</members>
         <name>Layout</name>
+    </types>
+    <types>
+        <!-- SCRUM-369: ListView ist Kind-Typ von CustomObject -> qualifiziertes Member -->
+        <members>CaseRebuildRun__c.Letzte_Laeuve</members>
+        <name>ListView</name>
     </types>
     <types>
         <members>SCRUM367_OffenCasesRebuild</members>
