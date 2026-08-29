@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns>CaseRebuildRun__c.Status__c</columns>
+    <columns>CaseRebuildRun__c.ContactsProcessed__c</columns>
+    <columns>CaseRebuildRun__c.ContactsCorrected__c</columns>
+    <columns>CaseRebuildRun__c.FinishedAt__c</columns>
+    <fullName>Letzte_Laeuve</fullName>
+    <filterScope>Everything</filterScope>
+    <label>Letzte Läufe</label>
+</ListView>

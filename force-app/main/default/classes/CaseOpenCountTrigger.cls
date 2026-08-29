@@ -35,10 +35,13 @@ public without sharing class CaseOpenCountTrigger {
      * die Kontakte, deren Open_Cases_Count__c sich geändert hat.
      *
      * @param contactIds die betroffenen Contact-Ids (alter + neuer Kontakt beim Reassign)
+     * @return Anzahl der tatsächlich aktualisierten Kontakte (0 = kein Wert geändert).
+     *         SCRUM-367: Rückgabewert ist aufruf-kompatibel zum Trigger (der ignoriert
+     *         ihn) und macht die Methode für den Batch-Rebuilder verwendbar.
      */
-    public static void recompute(Set<Id> contactIds) {
+    public static Integer recompute(Set<Id> contactIds) {
         if (contactIds == null || contactIds.isEmpty()) {
-            return;
+            return 0;
         }
 
         // 1 SOQL: exakte offene Fälle pro Kontakt.
@@ -54,23 +57,29 @@ public without sharing class CaseOpenCountTrigger {
         }
 
         // Aktueller Zustand der betroffenen Kontakte (nur diese — kein Voll-Scan).
+        // Wichtig: NULL wird NICHT zu 0 normalisiert — NULL bedeutet «nie gezählt»
+        // (Bestandslage SCRUM-367) und muss immer geschrieben werden, auch wenn
+        // das Ergebnis 0 ist (AC 2: «leer» → 0). Bereits-0 bleibt ein no-op.
         Map<Id, Decimal> currentValues = new Map<Id, Decimal>();
         for (Contact ct : [
             SELECT Id, Open_Cases_Count__c
             FROM Contact
             WHERE Id IN :contactIds
         ]) {
-            currentValues.put(ct.Id, ct.Open_Cases_Count__c == null ? 0 : ct.Open_Cases_Count__c);
+            currentValues.put(ct.Id, ct.Open_Cases_Count__c);
         }
 
-        // Nur Kontakte updaten, deren sich tatsächlich geändert hat.
+        // Nur Kontakte updaten, deren Wert sich tatsächlich geändert hat —
+        // mit der Ausnahme: NULL (nie gezählt) gilt immer als zu schreiben.
         List<Contact> toUpdate = new List<Contact>();
         for (Id cid : contactIds) {
             Integer newCount = openCounts.get(cid);
             Integer actualCount = (newCount == null) ? 0 : newCount;
             Decimal currentValue = currentValues.get(cid);
-            Integer priorValue = (currentValue == null) ? 0 : currentValue.intValue();
-            if (actualCount != priorValue) {
+            Boolean mustWrite =
+                    (currentValue == null)
+                    || (currentValue.intValue() != actualCount);
+            if (mustWrite) {
                 toUpdate.add(new Contact(Id = cid, Open_Cases_Count__c = actualCount));
             }
         }
@@ -79,5 +88,6 @@ public without sharing class CaseOpenCountTrigger {
         if (!toUpdate.isEmpty()) {
             update toUpdate;
         }
+        return toUpdate.size();
     }
 }

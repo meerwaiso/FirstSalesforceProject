@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-367 Phase 1: neues Lauf-Log-Objekt CaseRebuildRun__c (+ 5 Felder, Tab, ListView).
+         Die ListView reist automatisch mit, weil SDR die CustomObject-Mitgliedschaft
+         auf die Objektkind-Dateien erweitert; minimalistisch gehalten wie die
+         Standard-ListViews der Org (fullName / filterScope / label). Alles, was das
+         Objekt REFERENZIERT (Klassen, PS, WebLink, Layout), deployt Phase 2. -->
+    <types>
+        <members>CaseRebuildRun__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>CaseRebuildRun__c.BatchId__c</members>
+        <members>CaseRebuildRun__c.ContactsCorrected__c</members>
+        <members>CaseRebuildRun__c.ContactsProcessed__c</members>
+        <members>CaseRebuildRun__c.FinishedAt__c</members>
+        <members>CaseRebuildRun__c.Status__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>CaseRebuildRun__c</members>
+        <name>CustomTab</name>
+    </types>
+    <version>67.0</version>
+</Package>
