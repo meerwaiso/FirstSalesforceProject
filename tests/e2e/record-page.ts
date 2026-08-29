@@ -27,10 +27,34 @@ export async function openRecordPage(page: Page, path: string) {
 /** Switch to the Details tab, where the layout's fields are rendered. */
 export async function openDetailsTab(page: Page) {
   const details = page.getByRole('tab', { name: 'Details' });
-  if (await details.isVisible().catch(() => false)) {
+  // Two silent failure modes, both verified 2026-08-29 (SCRUM-367 spec,
+  // AC1/AC2 red with the page still on the Related tab):
+  //   1) the tablist renders AFTER the global header — a fixed 2.5s wait can
+  //      fire before the Details tab exists, and the old isVisible()-skip
+  //      then never clicks at all;
+  //   2) a click can land before Lightning has attached the tab's handler —
+  //      Playwright reports success, the tab stays on Related, no error.
+  // So: wait for the tab itself, click, and verify the switch actually
+  // happened (aria-selected, falling back to rendered form fields) with a
+  // bounded retry instead of a fixed sleep.
+  await details.waitFor({ state: 'visible', timeout: 30000 });
+
+  const isSwitched = async (): Promise<boolean> => {
+    const sel = await details.getAttribute('aria-selected').catch(() => null);
+    if (sel !== null) return sel === 'true';
+    // Some Lightning builds omit the attribute — fall back to rendered fields.
+    return (await page.locator('div.slds-form-element').count().catch(() => 0)) > 0;
+  };
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (await isSwitched()) return;
     await details.click();
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(1500);
   }
+  throw new Error(
+    'Details-Tab wechselt nicht: Record-Page bleibt auf dem vorherigen Tab ' +
+      'nach 3 Klick-Versuchen — die Layout-Felder werden dadurch nie gerendert'
+  );
 }
 
 /** Open a record and land on its Details tab in one step. */
