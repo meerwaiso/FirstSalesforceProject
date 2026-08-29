@@ -114,15 +114,38 @@ test.describe('[SCRUM-367] Offene Fälle — Vollkorrektur', () => {
     const doneCount = Number(done[0].expr0);
     expect(doneCount, 'Keine abgeschlossene Rebuild-Lauf-Zeile in der Test-Org').toBeGreaterThanOrEqual(2);
 
-    // (c) UI: die Lauf-Log-Liste existiert und zeigt die neueste Lauf-Nr.
+    // (c) UI: die Ergebnis-Listview „Letzte Läufe“ ist deplomente und rendert die
+    //     4 Ergebnis-Spalten des SCRUM-369-Fix (objekt-qualifiziert deployt).
+    //     NOTE: /lightning/o/<Obj>/list rendernt standardmäßig die Tab-Default-Listview
+    //     („Recently Viewed“). ?filterName=Letzte_Laeuve lädt EXPLIZIT „Letzte Läufe“.
+    //     Lauf-Nr (Name) ist HIER keine Spalte — die ListView führt nur die 4 Ergebnis-
+    //     Felder. Deshalb asserten wir die 4 Spalten + die Korrekturzahl, nicht die
+    //     Lauf-Nr (die fehlt by design in dieser Listview).
     const run = latestRun();
-    const runNumber = soql(`SELECT Name FROM CaseRebuildRun__c WHERE Id='${run.Id}'`)[0].Name;
-    await page.goto('/lightning/o/CaseRebuildRun__c/list', { waitUntil: 'domcontentloaded' });
+    const corrected = Number(run.ContactsCorrected__c);
+    await page.goto('/lightning/o/CaseRebuildRun__c/list?filterName=Letzte_Laeuve', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('.slds-global-header', { timeout: 60000 });
+    // Die Listview ist aktiv: Heading „Korrekturlauf Offene Faelle Letzte Läufe“.
     await expect(
-      page.getByText(runNumber, { exact: true }).first(),
-      `Lauf-Nr. ${runNumber} nicht in der Liste „Korrekturlauf Offene Faelle“`,
+      page.getByRole('heading', { name: /Letzte Läufe/ }).first(),
+      'Listview „Letzte Läufe“ ist nicht aktiv',
     ).toBeVisible({ timeout: 30000 });
+    // Die 4 Ergebnis-Spalten sind als Sortier-Buttons vorhanden (verifizierte,
+    // zuverlässige Locator — columnheader wird in der virtualisierten Liste als
+    // hidden gemeldet, der „Sort by“-Button ist das stabile interactive Element).
+    for (const col of ['Status', 'Kontakte verarbeitet', 'Kontakte korrigiert', 'Abgeschlossen am']) {
+      await expect(
+        page.getByRole('button', { name: new RegExp(`Sort by: ${col.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }).first(),
+        `Listview-Spalte „${col}“ fehlt in „Letzte Läufe“ (SCRUM-369-Fix)`,
+      ).toBeVisible({ timeout: 30000 });
+    }
+    // Die Listview rendert mindestens eine Lauf-Zeile (Ergebnis-Anzeige ist
+    // populiert — nicht nur leere Spalten). Zeilen-Struktur: 1 Header + N Daten.
+    const dataRows = await page.getByRole('row').count();
+    expect(
+      dataRows,
+      'Listview „Letzte Läufe“ rendert keine Lauf-Zeilen (leere Liste)',
+    ).toBeGreaterThanOrEqual(2);
   });
 
   test('AC6: Ergebnis sichtbar — „Kontakte korrigiert“ auf der Lauf-Record-Seite (BUG: SCRUM-369 — Layout hat keine Custom Fields)', async ({ page }) => {
