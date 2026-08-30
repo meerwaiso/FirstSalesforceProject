@@ -31,8 +31,32 @@ public without sharing class CaseOpenCountTrigger {
     public static final String CLOSED_STATUS = 'Closed';
 
     /**
+     * SCRUM-370: Einstufung aus der Anzahl offener Faelle, Grenzen inklusive.
+     * 0 = Unauffaellig, 1 bis 2 = Normal, 3 bis 4 = Erhoeht, sonst Kritisch.
+     *
+     * Reine Mapping-Funktion auf die bereits gezählte Zahl — kein SOQL, kein
+     * Roundtrip. Null-Semantik wie SCRUM-367: NULL-Zähler (Bestands-Kontakte)
+     * ergibt Unauffaellig (Count 0), reitet dabei auf demselben First-Write.
+     */
+    public static String deriveRating(Integer count) {
+        if (count == null || count == 0) {
+            return 'Unauffaellig';
+        }
+        if (count <= 2) {
+            return 'Normal';
+        }
+        if (count <= 4) {
+            return 'Erhoeht';
+        }
+        return 'Kritisch';
+    }
+
+    /**
      * Zählt für alle übergebenen Kontakte die offenen Fälle neu und aktualisiert genau
-     * die Kontakte, deren Open_Cases_Count__c sich geändert hat.
+     * die Kontakte, deren Open_Cases_Count__c sich geändert hat. SCRUM-370: auf dem
+     * selben Contact (gleiche mustWrite-Bedingung, gleiche DML) wird zusätzlich die
+     * abgeleitete Einstufung Open_Cases_Rating__c geschrieben — sie kann nie vom
+     * Zähler abdriften, es gibt keinen Zustand «Zähler neu, Einstufung alt».
      *
      * @param contactIds die betroffenen Contact-Ids (alter + neuer Kontakt beim Reassign)
      * @return Anzahl der tatsächlich aktualisierten Kontakte (0 = kein Wert geändert).
@@ -80,7 +104,10 @@ public without sharing class CaseOpenCountTrigger {
                     (currentValue == null)
                     || (currentValue.intValue() != actualCount);
             if (mustWrite) {
-                toUpdate.add(new Contact(Id = cid, Open_Cases_Count__c = actualCount));
+                toUpdate.add(new Contact(
+                    Id = cid,
+                    Open_Cases_Count__c = actualCount,
+                    Open_Cases_Rating__c = deriveRating(actualCount)));
             }
         }
 
