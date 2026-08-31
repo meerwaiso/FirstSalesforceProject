@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!--
+        RELEASE: "Offene Fälle" – Family (SCRUM-359/365/367/370/375) → Prod-Org
+        Phase 2: all referencing components (depend on Phase 1 fields/objects)
+    -->
+
+    <!-- ApexTrigger (SCRUM-365/367/370) -->
+    <types>
+        <members>CaseOpenCountTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+
+    <!-- ApexClass (SCRUM-365/367/370 incl. test classes) -->
+    <types>
+        <members>CaseOpenCountTrigger</members>
+        <members>CaseOpenCountRebuilder</members>
+        <members>SCRUM365OpenCasesCountTest</members>
+        <members>SCRUM367OpenCasesRebuildTest</members>
+        <members>SCRUM367OpenCasesRebuildScaleTest</members>
+        <members>SCRUM370OpenCasesRatingTest</members>
+        <members>SCRUM365OpenCountVerifyTest</members>
+        <members>SCRUM359NewsletterConsentFlsTest</members>
+        <members>SCRUM359NewsletterConsentTest</members>
+        <name>ApexClass</name>
+    </types>
+
+    <!-- PermissionSets (SCRUM-359/365/367/370) -->
+    <types>
+        <members>SCRUM359_NewsletterConsent</members>
+        <members>SCRUM365_OpenCasesCount</members>
+        <members>SCRUM367_OffenCasesRebuild</members>
+        <name>PermissionSet</name>
+    </types>
+
+    <!-- Layouts (SCRUM-359/365/367/370/375) -->
+    <types>
+        <members>Contact-Contact Layout</members>
+        <members>CaseRebuildRun__c-Korrekturlauf Offene Faelle Layout</members>
+        <name>Layout</name>
+    </types>
+
+    <!-- WebLink (SCRUM-367, child of Contact) -->
+    <types>
+        <members>Contact.Rebuild_Offene_Faelle</members>
+        <name>WebLink</name>
+    </types>
+
+    <!-- ListViews (SCRUM-367 child of CaseRebuildRun__c / SCRUM-370 child of Contact) -->
+    <types>
+        <members>CaseRebuildRun__c.Letzte_Laeuve</members>
+        <members>Contact.Kritische_Kontakte</members>
+        <name>ListView</name>
+    </types>
+
+    <version>67.0</version>
+</Package>

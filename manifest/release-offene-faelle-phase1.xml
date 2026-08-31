@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!--
+        RELEASE: "Offene Fälle" – Family (SCRUM-359/365/367/370/375) → Prod-Org
+        Phase 1: base components (no cross-references between project components)
+    -->
+
+    <!-- CustomObject + fields (SCRUM-367 / 365 / 370 / 359) -->
+    <types>
+        <members>CaseRebuildRun__c</members>
+        <name>CustomObject</name>
+    </types>
+
+    <types>
+        <members>Contact.Open_Cases_Count__c</members>
+        <members>Contact.Open_Cases_Rating__c</members>
+        <members>Contact.NewsletterConsent__c</members>
+        <members>Contact.ConsentDate__c</members>
+        <members>Contact.FeldFinoIlsede__c</members>
+        <members>CaseRebuildRun__c.BatchId__c</members>
+        <members>CaseRebuildRun__c.ContactsCorrected__c</members>
+        <members>CaseRebuildRun__c.ContactsProcessed__c</members>
+        <members>CaseRebuildRun__c.FinishedAt__c</members>
+        <members>CaseRebuildRun__c.Status__c</members>
+        <name>CustomField</name>
+    </types>
+
+    <!-- ValidationRules (SCRUM-359) -->
+    <types>
+        <members>Contact.NewsletterConsent_DatumPflicht</members>
+        <members>Contact.NewsletterConsent_DatumKeineZukunft</members>
+        <name>ValidationRule</name>
+    </types>
+
+    <!-- CustomTab (SCRUM-367) -->
+    <types>
+        <members>CaseRebuildRun__c</members>
+        <name>CustomTab</name>
+    </types>
+
+    <version>67.0</version>
+</Package>

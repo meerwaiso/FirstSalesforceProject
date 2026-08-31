@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!--
+        RELEASE: "Offene Fälle" – Family (SCRUM-359/365/367/370/375) → Prod-Org
+        COMBINED manifest (Phase 1 base + Phase 2 referencing) used for the
+        pre-deploy validate only. The real deploy runs Phase 1 then Phase 2 so
+        base fields/objects exist before referencing components compile.
+    -->
+
+    <!-- ===== Phase 1: base components ===== -->
+    <types>
+        <members>CaseRebuildRun__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>Contact.Open_Cases_Count__c</members>
+        <members>Contact.Open_Cases_Rating__c</members>
+        <members>Contact.NewsletterConsent__c</members>
+        <members>Contact.ConsentDate__c</members>
+        <members>Contact.FeldFinoIlsede__c</members>
+        <members>CaseRebuildRun__c.BatchId__c</members>
+        <members>CaseRebuildRun__c.ContactsCorrected__c</members>
+        <members>CaseRebuildRun__c.ContactsProcessed__c</members>
+        <members>CaseRebuildRun__c.FinishedAt__c</members>
+        <members>CaseRebuildRun__c.Status__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Contact.NewsletterConsent_DatumPflicht</members>
+        <members>Contact.NewsletterConsent_DatumKeineZukunft</members>
+        <name>ValidationRule</name>
+    </types>
+    <types>
+        <members>CaseRebuildRun__c</members>
+        <name>CustomTab</name>
+    </types>
+
+    <!-- ===== Phase 2: referencing components ===== -->
+    <types>
+        <members>CaseOpenCountTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <types>
+        <members>CaseOpenCountTrigger</members>
+        <members>CaseOpenCountRebuilder</members>
+        <members>SCRUM365OpenCasesCountTest</members>
+        <members>SCRUM367OpenCasesRebuildTest</members>
+        <members>SCRUM367OpenCasesRebuildScaleTest</members>
+        <members>SCRUM370OpenCasesRatingTest</members>
+        <members>SCRUM365OpenCountVerifyTest</members>
+        <members>SCRUM359NewsletterConsentFlsTest</members>
+        <members>SCRUM359NewsletterConsentTest</members>
+        <members>SCRUM353FeldFinoIlsedeFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>SCRUM359_NewsletterConsent</members>
+        <members>SCRUM365_OpenCasesCount</members>
+        <members>SCRUM367_OffenCasesRebuild</members>
+        <members>SCRUM353_FeldFinoIlsede</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Contact-Contact Layout</members>
+        <members>CaseRebuildRun__c-Korrekturlauf Offene Faelle Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>Contact.Rebuild_Offene_Faelle</members>
+        <name>WebLink</name>
+    </types>
+    <types>
+        <members>CaseRebuildRun__c.Letzte_Laeuve</members>
+        <members>Contact.Kritische_Kontakte</members>
+        <name>ListView</name>
+    </types>
+
+    <version>67.0</version>
+</Package>
