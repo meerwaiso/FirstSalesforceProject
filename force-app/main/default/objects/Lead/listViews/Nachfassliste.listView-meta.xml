@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns>Lead.Last_Attempt_Date__c</columns>
+    <filters>
+        <field>Is_Due__c</field>
+        <operation>equals</operation>
+        <value>1</value>
+    </filters>
+    <fullName>Nachfassliste</fullName>
+    <filterScope>Everything</filterScope>
+    <label>Nachfassliste</label>
+</ListView>

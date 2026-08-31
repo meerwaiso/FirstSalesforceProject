@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-378 Phase 1: neue Felder und ValidationRule (wird ZUERST deployed, da Layout/ListView/PS darauf referenzieren). -->
+    <types>
+        <members>Lead.Last_Attempt_Date__c</members>
+        <members>Lead.Is_Due__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Lead.Letzter_Versuch_KeineZukunft</members>
+        <name>ValidationRule</name>
+    </types>
+    <version>67.0</version>
+</Package>

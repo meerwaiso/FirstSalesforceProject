@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Letzter_Versuch_KeineZukunft</fullName>
+    <active>true</active>
+    <description>SCRUM-378: „Letzter Versuch“ darf keine Zukunft sein. Greift nur, wenn ein Datum eingetragen ist.</description>
+    <errorConditionFormula>AND(NOT(ISBLANK(Last_Attempt_Date__c)), Last_Attempt_Date__c &gt; TODAY())</errorConditionFormula>
+    <errorMessage>„Letzter Versuch“ darf nicht in der Zukunft liegen. Bitte ein heutiges oder früheres Datum wählen.</errorMessage>
+</ValidationRule>
