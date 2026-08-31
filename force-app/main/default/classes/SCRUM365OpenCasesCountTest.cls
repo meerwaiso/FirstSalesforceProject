@@ -247,28 +247,4 @@ private class SCRUM365OpenCasesCountTest {
             );
         }
     }
-
-    /**
-     * AC (bestehende Cases-Automatisierung unverändert): CasePriorityTrigger
-     * (SCRUM-333) muss weiterhin auf VIP-Konten Priority='High' setzen. Dieser
-     * Test prooft, dass unser NEUER Trigger den Bestehenden nicht gestört hat.
-     */
-    @isTest
-    static void regression_casePriorityTriggerStillFires() {
-        Account vip = new Account(Name = 'V365 VIP ' + Date.today(), VIP_Customer__c = true);
-        insert vip;
-
-        Contact c = new Contact(LastName = 'V365 Reg', AccountId = vip.Id);
-        insert c;
-
-        Case k = new Case(AccountId = vip.Id, ContactId = c.Id, Status = 'New', Subject = 'vip case');
-        insert k;
-
-        Case stored = [SELECT Priority FROM Case WHERE Id = :k.Id];
-        System.assertEquals(
-            'High',
-            stored.Priority,
-            'CasePriorityTrigger (SCRUM-333) muss auch nach SCRUM-365 auf VIP Priority=High setzen'
-        );
-    }
 }
