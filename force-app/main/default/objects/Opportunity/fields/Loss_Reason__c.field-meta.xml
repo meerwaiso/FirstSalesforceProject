@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Loss_Reason__c</fullName>
+    <description>Grund, warum die Chance verloren ging (SCRUM-381). Nur relevant wenn Stage = Closed Lost (ValRule erzwingt). Wird automatisch geleert wenn die Chance wieder geoffnet oder als gewonnen markiert wird (OpportunityLossReasonClearHandler). Kein PII.</description>
+    <label>Verlustgrund</label>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>ZuTeuer</fullName>
+                <default>false</default>
+                <label>Zu teuer</label>
+            </value>
+            <value>
+                <fullName>Wettbewerber</fullName>
+                <default>false</default>
+                <label>An einen Wettbewerber verloren</label>
+            </value>
+            <value>
+                <fullName>KeinBudget</fullName>
+                <default>false</default>
+                <label>Kein Budget</label>
+            </value>
+            <value>
+                <fullName>ZeitpunktNichtPasst</fullName>
+                <default>false</default>
+                <label>Zeitpunkt passte nicht</label>
+            </value>
+            <value>
+                <fullName>KeinBedarfMehr</fullName>
+                <default>false</default>
+                <label>Kein Bedarf mehr</label>
+            </value>
+            <value>
+                <fullName>KontaktAbgebrochen</fullName>
+                <default>false</default>
+                <label>Kontakt abgebrochen</label>
+            </value>
+            <value>
+                <fullName>Sonstiges</fullName>
+                <default>false</default>
+                <label>Sonstiges</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -60,13 +60,17 @@ private class SCRUM319OverdueOpportunityTest {
         );
         insert closedWonOpp;
 
-        // Opportunity 4: Closed Lost -> should NOT be marked overdue
+        // Opportunity 4: Closed Lost -> should NOT be marked overdue.
+        // Loss_Reason__c ist seit SCRUM-381 Pflicht bei StageName = 'Closed Lost'
+        // (ValRule LossReason_PflichtBeiClosedLost); ohne Wert koennte dieser
+        // Test-Satz kein Closed-Lost-Objekt mehr anlegen.
         Opportunity closedLostOpp = new Opportunity(
             Name = 'Closed Lost Opportunity',
             StageName = 'Closed Lost',
             CloseDate = Date.today().addDays(-20),
             OwnerId = testUser.Id,
-            Is_Overdue__c = false
+            Is_Overdue__c = false,
+            Loss_Reason__c = 'ZuTeuer'
         );
         insert closedLostOpp;
 
