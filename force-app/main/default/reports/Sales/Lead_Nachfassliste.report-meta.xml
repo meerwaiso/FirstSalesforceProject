@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns><field>FIRST_NAME</field></columns>
+    <columns><field>LAST_NAME</field></columns>
+    <columns><field>COMPANY</field></columns>
+    <columns><field>STATUS</field></columns>
+    <columns><field>Lead.Last_Attempt_Date__c</field></columns>
+    <description>Leads due for follow-up (open, last attempt more than 14 days ago).</description>
+    <filter>
+        <criteriaItems>
+            <column>Lead.Is_Due__c</column>
+            <operator>equals</operator>
+            <value>1</value>
+        </criteriaItems>
+    </filter>
+    <format>Tabular</format>
+    <name>Lead_Nachfassliste</name>
+    <reportType>LeadList</reportType>
+</Report>
