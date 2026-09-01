@@ -113,20 +113,74 @@ Blocks future dates. House pattern = `NewsletterConsent_DatumKeineZukunft`.
 </ValidationRule>
 ```
 
-### 4. `force-app/main/default/objects/Lead/listViews/Nachfassliste.listView-meta.xml`
-Pre-filtered, exactly 4 columns, only open+due leads.
+## ADR-2 (2026-09-01) — Träger der „Nachfassliste“: **Report**, nicht Custom List View
 
+> **Träger-Wechsel, löst SCRUM-380.** Die AC „Liste zeigt genau Name · Firma ·
+> Status · Letzter Versuch“ wird ab sofort aus einem **Lead-Bericht**
+> (`force-app/main/default/reports/…`) erfüllt, nicht aus der Custom List View.
+> ADR-1 (Formula `Is_Due__c`) bleibt unverändert — dieser ADR ersetzt nur den
+> **Träger des 4-Spalten-AC**.
+
+**Warum die Custom List View scheitert (verifiziert, nicht angenommen):**
+1. Ein deklarierter `<columns>`-Satz **ersetzt** den Default-Spaltensatz statt
+   ihn zu ergänzen. Dreifach belegt (Tester-Komm 15261):
+   - list-ui-API `/ui-api/list-ui/Lead/Nachfassliste` → `displayColumns = [Last_Attempt_Date__c]`
+   - deploytes ListView-XML (retrieve) → genau **ein** `<columns>`-Eintrag
+   - Lightning-DOM → genau ein Spalten-Sort-Button; UI selbst: „…needs at least
+     one row and two columns“
+   - Beweis-ListView auf `feature/SCRUM-378-lead-nachfassliste`:
+     `force-app/main/default/objects/Lead/listViews/Nachfassliste.listView-meta.xml`
+     Zeile 3 = einziger `<columns>`-Eintrag `Lead.Last_Attempt_Date__c`
+2. Standard-Spalten sind über diesen SFDX/Source-Deploy-Pfad **nicht
+   deklarierbar**: `Name`, `Company`, `Status` — und als Kontrollversuch selbst
+   `LastModifiedDate` — scheitern am `deploy validate` mit „Could not resolve
+   list view column“ (mit und ohne `Lead.`-Präfix).
+→ Variante (a) „Defaults + Custom“ ist damit **ausgeschlossen**; (c)
+“Feld-Wrapper” (`Lead_Name__c` o. ä.) dupliziert Standard-Felder und wird
+verworfen.
+
+**Warum Report:** ein Report hat keinen „Default-Set, der ersetzt wird“ — alle
+Spalten sind explizit, Standard- und Custom-Felder sind dort die Norm. Die 4
+AC-Spalten sind also prinzipiell und **ohne Workaround** darstellbar; voll
+source-controlbar (`.report-meta.xml`).
+
+**Auswirkungen (bewusst minimal):**
+- **Keine** Feld-, Formula-, Validierungs- oder Permission-Set-Änderung.
+  `Last_Attempt_Date__c`, `Is_Due__c`, `SCRUM378_LeadNachfassung`, Validierung
+  bleiben exakt wie ADR-1/DoD — die übrigen 7 AC bleiben grün (Tester-Befund).
+  Der Report nutzt dieselben Felder; FLS greift auch im Report, Standard-Felder
+  sind Lead-Workern bereits sichtbar.
+- **Neue Datei:** `force-app/main/default/reports/Sales/Lead_Nachfassliste.report-meta.xml`
+  — ReportType `Lead`, Spalten `Name`, `Company`, `Status`,
+  `Last_Attempt_Date__c`, Filter `Is_Due__c = TRUE`.
+  **⚠️ Exact XML VOR dem Deploy gegen die Test-Org validieren
+  (`sf project deploy validate`), nicht raten** — Reports sind Greenfield in
+  diesem Repo (keine `reports/`-Präzenz); `reportType` + Feldnamen gegen Org
+  prüfen. Fällt die Report-Deployment auf Standard-Spalten zurück (wie der
+  ListView-Pfad), ist das ein **Deploy-Pfad-Befund → @devops-agent**, kein
+  weiterer Architektur-Turn.
+- **Custom List View `Nachfassliste`:** bleibt als Convenience-Quick-Filter
+  (filtert korrekt auf `Is_Due__c=true`, rendert 1 Spalte). Sie ist **nicht**
+  der getestete AC-Träger. Developer entscheidet nach ADR, ob sie bleibt oder
+  entfernt wird; das Re-Test prüft **den Report**.
+- **Manifest:** Phase 2 trägt zusätzlich `Report:Sales.Lead_Nachfassliste`
+  (Ordnungs-+Dateiname wie die Validierung bestätigt).
+
+### 4 (SUPERSEDED) `force-app/main/default/objects/Lead/listViews/Nachfassliste.listView-meta.xml`
+**Träger des 4-Spalten-AC → ADR-2 (Bericht).** Diese Custom List View rendert in
+der Org **nur 1 Spalte** (Standard-Spalten sind hier nicht deklarierbar, s.
+ADR-2) und dient daher maximal als Convenience-Quick-Filter. Sie ist **nicht**
+mehr Teil des getesteten 4-Spalten-Acceptance-Kriteriums.
+
+**Deploybare Form (so, wie sie in der Org live ist — 1 Custom-Spalte):**
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <ListView xmlns="http://soap.sforce.com/2006/04/metadata">
-    <columns>Name</columns>
-    <columns>Company</columns>
-    <columns>Status</columns>
     <columns>Lead.Last_Attempt_Date__c</columns>
     <filters>
         <field>Is_Due__c</field>
         <operation>equals</operation>
-        <value>true</value>
+        <value>1</value>
     </filters>
     <fullName>Nachfassliste</fullName>
     <filterScope>Everything</filterScope>
@@ -134,16 +188,16 @@ Pre-filtered, exactly 4 columns, only open+due leads.
 </ListView>
 ```
 
-**Column-syntax note (verify on phase-2 deploy, don't guess):**
-- Standard own-object fields (`Name`, `Company`, `Status`) are **unprefixed**.
-  The known failure ("Could not resolve list view column") is for *relationship*
-  columns like `Account.Name` — not for own fields.
-- The custom column is object-prefixed `Lead.Last_Attempt_Date__c` to match the
-  in-repo custom-column convention (`Contact.Open_Cases_Count__c`). If the deploy
-  rejects the object prefix on an own field, retry unprefixed
-  `Last_Attempt_Date__c`. Test against the `Letzte_Laeuve` deploy.
-- `filterScope=Everything`: the ACs place **no ownership restriction** — every
-  open lead that is due belongs.
+**Warum keine 4 Spalten hier (vorhergehende Annahme KORRIGIERT):**
+- ~~`Name`/`Company`/`Status` unprefixed deklarierbar, das Resolve-Fehler sind nur
+  für Beziehungsspalten~~ → **FALSCH.** Alle drei Standard-Spalten — und als
+  Kontrollversuch selbst `LastModifiedDate` — werden vom `deploy validate` mit
+  "Could not resolve list view column" abgelehnt (mit und ohne `Lead.`-Präfix).
+- Ein deklarierter `<columns>`-Satz **ersetzt** den Default-Satz (Beweis:
+  `displayColumns=[Last_Attempt_Date__c]`, 1 Sort-Button im DOM). Daher: nur
+  das eine Custom-Feld gerendert, keine Standard-Spalten "dazu".
+- Boolescher Filter-Wert = `1` (nicht `true`).
+- `filterScope=Everything`: ACs verlangen keine Ownership-Schränkung.
 
 ### 5. `force-app/main/default/layouts/Lead-Lead Layout.layout-meta.xml`
 Insert a new layout section „Nachfassung“ holding both fields adjacent.
