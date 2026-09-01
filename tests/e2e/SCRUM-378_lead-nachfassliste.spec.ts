@@ -26,12 +26,14 @@ import { execSync } from 'child_process';
  * no-date→false) were additionally verified via SOQL against the org on the
  * same fixtures — one query, four rows.
  *
- * KNOWN DEFECT asserted honestly (see Jira SCRUM-378 comment chain, 15225/15228):
- *   AC "exactly Name · Firma · Status · Letzter Versuch" — the deployed ListView
- *   declares only Last_Attempt_Date__c; Salesforce replaces the default column
- *   set once any column is declared, and the org rejects standard columns
- *   ("Could not resolve list view column"). Test 3 asserts the AC literally and
- *   therefore FAILS — that failure is the defect report, not a locator bug.
+ * KNOWN DEFECT is RESOLVED via the ADR-2 carrier switch (report replaces the
+ * custom list view for the column AC — list view cannot carry standard
+ * columns, see Jira 15225/15228). The column test now reads the four logical
+ * columns from report Sales/Lead_Nachfassliste (00OWU00000QAIuL2AX): the org
+ * renders Name as two physical columns FIRST_NAME + LAST_NAME (no combined
+ * Name field on LeadList; architect accepted, comment on SCRUM-380), so the
+ * test asserts the four LOGICAL columns (name via last name cell, company,
+ * status, date), not "exactly 4 td cells".
  */
 
 // Fixture IDs created for this ticket (Test-Org; admin session owns them).
@@ -115,34 +117,61 @@ test.describe('[SCRUM-378] Nachfassliste für Leads', () => {
     await expect(page.getByText('True', { exact: true }).first()).toBeVisible();
   });
 
-  test('AC columns: list shows Name, Firma, Status, Letzter Versuch (currently FAILING — the defect)', async ({ page }) => {
-    // Asserts the AC literally: the one surviving row must carry the lead's
-    // NAME, COMPANY and STATUS read off the list — not only the date.
-    // Known-defect test: with the deployed ListView (only Last_Attempt_Date__c
-    // declared; SDR resolves <columns> against the source package, standard
-    // columns rejected by the org — Jira 15225/15228) this fails on all three
-    // values. It must stay red until the carrier is fixed.
-    await page.goto('/lightning/o/Lead/list?filterName=Nachfassliste');
+  test('AC columns: report shows Name, Firma, Status, Letzter Versuch (ADR-2 carrier)', async ({ page }) => {
+    // Carrier is the ADR-2 report (the custom list view cannot carry standard
+    // columns — Jira 15225/15228). The org has NO combined NAME field on the
+    // LeadList report type (NAME/Lead.Name rejected by the validator), so Name
+    // renders as two physical columns FIRST_NAME + LAST_NAME. The AC asks for
+    // the four LOGICAL columns to be readable — we assert the four values, not
+    // "exactly 4 td cells" (physical count is 5). Probe-verified locators here
+    // (headers + one data row) were read off this org on 2026-09-01.
+    await page.goto('/lightning/r/Report/00OWU00000QAIuL2AX/view');
     await page.waitForSelector('.slds-global-header, one-appnav', { timeout: 60000 });
     await page.waitForLoadState('domcontentloaded');
-    await expect(page.getByText(/Sorted by Letzter Versuch/).first()).toBeVisible({ timeout: 30000 });
 
-    const body = page.locator('body');
-    // "Letzter Versuch" is the only working column today — anchor on its value:
-    await expect(body.getByText('12.08.2026').first()).toBeVisible({ timeout: 15000 });
+    // The Tabular report renders inside a cross-document iframe (legacy report
+    // app). Poll page.frames() for it, then for its data cells — an explicit
+    // wait on real data, not networkidle (forbidden on Lightning).
+    const frame = await page.waitForFunction(
+      () => document.querySelectorAll('iframe').length > 0,
+      null,
+      { timeout: 60000 },
+    ).then(async () => {
+      const deadline = Date.now() + 60000;
+      for (;;) {
+        const f = page.frames().find((fr) => fr.url().includes('lightningReportApp'));
+        if (f) return f;
+        if (Date.now() > deadline) throw new Error('report iframe never appeared');
+        await page.waitForTimeout(500);
+      }
+    });
+    await frame.waitForLoadState('domcontentloaded').catch(() => {});
+    await frame.locator('td').first().waitFor({ timeout: 45000 });
 
-    // AC demands, per row: the lead name, the company and the status must be
-    // readable in the list. None of them render today → the defect.
-    const inList = async (value: string) => (await body.getByText(value, { exact: true }).count()) > 0;
+    // The four AC column headers are present (probed):
+    await expect(frame.getByText('Last Name').first()).toBeVisible();
+    await expect(frame.getByText('Company / Account').first()).toBeVisible();
+    await expect(frame.getByText('Lead Status').first()).toBeVisible();
+    await expect(frame.getByText('Letzter Versuch').first()).toBeVisible();
+
+    // The one due lead's four logical column values are readable in the row:
+    //   Name (via last name) · Firma · Status · Letzter Versuch
+    const inFrame = async (value: string) => (await frame.getByText(value, { exact: true }).count()) > 0;
     const missing: string[] = [];
-    if (!(await inList('TEST-SCRUM-378-FAELLIG'))) missing.push('Name');
-    if (!(await inList('TestfirmaFaellig'))) missing.push('Company (Firma)');
-    if (!(await inList('Open - Not Contacted'))) missing.push('Status');
+    if (!(await inFrame('TEST-SCRUM-378-FAELLIG'))) missing.push('Name');
+    if (!(await inFrame('TestfirmaFaellig'))) missing.push('Firma (Company)');
+    if (!(await inFrame('Open - Not Contacted'))) missing.push('Status');
+    if (!(await inFrame('12.08.2026'))) missing.push('Letzter Versuch (date)');
     expect(
       missing,
-      `AC "Liste zeigt genau Name, Firma, Status, Letzter Versuch" violated — missing from list: ` +
-        `${missing.join(', ')}. Only "Letzter Versuch" renders (1 of 4 AC columns).`,
+      `AC "Name · Firma · Status · Letzter Versuch" violated — missing from report: ${missing.join(', ')}.`,
     ).toEqual([]);
+
+    // The report filter (Is_Due__c = true) keeps only the due lead: the other
+    // fixtures (recent / no-date / closed) must not appear as data in the report.
+    await expect(frame.getByText('TEST-SCRUM-378-RECENT', { exact: true })).toHaveCount(0);
+    await expect(frame.getByText('TEST-SCRUM-378-NODATE', { exact: true })).toHaveCount(0);
+    await expect(frame.getByText('TEST-SCRUM-378-CLOSED', { exact: true })).toHaveCount(0);
   });
 
   test('AC read-only: "Ist fällig" is not an editable control in the form; date field is editable', async ({ page }) => {
