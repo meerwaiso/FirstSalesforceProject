@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RueckrufGewuenscht__c</fullName>
+    <description>Legt fest, ob der Kunde einen Rückruf möchte. Solange aktiviert, erzwingt Validierung einen Pflicht-Rückruf-Termin (SCRUM-341).</description>
+    <label>Rückruf gewünscht</label>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>Checkbox</type>
+    <defaultValue>false</defaultValue>
+</CustomField>

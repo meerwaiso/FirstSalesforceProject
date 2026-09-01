@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RueckrufTermin_NichtVergangenheit</fullName>
+    <active>true</active>
+    <description>SCRUM-341: Blockt das Speichern, wenn ein gepflegter Rückruf-Termin in der Vergangenheit liegt. Ein aktueller oder künftiger Zeitpunkt ist erforderlich.</description>
+    <errorConditionFormula>AND(NOT(ISBLANK(RueckrufTermin__c)), RueckrufTermin__c &lt; NOW())</errorConditionFormula>
+    <errorMessage>Der Rückruf-Termin darf nicht in der Vergangenheit liegen. Bitte einen aktuellen oder künftigen Zeitpunkt wählen.</errorMessage>
+</ValidationRule>

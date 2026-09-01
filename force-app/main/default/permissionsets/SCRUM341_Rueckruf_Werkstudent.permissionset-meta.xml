@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-341: Werkstudenten sehen Fälle wie bisher, dürfen beide Rückruf-Felder am Case jedoch nur lesen (kein Setzen oder Ändern der Zusage).</description>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.RueckrufGewuenscht__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.RueckrufTermin__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM341_Rueckruf_Werkstudent</label>
+</PermissionSet>

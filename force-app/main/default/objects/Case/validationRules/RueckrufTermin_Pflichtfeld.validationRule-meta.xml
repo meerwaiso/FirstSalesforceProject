@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>RueckrufTermin_Pflichtfeld</fullName>
+    <active>true</active>
+    <description>SCRUM-341: Blockt das Speichern, wenn "Rückruf gewünscht" aktiv ist, aber kein Rückruf-Termin gepflegt wurde (auch das Leermachen eines vorhandenen Termins bei aktivem Wunsch).</description>
+    <errorConditionFormula>AND(RueckrufGewuenscht__c, ISBLANK(RueckrufTermin__c))</errorConditionFormula>
+    <errorMessage>Bitte einen Rückruf-Termin angeben, solange „Rückruf gewünscht“ aktiviert ist.</errorMessage>
+</ValidationRule>

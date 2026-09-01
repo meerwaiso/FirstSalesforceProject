@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-341 Phase 2: referenzierende Komponenten (gelangen erst nach Phase 1) -->
+    <types>
+        <members>Case.RueckrufTermin_Pflichtfeld</members>
+        <members>Case.RueckrufTermin_NichtVergangenheit</members>
+        <name>ValidationRule</name>
+    </types>
+    <types>
+        <members>SCRUM341_Rueckruf_Stamm</members>
+        <members>SCRUM341_Rueckruf_Werkstudent</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Case-Case Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>
