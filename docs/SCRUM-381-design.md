@@ -356,8 +356,9 @@ Nicht-PII, interne Geschäftsdaten (PO: keine personenbezogenen Daten).
 
 ```bash
 # Branch existiert bereits (feature/SCRUM-381-lost-reason, auf master-Basis)
-# und haelt NUR den Design-Doc (Commit d892dc1). Von dort aus alle Dateien
-# aus diesem Doc anlegen/modifizieren, eigene Pfade explizit stageen.
+# und haelt NUR den Design-Doc im Basis-Commit (git log zeigt ihn). Von
+# dort aus alle Dateien aus diesem Doc anlegen/modifizieren, eigene Pfade
+# explizit stageen.
 git checkout feature/SCRUM-381-lost-reason
 # ... alle Dateien aus diesem Doc anlegen/modifizieren ...
 git add force-app/main/default/objects/Opportunity/fields/Loss_Reason__c.field-meta.xml \
