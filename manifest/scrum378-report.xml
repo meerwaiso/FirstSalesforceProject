@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Sales</members>
+        <name>ReportFolder</name>
+    </types>
+    <types>
+        <members>Lead.Last_Attempt_Date__c</members>
+        <members>Lead.Is_Due__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Sales/Lead_Nachfassliste</members>
+        <name>Report</name>
+    </types>
+    <version>63.0</version>
+</Package>
