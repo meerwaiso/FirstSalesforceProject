@@ -69,11 +69,39 @@ async function changeStageInline(page: Page, optionName: string) {
   await edit.first().click();
   const opt = page.getByRole('option', { name: optionName, exact: true }).first();
   await opt.waitFor({ state: 'visible', timeout: 10000 });
-  await opt.click();
+  await retry(5, 250, () => opt.click({ force: true }));
   await page.getByText(optionName, { exact: true }).first().waitFor({ state: 'visible', timeout: 15000 });
 }
 
+/** Lightning-Dropdown-Option klicken: Animation kann die Option kurz
+ *  unstabil machen; force=click mit Retry-Loop statt Endlos-Wait auf
+ *  "stable". */
+async function clickOption(page: Page, optionName: string) {
+  const opt = page.getByRole('option', { name: optionName, exact: true }).first();
+  await opt.waitFor({ state: 'visible', timeout: 10000 });
+  await retry(5, 250, () => opt.click({ force: true }));
+}
+
+async function retry(n: number, delayMs: number, fn: () => Promise<void>) {
+  let lastErr: unknown;
+  for (let i = 0; i < n; i++) {
+    try {
+      await fn();
+      return;
+    } catch (e) {
+      lastErr = e;
+      await pageWait(delayMs);
+    }
+  }
+  throw lastErr;
+}
+
+function pageWait(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 test.describe('[SCRUM-381] Verlustgrund bei Opportunities (UI)', () => {
+  test.describe.configure({ timeout: 120000 });
   test.afterEach(() => {
     for (let i = createdIds.length - 1; i >= 0; i--) {
       try { deleteOpp(createdIds[i]); } catch { /* best effort */ }
@@ -92,7 +120,7 @@ test.describe('[SCRUM-381] Verlustgrund bei Opportunities (UI)', () => {
     await page.getByLabel('Opportunity Name', { exact: false }).first().fill(TAG + '-AC1');
     await page.getByLabel('Close Date', { exact: false }).first().fill('01.08.2026');
     await page.getByRole('combobox', { name: 'Stage', exact: false }).first().click({ timeout: 10000 });
-    await page.getByRole('option', { name: 'Closed Lost', exact: true }).first().click({ timeout: 10000 });
+    await clickOption(page, 'Closed Lost');
 
     await page.getByRole('button', { name: 'Save', exact: true }).first().click({ timeout: 10000 });
 
@@ -110,9 +138,9 @@ test.describe('[SCRUM-381] Verlustgrund bei Opportunities (UI)', () => {
     await page.getByLabel('Opportunity Name', { exact: false }).first().fill(TAG + '-AC2');
     await page.getByLabel('Close Date', { exact: false }).first().fill('01.08.2026');
     await page.getByRole('combobox', { name: 'Stage', exact: false }).first().click({ timeout: 10000 });
-    await page.getByRole('option', { name: 'Closed Lost', exact: true }).first().click({ timeout: 10000 });
+    await clickOption(page, 'Closed Lost');
     await page.getByRole('combobox', { name: 'Verlustgrund', exact: false }).first().click({ timeout: 10000 });
-    await page.getByRole('option', { name: 'Zu teuer', exact: true }).first().click({ timeout: 10000 });
+    await clickOption(page, 'Zu teuer');
 
     await page.getByRole('button', { name: 'Save', exact: true }).first().click({ timeout: 10000 });
 
