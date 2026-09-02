@@ -57,20 +57,27 @@ function deleteOpp(id: string): void {
 async function openDetails(page: Page, path: string) {
   await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.locator('.slds-global-header').first().waitFor({ state: 'visible', timeout: 60000 });
-  await page.getByRole('tab', { name: 'Details' }).first().waitFor({ state: 'visible', timeout: 30000 });
-  await page.getByRole('tab', { name: 'Details' }).first().click();
-  await page.getByLabel('Stage', { exact: false }).first().waitFor({ state: 'visible', timeout: 30000 });
+  await dismissGuidance(page);
+  const tab = page.getByRole('tab', { name: 'Details' }).first();
+  const sel = await tab.getAttribute('aria-selected');
+  if (sel !== 'true') await tab.click();
+  await page.getByRole('button', { name: 'Edit Stage', exact: true }).first().waitFor({ state: 'visible', timeout: 30000 });
 }
 
 /** Stage ueber den Inline-Editor in der View aendern. */
 async function changeStageInline(page: Page, optionName: string) {
-  const edit = page.getByRole('button', { name: 'Edit Stage', exact: true });
-  await edit.first().waitFor({ state: 'visible', timeout: 15000 });
-  await edit.first().click();
-  const opt = page.getByRole('option', { name: optionName, exact: true }).first();
-  await opt.waitFor({ state: 'visible', timeout: 10000 });
-  await retry(5, 250, () => opt.click({ force: true }));
-  await page.getByText(optionName, { exact: true }).first().waitFor({ state: 'visible', timeout: 15000 });
+  // "Edit Stage" oeffnet die Record-Edit-Form (Snapshot AC4/AC5: combobox
+  // "Stage" + button "Save"). Gleiche Combobox-Mechanik wie im New-Form, das
+  // AC1/AC2 schon gruen verifiziert haben - nicht die Path-Pipeline-Optionen.
+  const edit = page.getByRole('button', { name: 'Edit Stage', exact: true }).first();
+  await edit.waitFor({ state: 'visible', timeout: 15000 });
+  await edit.click();
+  const combo = page.getByRole('combobox', { name: 'Stage', exact: false }).first();
+  await combo.waitFor({ state: 'visible', timeout: 20000 });
+  await combo.click({ timeout: 15000 });
+  await clickOption(page, optionName);
+  await page.getByRole('button', { name: 'Save', exact: true }).first().click({ timeout: 10000 });
+  await expect(page).toHaveURL(/\/view$/, { timeout: 30000 });
 }
 
 /** Lightning-Dropdown-Option klicken: Animation kann die Option kurz
@@ -80,6 +87,16 @@ async function clickOption(page: Page, optionName: string) {
   const opt = page.getByRole('option', { name: optionName, exact: true }).first();
   await opt.waitFor({ state: 'visible', timeout: 10000 });
   await retry(5, 250, () => opt.click({ force: true }));
+}
+
+/** In-app Guidance-Dialog (Snapshot AC1: "Try the new Salesforce Setup",
+ *  [active]) stiehlt alle Eingaben, wenn er erscheint - zugekle. */
+async function dismissGuidance(page: Page) {
+  const dlg = page.getByRole('dialog', { name: /Try the new Salesforce Setup/i });
+  if (await dlg.count()) {
+    await dlg.getByRole('button').first().click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(500);
+  }
 }
 
 async function retry(n: number, delayMs: number, fn: () => Promise<void>) {
@@ -113,7 +130,7 @@ test.describe('[SCRUM-381] Verlustgrund bei Opportunities (UI)', () => {
     await page.goto('/lightning/o/Opportunity/new', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.locator('.slds-global-header').first().waitFor({ state: 'visible', timeout: 60000 });
     await page.getByLabel('Opportunity Name', { exact: false }).first().waitFor({ state: 'visible', timeout: 30000 });
-
+    await dismissGuidance(page);
     // Name + Close Date (Standard-OVF) + Stage = Closed Lost. Allein der
     // Verlustgrund fehlt: Save muss an der ValRule mit ihrer
     // German-Message scheitern.
@@ -134,6 +151,7 @@ test.describe('[SCRUM-381] Verlustgrund bei Opportunities (UI)', () => {
     await page.goto('/lightning/o/Opportunity/new', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.locator('.slds-global-header').first().waitFor({ state: 'visible', timeout: 60000 });
     await page.getByLabel('Opportunity Name', { exact: false }).first().waitFor({ state: 'visible', timeout: 30000 });
+    await dismissGuidance(page);
 
     await page.getByLabel('Opportunity Name', { exact: false }).first().fill(TAG + '-AC2');
     await page.getByLabel('Close Date', { exact: false }).first().fill('01.08.2026');
@@ -144,8 +162,9 @@ test.describe('[SCRUM-381] Verlustgrund bei Opportunities (UI)', () => {
 
     await page.getByRole('button', { name: 'Save', exact: true }).first().click({ timeout: 10000 });
 
-    // Erfolg: Navigation zu neuem Record; beide Werte nach Reload pruefen.
-    await page.waitForURL(/lightning\/r\/Opportunity\/006/, { timeout: 20000 });
+    // Erfolg: Navigation zum neuen Record. Lightning nutzt Short-URLs
+    // (/lightning/r/006…/view) - Object-Kuerzel im Pfad ist nicht garantiert.
+    await page.waitForURL(/lightning\/r\/006[a-zA-Z0-9]+\/view/, { timeout: 30000 });
     const m = page.url().match(/(006[a-zA-Z0-9]+)/);
     expect(m, 'did not navigate to a created record').toBeTruthy();
     createdIds.push(m![1]);
@@ -171,8 +190,8 @@ test.describe('[SCRUM-381] Verlustgrund bei Opportunities (UI)', () => {
     await openDetails(page, `/lightning/r/Opportunity/${id}/view`);
 
     // Beide Felder rendern, der gesetzte Wert ist sichtbar ...
-    await expect(page.getByLabel('Stage', { exact: false }).first()).toBeVisible();
-    await expect(page.getByLabel('Verlustgrund', { exact: false }).first()).toBeVisible();
+    await expect(page.getByText('Stage').first()).toBeVisible();
+    await expect(page.getByText('Verlustgrund').first()).toBeVisible();
     await expect(page.getByText('Kein Budget', { exact: true }).first()).toBeVisible();
     // ... und liegen im selben Block: im gerenderten Text folgt
     // "Verlustgrund" auf "Stage" ohne Abschnittsueberschrift dazwischen.
