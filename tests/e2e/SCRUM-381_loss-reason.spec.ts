@@ -84,9 +84,20 @@ async function changeStageInline(page: Page, optionName: string) {
  *  unstabil machen; force=click mit Retry-Loop statt Endlos-Wait auf
  *  "stable". */
 async function clickOption(page: Page, optionName: string) {
-  const opt = page.getByRole('option', { name: optionName, exact: true }).first();
+  // Im Record-View steht die offene Picklist im DOM hinter der Path-Pipeline
+  // (Snapshot 44493: listbox "Path Options" kommt vor der Form-Option) -> .last()
+  // nimmt die Formular-Option. In der New-Form existiert nur die eine Option,
+  // dort ist .last() identisch zu .first().
+  const opt = page.getByRole('option', { name: optionName, exact: true }).last();
   await opt.waitFor({ state: 'visible', timeout: 10000 });
-  await retry(5, 250, () => opt.click({ force: true }));
+  for (let i = 0; i < 4; i++) {
+    await opt.click({ force: true }).catch(() => {});
+    await page.waitForTimeout(400);
+    if (!(await opt.isVisible().catch(() => false))) break;
+  }
+  if (await opt.isVisible().catch(() => false)) {
+    throw new Error('Picklist-Option nicht registriert: ' + optionName);
+  }
 }
 
 /** In-app Guidance-Dialog (Snapshot AC1: "Try the new Salesforce Setup",
