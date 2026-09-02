@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-381 Phase 2: alles, was das Phase-1-Feld referenziert (ValRule, Layout, PS, Handler + Trigger, Tests). -->
+    <types>
+        <members>Opportunity.LossReason_PflichtBeiClosedLost</members>
+        <name>ValidationRule</name>
+    </types>
+    <types>
+        <members>Opportunity-Opportunity Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>SCRUM381_LeadFollowUp</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>OpportunityOverdueReset</members>
+        <name>ApexTrigger</name>
+    </types>
+    <types>
+        <members>OpportunityLossReasonClearHandler</members>
+        <members>SCRUM381LostReasonTest</members>
+        <members>SCRUM319OverdueOpportunityTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

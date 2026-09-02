@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Opportunity.Loss_Reason__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM381_LeadFollowUp</label>
+    <description>Read+Edit auf Verlustgrund (Opportunity.Loss_Reason__c) fur Vertriebsbenutzer (SCRUM-381). Standard-FLS des Felds bleibt Default (kein Zugriff) — nur uber dieses Permission Set erreichbar.</description>
+</PermissionSet>

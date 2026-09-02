@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>LossReason_PflichtBeiClosedLost</fullName>
+    <active>true</active>
+    <description>SCRUM-381: Verlustgrund wird erzwungen, wenn die Opportunity als Closed Lost gespeichert wird. Beim Auto-Clear (Stage wird weg von Closed Lost gesetzt) ist das Gate StageName='Closed Lost' im Endstand bereits FALSE, daher kein Block.</description>
+    <errorConditionFormula>AND(ISPICKVAL(StageName, &apos;Closed Lost&apos;), ISBLANK(TEXT(Loss_Reason__c)))</errorConditionFormula>
+    <errorMessage>Bitte wählen Sie einen Verlustgrund, bevor Sie die Chance als verloren markieren.</errorMessage>
+</ValidationRule>
