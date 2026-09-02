@@ -74,8 +74,21 @@ async function changeStageInline(page: Page, optionName: string) {
   await edit.click();
   const combo = page.getByRole('combobox', { name: 'Stage', exact: false }).first();
   await combo.waitFor({ state: 'visible', timeout: 20000 });
-  await combo.click({ timeout: 15000 });
-  await clickOption(page, optionName);
+  const all = page.getByRole('option', { name: optionName, exact: true });
+  const base = await all.count(); // Vor dem Combo-Klick: nur die Path-Listbox
+  for (let i = 0; i < 5; i++) {
+    if ((await all.count()) > base) break; // Dropdown ist nachweislich offen
+    await combo.click({ timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(500);
+  }
+  await expect(all).toHaveCount(base + 1, { timeout: 15000 });
+  await all.last().click({ force: true }).catch(() => {});
+  for (let i = 0; i < 4; i++) {
+    if ((await all.count()) <= base) break; // Auswahl registriert, Dropdown zu
+    await all.last().click({ force: true }).catch(() => {});
+    await page.waitForTimeout(400);
+  }
+  await expect(all).toHaveCount(base, { timeout: 8000 });
   await page.getByRole('button', { name: 'Save', exact: true }).first().click({ timeout: 10000 });
   await expect(page).toHaveURL(/\/view$/, { timeout: 30000 });
 }
