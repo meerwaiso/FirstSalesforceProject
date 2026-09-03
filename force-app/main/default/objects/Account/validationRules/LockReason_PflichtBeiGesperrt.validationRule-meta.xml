@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>LockReason_PflichtBeiGesperrt</fullName>
+    <active>true</active>
+    <description>SCRUM-384 AC2: Gesperrt=true ohne Sperrgrund blockiert das Speichern. Auto-Clear-Case (Gesperrt wird auf FALSE gesetzt) wird nicht tangiert, die ValRule wird auf dem Endstand des Records nach dem Before-Update-Trigger ausgewertet — dann ist Is_Locked__c bereits FALSE.</description>
+    <errorConditionFormula>AND(Is_Locked__c, ISBLANK(Lock_Reason__c))</errorConditionFormula>
+    <errorMessage>Bitte tragen Sie den Sperrgrund in das Feld „Sperrgrund“ in, während der Account gesperrt ist.</errorMessage>
+</ValidationRule>

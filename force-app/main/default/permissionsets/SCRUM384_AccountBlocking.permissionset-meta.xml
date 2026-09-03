@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Account.Is_Locked__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Account.Lock_Reason__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM384_AccountBlocking</label>
+    <description>FLS für Gesperrt (Is_Locked__c) und Sperrgrund (Lock_Reason__c), SCRUM-384. PO: Read = alle mit Account-Read, Edit = alle mit Account-Edit; Feld-FLS ist Obergrenze, nie Boost, daher ein PS für beide Rollen. Profile unverändert.</description>
+</PermissionSet>
