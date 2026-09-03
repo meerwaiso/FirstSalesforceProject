@@ -133,6 +133,10 @@
                 <behavior>Edit</behavior>
                 <field>UpsellOpportunity__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Customer_Since_Days__c</field>
+            </layoutItems>
         </layoutColumns>
         <style>TwoColumnsLeftToRight</style>
     </layoutSections>
