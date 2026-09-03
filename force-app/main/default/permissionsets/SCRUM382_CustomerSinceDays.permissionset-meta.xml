@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Customer_Since_Days__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM382_CustomerSinceDays</label>
+    <description>Read-only FLS für Account.Customer_Since_Days__c (SCRUM-382). Formelfeld (systemberechnet) - kein User-Edit. PO-Festlegung: für alle sichtbar, daher PS allen Benutzern zuweisen, Profile unverändert.</description>
+</PermissionSet>
