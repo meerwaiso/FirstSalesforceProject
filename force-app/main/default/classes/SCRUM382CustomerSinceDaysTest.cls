@@ -22,9 +22,13 @@ private class SCRUM382CustomerSinceDaysTest {
         Account acc = new Account(Name = '[SCRUM-382-Test]Value');
         insert acc;
 
+        // Formula fields are NOT populated on the in-memory sObject after DML —
+        // query the record back so Customer_Since_Days__c is computed.
+        Account fresh = [SELECT Customer_Since_Days__c FROM Account WHERE Id = :acc.Id];
+
         // AC "heute -> 0": deterministic via DATEVALUE (no time fraction).
         System.assertEquals(
-            0, acc.Customer_Since_Days__c,
+            0, fresh.Customer_Since_Days__c,
             'A today-created Account must show 0 full days (TODAY() - DATEVALUE(CreatedDate))'
         );
 
