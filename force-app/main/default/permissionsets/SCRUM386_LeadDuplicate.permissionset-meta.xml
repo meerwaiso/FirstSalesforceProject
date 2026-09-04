@@ -17,5 +17,5 @@
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>SCRUM386_LeadDuplicate</label>
-    <description>SCRUM-386 FLS upper-bound für Likely_Duplicate__c, Duplicate_Of__c und Email_Norm__c; ein PS für Read und Edit (Feld-FLS ist Obergrenze, kein Boost). Email_Norm__c lesbar für alle Lead-User: die Dubletten-Query im Trigger braucht FLS, sonst No-such-column (ADR-2). Profile unverändert.</description>
+    <description>SCRUM-386 FLS upper-bound for Lead.Likely_Duplicate__c, Lead.Duplicate_Of__c and Lead.Email_Norm__c (Read + Edit). Email_Norm__c read grants the Trigger's dedup SOQL its FLS (ADR-2). Profile stays untouched.</description>
 </PermissionSet>

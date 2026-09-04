@@ -14,12 +14,12 @@
 @isTest
 private class SCRUM386LeadDuplicateFlsTest {
 
-    private static void assertInvisible(Lead.Field f, String label) {
+    private static void assertInvisible(Schema.SObjectField f, String label) {
         System.assertEquals(false, f.getDescribe().isAccessible(), label + ' must NOT be readable without PS');
         System.assertEquals(false, f.getDescribe().isUpdateable(), label + ' must NOT be writable without PS');
     }
 
-    private static void assertVisible(Lead.Field f, String label) {
+    private static void assertVisible(Schema.SObjectField f, String label) {
         System.assertEquals(true, f.getDescribe().isAccessible(), label + ' must be readable with PS');
         System.assertEquals(true, f.getDescribe().isUpdateable(), label + ' must be writable with PS');
     }
