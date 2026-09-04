@@ -37,20 +37,27 @@ public without sharing class LeadDuplicateGuard {
         for (Lead lead : candidates) {
             // Carry Email_Norm__c on every lead (ADR-2 / backfill hygiene).
             lead.Email_Norm__c = normOf(lead.Email);
-            if (
-                !lead.IsConverted
-                && lead.Email_Norm__c != null
-            ) {
-                if (isUpdate) {
-                    Lead oldLead = oldMap == null ? null : oldMap.get(lead.Id);
-                    String oldNorm = normOf(oldLead == null ? null : oldLead.Email);
-                    if (lead.Email_Norm__c != oldNorm) {
+            if (!lead.IsConverted) {
+                if (lead.Email_Norm__c == null) {
+                    // AC4 / AC3b: a non-converted lead without email is never marked.
+                    // On update this also clears a previously set flag + reference
+                    // (email changed to blank must clear, symmetric to unique email).
+                    if (isUpdate) {
+                        lead.Likely_Duplicate__c = false;
+                        lead.Duplicate_Of__c = null;
+                    }
+                } else {
+                    if (isUpdate) {
+                        Lead oldLead = oldMap == null ? null : oldMap.get(lead.Id);
+                        String oldNorm = normOf(oldLead == null ? null : oldLead.Email);
+                        if (lead.Email_Norm__c != oldNorm) {
+                            targets.add(lead);
+                            normSet.add(lead.Email_Norm__c);
+                        }
+                    } else {
                         targets.add(lead);
                         normSet.add(lead.Email_Norm__c);
                     }
-                } else {
-                    targets.add(lead);
-                    normSet.add(lead.Email_Norm__c);
                 }
             }
         }

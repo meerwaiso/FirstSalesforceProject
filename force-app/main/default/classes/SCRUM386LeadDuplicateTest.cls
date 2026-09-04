@@ -5,9 +5,10 @@ private class SCRUM386LeadDuplicateTest {
 
     private static Lead mkLead(String nm, String em) {
         Lead l = new Lead();
-        l.FirstName = nm;
-        l.Status = leadStatus;
+        l.LastName = nm;
+        l.Company = 'Acme Test';
         l.Email = em;
+        l.Status = leadStatus;
         return l;
     }
 
@@ -57,8 +58,13 @@ private class SCRUM386LeadDuplicateTest {
     static void adr6_convertedLead_neverReference_neverMarked() {
         Lead conv = mkLead('Converted Guy', 'conv@example.pde');
         insert conv;
-        conv.IsConverted = true;
-        update conv;
+        // IsConverted is NOT writeable via DML in this org (verified via describe),
+        // so set it through a real Lead conversion only.
+        Database.LeadConvert lc = new Database.LeadConvert();
+        lc.setLeadId(conv.Id);
+        lc.setConvertedStatus('Closed - Converted');
+        Database.LeadConvertResult res = Database.convertLead(lc);
+        System.assert(res.isSuccess(), 'Lead conversion must succeed');
         Lead probe = mkLead('Fresh Guy', 'conv@EXAMPLE.pde');
         insert probe;
         Lead re = [SELECT Likely_Duplicate__c, Duplicate_Of__c FROM Lead WHERE Id = :probe.Id];
