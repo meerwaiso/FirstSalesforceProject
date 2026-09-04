@@ -1,0 +1,22 @@
+// SCRUM-386 post-Deploy verification (run via `sf data query`).
+// Expect: every non-blank, non-converted Lead has Email_Norm__c populated.
+
+// 1) Non-converted Leads whose Email is set but whose Email_Norm__c is still blank
+//    (should be ZERO after backfill + trigger):
+SELECT Id, Name, Email, Email_Norm__c
+FROM Lead
+WHERE IsConverted = false
+  AND Email != null
+  AND Email_Norm__c = null;
+
+// 2) Leads marked as possible duplicate (sanity check of the marking itself):
+SELECT Id, Name, Email, Email_Norm__c, Likely_Duplicate__c, Duplicate_Of__c
+FROM Lead
+WHERE Likely_Duplicate__c = true
+ORDER BY CreatedDate DESC
+LIMIT 50;
+
+// 3) Total population for the log line (counts non-converted Leads):
+SELECT COUNT(Id)
+FROM Lead
+WHERE IsConverted = false;

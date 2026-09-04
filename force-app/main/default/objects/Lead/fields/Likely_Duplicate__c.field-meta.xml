@@ -1,0 +1,8 @@
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Likely_Duplicate__c</fullName>
+    <label>Möglicher Doppeleintrag</label>
+    <description>Geschützt vor manuellem Editieren; wird automatisch gesetzt, wenn ein anderer, nicht-konvertierter Lead dieselbe E-Mail-Adresse hat (SCRUM-386).</description>
+    <inlineHelpText>Jew. „Yes“, falls ein anderer Lead dieselbe E-Mail-Adresse hat</inlineHelpText>
+    <type>Checkbox</type>
+    <defaultValue>false</defaultValue>
+</CustomField>

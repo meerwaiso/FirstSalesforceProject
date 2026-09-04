@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Lead.Likely_Duplicate__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Lead.Duplicate_Of__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Lead.Email_Norm__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM386_LeadDuplicate</label>
+    <description>SCRUM-386 FLS upper-bound für Likely_Duplicate__c, Duplicate_Of__c und Email_Norm__c; ein PS für Read und Edit (Feld-FLS ist Obergrenze, kein Boost). Email_Norm__c lesbar für alle Lead-User: die Dubletten-Query im Trigger braucht FLS, sonst No-such-column (ADR-2). Profile unverändert.</description>
+</PermissionSet>
