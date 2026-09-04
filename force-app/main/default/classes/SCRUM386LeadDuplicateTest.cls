@@ -130,7 +130,16 @@ private class SCRUM386LeadDuplicateTest {
             batch.add(mkLead('Db Dup ' + String.valueOf(i), 'DB-' + String.valueOf(i) + '@seed.pde'));
             batch.add(mkLead('Batch Dup ' + String.valueOf(i), 'DB-' + String.valueOf(i) + '@SEED.pde'));
         }
-        for (Integer i = 20; i < 200; i++) {
+        // AC5 batchFirst branch: a DB-NEW email inside the same import.
+        // No seed exists for this norm, so it can only be resolved via
+        // batchFirst (list position), not dbMap — the pure intra-batch path.
+        batch.add(mkLead('Batch New A', 'batchnew@example.pde'));
+        batch.add(mkLead('Batch New B', 'batchnew@EXAMPLE.pde'));
+        batch.add(mkLead('Batch New C', 'BATCHNEW@example.pde'));
+        // NOTE: batch total is exactly 200 (20 db/batch dups + 3 intra-batch cluster + 177 unique) so the
+        // insert stays in ONE 200-record DML batch = ONE trigger invocation. That keeps the ADR-3
+        // AK-T1 assertion ("<= 1 SOQL for the whole batch") measuring a single invocation.
+        for (Integer i = 20; i < 197; i++) {
             batch.add(mkLead('Unique ' + String.valueOf(i), 'unique-' + String.valueOf(i) + '@example.pde'));
         }
         Integer qBefore = Limits.getQueries();
@@ -149,6 +158,22 @@ private class SCRUM386LeadDuplicateTest {
                     System.assertEquals(true, g.Likely_Duplicate__c, 'dup of ' + norm + ' marked');
                     System.assertEquals(seedName, g.Duplicate_Of__c, 'ref = oldest DB lead');
                 }
+            }
+        }
+        // batchFirst (pure intra-batch, DB-new email): first element of the
+        // cluster is unmarked, the rest reference it by list position (ADR-3).
+        List<Lead> bn = [SELECT Likely_Duplicate__c, Duplicate_Of__c FROM Lead WHERE Email_Norm__c = 'batchnew@example.pde'];
+        System.assertEquals(3, bn.size(), 'intra-batch cluster size');
+        for (Lead g : bn) {
+            if (g.Duplicate_Of__c == null) {
+                System.assertEquals(false, g.Likely_Duplicate__c, 'batchFirst ref itself is not marked');
+                Integer refs = 0;
+                for (Lead h : bn) {
+                    if (h.Duplicate_Of__c != null) {
+                        refs += 1;
+                    }
+                }
+                System.assertEquals(2, refs, 'two dups reference the batchFirst lead');
             }
         }
     }
