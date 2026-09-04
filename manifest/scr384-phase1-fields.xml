@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-384 Phase 1: nur die zwei neuen Fields (gelangen ZUERST, da ValRule/Layout/PS/Triggers darauf referenzieren). -->
+    <types>
+        <members>Account.Is_Locked__c</members>
+        <members>Account.Lock_Reason__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>
