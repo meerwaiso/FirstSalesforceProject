@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Duplicate_Of__c</fullName>
+    <label>Doppelt zu</label>
+    <description>Name des bereits vorhandenen (älteren) Lead mit derselben E-Mail-Adresse, SCRUM-386. Systemgesetzt, read-only im Layout.</description>
+    <length>255</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+</CustomField>

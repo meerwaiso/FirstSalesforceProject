@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-386 Phase 2: alles, was auf die Phase-1-Fields referenziert (gelangen ERST NACH Phase 1). -->
+    <types>
+        <members>LeadDuplicateGuard</members>
+        <name>ApexTrigger</name>
+    </types>
+    <types>
+        <members>LeadDuplicateGuard</members>
+        <members>SCRUM386LeadDuplicateTest</members>
+        <members>SCRUM386LeadDuplicateFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>SCRUM386_LeadDuplicate</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Lead-Lead Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>

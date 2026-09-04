@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Lead.Likely_Duplicate__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Lead.Duplicate_Of__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Lead.Email_Norm__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM386_LeadDuplicate</label>
+    <description>SCRUM-386 FLS upper-bound for Lead.Likely_Duplicate__c, Lead.Duplicate_Of__c and Lead.Email_Norm__c (Read + Edit). Email_Norm__c read grants the Trigger's dedup SOQL its FLS (ADR-2). Profile stays untouched.</description>
+</PermissionSet>

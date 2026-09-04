@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-386 Phase 1: nur die drei neuen Fields (gelangen ZUERST, da Trigger/Layout/PS/Layout darauf referenzieren). -->
+    <types>
+        <members>Lead.Likely_Duplicate__c</members>
+        <members>Lead.Duplicate_Of__c</members>
+        <members>Lead.Email_Norm__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>
