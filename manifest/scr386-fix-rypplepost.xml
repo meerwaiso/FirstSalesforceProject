@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-386 Fix: Legacy-QuickAction FeedItem.RypplePost aus dem Lead-Layout entfernen
+         (Prod-Deploy-Blocker: 'no QuickAction named FeedItem.RypplePost found').
+         Layout ist atomare Metadaten -> hier allein redeployen, dann Phasen 1+2 nach Prod. -->
+    <types>
+        <members>Lead-Lead Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>
