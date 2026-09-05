@@ -64,23 +64,37 @@ private class SCRUM390OverdueCaseTest {
 
     /**
      * AC "geschlossener Fall ist NIE überfällig" — the core negative rule.
-     * Closing a case sets ClosedDate; Is_Overdue__c is AND(ISBLANK(ClosedDate), ...)
-     * so the instant ClosedDate is present the flag MUST be false regardless of the
-     * priority threshold. This is the exact assertion the inverted-operand bug
-     * (NOT(ISBLANK(ClosedDate))) would have failed.
+     * Is_Overdue__c is AND(ISBLANK(ClosedDate), ...) so as soon as ClosedDate is
+     * present the flag MUST be false regardless of the priority threshold. This is
+     * the exact assertion the inverted-operand bug (NOT(ISBLANK(ClosedDate))) would
+     * have failed.
+     *
+     * Note: in this org Case.ClosedDate is platform-managed and NOT writable via
+     * developer DML (Apex compiler: "Field is not writeable: Case.ClosedDate" —
+     * confirmed against the org schema, UI-API updateable=false). The platform
+     * populates ClosedDate when a case is closed, exactly as every real closed
+     * case in the org shows. So we close via Status='Closed' and assert the guard
+     * on a genuinely closed case.
      */
     @isTest
     static void closedCase_isNeverOverdue_evenIfItExceedsThreshold() {
         Case c = new Case(Status = 'New', Subject = '[SCRUM-390-Test] to close', Priority = 'High');
         insert c;
 
-        // Close it: set ClosedDate via DML (Status "Closed" alone does NOT populate ClosedDate).
+        // Close it. The platform sets ClosedDate; DML cannot (see note above).
         c.Status = 'Closed';
-        c.ClosedDate = Date.today();
         update c;
 
-        Case closed = [SELECT Processing_Duration__c, Is_Overdue__c FROM Case WHERE Id = :c.Id];
+        Case closed = [SELECT ClosedDate, Processing_Duration__c, Is_Overdue__c FROM Case WHERE Id = :c.Id];
 
+        // Precondition: we are actually in the closed state (ClosedDate populated).
+        // If the org did not auto-populate ClosedDate this would fail and the
+        // "closed never overdue" guard below would be testing nothing — so gate on it.
+        System.assertNotEquals(
+            null, closed.ClosedDate,
+            'Precondition: closing the case must populate ClosedDate (platform-managed). ' +
+                'If this fails, "closed = never overdue" has no closed case to assert against.'
+        );
         System.assertEquals(
             false, closed.Is_Overdue__c,
             'A CLOSED case must NEVER be overdue, even with a priority that would exceed its threshold'
