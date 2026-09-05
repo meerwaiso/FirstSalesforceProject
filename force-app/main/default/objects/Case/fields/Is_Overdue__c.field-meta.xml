@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Is_Overdue__c</fullName>
+    <label>Überfällig</label>
+    <description>Überfällig-Flag für einen Case (SCRUM-390): offen und Bearbeitungsdauer über der Prioritäts-Grenze (High &gt; 2, Medium &gt; 5, Low &gt; 10 Tage). Geschlossener Case ist nie überfällig. Systemberechnet, read-only.</description>
+    <type>Checkbox</type>
+    <formula>AND(ISBLANK(ClosedDate), OR(IF(ISPICKVAL(Priority, "High"), Processing_Duration__c &gt; 2, FALSE), IF(ISPICKVAL(Priority, "Medium"), Processing_Duration__c &gt; 5, FALSE), IF(ISPICKVAL(Priority, "Low"), Processing_Duration__c &gt; 10, FALSE)))</formula>
+</CustomField>

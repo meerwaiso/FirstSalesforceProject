@@ -70,7 +70,7 @@ IF(ISBLANK(ClosedDate), TODAY(), DATEVALUE(ClosedDate)) - DATEVALUE(CreatedDate)
 **`Is_Overdue__c`** (Checkbox, Boolean — AC3):
 ```
 AND(
-  NOT(ISBLANK(ClosedDate)),
+  ISBLANK(ClosedDate),
   OR(
     IF(ISPICKVAL(Priority, "High"),   Processing_Duration__c > 2,  FALSE),
     IF(ISPICKVAL(Priority, "Medium"), Processing_Duration__c > 5,  FALSE),
@@ -78,7 +78,7 @@ AND(
   )
 )
 ```
-- **Erster Operand `NOT(ISBLANK(ClosedDate))` = „offene Fälle"**: geschlossener
+- **Erster Operand `ISBLANK(ClosedDate)` = „offene Fälle"**: geschlossener
   Fall → `false`, also **niemals überfällig** (AC3, „eindeutigst"). Da `AND`/`OR`
   in Salesforce **nicht** short-circuiten, wird `OR(...)` dennoch evaluiert —
   das Ergebnis ist aber durch das `false` des `AND` unabhängig davon `false`.
@@ -199,7 +199,7 @@ In-repo reference files (deployen heutzutage, kopiere Shapes):
     <label>Überfällig</label>
     <description>Überfällig-Flag für einen Case (SCRUM-390): offen und Bearbeitungsdauer über der Prioritäts-Grenze (High &gt; 2, Medium &gt; 5, Low &gt; 10 Tage). Geschlossener Case ist nie überfällig. Systemberechnet, read-only.</description>
     <type>Checkbox</type>
-    <formula>AND(NOT(ISBLANK(ClosedDate)), OR(IF(ISPICKVAL(Priority, "High"), Processing_Duration__c &gt; 2, FALSE), IF(ISPICKVAL(Priority, "Medium"), Processing_Duration__c &gt; 5, FALSE), IF(ISPICKVAL(Priority, "Low"), Processing_Duration__c &gt; 10, FALSE)))</formula>
+    <formula>AND(ISBLANK(ClosedDate), OR(IF(ISPICKVAL(Priority, "High"), Processing_Duration__c &gt; 2, FALSE), IF(ISPICKVAL(Priority, "Medium"), Processing_Duration__c &gt; 5, FALSE), IF(ISPICKVAL(Priority, "Low"), Processing_Duration__c &gt; 10, FALSE)))</formula>
 </CustomField>
 ```
 (DESCRIPTION < 255 Zeichen — `wc -c` prüfen. Die `<`/`>`-Escapes im

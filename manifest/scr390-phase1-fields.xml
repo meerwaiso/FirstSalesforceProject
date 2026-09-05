@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-390 Phase 1: nur die zwei neuen CustomFields — Layout/PS/Report referenzieren sie und dürfen NACH Phase 1. -->
+    <types>
+        <members>Case.Processing_Duration__c</members>
+        <members>Case.Is_Overdue__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>
