@@ -6,7 +6,7 @@
  * WARUM execute()/finish() DIREKT gefahren werden statt Database.executeBatch()
  * (empirisch in der Test-Org belegt, SCRUM-367 Probe-Run 707WU00001GGEk7):
  *   Der Test-Framework-Wrapper dieser Org verweigert einen executeBatch-Lauf,
- *   sobald der QueryLocator UEBER EINKEL-CHUNK HINAUSSPANT
+ *   sobald der QueryLocator UEBER EINZEL-CHUNK HINAUSSPANT
  *   (System.UnexpectedException: No more than one executeBatch …). Deshalb
  *   fahre ich die PRODUKTIONS-Methode execute() auf dem GLEICHEN Instanz-Objekt
  *   (Database.Stateful: dieselbe Instanz ueberlebt Chunk-Grenzen) Chunk fuer
@@ -27,14 +27,14 @@
  *
  * Deterministische Tagesdifferenz OHNE CreatedDate-Mocking:
  *   CreatedDate ist per DML nicht setzbar; ein frisch angelegter Record hat
- *   CreatedDate = jetzt. Der Batch rechnet asOf.daysAfter(refDate), wobei
- *   refDate = das TATSACHLICHE CreatedDate (Opportunity, sonst Account) als
- *   Date. Deshalb leite ich asOf IMMER aus dem wirklich gespeicherten
- *   CreatedDate ab:  asOf = refDate.addDays(N)  ⇒  daysSince = exakt N,
- *   unabhaengig von Zeitzone/Uhrzeit. Das ist robuster als das im Design
- *   vorgeschlagene System.today().addDays(N), das rund um UTC-Mitternacht um
- *   ±1 Tag abdriften konnte. ⇒ AC5-Grenze (180 vs 181) & AC6-Schwelle sind
- *   exakt & deterministisch.
+ *   CreatedDate = jetzt. Der Batch rechnet die ganzen Kalendertage zwischen
+ *   refDate und asOf (wholeDaysBetween), wobei refDate = das TATSACHLICHE
+ *   CreatedDate (Opportunity, sonst Account). Deshalb leite ich asOf IMMER
+ *   aus dem wirklich gespeicherten CreatedDate ab: asOf = refDate.addDays(N)
+ *   ⇒ daysSince = exakt N, unabhaengig von Zeitzone/Uhrzeit. Das ist robuster
+ *   als das im Design vorgeschlagene System.today().addDays(N), das rund um
+ *   UTC-Mitternacht um ±1 Tag abdriften konnte. ⇒ AC5-Grenze (180 vs 181) &
+ *   AC6-Schwelle sind exakt & deterministisch.
  *
  * FLS (Cases 9–11): 1:1 aus dem verifizierten SCRUM-382/378-Pattern — ein
  * Lizenz-freier Standard-User via System.runAs (runAs umgeht FLS NICHT); der
@@ -230,7 +230,7 @@ private class SCRUM388AccountReactivationTest {
             'AC5b: 181 Tage (> 180) => inaktiv');
     }
 
-    /** AC6: keine Opportunity je => Schwelle ab dem OWNEN Anlagedatum (200 => inaktiv, 100 => aktiv). */
+    /** AC6: keine Opportunity je => Schwelle ab dem EIGNEN Anlagedatum (200 => inaktiv, 100 => aktiv). */
     @isTest
     static void ac6_noOpportunity_thresholdFromAccountCreated() {
         Account old = createAccount('Scr388 AC6 NoOpp Old');
@@ -272,12 +272,12 @@ private class SCRUM388AccountReactivationTest {
             accs.add(acc);
         }
         insert accs;
-        for (Account acc : accs) {
-            allIds.add(acc.Id);
-            if (accs.indexOf(acc) < withOpp) {
-                occIds.add(acc.Id);
+        for (Integer i = 0; i < n; i++) {
+            allIds.add(accs[i].Id);
+            if (i < withOpp) {
+                occIds.add(accs[i].Id);
             } else {
-                noOppIds.add(acc.Id);
+                noOppIds.add(accs[i].Id);
             }
         }
         List<Opportunity> opps = new List<Opportunity>();

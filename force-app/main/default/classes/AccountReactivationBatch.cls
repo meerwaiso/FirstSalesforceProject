@@ -110,7 +110,7 @@ public without sharing class AccountReactivationBatch
                 lastOpp = ref;                           // AC2/AC4: Datum der jüngsten Opp
             }
 
-            Integer daysSince   = (asOf == null || ref == null) ? 0 : asOf.daysAfter(ref);
+            Integer daysSince   = wholeDaysBetween(ref, asOf);   // ganze Kalendertage ref→asOf
             Boolean newInactive = daysSince > INACTIVE_THRESHOLD_DAYS;   // AC5: striktes >
 
             if (a.Is_Inactive__c != newInactive || a.Last_Opportunity__c != lastOpp) {
@@ -124,6 +124,21 @@ public without sharing class AccountReactivationBatch
         }
         corrected += toUpdate.size();
         processed += scope.size();
+    }
+
+    /**
+     * Ganze Kalendertage von `from` nach `to` (positiv, wenn `to` später).
+     * Date kennt kein daysAfter/minus-Operator — und die naive getTime()-
+     * Differenz wäre um ±1h um DST-Umstellungen falsch (bräche den exakten
+     * 180/181-Grenzwert, AC5). Deshalb beide Daten als UTC-Mitternacht
+     * (kein DST in UTC) nehmen und die Millisekunden durch 86400000 teilen
+     * => exakt ganzzahlig, zeitzonenunabhängig (ADR-3).
+     */
+    private static Integer wholeDaysBetween(Date from, Date to) {
+        if (from == null || to == null) { return 0; }
+        Long fromMs = DateTime.newInstanceGmt(from.year, from.month, from.day, 0, 0, 0).getTime();
+        Long toMs   = DateTime.newInstanceGmt(to.year, to.month, to.day, 0, 0, 0).getTime();
+        return (Integer)((toMs - fromMs) / 86400000L);
     }
 
     public void finish(Database.BatchableContext ctx) {
