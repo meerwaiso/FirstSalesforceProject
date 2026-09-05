@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Last_Opportunity__c</fullName>
+    <label>Letzte Opportunity</label>
+    <description>Anlagedatum (CreatedDate) der jüngsten Opportunity des Accounts (SCRUM-388). Systemgepflegt durch nächtlichen Batch-Lauf (AccountReactivationBatch), kein Endnutzer-Edit. Ohne jemals eine Opportunity = leer. Kein PII.</description>
+    <type>Date</type>
+    <required>false</required>
+</CustomField>

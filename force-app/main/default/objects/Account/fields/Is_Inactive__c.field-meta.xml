@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Is_Inactive__c</fullName>
+    <label>Inaktiv</label>
+    <description>Kennzeichen: Account gilt als inaktiv, wenn seit der jüngsten Opportunity (bzw. ohne jemals eine — ab dessen eigener Anlage) MEHR als 180 Tage liegen (SCRUM-388). Systemgepflegt durch nächtlichen Batch-Lauf, kein Endnutzer-Edit.</description>
+    <defaultValue>false</defaultValue>
+    <type>Checkbox</type>
+</CustomField>
