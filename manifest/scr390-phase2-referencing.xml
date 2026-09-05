@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-390 Phase 2: referenzierende Komponenten — NACH Phase 1 (Felder müssen existieren). -->
+    <types>
+        <members>SCRUM390_OverdueCase</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Case-Case Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>Service</members>
+        <name>ReportFolder</name>
+    </types>
+    <types>
+        <members>Service/Ueberfaellige_Faelle</members>
+        <name>Report</name>
+    </types>
+    <version>67.0</version>
+</Package>

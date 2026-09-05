@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.Processing_Duration__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.Is_Overdue__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM390_OverdueCase</label>
+    <description>Read-FLS für Case "Bearbeitungsdauer (Tage)" und "Überfällig" (SCRUM-390). Beide systemberechnete Formelfelder (read-only); kein Write-PS, keine Apex/DML.</description>
+</PermissionSet>
