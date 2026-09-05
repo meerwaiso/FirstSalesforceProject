@@ -140,3 +140,90 @@ jobs:
           path: apex-test-results/
           retention-days: 14
           if-no-files-found: ignore
+
+  prod-drift:
+    name: Prod-Org Drift Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SFDX_AUTH_URL_PROD: ${{ secrets.SFDX_AUTH_URL_PROD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Skips cleanly when the secret is absent, exactly like the org job.
+      - name: Check for Prod-Org credentials
+        id: guard
+        run: |
+          if [ -z "$SFDX_AUTH_URL_PROD" ]; then
+            echo "has_auth=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Prod drift gate skipped::Repository secret SFDX_AUTH_URL_PROD is not set."
+          else
+            echo "has_auth=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Salesforce CLI
+        if: steps.guard.outputs.has_auth == 'true'
+        run: npm install --global @salesforce/cli@2
+
+      - name: Authenticate to Prod-Org
+        if: steps.guard.outputs.has_auth == 'true'
+        run: |
+          printf '%s' "$SFDX_AUTH_URL_PROD" > "$RUNNER_TEMP/prod-auth.txt"
+          sf org login sfdx-url --sfdx-url-file "$RUNNER_TEMP/prod-auth.txt" --alias Prod-Org
+          rm -f "$RUNNER_TEMP/prod-auth.txt"
+
+      # Check-only. Changes nothing in Prod-Org.
+      #
+      # Salesforce validates COMPONENTS before it runs tests, so a reference to
+      # metadata that exists only in Test-Org surfaces here even though the test
+      # phase would later fail on the 37% org-wide coverage. That is why this
+      # step fails on componentFailures ONLY and treats test/coverage problems
+      # as a warning — otherwise the 75% production threshold would keep the
+      # gate permanently red and useless.
+      #
+      # The failure class this catches, three times so far:
+      #   SCRUM-315/384/386  FeedItem.RypplePost quick action  (Test-Org only)
+      #   SCRUM-390          Case.RueckrufGewuenscht__c        (Test-Org only)
+      #   SCRUM-390          Case.RueckrufTermin__c            (Test-Org only)
+      # Each was found at release time by DevOps, hours after the code was
+      # written, and cost a full round trip back to Implementierung.
+      - name: Validate against Prod-Org (check-only)
+        if: steps.guard.outputs.has_auth == 'true'
+        run: |
+          set +e
+          sf project deploy validate --source-dir force-app \
+            --target-org Prod-Org --test-level RunLocalTests \
+            --wait 30 --json > prod-validate.json
+          set -e
+          python3 - <<'EOF'
+          import json, sys
+          d = json.load(open("prod-validate.json"))
+          r = d.get("result", {})
+          fails = (r.get("details", {}) or {}).get("componentFailures") or []
+          if isinstance(fails, dict):
+              fails = [fails]
+          if fails:
+              print(f"::error title=Prod-Org drift::{len(fails)} component(s) do not exist in Prod-Org")
+              for f in fails:
+                  print(f"  {f.get('fullName','?')} ({f.get('componentType','?')}) "
+                        f"line {f.get('lineNumber','?')}: {f.get('problem','')}")
+              sys.exit(1)
+          print(f"No component drift. Deploy status: {r.get('status','?')}")
+          nt = (r.get("numberTestErrors") or 0)
+          if nt:
+              print(f"::warning title=Prod test phase::{nt} test failure(s) — not gated here, "
+                    f"org-wide coverage is below the 75% production threshold.")
+          EOF
+
+      - name: Upload validate result
+        if: always() && steps.guard.outputs.has_auth == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-validate
+          path: prod-validate.json
+          retention-days: 14
+          if-no-files-found: ignore
