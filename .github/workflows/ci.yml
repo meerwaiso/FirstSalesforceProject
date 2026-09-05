@@ -181,9 +181,18 @@ jobs:
       # Salesforce validates COMPONENTS before it runs tests, so a reference to
       # metadata that exists only in Test-Org surfaces here even though the test
       # phase would later fail on the 37% org-wide coverage. That is why this
-      # step fails on componentFailures ONLY and treats test/coverage problems
+      # step gates on component errors ONLY and treats test/coverage problems
       # as a warning — otherwise the 75% production threshold would keep the
       # gate permanently red and useless.
+      #
+      # Two further distinctions, both learned from run 33994254498:
+      #   - Pending scheduled/async Apex jobs also block a Prod validation.
+      #     They are a property of the org, not of the pull request, so they
+      #     are printed as a warning and do not fail the job.
+      #   - A result the parser cannot read is a FAILURE, never a pass. The
+      #     first version read only result.details.componentFailures and
+      #     reported success on a run that had found 62 component errors,
+      #     because that shape carries them in "message" instead.
       #
       # The failure class this catches, three times so far:
       #   SCRUM-315/384/386  FeedItem.RypplePost quick action  (Test-Org only)
@@ -200,19 +209,79 @@ jobs:
             --wait 30 --json > prod-validate.json
           set -e
           python3 - <<'EOF'
-          import json, sys
-          d = json.load(open("prod-validate.json"))
-          r = d.get("result", {})
-          fails = (r.get("details", {}) or {}).get("componentFailures") or []
-          if isinstance(fails, dict):
-              fails = [fails]
-          if fails:
-              print(f"::error title=Prod-Org drift::{len(fails)} component(s) do not exist in Prod-Org")
-              for f in fails:
-                  print(f"  {f.get('fullName','?')} ({f.get('componentType','?')}) "
-                        f"line {f.get('lineNumber','?')}: {f.get('problem','')}")
+          import json, re, sys
+
+          try:
+              d = json.load(open("prod-validate.json"))
+          except Exception as e:
+              print(f"::error title=Prod drift gate::prod-validate.json is not readable JSON: {e}")
               sys.exit(1)
-          print(f"No component drift. Deploy status: {r.get('status','?')}")
+
+          # The CLI answers in two different shapes. A completed validation puts its
+          # findings under "result". Some failure classes (FailedValidationError, seen
+          # on run 33994254498) return a bare error object instead, with the findings
+          # only inside "message". Reading just the first shape reported a green gate
+          # on a run that had found 62 component errors.
+          befunde = []
+          r = d.get("result") or {}
+          roh = (r.get("details") or {}).get("componentFailures") or []
+          if isinstance(roh, dict):
+              roh = [roh]
+          for f in roh:
+              befunde.append((f.get("fullName", "?"), (f.get("problem") or "").strip()))
+
+          if not befunde:
+              for zeile in (d.get("message") or "").split("\n"):
+                  m = re.match(r"\s*Error in (.+?) - (.*)", zeile)
+                  if m:
+                      befunde.append((m.group(1).strip(), m.group(2).strip()))
+
+          befunde = list(dict.fromkeys(befunde))
+
+          # Pending scheduled or async Apex jobs block a validation in Prod-Org, but they
+          # say nothing about this pull request. Reported, never gated.
+          JOBTEXTE = ("jobs pending or in progress",
+                      "allowing deployments with Apex jobs",
+                      "asynchronous Apex jobs")
+          def ist_jobblocker(problem):
+              return any(t in problem for t in JOBTEXTE)
+
+          apex  = [b for b in befunde if ist_jobblocker(b[1])]
+          drift = [b for b in befunde if not ist_jobblocker(b[1])]
+
+          # A gate that cannot read its own result must not wave the change through.
+          if not befunde and not r:
+              print("::error title=Prod drift gate::Validation produced no usable result — "
+                    "this run cannot show the change is free of drift.")
+              print(f"  name: {d.get('name', '?')}   code: {d.get('code', '?')}")
+              print("  " + (d.get("message") or "(no message)")[:800].replace("\n", "\n  "))
+              sys.exit(1)
+
+          if apex:
+              klassen = sorted({n for n, _ in apex})
+              print(f"::warning title=Prod-Org has pending Apex jobs::{len(klassen)} class(es) "
+                    f"have scheduled or async jobs pending. This blocks the deployment itself, "
+                    f"not this PR. Enable 'Allow deployments of components when corresponding "
+                    f"Apex jobs are pending or in progress' in Setup > Deployment Settings.")
+              print(f"  {', '.join(klassen)}")
+
+          if drift:
+              print(f"::error title=Prod-Org drift::{len(drift)} component(s) do not resolve in Prod-Org")
+              for name, problem in drift[:40]:
+                  print(f"  {name}: {problem[:200]}")
+              if len(drift) > 40:
+                  print(f"  … and {len(drift) - 40} more")
+              sys.exit(1)
+
+          # Cross-check: Salesforce prints its own total. If it exceeds what we parsed,
+          # say so rather than quietly reporting less than actually failed.
+          m = re.search(r"(\d+) component error\(s\)", d.get("message") or "")
+          if m and int(m.group(1)) > len(befunde):
+              print(f"::error title=Prod drift gate::Salesforce reports {m.group(1)} component "
+                    f"error(s) but only {len(befunde)} line(s) could be parsed.")
+              sys.exit(1)
+
+          print(f"No component drift. Deploy status: {r.get('status', d.get('status', '?'))}")
           nt = (r.get("numberTestErrors") or 0)
           if nt:
               print(f"::warning title=Prod test phase::{nt} test failure(s) — not gated here, "
