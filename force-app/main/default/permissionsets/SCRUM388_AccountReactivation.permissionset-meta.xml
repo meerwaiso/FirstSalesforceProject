@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Last_Opportunity__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Is_Inactive__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM388_AccountReactivation</label>
+    <description>Read-FLS für „Letzte Opportunity“ und „Inaktiv“ (SCRUM-388): Vertriebsleiter + „Account Layout“-Pflege. Systembelegte Felder → bewusst nicht editierbar (editable=false). Profile unverändert.</description>
+</PermissionSet>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Account.Last_Opportunity__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Account.Is_Inactive__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM388_AccountReactivationWrite</label>
+    <description>Update-FLS beider Reaktivierungsfelder (SCRUM-388) für den Batch-Lauf-User. Notwendig: Apex-DML prüft FLS auch in without-sharing-Klassen. Redundant, wenn der Lauf-User System-Admin ist — in Org verifizieren.</description>
+</PermissionSet>
