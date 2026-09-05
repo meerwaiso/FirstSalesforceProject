@@ -12,7 +12,8 @@ import { openRecordPage } from './record-page';
  * Lightning-Case-FlexiPage, @devops via FlexiPage-Retrieve verifiziert);
  * die Details reibungfrei aus dem Classic-Layout.
  *
- * Record 500WU00002VPZQ5YAP (Case 00001024): offen, Low, 63 Tage alt,
+ * Record 500WU00002VPZQ5YAP (Case 00001024): offen, Low, CreatedDate 2026-07-04
+ * (tag-abhängiges Alter — wird im Test gegen das gerenderte geprüft),
  * Is_Overdue__c=true — Feldwerte per SOQL read-back verifiziert vor Testlauf.
  *
  * Seitenform (aus dem 1. Lauffehler-Snapshot dokumentiert, 05.09.): Die
@@ -69,20 +70,37 @@ test.describe('[SCRUM-390] AC1 Lightning read-back', () => {
 
     // Wert-Read-Back (Evidenz über Pass/Fail hinaus): die slds-form-element-
     // Container rund um die Labels tragen den gerenderten Formelwert.
+    //
+    // Die Dauer ist tag-abhängig (Formel = TODAY() - CreatedDate): ein
+    // hardcodiertes „63" veraltet von selbst (verifiziert 05.09.: Case
+    // tickt UTC-Mittag 63 → 64 und mein Assert fiel). Deshalb: gegen das aus
+    // dem festen CreatedDate der Test-Case berechnete Alter asserten
+    // (±1 Toleranz für die UTC-Tagesgrenze), NICHT gegen einen eingefrorenen
+    // Zahlenwert. Overdue ist robuster fixierbar (weit über der Low-Schwelle
+    // von 10 Tagen -> true, kein Grenzrisiko).
+    const createdUtc = Date.UTC(2026, 6, 4); // 2026-07-04 (Case 00001024, fix)
+    const expectedAge = Math.round((Date.now() - createdUtc) / 86400000);
+
     const durationBox = page.locator('div.slds-form-element', { hasText: 'Bearbeitungsdauer (Tage)' }).first();
     const durationText = (await durationBox.innerText().catch(() => '')) || await lblDuration.locator('..').innerText().catch(() => '');
-    console.log('=== [SCRUM-390] AC1 Wert-Read-Back: Bearbeitungsdauer-Container ===\n' + durationText);
+    console.log('=== [SCRUM-390] AC1 Wert-Read-Back: Bearbeitungsdauer-Container (erwartet ~' + expectedAge + ') ===\n' + durationText);
+    const renderedAge = /(\d+)/.exec(durationText);
     expect(
-      durationText,
-      'Bearbeitungsdauer-Wert 63 (offener Fall, 63 Tage alt) NICHT gerendert'
-    ).toContain('63');
+      renderedAge,
+      'Bearbeitungsdauer hat KEINE Zahl gerendert — Feld leert/fehlt (AC1-Sichtbarkeit verletzt)'
+    ).not.toBeNull();
+    if (!renderedAge) throw new Error('unreachable: renderedAge null');
+    expect(
+      Math.abs(parseInt(renderedAge[1], 10) - expectedAge) <= 1,
+      'Bearbeitungsdauer gerendert, aber ≠ erwartetem Alter ' + expectedAge + ' (±1 UTC-Tagesgrenze) — Formel oder Datenfehler'
+    ).toBe(true);
 
     const overdueBox = page.locator('div.slds-form-element', { hasText: 'Überfällig' }).first();
     const overdueText = await overdueBox.innerText().catch(() => '');
     console.log('=== [SCRUM-390] AC1 Wert-Read-Back: Überfällig-Container ===\n' + overdueText);
     expect(
       overdueText,
-      'Überfällig-Wert (True für 63-tägiger offener Low-Fall) NICHT gerendert'
+      'Überfällig-Wert (True für 64-tägiger offener Low-Fall, >10) NICHT gerendert'
     ).toMatch(/True|true/i);
   });
 });
