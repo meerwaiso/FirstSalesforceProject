@@ -127,20 +127,11 @@ public without sharing class AccountReactivationBatch
     }
 
     /**
-     * Ganze Kalendertage von `fromDate` nach `toDate` (positiv, wenn `toDate` später).
-     * Date kennt keine Arithmetik (`daysAfter`/`-`) — und die naive getTime()-
-     * Differenz wäre um ±1h um DST-Umstellungen falsch (bräche den exakten
-     * 180/181-Grenzwert, AC5). Deshalb beide Daten als UTC-Mitternacht
-     * (kein DST in UTC) nehmen und die Millisekunden durch 86400000 teilen
-     * => exakt ganzzahlig, zeitzonenunabhängig (ADR-3).
-     * (Parameter heißen fromDate/toDate: `from`/`to` wären Apex-Reservewörter.)
-     */
-    private static Integer wholeDaysBetween(Date fromDate, Date toDate) {
-        if (fromDate == null || toDate == null) { return 0; }
-        Long fromMs = DateTime.newInstanceGmt(fromDate.year, fromDate.month, fromDate.day, 0, 0, 0).getTime();
-        Long toMs   = DateTime.newInstanceGmt(toDate.year, toDate.month, toDate.day, 0, 0, 0).getTime();
-        return (Integer)((toMs - fromMs) / 86400000L);
-    }
+     * Ganze Kalendertage von `fromDate` nach `toDate` (positiv, wenn `toDate` spater).
+     * Nutzt die eingebaute Apex-Methode Date.daysBetween(secondDate) (Apex-Ref:
+     * 'Returns the number of days between the Date that called the method and the
+     * specified date'). Beide Operanden sind Date (reine Kalendertage, ohne
+     * Uhrzeit/Timezone) => Ergebnis exakt ganzzahlig und DST-bestan...[truncated]
 
     public void finish(Database.BatchableContext ctx) {
         System.debug('AccountReactivationBatch: processed=' + processed +
