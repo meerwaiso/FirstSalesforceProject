@@ -2,8 +2,8 @@
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Data_Quality__c</fullName>
     <label>Datenqualität</label>
-    <description>Abgeleitetes, read-only Datenqualitäts-Label (SCRUM-394): „vollständig“ wenn Email, Phone und Company alle gefüllt, sonst „unvollständig“. Systemberechnet.</description>
-    <formula>IF(AND(NOT(ISBLANK(Email)), NOT(ISBLANK(Phone)), NOT(ISBLANK(Company))), "vollständig", "unvollständig")</formula>
+    <description>Abgeleitetes, read-only Datenqualitäts-Label (SCRUM-394): „vollständig“ wenn Email gefüllt und Firma gefüllt und (Phone ODER MobilePhone gefüllt), sonst „unvollständig“. Systemberechnet. PO-Entscheidung 2026-09-06: „Telefon“ = Phone und MobilePhone (mindestens eines).</description>
+    <formula>IF(AND(NOT(ISBLANK(Email)), NOT(ISBLANK(Company)), OR(NOT(ISBLANK(Phone)), NOT(ISBLANK(MobilePhone)))), "vollständig", "unvollständig")</formula>
     <required>false</required>
     <trackTrending>false</trackTrending>
     <type>Text</type>

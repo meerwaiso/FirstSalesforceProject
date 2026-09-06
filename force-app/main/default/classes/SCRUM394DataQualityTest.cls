@@ -3,9 +3,11 @@
  * Lead.Data_Quality__c ("Datenqualität", read-only Text formula).
  *
  * Covers AC1 deterministically (ADR-3 — declarative formula, no Apex/Flow):
- *   "vollständig" exactly when Email AND Phone AND Company are all filled,
- *   "unvollständig" otherwise — evaluated at view time from the CURRENT
- *   field values (AC1: "zum Zeitpunkt der Betrachtung").
+ *   "vollständig" exactly when Email is filled AND Company is filled AND
+ *   (Phone is filled OR MobilePhone is filled) — "unvollständig" otherwise.
+ *   PO decision 2026-09-06 (room): "Telefon" = Phone UND MobilePhone
+ *   (mindestens eines). Evaluated at view time from the CURRENT field values
+ *   (AC1: "zum Zeitpunkt der Betrachtung").
  *
  * ORG CONSTRAINTS (verified by validate runs, see comments):
  *   1. Lead.Company is REQUIRED in this org (DML with blank Company fails
@@ -41,6 +43,18 @@ private class SCRUM394DataQualityTest {
         return l;
     }
 
+    private static Lead makeLeadWithMobile(String tag, String email, String phone, String mobilePhone, String company) {
+        Lead l = new Lead(
+            LastName = tag,
+            Email = email,
+            Phone = phone,
+            MobilePhone = mobilePhone,
+            Company = company
+        );
+        insert l;
+        return l;
+    }
+
     private static String readValue(String leadId) {
         return [SELECT Data_Quality__c FROM Lead WHERE Id = :leadId].Data_Quality__c;
     }
@@ -70,7 +84,33 @@ private class SCRUM394DataQualityTest {
         Lead l = makeLead('TEST-SCRUM-394-NOPHONE', 'phone@example.com', null, 'TestfirmaNoPhone');
         System.assertEquals(
             'unvollständig', readValue(l.Id),
-            'Blank Phone -> "unvollständig" (AC1)'
+            'Blank Phone + no MobilePhone -> "unvollständig" (AC1, PO 2026-09-06: "Telefon" = Phone ODER MobilePhone)'
+        );
+    }
+    @isTest
+    static void mobileOnly_showsVollstaendig() {
+        // PO decision 2026-09-06: "Telefon" includes MobilePhone — a Lead with
+        // only MobilePhone (Phone blank) must count as reachable / fully filled.
+        Lead l = makeLeadWithMobile(
+            'TEST-SCRUM-394-MOBILEONLY', 'mobile@example.com',
+            null, '+4915112345678', 'TestfirmaMobileOnly'
+        );
+        System.assertEquals(
+            'vollständig', readValue(l.Id),
+            'Email + MobilePhone (Phone blank) + Company -> "vollständig" (AC1, PO 2026-09-06)'
+        );
+    }
+
+    @isTest
+    static void phoneAndMobileBothFilled_showsVollstaendig() {
+        // Belt & suspenders: BOTH phone numbers filled must also yield vollständig.
+        Lead l = makeLeadWithMobile(
+            'TEST-SCRUM-394-BOTHPHONE', 'both@example.com',
+            '+4930123456', '+4915112345678', 'TestfirmaBoth'
+        );
+        System.assertEquals(
+            'vollständig', readValue(l.Id),
+            'Email + Phone AND MobilePhone + Company -> "vollständig" (AC1)'
         );
     }
 
