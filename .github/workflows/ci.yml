@@ -273,13 +273,21 @@ jobs:
                   print(f"  … and {len(drift) - 40} more")
               sys.exit(1)
 
-          # Cross-check: Salesforce prints its own total. If it exceeds what we parsed,
-          # say so rather than quietly reporting less than actually failed.
+          # Cross-check: Salesforce prints its own total. If it exceeds what we
+          # parsed, say so rather than quietly reporting less than actually failed.
+          #
+          # One caveat, measured: that total runs exactly one higher than the
+          # number of "Error in ..." lines Salesforce itself prints — run
+          # 33994254498 said 62 and printed 61, run 34004632932 said 58 and
+          # printed 57, neither with a duplicate line. A gap of one is that
+          # quirk. Only a wider gap means findings were genuinely missed.
           m = re.search(r"(\d+) component error\(s\)", d.get("message") or "")
-          if m and int(m.group(1)) > len(befunde):
-              print(f"::error title=Prod drift gate::Salesforce reports {m.group(1)} component "
-                    f"error(s) but only {len(befunde)} line(s) could be parsed.")
-              sys.exit(1)
+          if m:
+              gemeldet, gelesen = int(m.group(1)), len(befunde)
+              if gemeldet - gelesen > 1:
+                  print(f"::error title=Prod drift gate::Salesforce reports {gemeldet} "
+                        f"component error(s) but only {gelesen} line(s) could be parsed.")
+                  sys.exit(1)
 
           print(f"No component drift. Deploy status: {r.get('status', d.get('status', '?'))}")
           nt = (r.get("numberTestErrors") or 0)
