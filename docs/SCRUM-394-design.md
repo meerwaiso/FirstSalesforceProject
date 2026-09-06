@@ -66,26 +66,28 @@ nicht) → nur **Read-FLS** wird spezifiziert, kein Write-PS.
 
 **`Data_Quality__c`** (Text — AC1):
 ```
-IF(AND(NOT(ISBLANK(Email)), NOT(ISBLANK(Phone)), NOT(ISBLANK(Company))), "vollständig", "unvollständig")
+IF(AND(NOT(ISBLANK(Email)), OR(NOT(ISBLANK(Phone)), NOT(ISBLANK(MobilePhone))), NOT(ISBLANK(Company))), "vollständig", "unvollständig")
 ```
-- **Strikt alle drei gefüllt** = „vollständig“ (PO: „E-Mail **und** Telefon
-  **und** Firma alle gefüllt, sonst unvollständig“). Mindestens eines leer →
+(Korrektur 2026-09-06, **PO-Entscheidung**: „Telefon“ = `Phone` **ODER**
+`MobilePhone` — mindestens eines der beiden gefüllt zählt.)
+- **„vollständig“ = `Email` gefüllt UND `Company` gefüllt UND (`Phone` gefüllt
+  **ODER** `MobilePhone` gefüllt)**. Mindestens eines davon leer →
   „unvollständig“.
 - `NOT(ISBLANK(...))` = „gefüllt“ — `NOT` rund um jedes `ISBLANK` (House-Beleg
   `Lead.Is_Due__c`: `NOT(ISBLANK(Last_Attempt_Date__c))`).
-- `ISBLANK` auf den **Standardfeldern** `Email`, `Phone`, `Company` (API-Namen
-  ohne `__c`, wie im House-Pattern).
-- `MobilePhone` zählt **nicht** — PO nennt explizit „Telefon“ = `Phone`.
-  (Offener Punkt, nicht blockierend.)
+- `ISBLANK` auf den **Standardfeldern** `Email`, `Phone`, `MobilePhone`,
+  `Company` (API-Namen ohne `__c`, wie im House-Pattern).
 - **`AND`/`OR` NUR als Funktion** — Infix-Schreibweise `A AND B` ist stets
   Syntax-Fehler (Haus-Regel, SCRUM-353/390-Vorbild).
 - **Kein XML-Escape nötig**: keine `<`/`&`/`>` in der Formel. Die deutschen
   Strings haben keine Special Characters.
 
 **Berechnungslogik (Validierung, kein Code):**
-- Alle gefüllt → `AND(TRUE,TRUE,TRUE)` = `TRUE` → „vollständig“ ✓
-- Genau Email leer → `AND(FALSE,TRUE,TRUE)` = `FALSE` → „unvollständig“ ✓
-- Alle leer → `AND(FALSE,FALSE,FALSE)` = `FALSE` → „unvollständig“ ✓
+- Alle gefüllt (Phone oder MobilePhone) → `AND(TRUE,OR(TRUE,TRUE),TRUE)` = `TRUE` → „vollständig“ ✓
+- Nur MobilePhone gefüllt (Phone leer) → `AND(TRUE,OR(FALSE,TRUE),TRUE)` = `TRUE` → „vollständig“ ✓
+- Genau Email leer → `AND(FALSE,OR(TRUE,TRUE),TRUE)` = `FALSE` → „unvollständig“ ✓
+- Beide Telefonfelder leer → `AND(TRUE,OR(FALSE,FALSE),TRUE)` = `FALSE` → „unvollständig“ ✓
+- Alle leer → `AND(FALSE,OR(FALSE,FALSE),FALSE)` = `FALSE` → „unvollständig“ ✓
 
 ### ADR-4: FLS → **ein** read-only Permission Set (kein Write-PS)
 Formelfeld → nur gelesen. Ein einziges PS mit `editable=false,
@@ -161,7 +163,7 @@ Classic (Repo-Layout) + Lightning (Org-Platzierung).
   `Lead.Data_Quality__c`).
 - 1 Layout-Change: `Lead-Lead Layout` + neue Section „Datenqualität“.
 - 1 neuer Report: `Offene_Leads_nach_Quelle` im Ordner `Sales`, `LeadList`,
-  Summary format, grouped by `LEAD_SOURCE`, filter `IS_CONVERTED=false`.
+  Summary format, grouped by `LEAD_SOURCE`, filter `CONVERTED=false`.
 - **Keine Apex, keine Trigger, keine Flow, keine Validierungsregeln, kein
   neues Objekt, kein neuer Folder.**
 - Sharing: **OWD Lead: unverändert** (PO-Festlegung). OWD/Sharing-Rules/
@@ -197,8 +199,8 @@ In-repo reference files (deployen heutzutage, kopiere Shapes):
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Data_Quality__c</fullName>
     <label>Datenqualität</label>
-    <description>Abgeleitetes, read-only Datenqualitäts-Label (SCRUM-394): „vollständig“ wenn Email, Phone und Company alle gefüllt, sonst „unvollständig“. Systemberechnet.</description>
-    <formula>IF(AND(NOT(ISBLANK(Email)), NOT(ISBLANK(Phone)), NOT(ISBLANK(Company))), "vollständig", "unvollständig")</formula>
+    <description>Abgeleitetes, read-only Datenqualitäts-Label (SCRUM-394): „vollständig“ wenn Email, (Phone oder MobilePhone) und Company gefüllt, sonst „unvollständig“. Systemberechnet.</description>
+    <formula>IF(AND(NOT(ISBLANK(Email)), OR(NOT(ISBLANK(Phone)), NOT(ISBLANK(MobilePhone))), NOT(ISBLANK(Company))), "vollständig", "unvollständig")</formula>
     <required>false</required>
     <trackTrending>false</trackTrending>
     <type>Text</type>
@@ -345,12 +347,17 @@ Ordner „Sales“ existiert bereits.)
 ```
 
 ## Test-Kriterien (Architect-Definition, zusätzlich zu den PO-ACs)
-- **TC1 (AC1 vollständig):** Lead mit gefülltem `Email`, `Phone`, `Company`
-  → `Data_Quality__c = „vollständig“`.
+- **TC1 (AC1 vollständig):** Lead mit gefülltem `Email`, `Company` und
+  `Phone` ODER `MobilePhone` → `Data_Quality__c = „vollständig“`.
+- **TC1b (AC1 vollständig, nur MobilePhone):** `Email`+`Company`+`MobilePhone`
+  gefüllt, `Phone` **leer** → `Data_Quality__c = „vollständig“` (PO-Entscheidung
+  2026-09-06: Telefon = Phone ODER MobilePhone).
 - **TC2 (AC1 unvollständig, nur Email leer):** `Email=null`, `Phone`+`Company`
   gefüllt → `Data_Quality__c = „unvollständig“`.
-- **TC3 (AC1 unvollständig, alle leer):** alle drei `null`
+- **TC3 (AC1 unvollständig, alle leer):** alle Felder `null`
   → `Data_Quality__c = „unvollständig“`.
+- **TC3b (AC1 unvollständig, nur beide Telefonfelder leer):** `Email`+`Company`
+  gefüllt, `Phone`+`MobilePhone` leer → `Data_Quality__c = „unvollständig“`.
 - **TC4 (AC1 live-Update):** Lead „vollständig“ → `Email` leeren (per API,
   kein Trigger nötig) → sofort beim nächsten `SELECT`/UI-Read:
   `Data_Quality__c = „unvollständig“` (Formelfeld rechnet live — kein
@@ -393,10 +400,10 @@ Ordner „Sales“ existiert bereits.)
   weiterer Schritt.
 - **Apex/E2E-Tests** — Phase 3 (House-Regel, PR-Blocker): Wert-Test +
   FLS-Test + E2E-Berichts-Spec (AC-Abnahme braucht benannte Artefakte).
-- **„Telefon“ = `Phone` vs. `Phone` oder `MobilePhone`?** — Default:
-  `Phone` (PO-Text, AC1: „Telefon“). Falls @po-agent `MobilePhone`
-  inklusive meint → ADR-3 um 1 `NOT(ISBLANK())` erweitern. Blockiert
-  nicht die Implementierung.
+- **„Telefon“ = `Phone` ODER `MobilePhone`** — **PO-Entscheidung 2026-09-06,
+  gelöst**: „Telefon“ = `Phone` (Standard) **UND** `MobilePhone` — mindestens
+  eines der beiden gefüllt. ADR-3 + TC1b/TC3b entsprechend aktualisiert;
+  Formeländerung ist Teil des Phase-3-Fix-Commit (Deploy Phase 1 re-run).
 - **Layout-Sektion position:** „vor System Information“ (ADR-7). Falls
   @po-agent eine andere Position will → trivial, 1 XML-Bewegung.
 
