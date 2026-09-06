@@ -8,7 +8,7 @@
     <columns><field>OWNER</field></columns>
     <filter>
         <criteriaItems>
-            <column>IS_CONVERTED</column>
+            <column>CONVERTED</column>
             <operator>equals</operator>
             <value>false</value>
         </criteriaItems>
@@ -18,7 +18,11 @@
         <field>LEAD_SOURCE</field>
         <sortOrder>Asc</sortOrder>
     </groupingsDown>
-    <description>Offene Leads (IsConverted=false) der gesamten Organisation, gruppiert nach Lead-Quelle, Record Count je Quelle; Leads ohne Quelle in (blank)-Gruppe. Org-weiter Datenbereich via Report-Level "All users" (Org-Schritt, nicht im Source).</description>
+    <description>Offene Leads (CONVERTED=false) der gesamten Organisation, gruppiert nach Lead-Quelle, Record Count je Quelle; Leads ohne Quelle in (blank)-Gruppe. Scope "org" = All leads (AC3).</description>
     <name>Offene_Leads_nach_Quelle</name>
     <reportType>LeadList</reportType>
+    <scope>org</scope>
+    <showDetails>false</showDetails>
+    <showGrandTotal>true</showGrandTotal>
+    <showSubTotals>true</showSubTotals>
 </Report>
