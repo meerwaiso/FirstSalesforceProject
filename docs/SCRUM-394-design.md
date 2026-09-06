@@ -49,16 +49,16 @@ Ausprägung von E-Mail/Telefon/Firma entsprechen“).
 ### ADR-2: API-Name & Typ (Architect-Festlegung, PO-Label)
 | Label (PO) | API-Name | Typ | Formel-Speichertyp |
 |---|---|---|---|
-| Datenqualität | `Lead.Data_Quality__c` | Text(7) | `formula` (read-only) |
+| Datenqualität | `Lead.Data_Quality__c` | Text (Formelfeld, read-only) | `formula` |
 
 Haus-Konvention: englischer API-Name, exaktes deutsches Label als `<label>`
 (`Is_Due__c` / „Ist fällig“, `Customer_Since_Days__c` / „Kunde seit (Tage)“).
 **Text statt Checkbox**: die PO verlangt die **Wortwerte** „vollständig“ /
 „unvollständig“ (AC1, AC5) — ein Checkbox-Feld würde nur true/false rendern.
-Text-Formelfeld, `length=255`, `required=false`, `trackTrending=false`
-(Shape: `Lead.Email_Norm__c` ist ein normales Text-Feld; der `<formula>`-Part
-kommt von den House-Formelfeldern). Text(255) ist großzügig; der Formeloutput
-ist max. „unvollständig“ (13 Zeichen) — keine Beschnitt-Risiken.
+Formelfeld: `required=false`, `trackTrending=false` — **kein
+`<length>`-Element** (validiert: Text-Formula-Felder lehnen `<length>` ab —
+Deploy-Fehler-Beleg Commit `bc0b57f`). House-Shape: `Lead.Email_Norm__c`
+(Text-Eigenschaften) plus `<formula>`-Element wie `Lead.Is_Due__c`.
 Das Feld ist **inherently read-only** (Formula → Create/Update/Delete existiert
 nicht) → nur **Read-FLS** wird spezifiziert, kein Write-PS.
 
@@ -94,44 +94,50 @@ readable=true`. `hasActivationRequired=false`. House-Pattern
 default unsichtbar für alle Profile → additive Grant genügt, **keine**
 Profiländerung.
 
-### ADR-5: Bericht — **Summary-Format + groupingDown nach `LEAD_SOURCE`**,
-Filter `LEAD.IS_CONVERTED = false`
-- `format=Summary`, `groupingsDown` nach `LEAD_SOURCE` → AC4 (gruppiert nach
-  Lead-Quelle).
-- **AC3 (org-weit)**: Report-Level Sharing auf **„All users“** — der Bericht
-  zeigt damit **alle** Leads der Organisation, auch fremd-geführte
-  (PO: „auch die, die anderen Mitarbeitern gehören“). Dies ist ein
-  **Report-Schalter in der Org (UI: Bericht → Einstellungen → „All users“)**,
-  **NICHT** im Report-Source-Metadaten speicherbar (verifiziert: das im Repo
-  deployte `Lead_Nachfassliste.report-meta.xml` hat exakt 6 Elemente —
-  `columns/filter/description/format/name/reportType` — kein Sharing-Element;
-  Report-Sharing ist in Salesforce kein Source-Format-Feld). → **Org-Schritt
-  nach Deploy** (@devops-agent), im Deploy-Order unten.
-- **AC4 Blank-Gruppe**: Leads ohne `LeadSource` fallen im Summary-Report
-  automatisch in die **(blank)**-Gruppe — Salesforce-Restverhau beim
-  Group-by, kein Extra-Feld, kein Filter nötig.
-- **AC5 Record Count je Gruppe**: Summary-Format zeigt die Anzahl pro
-  Gruppenzeile automatisch (Record Count) — kein Extra-Feld (House-Beleg
-  SCRUM-390 `Ueberfaellige_Faelle`, ADR-5 dort).
-- **Report-Typ**: `LeadList` (verifiziert: `Lead_Nachfassliste.report-meta.xml`
-  im Repo ist `LeadList`).
-- **AC3 Filter**: `LEAD.IS_CONVERTED` `equals` `false` (0/f) → konvertierte
-  Leads bleiben außen (Nicht-PO-Scope „Konvertierte Leads bleiben außen vor“).
-- **⚠️ Report-Feldnamen verifizieren (wie SCRUM-390 ADR-5):** Standard-
-  Report-Feldnamen des `LeadList`-Typs:
-  - `LAST_NAME` — **verify**
-  - `FIRST_NAME` — **verify** (= im Repo `Lead_Nachfassliste` vorhanden)
-  - `COMPANY` — **verify** (= im Repo vorhanden)
-  - `STATUS` — **verify** (= im Repo vorhanden)
-  - `LEAD.IS_CONVERTED` — **verify** (Standard-Flugfeld, Format `LEAD.`-Prefix)
-  - `LEAD_SOURCE` — **verify** (Standard-Report-Name; könnte `LEAD.LEAD_SOURCE`
-    heißen — vor Deploy aus der Org retrieve und ablesen)
-  - `LEAD.Data_Quality__c` — Custom-Feld, API-Name (kein Report-Feld-Name),
-    korrekt wie House-Pattern.
-  **Vor dem Report-Deploy** ein Lead-Report aus der Org retrieve
-  (`sf project retrieve start --metadata "Report:Sales/Lead_Nachfassliste"`
-  → falls nichts, `sf project retrieve start --metadata "Report"`) und die
-  exakten `<field>`/`<column>`-Namen abgleichen.
+### ADR-5: Bericht — **Summary-Format + FLACHES `groupingsDown` nach `LEAD_SOURCE`**,
+Filter `CONVERTED = false`, **`<scope>org</scope>` im Source**
+**Korrektur 2026-09-06 (nach Implementierung, @user-Beleg + Analytics-API):**
+
+- **Filter-Spalte ist `CONVERTED`** (boolean, entity-column `Lead.IsConverted`) —
+  NICHT `LEAD.IS_CONVERTED` / `IS_CONVERTED` (beide werden als
+  `columns-field: Invalid value` verworfen, 10+ Varianten durchgetestet).
+- **`<scope>org</scope>` IST im Report-Source speicherbar** (Korrektur: diese Spec
+  sagte früher das Gegenteil). `scope` steuert den **Datensatz-Bereich**:
+  `org` = „All leads“ → AC3 (org-weit, auch fremd-geführte, unabhängig vom
+  Anlagedatum) ist damit **im Source**, kein Org-Schritt mehr. Erlaubte Werte
+  (Analytics-API `scopeInfo`): `user`(Default „My leads“) | `team` |
+  `allusers` | `queue` | `org` | `scopingRule`.
+- **`<groupingsDown>` ist FLACH** — Element ist `<field>` (plus
+  `<sortOrder>`) direkt unter `<groupingsDown>`. Verschachteltes
+  `<groupingsDown><groupings>…</groupings></groupingsDown>` wird verworfen
+  („Element groupings invalid at this location“).
+- `format=Summary`, Count je Gruppe automatisch; Blank-Gruppe für Leads ohne
+  `LeadSource` = Salesforce-Standard beim Group-by (AC4).
+- **Report-Typ**: `LeadList`. Verifizierter Spaltenname (Analytics-API
+  `reportTypes/LeadList` → `reportTypeMetadata.categories[...].columns`):
+  `FIRST_NAME`, `LAST_NAME`, `COMPANY`, `STATUS`, `LEAD_SOURCE`, `CONVERTED`,
+  `OWNER` (alle ohne Präfix; Custom-Feld als `Lead.Data_Quality__c`).
+
+### ADR-5a: Report-**Sharing** („All users“) — Org-Schritt, nicht in AC3
+Report-Level Sharing (wer den **Bericht öffnen** darf) ist **kein**
+`<scope>`: `<scope>` = Datensätze, Sharing = Sichtbarkeit des Bericht-Objekts.
+Sharing ist **nicht** im Report-Source-Metadaten speicherbar (verifiziert:
+deploytes `Lead_Nachfassliste.report-meta.xml` hat keine Sharing-Elemente).
+→ Org-Schritt für @devops-agent (Bericht → Einstellungen → „All users“),
+blockiert den PR nicht. AC3 selbst ist erfüllt durch `<scope>org</scope>`.
+
+### ADR-5b: Spaltennamen verifizieren per **Analytics-API**, nicht per retrieve
+Standard-ReportTypes haben KEIN source-Format (nicht retrievable —
+`sf project retrieve start --metadata "Report:..."` = „Nothing retrieved“
+auch für existierend-gespeicherte Standardberichte). Der verlässliche Weg:
+```
+sf api request rest '/services/data/v62.0/analytics/reportTypes/LeadList' \
+  --target-org Test-Org
+```
+→ `reportTypeMetadata.categories[].columns` = alle Spalten mit API-Name,
+Label, DataType; `scopeInfo` = erlaubte Scope-Werte. (Token läuft nicht ab —
+das CLI erneuert selbst; Direktaufruf mit rohem Token = 404. @user-Beleg
+2026-09-06.) Bei jedem künftigen Bericht statt Raten verwenden.
 
 ### ADR-6: 2-Phase-Deploy (Haus-Muster SCRUM-390)
 Phase 1 = nur das neue CustomField; Phase 2 = alles Referenzierende (PS,
@@ -193,7 +199,6 @@ In-repo reference files (deployen heutzutage, kopiere Shapes):
     <label>Datenqualität</label>
     <description>Abgeleitetes, read-only Datenqualitäts-Label (SCRUM-394): „vollständig“ wenn Email, Phone und Company alle gefüllt, sonst „unvollständig“. Systemberechnet.</description>
     <formula>IF(AND(NOT(ISBLANK(Email)), NOT(ISBLANK(Phone)), NOT(ISBLANK(Company))), "vollständig", "unvollständig")</formula>
-    <length>255</length>
     <required>false</required>
     <trackTrending>false</trackTrending>
     <type>Text</type>
@@ -255,47 +260,51 @@ Die neue `layoutSection` einfügen: **nach** der „Dublettenprüfung“-Section
 (Analog House-Section „Dublettenprüfung“ direkt drüber — `OneColumn`, eine
 Feld-Einlage, `Readonly`.)
 
+### Phase 3 — Apex-Tests (House-Regel: jedes neue Feld braucht Wert-Test + FLS-Test)
+- `SCRUM394DataQualityTest.cls` — Formelwert (vollständig/unvollständig) via
+  Lead-DML, `isCalculated()`/`!isUpdateable()`-Assert (House-Shape:
+  `SCRUM382CustomerSinceDaysTest.cls`).
+- `SCRUM394DataQualityFlsTest.cls` — FLS neg/pos via `System.runAs()` +
+  Standard-User-Profil (House-Shape: `SCRUM382CustomerSinceDaysFlsTest.cls`).
+- `manifest/scr394-phase3-apextests.xml` — beide Klassen,
+  v67.0 (House-Shape: `manifest/scr390-phase3-apextests.xml`).
+- E2E: `tests/e2e/SCRUM-394-*.spec.ts` für Bericht (Spalten, Gruppen, Blank,
+  Filter) nach House-Shape `SCRUM-378_lead-nachfassliste.spec.ts`.
+**AC-Abnahme braucht benannte Artefakte pro Kriterium** — nur „live gegen Org
+geprüft, Read-back bestätigt“ ist KEIN Test (Haus-Regel, SCRUM-359).
+
 #### 5 (NEU). `force-app/main/default/reports/Sales/Offene_Leads_nach_Quelle.report-meta.xml`
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <Report xmlns="http://soap.sforce.com/2006/04/metadata">
-    <columns><field>LAST_NAME</field></columns>
     <columns><field>FIRST_NAME</field></columns>
+    <columns><field>LAST_NAME</field></columns>
     <columns><field>COMPANY</field></columns>
     <columns><field>STATUS</field></columns>
-    <columns><field>LEAD.Data_Quality__c</field></columns>
-    <columns><field>LEAD.Owner</field></columns>
+    <columns><field>Lead.Data_Quality__c</field></columns>
+    <columns><field>OWNER</field></columns>
     <filter>
         <criteriaItems>
-            <column>LEAD.IS_CONVERTED</column>
+            <column>CONVERTED</column>
             <operator>equals</operator>
             <value>false</value>
         </criteriaItems>
     </filter>
     <format>Summary</format>
     <groupingsDown>
-        <groupings>
-            <field>LEAD_SOURCE</field>
-            <sortOrder>Asc</sortOrder>
-        </groupings>
+        <field>LEAD_SOURCE</field>
+        <sortOrder>Asc</sortOrder>
     </groupingsDown>
-    <description>Offene Leads (IsConverted=false) der gesamten Organisation, gruppiert nach Lead-Quelle, Record Count je Quelle; Leads ohne Quelle in (blank)-Gruppe. Org-weiter Datenbereich via Report-Level „All users“ (Org-Schritt, nicht im Source).</description>
+    <description>Offene Leads (CONVERTED=false) der gesamten Organisation, gruppiert nach Lead-Quelle, Record Count je Quelle; Leads ohne Quelle in (blank)-Gruppe. Scope "org" = All leads (AC3).</description>
     <name>Offene_Leads_nach_Quelle</name>
     <reportType>LeadList</reportType>
+    <scope>org</scope>
+    <showDetails>false</showDetails>
+    <showGrandTotal>true</showGrandTotal>
+    <showSubTotals>true</showSubTotals>
 </Report>
 ```
-**⚠️ Vor Deploy verifizieren (ADR-5):**
-- `LEAD_SOURCE` oder `LEAD.LEAD_SOURCE` — vor Deploy Retrieve abgleichen.
-  (Das Standard-Report-Feld-Name könnte mit oder ohne `LEAD.`-Prefix sein —
-  aus `sf project retrieve start --metadata "Report"` lesen.)
-- `LEAD.Owner` oder `OWNER_ID` / `OWNER_NAME` — vor Deploy abgleichen.
-  (Im Lead-Report ist es meist `LEAD.Owner` oder `OWNER_ID`; `OWNER_ID` zeigt
-  die Owner-Name, `LEAD.Owner` zeigt ebenfalls die Namen.)
-- `LEAD.IS_CONVERTED` — Standardfeld, Format `LEAD.`-Prefix + `IS_CONVERTED`.
-  (Falls Deploy fehlschlägt: `IS_CONVERTED` ohne Prefix versuchen oder aus
-  Retrieve lesen.)
-- `LEAD.Data_Quality__c` — Custom-Feld, API-Name korrekt (kein Report-
-  Feld-Name), wie House-Pattern.
+**Spaltennamen verifiziert** per Analytics-API (ADR-5b) — kein Retrieve nötig.
 
 #### 6. `manifest/scr394-phase2-referencing.xml`
 ```xml
@@ -317,9 +326,23 @@ Feld-Einlage, `Readonly`.)
     <version>67.0</version>
 </Package>
 ```
-(Report-Member `Folder/Name`-Format — House-Muster `Sales/Lead_
+(Report-Member `Folder/Name`-Format — House-Muster `Sales/Lead_\
 Nachfassliste.report-meta.xml` im Repo; kein neuer `ReportFolder`, der
 Ordner „Sales“ existiert bereits.)
+
+#### 7. `manifest/scr394-phase3-apextests.xml`
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-394 Phase 3: Apex-Tests (Wert + FLS) — NACH Phase 2 (feld-existence). Compile nur; CI foehrt via RunLocalTests. -->
+    <types>
+        <members>SCRUM394DataQualityTest</members>
+        <members>SCRUM394DataQualityFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>
+```
 
 ## Test-Kriterien (Architect-Definition, zusätzlich zu den PO-ACs)
 - **TC1 (AC1 vollständig):** Lead mit gefülltem `Email`, `Phone`, `Company`
@@ -334,12 +357,13 @@ Ordner „Sales“ existiert bereits.)
   Persist, kein Refresh-Schritt).
 - **TC5 (AC2 report existiert):** Bericht `Offene_Leads_nach_Quelle` im
   Ordner `Sales`, auf `LeadList`, format Summary.
-- **TC6 (AC3 org-weit):** als Benutzer mit Bericht-Zugriff geöffnet → zeigt
-  **alle** `IsConverted=false` Leads der Org, inkl. Leads **anderer**
-  User. Report-Level Sharing = „All users“ (Org-Schritt, ADR-5).
-  **Verifikation**: als Benutzer ohne Ownership über fremde Leads den Bericht
-  öffnen und zählen, dass auch fremde Leads sichtbar sind (Playwright oder
-  `sf reports run`).
+- **TC6 (AC3 org-weit):** `<scope>org</scope>` im Report-Source (AC3 erfüllt
+  **im Code**). Als Benutzer mit Bericht-Zugriff geöffnet → zeigt **alle**
+  `IsConverted=false` Leads der Org, inkl. Leads **anderer** User.
+  **Verifikation**: Bericht ausführen (E2E oder Analytics-Run) und Zeilen
+  gegen `SELECT COUNT() FROM Lead WHERE IsConverted=false` (SOQL, volle Org-
+  Sicht) abgleichen. Report-Level Sharing „All users“ (Org-Schritt, ADR-5a)
+  steuert nur die **Sichtbarkeit** des Berichts, nicht AC3-Datensatzbereich.
 - **TC7 (AC3 konvertiert außen):** 1 konvertierter Lead (`IsConverted=true`)
   → erscheint **nicht** im Bericht.
 - **TC8 (AC4 Blank-Gruppe):** Lead mit leerer `LeadSource` → erscheint in der
@@ -362,10 +386,13 @@ Ordner „Sales“ existiert bereits.)
 - **Lightning-Platzierung** — @devops-agent, App Builder, nach dem Deploy
   (ADR-7). Blockt den PR nicht, blockt aber die AC1-TC12-Verifikation
   von @tester-agent.
-- **Report-Level „All users“** — @devops-agent, Org-Schritt, nach PR-Merge
-  (ADR-5). Blockt nicht den PR; für AC3-TC6 (org-weit) Pflicht.
-- **Report-Feldnamen `LEAD_SOURCE` / `LEAD.Owner`** — @developer-agent,
-  vor dem Report-Deploy (ADR-5). 1 Retrieve.
+- **Report-Level Sharing „All users“** — @devops-agent, Org-Schritt,
+  Release-Runbook (ADR-5a). Blockt den PR **und** AC3 nicht: AC3 =
+  `<scope>org</scope>` (im Source). Sharing = wer den Bericht öffnen darf.
+- **Report-Feldnamen** — verifiziert per Analytics-API (ADR-5b), kein
+  weiterer Schritt.
+- **Apex/E2E-Tests** — Phase 3 (House-Regel, PR-Blocker): Wert-Test +
+  FLS-Test + E2E-Berichts-Spec (AC-Abnahme braucht benannte Artefakte).
 - **„Telefon“ = `Phone` vs. `Phone` oder `MobilePhone`?** — Default:
   `Phone` (PO-Text, AC1: „Telefon“). Falls @po-agent `MobilePhone`
   inklusive meint → ADR-3 um 1 `NOT(ISBLANK())` erweitern. Blockiert
@@ -378,10 +405,13 @@ Ordner „Sales“ existiert bereits.)
    — `Data_Quality__c`.
 2. `sf project deploy start -f manifest/scr394-phase2-referencing.xml`
    — PS, Lead-Layout, Report.
-3. **Org-Schritte** (nicht per Deploy):
+3. `sf project deploy start -f manifest/scr394-phase3-apextests.xml`
+   — Apex-Tests (Value + FLS). CI führt sie aus.
+4. **Org-Schritte** (nicht per Deploy):
    a. **Report-Level Sharing**: Bericht in der Org öffnen → Einstellungen →
       „Access/Shared With“ → **„All users“** (Report-Level, nicht Folder-
-      Level). (AC3, ADR-5.)
+      Level). (ADR-5a, Sichtbarkeit des Berichts; AC3 kommt aus
+      `<scope>org</scope>` im Source.)
    b. **Lightning Placement**: App Builder, Lead-Record-Page, Feld
       `Data_Quality__c` in Section „Datenqualität“ (oder eine passende
       Standard-Section) platzieren. (AC1, ADR-7.)
