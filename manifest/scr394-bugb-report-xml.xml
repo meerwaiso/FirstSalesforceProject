@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-394 BUG-B: Report-XML showDetails=false → true (Architect 16415, commit abd64f5). -->
+    <types>
+        <members>Sales/Offene_Leads_nach_Quelle</members>
+        <name>Report</name>
+    </types>
+    <version>67.0</version>
+</Package>
