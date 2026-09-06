@@ -301,12 +301,31 @@ geprüft, Read-back bestätigt“ ist KEIN Test (Haus-Regel, SCRUM-359).
     <name>Offene_Leads_nach_Quelle</name>
     <reportType>LeadList</reportType>
     <scope>org</scope>
-    <showDetails>false</showDetails>
+    <showDetails>true</showDetails>
     <showGrandTotal>true</showGrandTotal>
     <showSubTotals>true</showSubTotals>
 </Report>
 ```
 **Spaltennamen verifiziert** per Analytics-API (ADR-5b) — kein Retrieve nötig.
+
+**`<showDetails>true</showDetails>` — Korrektur 2026-09-06 (BUG-B-Entscheidung, Tester-Rejection 16414):**
+Spec-Fehler lag in diesem Doc (Stand vorher: `false`). AC5 verlangt sichtbare Zeilen
+(Name, Firma, Status, Datenqualität, Inhaber) — ein Summary-Report mit
+`showDetails=false` rendert nur die Gruppen-Zeilen, keine Lead-Zeilen.
+Das Element ist ein gültiges Report-Source-Metadaten-Element: A/B-Probe
+via Dry-Run gegen die Test-Org (2026-09-06): `<showDetails>true</showDetails>`
+→ `Dry-run complete` (gültig); Control `<notAReportElement>` →
+`invalid at this location in type Report (25:24)` (Schema-Fehler wie erwartet).
+**Fix im PR:** `Offene_Leads_nach_Quelle.report-meta.xml`: `false` → `true`.
+Die E2E-Spec (AC5-Asserts) ist korrekt — keine Spec-Änderung.
+
+**Org-Fakten für die Spec-Fixes (VERIFIZIERT via SOQL, 2026-09-06):**
+- `LeadSource`-Picklistwert ist **`Web`** (nicht `Website`) — Distribution der
+  62 offenen Leads: `null`=35 (Blank-Gruppe), `Web`=7, `Purchased List`=7,
+  `Email`=5, `Phone Inquiry`=4, `Partner Referral`=4.
+- Nicht-aggregierter Count: `SELECT COUNT(Id) FROM Lead WHERE IsConverted=false`
+  läuft via `sf data query` (aggregierte Aliase in `GROUP BY`/`ORDER BY`
+  brauchen Anführungszeichen: `ORDER BY "c" DESC`).
 
 #### 6. `manifest/scr394-phase2-referencing.xml`
 ```xml
