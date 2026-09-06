@@ -8,7 +8,7 @@
     <columns><field>OWNER</field></columns>
     <filter>
         <criteriaItems>
-            <column>LEAD.IS_CONVERTED</column>
+            <column>IS_CONVERTED</column>
             <operator>equals</operator>
             <value>false</value>
         </criteriaItems>
