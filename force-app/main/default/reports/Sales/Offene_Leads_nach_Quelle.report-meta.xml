@@ -22,7 +22,7 @@
     <name>Offene_Leads_nach_Quelle</name>
     <reportType>LeadList</reportType>
     <scope>org</scope>
-    <showDetails>false</showDetails>
+    <showDetails>true</showDetails>
     <showGrandTotal>true</showGrandTotal>
     <showSubTotals>true</showSubTotals>
 </Report>
