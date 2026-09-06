@@ -7,21 +7,22 @@
  *   "unvollständig" otherwise — evaluated at view time from the CURRENT
  *   field values (AC1: "zum Zeitpunkt der Betrachtung").
  *
- * ORG CONSTRAINT (verified by validate 0Af...KrRR0A0):
- *   Lead.Company is REQUIRED in this org (DML with blank Company fails with
- *   REQUIRED_FIELD_MISSING: [Company]). Schema.DescribeFieldResult.getFormula()
- *   is NOT available in this API surface, so the "Company blank" branch of
- *   the formula cannot be introspected from Apex. Its correctness is covered
- *   by:
- *     1. The DML-required-field guard (missingCompany_isBlockedByRequiredFieldGuard).
- *     2. The live org-verified report result (AC3 e2e test — see spec): 62/62
- *        open Leads, 6 source groups, 35 in the blank-source group. If the
- *        formula missed the Company input, the count of "vollständig" rows
- *        would be off by every lead with company set. The report row-count
- *        comparison therefore proves end-to-end that the formula reflects
- *        all three inputs correctly.
- *   The two DML-reachable branches (blank Email, blank Phone) ARE asserted
- *   directly below.
+ * ORG CONSTRAINTS (verified by validate runs, see comments):
+ *   1. Lead.Company is REQUIRED in this org (DML with blank Company fails
+ *      with REQUIRED_FIELD_MISSING: [Company]). The "Company blank" branch
+ *      of the formula cannot be probed via DML; it is covered by the
+ *      DML-required-field guard (missingCompany_isBlockedByRequiredFieldGuard)
+ *      below and by the AC3 e2e report row-count assertion.
+ *   2. The formula TEXT cannot be read from Apex in this Org/API:
+ *        - Schema.DescribeFieldResult.getFormula()            -> "not a valid method"
+ *          (Probe-Deploy 0Af...CoWo0AK on SCRUM394Probe.cls)
+ *        - FieldDefinition (Tooling API) via plain Apex SOQL   -> "No such column 'Formula'"
+ *          (validate run 0Af...CrJO0A0)
+ *      The formula text is therefore read only OUT-OF-BAND (CLI `sf metadata
+ *      get` / retrieve), which is exactly how every other metadata check in
+ *      this repo is done. The two DML-reachable branches (Email, Phone) are
+ *      asserted directly below — which is the part that catches formula drift
+ *      on the inputs the formula can actually observe on Lead records.
  *
  * House shape: SCRUM382CustomerSinceDaysTest.cls (query back after DML —
  * formula fields are not populated on the in-memory sObject).
@@ -48,7 +49,7 @@ private class SCRUM394DataQualityTest {
 
     @isTest
     static void allThreeFilled_showsVollstaendig() {
-        Lead l = makeLead('TEST-SCRUM-394-FULL', 'full@example.com', '+4930123', 'TestfirmaFull');
+        Lead l = makeLead('TEST-SCRUM-394-FULL', 'full@example.com', '+4****23', 'TestfirmaFull');
         System.assertEquals(
             'vollständig', readValue(l.Id),
             'Email + Phone + Company all filled -> "vollständig" (AC1)'
@@ -57,7 +58,7 @@ private class SCRUM394DataQualityTest {
 
     @isTest
     static void missingEmail_showsUnvollstaendig() {
-        Lead l = makeLead('TEST-SCRUM-394-NOEMAIL', null, '+4930123', 'TestfirmaNoEmail');
+        Lead l = makeLead('TEST-SCRUM-394-NOEMAIL', null, '+4****23', 'TestfirmaNoEmail');
         System.assertEquals(
             'unvollständig', readValue(l.Id),
             'Blank Email -> "unvollständig" (AC1)'
@@ -65,7 +66,7 @@ private class SCRUM394DataQualityTest {
     }
 
     @isTest
-    static void missingPhone_showsUnvollstaendig() {
+    static void missingPhone_showsUnvollStaendig() {
         Lead l = makeLead('TEST-SCRUM-394-NOPHONE', 'phone@example.com', null, 'TestfirmaNoPhone');
         System.assertEquals(
             'unvollständig', readValue(l.Id),
@@ -102,13 +103,13 @@ private class SCRUM394DataQualityTest {
         // at the moment of viewing. A formula (not a trigger-maintained field)
         // recomputes on every read, so a change to one of the inputs must
         // immediately flip the result in the same transaction.
-        Lead l = makeLead('TEST-SCRUM-394-FLIP', 'flip@example.com', '+4930123', 'TestfirmaFlip');
+        Lead l = makeLead('TEST-SCRUM-394-FLIP', 'flip@example.com', '+4****23', 'TestfirmaFlip');
         System.assertEquals('vollständig', readValue(l.Id), 'Precondition: fully filled -> vollständig');
 
         l.Email = null; // email vanishes -> incomplete
         update l;
         System.assertEquals(
-            'unvollständigkeit'.length() == 0 ? 'vollständig' : 'unvollständig', readValue(l.Id),
+            'unvollständig', readValue(l.Id),
             'After blanking Email the value must flip to "unvollständig" (AC1: current state, not stale)'
         );
 
@@ -136,6 +137,10 @@ private class SCRUM394DataQualityTest {
         System.assert(
             f.getType() == Schema.DisplayType.STRING,
             'Data_Quality__c must be a Text field (PO wants the word values vollständig/unvollständig)'
+        );
+        System.assertEquals(
+            0, f.getPicklistValues().size(),
+            'Data_Quality__c must have NO Picklist values — the two literals are inside the formula, not a controlled vocabulary'
         );
     }
 }
