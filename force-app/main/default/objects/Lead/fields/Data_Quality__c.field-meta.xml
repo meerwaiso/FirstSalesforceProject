@@ -4,7 +4,6 @@
     <label>Datenqualität</label>
     <description>Abgeleitetes, read-only Datenqualitäts-Label (SCRUM-394): „vollständig“ wenn Email, Phone und Company alle gefüllt, sonst „unvollständig“. Systemberechnet.</description>
     <formula>IF(AND(NOT(ISBLANK(Email)), NOT(ISBLANK(Phone)), NOT(ISBLANK(Company))), "vollständig", "unvollständig")</formula>
-    <length>255</length>
     <required>false</required>
     <trackTrending>false</trackTrending>
     <type>Text</type>
