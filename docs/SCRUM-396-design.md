@@ -6,13 +6,19 @@
 > confirmed on this project repeatedly). Build the files from THIS doc.
 > Do not copy names out of the Jira comment.
 
-> **Version 2.0 — 7.9. 14:20 (CORRIGENDUM).** v1.0 (7.9. 13:26, branch-Commit
-> b93a2e0) ist widerlegt und gilt NICHT mehr. Verändert: ADR-3 (ReportType-
-> Entscheidung) und Komponente 4 (Bericht). Begründung mit Verifikations-
-> Belegen in ADR-3 „Warum v1.0 falsch war“. Komponenten 1–3 (Feld, Layout,
-> Permission Set) sind unverändert gültig. Der Developer baut ab sofort von
-> v2.0 — die deployed Report-Datei aus v1.0 (`ContactList`, `scope=org`,
-> `OWNER_FULL_NAME`) ist **defekt** und wird ersetzt, nicht geflickt.
+> **Version 2.1 — 7.9. 17:10 (CORRIGENDUM II).** v2.0 (7.9. 14:20,
+> Commit 84bb35d) korrigiert v1.0 (b93a2e0); v2.1 korrigiert v2.0. ADR-3 wird
+> ersetzt: `<join outerJoin=true relationship=Account__r>` ist org-seitig
+> widerlegt (Server validiert Join-Relationships gegen die **Child-**
+> Relationships des Basis-Objekts; Contact hat keine Child-Relationship zu
+> Account — Account ist Parent via `AccountId`; vier Token getestet, alle
+> `No such relationship`). Ersatz = Lookup-Traversal `Account.Name` im
+> Contact-Bereich ohne `<join>` — deployet grün (Probe-CR), AC4 inhärent
+> erfüllt (Traversal ≠ Inner Join). Änderungen: ADR-3 + Komponente 4a
+> ersetzt; 4b-Spalten-Mapping (Gruppierungstoken) ergänzt. Komponenten 1–3
+> und 4b-Struktur unverändert gültig. Der Developer baut ab sofort von v2.1 —
+> die Report-Dateien aus v1.0 (ContactList) und v2.0 (`<join>`-CR) sind
+> **defekt** und werden ersetzt, nicht geflickt.
 
 ## Goal
 Ein neuer, systemgerechneter Kontakt-Wert „Betreuungsstufe“ (keine/normal/hoch,
@@ -75,9 +81,9 @@ sehen es auch“ = PS in der Org den Kontakt-lesenden Benutzern zuweisen →
 @devops-agent Follow-up, blockt nicht. Objekt-Level-Zugreich ersetzt **kein**
 explizites fieldPermissions (FLS wird nie von CRUD geerbt).
 
-### ADR-3 (v2.0): Custom Report Type mit OUTER JOIN + `scope=organization` — standard `ContactList` trägt die ACs NICHT
+### ADR-3 (v2.1): Custom Report Type OHNE `<join>` + Lookup-Traversal `Account.Name` — ContactList trägt die ACs NICHT, v2.0-Join-Mechanismus existiert NICHT
 
-**Warum v1.0 falsch war — drei Verifikationen, alle org-/schema-seitig belegt:**
+**Warum v1.0 (Standard-ReportType) falsch war — drei Verifikationen (unverändert zu v2.0):**
 
 1. **AC4 (und damit AC3) untragbar mit `ContactList`.** Der Analytics describe
    der Test-Org (7.9., `reportTypeMetadata`) trägt `hasOuterJoin: false` →
@@ -88,9 +94,7 @@ explizites fieldPermissions (FLS wird nie von CRUD geerbt).
    `WHERE AccountId != NULL` → **24** (532 gesamt, 95,7 % ohne Account).
    `ContactList` zeigt also 24 von 532 — AC4 „Kontakte ohne Firma erscheinen
    in einer eigenen Gruppe, nicht weggelassen“ und damit AC3 „alle Kontakte
-   der Organisation“ sind verletzt. v1.0 hatte diesen Fall als Deploy-
-   Checkpoint mit Fallback deklariert; die Datenlage macht den Fallback zur
-   **Pflicht**.
+   der Organisation“ sind verletzt.
 2. **`<scope>org</scope>` ist bei ContactList invalid.** Lead-Report-House-Tag
    (`LeadList`) ohne Prüfung übernommen. ContactList-Scope-Picklist:
    `my/user/team/organization/scopingRule`; **`organization` = „All
@@ -98,36 +102,57 @@ explizites fieldPermissions (FLS wird nie von CRUD geerbt).
    die Org-API verifiziert.)
 3. **Inhaber-Spalte (AC6):** `OWNER_FULL_NAME` = `fqn Contact.Account.Owner.
    Name`, Label „Account Owner“ — das ist der **Account**-Inhaber, nicht der
-   Kontakt-Inhaber. Der Kontakt-Inhaber ist im Contact-Reporttype-Kontext das
-   Feld **`Owner` des Basis-Objekts (Contact)** (im ContactList-Analytics-
-   Kontext Token `CONTACT_OWNER` = Label „Contact Owner“,
-   `fqn Contact.Owner.Name`). Beleg: Analytics describe der Test-Org (7.9.),
-   beide Tokens aus `reportTypeMetadata.categories[].columns` geordnet.
-   Im ReportXML des Custom-ReportType (Basisobjekt Contact) wird der
-   Kontakt-Owner mit `<field>Owner</field>` aus der Contact-Sektion referenziert.
+   Kontakt-Inhaber. Der Kontakt-Inhaber ist das Feld **`Owner` des
+   Basis-Objekts (Contact)** (im ContactList-Analytics-Kontext Token
+   `CONTACT_OWNER` = Label „Contact Owner“, `fqn Contact.Owner.Name`).
+   Beleg: Analytics describe der Test-Org (7.9.). Im Custom-ReportType-XML
+   (Basisobjekt Contact) wird der Kontakt-Owner mit `<field>Owner</field>`
+   aus der Contact-Sektion referenziert.
 
-**Entscheidung:** Custom Report Type `SCRUM396_Betreuungslast` (Basisobjekt
-Contact), OUTER-JOIN auf Account, vier Contact-Felder (Name, Owner,
-Open_Cases_Count__c, Betreuungsstufe__c) + Account-Name als Sektionen;
-Report darauf mit `scope=organization`, Gruppierung
-`ACCOUNT.NAME` (gejoint, darf NICHT zusätzlich in `<columns>` stehen —
-Deploy-Fehler, verifiziert). Sum-Aggregate **ist** source-deploybar (v1.0
-hat das als Org-UI-Schritt deklariert — falsch; Beleg: offizielles
-Report-Metadaten-Schema `ReportColumn.aggregateTypes : ReportSummaryType[]`
-aus dem `forcedotcom/sf-skills`-Repo + die offiziellen Report-Beispiele
-`platform-report-generate` tragen `<aggregateTypes>Sum</aggregateTypes>` im
-Deploy-XML, z. B. `OpportunitiesByStageReport` auf `AMOUNT`). → **Kein
-Org-UI-Schritt für AC5 needed**; der Developer deployt die Sum direkt.
+**Warum v2.0 (Custom Report Type mit `<join>`) ebenfalls falsch war — org-seitig widerlegt, 7.9. 17:00 (Developer-Deploy-Probe gegen Test-Org):**
+
+4. **`<relationship>` validiert gegen CHILD-Relationships des Basis-Objekts —
+   nicht gegen Parent-Lookups.** Der Server akzeptiert als `<relationship>`
+   nur **Child-Relationship-Felder** (1-to-many von Basisobjekt zum Joinziel).
+   Contact hat **keine** Child-Relationship zu Account — Account ist Contact's
+   *Parent* (Access via `Contact.AccountId`). Vier Kandidaten getestet, alle
+   abgelehnt: `Account`, `Contacts`, `AccountId`, `Account__r` → jeweils
+   `No such relationship X on object Contact`.
+   **Beleg, dass der Join-Mechanismus selbst funktioniert:** Probe-CR
+   `SCRUM396_Probe_AccountContacts` mit `base=Account` +
+   `<relationship>Contacts</relationship>` deployet grün — die inverse
+   Richtung ist strukturell ausgeschlossen.
+
+**Entscheidung (v2.1):**
+- Custom Report Type `SCRUM396_Betreuungslast` (Basisobjekt **Contact**,
+  **ohne `<join>`-Block**). Account-Daten kommen per **Lookup-Traversal**
+  `<field>Account.Name</field>` direkt in der Contact-Sektion — derselbe
+  Dots-Pfad-Mechanismus, den der offizielle ReportType-Schema für
+  `Owner.Email` dokumentiert.
+- Lookup-Traversal ist **kein Inner Join** → Kontakte ohne Account fallen NICHT
+  raus, sondern liefern einen leeren `Account.Name` → **null-Gruppe entsteht
+  inhärent** (AC4 ohne Join-Konfiguration). `hasOuterJoin` ist in diesem CR
+  irrelevant (es beschreibt nur das `<join>`-Element, das nicht vorhanden ist).
+- Contact-Sektion: vier Felder (`Name`, `Owner`, `Open_Cases_Count__c`,
+  `Betreuungsstufe__c`) + `Account.Name` als Traversal; keine zweite
+  Sektion.
+- Report darauf mit `scope=organization`, Gruppierung über den Traversal-
+  Pfad `Contact.Account.Name` (Kandidat 1 fürs Grouping; 2 = `ACCOUNT.NAME`;
+  3 = retrieve-geprüftes Lookup-Token — Verify-Loop s. 4b), Sum-Aggregate
+  via `<aggregateTypes>Sum</aggregateTypes>` (source-deploybar; Beleg:
+  offizielles Report-Metadaten-Schema `ReportColumn.aggregateTypes` +
+  `platform-report-generate`-Beispiele).
+- **Deploy-Reihenfolge:** erst ReportType, dann Report (sonst "unknown
+  reportType" im Schema-Check).
+- Probe-CRs (`SCRUM396_Probe_AccountContacts`, `SCRUM396_Probe_NoJoin`) sind
+  befristete Artefakte der Verifikation und werden beim finalen Deploy des
+  Product-CRs (Manifest `scr396-delete-probes.xml`) gelöscht.
 
 **Ordner/Sharing (AC2):** unchanged zu v1.0 — `force-app/main/default/
 reports/Sales/` = vorhandener „Sales“-Ordner; Ordner-sharing wie die beiden
 Bestandsreports. `scope=organization` regelt die Datenbreite (alle Kontakte),
 keine ordnerseitige Regel. (Verifizierung, dass der Serviceleiter den Ordner
 sieht = @tester.)
-
-**Deploy-Reihenfolge (wichtig):** erst ReportType deployen, dann Report —
-andere Reihenfolge: Report-Deploy schlägt fehl auf „unknown reportType“
-(Schema-Validierung prüft existierende ReportTypes).
 
 ## Komponenten (exakte Dateien)
 
@@ -189,25 +214,22 @@ als zweite `<layoutColumns>` oder Anhang der bestehenden — neben
 Zuweisung an die Kontakt-lesenden Benutzer in der Org = @devops-agent
 Follow-up (blockt nicht).
 
-### 4a. Custom Report Type `SCRUM396_Betreuungslast`
+### 4a. Custom Report Type `SCRUM396_Betreuungslast` (v2.1 — **ohne `<join>`**, Lookup-Traversal)
 `force-app/main/default/reporttypes/SCRUM396_Betreuungslast.reportType-meta.xml`
-(`<join>`/`<sections>`-Shape 1:1 zu den offiziellen Beispielen
-`AccountsWithProjects` und `AccountProjectsWithTasks` aus dem
-`forcedotcom/sf-skills`-Repo — outer join, dotted path in `<table>`):
+(Ersatz für die v2.0-`<join>`-Variante, die der Server verwirft — s. ADR-3 #4.
+Die Probe `SCRUM396_Probe_NoJoin` hat diesen no-join-Traversal-Shape gegen die
+Test-Org deployet: grün. `Account.Name` im Contact-Bereich = derselbe
+Dotted-Path-Basis wie `Owner.Email` im offiziellen Schema.)
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <ReportType xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>SCRUM396_Betreuungslast</fullName>
     <label>Betreuungslast nach Firma</label>
-    <description>SCRUM-396: ALLE Kontakte der Org (inkl. ohne Account, outer join — AC3/AC4) mit Betreuungsstufe und offenen Faelle; Gruppierung nach Account.</description>
+    <description>SCRUM-396: ALLE Kontakte der Org (inkl. ohne Account — Lookup-Traversal, AC3/AC4) mit Betreuungsstufe und offenen Faelle; Gruppierung nach Account.</description>
     <deployed>true</deployed>
     <category>other</category>
     <baseObject>Contact</baseObject>
-    <join>
-        <outerJoin>true</outerJoin>
-        <relationship>Account</relationship>
-    </join>
     <sections>
         <columns>
             <checkedByDefault>true</checkedByDefault>
@@ -229,25 +251,31 @@ Follow-up (blockt nicht).
             <field>Betreuungsstufe__c</field>
             <table>Contact</table>
         </columns>
-        <masterLabel>Kontakte</masterLabel>
-    </sections>
-    <sections>
         <columns>
             <checkedByDefault>true</checkedByDefault>
-            <field>Name</field>
-            <table>Account</table>
+            <field>Account.Name</field>
+            <table>Contact</table>
         </columns>
-        <masterLabel>Firma</masterLabel>
+        <masterLabel>Kontakte</masterLabel>
     </sections>
 </ReportType>
 ```
-- `<relationship>Account</relationship>` = die Lookup-Relation vom Contact
-  zum Account (Contact-Field `AccountId`); OUTER join → Basis-Kontakte bleiben
-  in jeder Zeile (AC4: null-Gruppe erscheint, 508 von 532 Zeilen).
+- **KEIN `<join>`-Block** — `Contact.AccountId` ist ein Lookup auf den
+  Parent-Account; `<relationship>` akzeptiert nur Child-Relationships (ADR-3 #4).
+  Account-Name kommt per Lookup-Traversal `<field>Account.Name</field>` im
+  Contact-Bereich.
+- AC4 inhärent: Lookup-Traversal ≠ Inner Join — Kontakte ohne Account
+  liefern einen leeren `Account.Name`, der als null-Gruppe in den Bericht
+  geht (508 von 532 Zeilen).
 - `category=other` (es gibt kein `contacts`-Attribut für CRs; unkritisch).
 - `fullName`/`label` dürfen in einer Org nicht kollidieren — bei Name-
   Kollision im Deploy: `fullName` bleibt wie oben, `label` kann gekürzt
   werden; die Struktur bleibt unverändert.
+- **Wichtig für 4b:** Die Firma-Spalte gehört NICHT in `<columns>` des Reports,
+  sondern ausschließlich in `groupingsDown` über das Traversal-Feld
+  `Contact.Account.Name` (Kandidat 1 — see 4b Token-Tabelle). Die v2.0
+  Variante mit separate Account-Section kann nicht verwendet werden, da
+  die Account-Table ohne `<join>` nicht existiert.
 
 ### 4b. Bericht „Betreuungslast nach Firma“
 `force-app/main/default/reports/Sales/Betreuungslast_nach_Firma.report-meta.xml`
@@ -258,7 +286,7 @@ Contact, gejoint Account):
 | AC-Anforderung | Spalte im CR | Status |
 |---|---|---|
 | Name | Contact `Name` (Basisobjekt) | ⚠️ Token unverified, s. u. |
-| Firma | Account `Name` (gejoin, **nur in `groupingsDown`**) | ✅ verifiziert (`ACCOUNT.NAME` in ContactList; darf NICHT zusätzlich in `<columns>` stehen) |
+| Firma | Contact `Account.Name` (Lookup-Traversal, **nur in `groupingsDown`**) | ⚠️ Token unverified (Kandidat 1 = `Contact.Account.Name`; 2 = `ACCOUNT.NAME`; 3 = retrieve-geprüfter Lookup-Name). Darf NICHT zusätzlich in `<columns>` stehen. |
 | Inhaber | Contact `Owner` = **Kontakt-Owner**; ⚠️ NICHT Account-Owner | ✅ Semantik verifiziert (Analytics describe: `CONTACT_OWNER` = Label „Contact Owner“, `fqn Contact.Owner.Name`, vs. `OWNER_FULL_NAME` = Label „Account Owner“, `fqn Contact.Account.Owner.Name`); Token im CR-XML unverified, s. u. |
 | Offene Fälle | Contact `Open_Cases_Count__c`, **zusätzlich** als Sum-Aggregate (AC5) | ✅ Feld + Aggregate source-deploybar (Schema `ReportColumn.aggregateTypes`; vgl. offizielle Beispiele mit `<aggregateTypes>Sum</aggregateTypes>`); Token im CR-XML unverified, s. u. |
 | Betreuungsstufe | Contact `Betreuungsstufe__c` | ⚠️ Token unverified, s. u. |
@@ -357,7 +385,8 @@ leer, nicht falsch; das Report-Erzeugnis zeigt, was gerendert wurde.
 - [ ] Feld auf dem Standard-Kontakt-Layout (Sektion „Offene Faelle“).
 - [ ] PS Read-FLS deployed; Feld via `record-ui` sichtbar, nicht editierbar.
 - [ ] **ReportType `SCRUM396_Betreuungslast` deployed** (CR zuerst!); via
-      Metadata-API read-back: `hasOuterJoin=true` (bzw. `<outerJoin>true`).
+      Metadata-API read-back: keine `<join>`-Section im ReportType (v2.1
+      verifiziert — s. ADR-3), `scopeInfo` enthält `organization`.
 - [ ] **Report `Betreuungslast_nach_Firma` deployed** (nach CR), `reportType=
       SCRUM396_Betreuungslast`, `scope=organization`, im Ordner Sales.
 - [ ] **AC4 hard (NICHT „wäre schön“):** SOQL `SELECT COUNT(Id) FROM Contact

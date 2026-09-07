@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Report xmlns="http://soap.sforce.com/2006/04/metadata">
     <name>Betreuungslast_nach_Firma</name>
-    <description>Betreuungslast je Firma (SCRUM-396): ALLE Kontakte der Organisation (scope organization, AC3), primär gruppiert nach Account (Firma); Kontakte ohne Account in null-/&quot;Keine Firma&quot;-Gruppe, nicht weggelassen (AC4, outer join im CR). Je Gruppe: Record Count UND Summe offener Faelle (AC5); Detail: Name, Firma, Betreuungsstufe, offene Faelle, Inhaber (AC6).</description>
+    <description>Betreuungslast je Firma (SCRUM-396): alle Kontakte (scope organization, AC3), gruppiert nach Account; ohne Account in null-Gruppe (AC4). Je Gruppe: Record Count + Sum offene Faelle (AC5); Detail: Name, Firma, Stufe, offene Faelle, Inhaber (AC6).</description>
     <reportType>SCRUM396_Betreuungslast</reportType>
     <scope>organization</scope>
     <format>Summary</format>
@@ -19,7 +19,7 @@
         <field>Contact.Owner</field>
     </columns>
     <groupingsDown>
-        <field>ACCOUNT.NAME</field>
+        <field>Contact.Account.Name</field>
         <sortOrder>Asc</sortOrder>
     </groupingsDown>
     <showDetails>true</showDetails>

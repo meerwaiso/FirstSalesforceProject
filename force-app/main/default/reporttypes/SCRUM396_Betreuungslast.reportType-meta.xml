@@ -2,14 +2,10 @@
 <ReportType xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>SCRUM396_Betreuungslast</fullName>
     <label>Betreuungslast nach Firma</label>
-    <description>SCRUM-396: ALLE Kontakte der Org (inkl. ohne Account, outer join — AC3/AC4) mit Betreuungsstufe und offenen Faelle; Gruppierung nach Account.</description>
+    <description>SCRUM-396 v2.1: ALLE Kontakte der Org (inkl. ohne Account — Lookup-Traversal statt Join, AC3/AC4) mit Betreuungsstufe und offenen Faelle; Gruppierung nach Account via Traversal-Pfad.</description>
     <deployed>true</deployed>
     <category>other</category>
     <baseObject>Contact</baseObject>
-    <join>
-        <outerJoin>true</outerJoin>
-        <relationship>Account</relationship>
-    </join>
     <sections>
         <columns>
             <checkedByDefault>true</checkedByDefault>
@@ -31,14 +27,11 @@
             <field>Betreuungsstufe__c</field>
             <table>Contact</table>
         </columns>
-        <masterLabel>Kontakte</masterLabel>
-    </sections>
-    <sections>
         <columns>
             <checkedByDefault>true</checkedByDefault>
-            <field>Name</field>
-            <table>Account</table>
+            <field>Account.Name</field>
+            <table>Contact</table>
         </columns>
-        <masterLabel>Firma</masterLabel>
+        <masterLabel>Kontakte</masterLabel>
     </sections>
 </ReportType>
