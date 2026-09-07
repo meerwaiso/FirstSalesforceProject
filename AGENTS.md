@@ -65,6 +65,7 @@ restate a rule in full here.
 **Tests**
 - Playwright authenticates only via the frontdoor.jsp exchange in globalSetup, shared through storageState. No login page, no raw sid cookie → *Tester Agent SOUL*
 - Never guess a locator — probe it, and use exactly one per element → *Tester Agent SOUL*
+- Reading back your own action is not verification. Confirming that the comment posted, the review landed or the file was written checks your action, not the result. Before you state that something IS in a given state — a CI run, a ticket's assignee, a branch head, a value in the org — look at that state. And a peer's report is never a primary source: on 2026-09-07 an approval called a CI run "queued" four minutes after it had failed, a tester reported a handoff he had not performed, and a CLI flag was introduced that the CLI rejects by name. Each was one command away from being checked → *Core Principles*
 - Never guess any name the platform owns — a field, a report column, a picklist value, a scope value, a metadata path. Ask the platform: `sf sobject describe`, `analytics/reportTypes/<Type>`, the CLI's own metadataRegistry.json. A deploy validator is a rejection oracle: it answers "is THIS name right?" with no, and never "what names are there?" — a name space cannot be searched with it. Skill: `salesforce-describe-first` → *Core Principles*
 - `waitForLoadState('networkidle')` is forbidden on Lightning pages → *Tester Agent SOUL*
 - No dummy assertions, and no assertion reachable only inside an `if` without a failing branch → *Tester Agent SOUL*
