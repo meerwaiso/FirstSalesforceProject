@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Lead.Data_Quality__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM394_LeadDataQuality</label>
+    <description>Read-FLS für Lead "Datenqualität" (SCRUM-394). Systemberechnetes Formelfeld (read-only); kein Write-PS, keine Apex/DML.</description>
+</PermissionSet>

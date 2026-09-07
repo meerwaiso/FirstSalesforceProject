@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns><field>FIRST_NAME</field></columns>
+    <columns><field>LAST_NAME</field></columns>
+    <columns><field>COMPANY</field></columns>
+    <columns><field>STATUS</field></columns>
+    <columns><field>Lead.Data_Quality__c</field></columns>
+    <columns><field>OWNER</field></columns>
+    <filter>
+        <criteriaItems>
+            <column>CONVERTED</column>
+            <operator>equals</operator>
+            <value>false</value>
+        </criteriaItems>
+    </filter>
+    <format>Summary</format>
+    <groupingsDown>
+        <field>LEAD_SOURCE</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <description>Offene Leads (CONVERTED=false) der gesamten Organisation, gruppiert nach Lead-Quelle, Record Count je Quelle; Leads ohne Quelle in (blank)-Gruppe. Scope "org" = All leads (AC3).</description>
+    <name>Offene_Leads_nach_Quelle</name>
+    <reportType>LeadList</reportType>
+    <scope>org</scope>
+    <showDetails>true</showDetails>
+    <showGrandTotal>true</showGrandTotal>
+    <showSubTotals>true</showSubTotals>
+</Report>
