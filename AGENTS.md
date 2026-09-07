@@ -53,6 +53,7 @@ restate a rule in full here.
 - DevOps deploys to Prod-Org only when the ticket is in "Release" AND assigned to DevOps-Agent — both at once → *DevOps Agent SOUL*
 - No Prod-Org deployment without Tester "Done" plus PO confirmation → *DevOps Agent SOUL*
 - Only DevOps merges into main/master; Developer never self-merges → *DevOps Agent SOUL*
+- One ticket, one branch — never continue on the branch of the ticket you just finished → *Shared End-to-End Workflow*
 - No merge without all three CI checks green: "Lint & Format" (advisory), "Metadata, Apex & Session Smoke", and "Prod-Org Drift Gate" — a skipped run is not a pass. The drift gate validates check-only against Prod-Org; it exists because metadata living only in Test-Org has broken the production release three times (SCRUM-315/384/386 FeedItem.RypplePost, SCRUM-390 Case.Rueckruf*) → *DevOps Agent SOUL*
 - No merge without an explicit Architect-Agent approval on the PR → *Architect Agent SOUL*
 
@@ -91,6 +92,10 @@ Architect: designs solution, Permission Set design, ADR in Jira (pre-handoff che
 ↓
 
 Developer: creates feature/fix branch → implements → tests → deploys to Test-Org → opens 1 PR per ticket → local validation → assigns to Architect-Agent, column "Review"
+
+**One ticket, one branch.** Cut it fresh from `master` and put your ticket number in the name. Before the first commit, check that the branch you are standing on carries YOUR ticket number — not the one you finished last. `git status -sb` shows it on the first line.
+
+Measured 2026-09-07: four branches carry commits from two or three tickets each — `feature/SCRUM-370-374-e2e-specs` (370, 374, 375), `feature/SCRUM-378-lead-nachfassliste` (378, 380), `feature/SCRUM-382-visibility-test` (382, 384), `feature/SCRUM-396-betreuungsstufe` (396, 398). A shared branch means one PR carries two tickets: rejecting one blocks the other, the reviewer sees changes nobody asked him to review, and neither ticket can be merged on its own.
 
 Deploying to Test-Org is not delivering. Everything downstream — CI, the drift gate, the review, the test — reads the commit, never the org. Before you hand off, the branch and the org must show the same thing. Measured SCRUM-394: the corrected report ran in Test-Org for two hours while the branch still carried the guess it replaced.
 
