@@ -99,23 +99,72 @@ jobs:
             --set-default --alias Test-Org
           rm -f "$RUNNER_TEMP/sfdx-auth.txt"
 
+      # Apex test scope — this is a quota decision, not a thoroughness decision.
+      #
+      # The org accepts max(500, 10 x test classes) ApexTestQueueItem rows per
+      # ROLLING 24 h. With 26 test classes the floor of 500 applies, and every
+      # test class in a run costs one row. A full run below plus the advisory
+      # validate spent ~52 rows per CI run — about ten runs a day for the whole
+      # team. On 2026-09-07 the team spent them by 19:16 and every Apex run in
+      # the org, CI and manual alike, then failed with a bare UNKNOWN_EXCEPTION
+      # until the window rolled. The error names neither tests nor the quota.
+      #
+      # So a branch runs only its own ticket's tests, master runs everything.
+      # Test classes are named SCRUM<nnn>...Test, so the ticket in the branch
+      # name selects them. No ticket in the branch name, or no matching class:
+      # fall back to the full run. Spending quota beats skipping tests silently.
+      - name: Determine Apex test scope
+        if: steps.guard.outputs.has_auth == 'true'
+        id: scope
+        run: |
+          zweig="${{ github.head_ref || github.ref_name }}"
+          klassen=""
+          if [ "$zweig" != "master" ]; then
+            ticket=$(printf '%s' "$zweig" | grep -oE 'SCRUM-?[0-9]+' | head -1 | tr -d '-')
+            if [ -n "$ticket" ]; then
+              klassen=$(ls force-app/main/default/classes/ \
+                | sed -n "s/^\(${ticket}[A-Za-z0-9_]*Test\)\.cls$/\1/p" \
+                | paste -sd, -)
+            fi
+          fi
+          if [ -n "$klassen" ]; then
+            echo "level=RunSpecifiedTests" >> "$GITHUB_OUTPUT"
+            echo "classes=$klassen" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Apex test scope::RunSpecifiedTests — $klassen"
+          else
+            echo "level=RunAllTestsInOrg" >> "$GITHUB_OUTPUT"
+            echo "classes=" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Apex test scope::RunAllTestsInOrg (full suite)"
+          fi
+
       # Gate 1 — Apex tests must pass. `sf apex run test` reports coverage but
       # does not enforce a threshold, which is what we want here: the suite is
       # green today (15/15) while overall coverage is still 37%.
       #
-      # TEST-LEVEL: RunAllTestsInOrg. Same broad path as `RunLocalTests` without
-      # `--class-names` — the explicit spelling, kept so a runner flake can be
-      # read directly as such (the BUG-A repro was on this path; named runs green).
+      # TEST-LEVEL: set by the step above. RunAllTestsInOrg is the same broad
+      # path as `RunLocalTests` without `--class-names` — the explicit spelling,
+      # kept so a runner flake can be read directly as such (the BUG-A repro was
+      # on this path; named runs green).
       # See Jira SCRUM-394 comment 16496 for the full BUG-A context.
       - name: Run Apex tests
         if: steps.guard.outputs.has_auth == 'true'
         run: |
-          sf apex run test \
-            --test-level RunAllTestsInOrg \
-            --code-coverage \
-            --result-format human \
-            --output-dir apex-test-results \
-            --wait 30
+          if [ "${{ steps.scope.outputs.level }}" = "RunSpecifiedTests" ]; then
+            sf apex run test \
+              --test-level RunSpecifiedTests \
+              --class-names "${{ steps.scope.outputs.classes }}" \
+              --code-coverage \
+              --result-format human \
+              --output-dir apex-test-results \
+              --wait 30
+          else
+            sf apex run test \
+              --test-level RunAllTestsInOrg \
+              --code-coverage \
+              --result-format human \
+              --output-dir apex-test-results \
+              --wait 30
+          fi
 
       # Advisory — a full check-only deploy. Currently blocked by Salesforce's
       # 75% coverage requirement (org-wide coverage is 37%, and
@@ -127,10 +176,18 @@ jobs:
         if: steps.guard.outputs.has_auth == 'true'
         continue-on-error: true
         run: |
-          sf project deploy validate \
-            --source-dir force-app \
-            --test-level RunLocalTests \
-            --wait 30
+          if [ "${{ steps.scope.outputs.level }}" = "RunSpecifiedTests" ]; then
+            sf project deploy validate \
+              --source-dir force-app \
+              --test-level RunSpecifiedTests \
+              --tests "${{ steps.scope.outputs.classes }}" \
+              --wait 30
+          else
+            sf project deploy validate \
+              --source-dir force-app \
+              --test-level RunLocalTests \
+              --wait 30
+          fi
 
       # Gate 3 — proves the Playwright auth layer still works against this org
       - name: Install Chromium
