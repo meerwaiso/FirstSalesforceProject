@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-394 Phase 3: die 2 Apex-Test-Klassen (Review-Blocker). Compile nur; CI führt sie via RunLocalTests aus. -->
+    <types>
+        <members>SCRUM394DataQualityTest</members>
+        <members>SCRUM394DataQualityFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

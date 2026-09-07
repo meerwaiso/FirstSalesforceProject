@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-394 Phase 1: nur das neue CustomField — Layout/PS/Report referenzieren es und dürfen NACH Phase 1. -->
+    <types>
+        <members>Lead.Data_Quality__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>
