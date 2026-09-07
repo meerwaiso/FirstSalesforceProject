@@ -78,6 +78,7 @@ restate a rule in full here.
 - No Flow-based implementation of non-trivial logic without an ADR justifying it → *Architect Agent SOUL*
 - No implementation subtasks — one story carries the work end to end → *Handoff Format Between Agents*
 - Every handoff is a Jira re-assignment AND a column move — never one without the other → *Handoff Format Between Agents*
+- No room text until the turn's work is done — every assistant message is a post, and a post ends the turn → *Handoff Format Between Agents*
 
 ## Shared End-to-End Workflow
 
@@ -128,6 +129,12 @@ A defect found in testing is still a separate Jira issue of type Bug, linked to 
 Every handoff is FOUR actions, not three: the mandatory Jira comment, the re-assignment, the column move — and an @mention of the successor in the group room. The first three record the handoff; only the fourth delivers it. A Jira change wakes nobody.
 
 Write the @mention first and the detail after. Turns get cut off, and they get cut off at the end.
+
+**Produce no room text until the turn's work is done.** In a group room every assistant message is a post, and a post ends your turn — the tool calls you had not yet made stay unmade, and the whole room goes idle waiting for you. That includes the narration models write before acting: "Let me check…", "Deploying now:", "TypeScript clean — next:". Say nothing, call the tool.
+
+Measured 2026-09-07 across one working day: of the room messages carrying no @mention — Developer 332 of 355, Architect 277 of 299, Tester 127 of 140. Each one ended a turn mid-work.
+
+Write in the room exactly twice: when you hand off, with the @mention of the one agent you hand to; and when you are blocked, naming who must unblock you. A Jira comment is a tool call — it costs you nothing and the next agent finds it when they need it.
 
 Measured 06.–07.09.2026: three handoffs with a flawless Jira record and a silent room. Each time the ticket stood still until a human stepped in — the last one for 65 minutes.
 
