@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns>CaseNumber</columns>
+    <columns>Subject</columns>
+    <columns>Priority</columns>
+    <columns>Processing_Duration__c</columns>
+    <columns>Eskalationsstufe__c</columns>
+    <columns>Owner</columns>
+    <filters>
+        <field>Eskalationsstufe__c</field>
+        <operation>includes</operation>
+        <value>kritisch, erhöht</value>
+    </filters>
+    <filters>
+        <field>Status</field>
+        <operation>notEqual</operation>
+        <value>Closed</value>
+    </filters>
+    <fullName>Eskalierte_Faelle</fullName>
+    <filterScope>Everything</filterScope>
+    <label>Eskalierte Fälle</label>
+</ListView>
