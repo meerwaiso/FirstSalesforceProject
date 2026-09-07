@@ -88,11 +88,16 @@ jobs:
       # Gate 1 — Apex tests must pass. `sf apex run test` reports coverage but
       # does not enforce a threshold, which is what we want here: the suite is
       # green today (15/15) while overall coverage is still 37%.
+      #
+      # TEST-LEVEL: RunAllTestsInOrg. Same broad path as `RunLocalTests` without
+      # `--class-names` — the explicit spelling, kept so a runner flake can be
+      # read directly as such (the BUG-A repro was on this path; named runs green).
+      # See Jira SCRUM-394 comment 16496 for the full BUG-A context.
       - name: Run Apex tests
         if: steps.guard.outputs.has_auth == 'true'
         run: |
           sf apex run test \
-            --test-level RunLocalTests \
+            --test-level RunAllTestsInOrg \
             --code-coverage \
             --result-format human \
             --output-dir apex-test-results \
