@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ReportType xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SCRUM396_Betreuungslast</fullName>
+    <label>Betreuungslast nach Firma</label>
+    <description>SCRUM-396: ALLE Kontakte der Org (inkl. ohne Account, outer join — AC3/AC4) mit Betreuungsstufe und offenen Faelle; Gruppierung nach Account.</description>
+    <deployed>true</deployed>
+    <category>other</category>
+    <baseObject>Contact</baseObject>
+    <join>
+        <outerJoin>true</outerJoin>
+        <relationship>Account</relationship>
+    </join>
+    <sections>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Name</field>
+            <table>Contact</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Owner</field>
+            <table>Contact</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Open_Cases_Count__c</field>
+            <table>Contact</table>
+        </columns>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Betreuungsstufe__c</field>
+            <table>Contact</table>
+        </columns>
+        <masterLabel>Kontakte</masterLabel>
+    </sections>
+    <sections>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Name</field>
+            <table>Account</table>
+        </columns>
+        <masterLabel>Firma</masterLabel>
+    </sections>
+</ReportType>
