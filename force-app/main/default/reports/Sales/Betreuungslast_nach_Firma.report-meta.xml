@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns><field>NAME</field></columns>
+    <columns><field>COMPANY</field></columns>
+    <columns><field>Contact.Betreuungsstufe__c</field></columns>
+    <columns><field>Open_Cases_Count__c</field></columns>
+    <columns><field>OWNER</field></columns>
+    <format>Summary</format>
+    <groupingsDown>
+        <field>COMPANY</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <name>Betreuungslast_nach_Firma</name>
+    <description>Betreuungslast je Firma: ALLE Kontakte der Organisation (scope org, AC3), primär gruppiert nach Account (Firma); Kontakte ohne Account in null-/&quot;Keine Firma&quot;-Gruppe, nicht weggelassen (AC4). Je Gruppe: Record Count (Kontakte) UND Summe offener Faelle (AC5). Detail: Name, Firma, Betreuungsstufe, offene Faelle, Inhaber (AC6). Summenfeld Open_Cases_Count__c nach Live-Deploy als Sum-Aggregate setzen (Design-Doc-Checkpoint).</description>
+    <reportType>ContactList</reportType>
+    <scope>org</scope>
+    <showDetails>true</showDetails>
+    <showGrandTotal>true</showGrandTotal>
+    <showSubTotals>true</showSubTotals>
+</Report>

@@ -89,6 +89,10 @@
                 <behavior>Readonly</behavior>
                 <field>Open_Cases_Rating__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Betreuungsstufe__c</field>
+            </layoutItems>
         </layoutColumns>
         <style>TwoColumnsTopToBottom</style>
     </layoutSections>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Contact.Betreuungsstufe__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM396_Betreuungsstufe</label>
+    <description>Read-FLS für Contact "Betreuungsstufe" (SCRUM-396). Systemgerechnetes Formelfeld (read-only); kein Write-PS, keine Apex/DML.</description>
+</PermissionSet>
