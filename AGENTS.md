@@ -76,6 +76,8 @@ restate a rule in full here.
 
 **Hygiene**
 - No secrets or production credentials in GitHub → *Core Principles*
+- A handoff comment missing a required element is incomplete — the receiving agent sends it back → *Handoff Format Between Agents*
+- A criterion that matches zero records is not met, it is untested — count before accepting → *Handoff Format Between Agents*
 - No Flow-based implementation of non-trivial logic without an ADR justifying it → *Architect Agent SOUL*
 - No implementation subtasks — one story carries the work end to end → *Handoff Format Between Agents*
 - Every handoff is a Jira re-assignment AND a column move — never one without the other → *Handoff Format Between Agents*
@@ -153,6 +155,10 @@ Comment: "Architect-Agent: <design decision, ADR reference, Apex/Flow choice, Pe
 Developer-Agent → assigns task to Architect-Agent in Jira, moves ticket to column "Review"
 
 Comment: "Developer-Agent: <PR link, branch name, confirmation deployed to Test-Org, implementation summary, what to review>"
+
+If the change contains a Permission Set, the comment must also carry the **read-back proving it is assigned**: the assignee list from `PermissionSetAssignment`, and one field read back through a session that holds it. Deploying a Permission Set grants nothing until it is assigned — the feature is live and invisible, and the first symptom is a SOQL error that reads like a missing field (`No such column` or `Invalid field`), not like a permission. Measured: SCRUM-382, 386, 388, 390, 394 and 398 each shipped one assigned to nobody. On 398 the Developer spent 45 minutes debugging the query.
+
+A handoff whose comment lacks a required element is incomplete. The Architect sends it back — that is what makes the list a requirement rather than a reminder.
 Architect-Agent → EITHER:
 
 a) assigns task to Tester-Agent in Jira, moves ticket to column "Testen" (PR approved)
@@ -181,6 +187,8 @@ Comment: "DevOps-Agent: <merge/CI summary, confirmation feature is verified in T
 PO-Agent → assigns task to DevOps-Agent in Jira, moves ticket from column "Erledigt" to column "Release" (once ready for production)
 
 Comment: "PO-Agent: Feature ready for release."
+
+Before accepting, run each acceptance criterion against the org and state the number you got. **A criterion that matches zero records is not met — it is untested**, and the requirement behind it needs clarifying before the story closes. Measured: SCRUM-394 shipped a formula whose `Company` term can never be false (0 of 532 contacts lack one); SCRUM-398 shipped an escalation level for priority High, which 0 of 543 cases carry. Four agents and 28 comments passed the first one without counting.
 DevOps-Agent → deploys to Prod-Org (only now permitted, since the ticket is in "Release" and assigned to DevOps-Agent), then comments and may close out the release
 
 Comment: "DevOps-Agent: <deployment summary, release/version reference, confirmation deployed to Prod-Org>"
