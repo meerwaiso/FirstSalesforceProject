@@ -28,6 +28,7 @@ for (Lead l : [SELECT Id, IsConverted, ConvertedAccountId FROM Lead WHERE LastNa
     }
 }
 if (fixtureId == null) {
-    throw new IllegalStateException('SCRUM-394 TC7: fixture lead TEST-SCRUM-394-CONV not seeded by spec (sfCount/create path failed?)');
+    System.debug('SCRUM394-TC7 WARNING: fixture lead TEST-SCRUM-394-CONV not found - seed path failed, nothing to convert');
+    System.assert(false, 'SCRUM-394 TC7: fixture lead TEST-SCRUM-394-CONV not seeded by spec (sfCount/create path failed?)');
 }
 System.debug('SCRUM394-TC7 CONV fixture ready: ' + fixtureId);

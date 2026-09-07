@@ -1,13 +1,23 @@
 import { test, expect } from '@playwright/test';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 
 const REPORT_ID = '00OWU00000QEIUL2A5';
 // TC7 seed-helper path, relative to the repo root (Playwright cwd = repo root, testDir = ./tests/e2e).
 const Tc7SeedApexPath = 'tests/e2e/scratch/SCRUM394_Tc7SeedConvLead.apex';
 
+// 16453 root cause: the previous `execSync(`sf ${args.join(' ')}`)` ran the args through a SHELL,
+// which split the -v value into multiple argv tokens (Phone=+49 30 ... -> "Unexpected argument" exit 2).
+// `sfRaw` must NOT shell-wrap: it passes the args straight to the process (no shell).
+//
+// `-v` itself is STILL a single argv element whose content is the documented form:
+//   "Enclose values that contain spaces in single quotes."   (--help, 2026-09-07, CLI 2.139.6)
+// The space-delimited pairs and the inner single-quote are the SF CLI's OWN field-value syntax (see the
+// same --help text). Under execFileSync that string reaches the CLI as exactly ONE argv token, so the
+// shell never re-splits it and the CLI's own parser handles the inner quotes — no double-escaping, no
+// literal quote characters, no splitting.
 function sfRaw(args: string[]): string {
   try {
-    return execSync(`sf ${args.join(' ')} 2>/dev/null`, {
+    return execFileSync('sf', args, {
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
       maxBuffer: 16 * 1024 * 1024,
@@ -45,13 +55,24 @@ function seedFixture(f: FixtureSpec) {
 // OPEN lead above, then flip it to REALLY converted via Database.convertLead in anonymous Apex. The apex
 // block verifies IsConverted=true + ConvertedAccountId!=null on read-back before returning.
 function convertConvFixture() {
-  const out = execSync(`sf apex run -o Test-Org -f ${Tc7SeedApexPath} --json 2>/dev/null`, {
+  const out = execFileSync('sf', ['apex', 'run', '-o', 'Test-Org', '-f', Tc7SeedApexPath, '--json'], {
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe'],
     maxBuffer: 16 * 1024 * 1024,
   });
-  expect(out, `TC7 convertLead apex must run; output:\n${out.slice(0, 800)}`).toMatch(/"compiled"\s*:\s*true/);
-  expect(out, `TC7 convertLead apex must not throw; output:\n${out.slice(0, 800)}`).not.toMatch(/Exception/);
+  // sf apex run --json nests the result: {status, result:{success, compiled, compileProblem, ...}}.
+  // Parse as JSON (regex on "compiled":true would also match the `exceptionMessage`/`exceptionStackTrace`
+  // key names in the result envelope, giving a false green on a failed run).
+  let parsed: { status?: number; result?: { success?: boolean; compiled?: boolean; compileProblem?: string; exceptionMessage?: string } };
+  try {
+    parsed = JSON.parse(out);
+  } catch {
+    throw new Error(`TC7 convertLead apex output must be JSON; output:\n${out.slice(0, 800)}`);
+  }
+  const r = parsed.result;
+  expect(r, `apex run must return a result block; output:\n${out.slice(0, 800)}`).toBeTruthy();
+  expect(r!.compiled, `apex must compile; compileProblem: ${r?.compileProblem}\noutput:\n${out.slice(0, 800)}`).toBe(true);
+  expect(r!.success, `apex must execute without throwing; exceptionMessage: ${r?.exceptionMessage}\noutput:\n${out.slice(0, 800)}`).toBe(true);
 }
 
 function ensureFixtures() {
