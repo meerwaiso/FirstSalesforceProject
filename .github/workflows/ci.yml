@@ -88,29 +88,42 @@ jobs:
       # Gate 1 — Apex tests must pass. `sf apex run test` reports coverage but
       # does not enforce a threshold, which is what we want here: the suite is
       # green today (15/15) while overall coverage is still 37%.
+      #
+      # TEST-LEVEL: RunRelevantTests (temporary deviation from RunLocalTests).
+      # Reason: the Test-Org broad test-runner (`RunAllTestsInOrg` / no
+      # `--class-names`) fails with org-side `UNKNOWN_EXCEPTION` (BUG-A) as of
+      # 2026-09-07 — reproduced 4x, all named-class runs green. RunRelevantTests
+      # runs all test classes touched by this PR's diff (9 SCRUM-394 tests +
+      # any others modified) and works on this org.
+      #
+      # This is a TEMPORARY workaround for BUG-A. When the broad runner
+      # recovers, revert `RunRelevantTests` → `RunLocalTests`.
       - name: Run Apex tests
         if: steps.guard.outputs.has_auth == 'true'
         run: |
           sf apex run test \
-            --test-level RunLocalTests \
+            --test-level RunRelevantTests \
             --code-coverage \
             --result-format human \
             --output-dir apex-test-results \
             --wait 30
 
       # Advisory — a full check-only deploy. Currently blocked by Salesforce's
-      # 75% coverage requirement (org-wide coverage is 37%, and
-      # CasePriorityTrigger has no test class at all). Flip
-      # continue-on-error to false once coverage clears 75% — from then on this
-      # is the honest pre-deploy gate, because production deployments enforce
-      # exactly this threshold.
+      # 75% coverage requirement (org-wide coverage is still 37%).
+      #
+      # TEST-LEVEL: RunRelevantTests (same workaround as the gate step above —
+      # BUG-A broad runner is broken org-side. Revert together when fixed.)
+      #
+      # Flip continue-on-error to false once coverage clears 75% — from then on
+      # this is the honest pre-deploy gate, because production deployments
+      # enforce exactly this threshold.
       - name: Validate metadata (check-only, advisory)
         if: steps.guard.outputs.has_auth == 'true'
         continue-on-error: true
         run: |
           sf project deploy validate \
             --source-dir force-app \
-            --test-level RunLocalTests \
+            --test-level RunRelevantTests \
             --wait 30
 
       # Gate 3 — proves the Playwright auth layer still works against this org
