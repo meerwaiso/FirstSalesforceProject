@@ -116,8 +116,13 @@ jobs:
       - name: Determine Apex test scope
         if: steps.guard.outputs.has_auth == 'true'
         id: scope
+        # The branch name reaches the script through the environment, never by
+        # ${{ }} interpolation: git permits $, backticks, parentheses and ';'
+        # in ref names, so an interpolated name is executable text.
+        env:
+          ZWEIG: ${{ github.head_ref || github.ref_name }}
         run: |
-          zweig="${{ github.head_ref || github.ref_name }}"
+          zweig="$ZWEIG"
           klassen=""
           if [ "$zweig" != "master" ]; then
             ticket=$(printf '%s' "$zweig" | grep -oE 'SCRUM-?[0-9]+' | head -1 | tr -d '-')
@@ -148,11 +153,14 @@ jobs:
       # See Jira SCRUM-394 comment 16496 for the full BUG-A context.
       - name: Run Apex tests
         if: steps.guard.outputs.has_auth == 'true'
+        env:
+          STUFE: ${{ steps.scope.outputs.level }}
+          KLASSEN: ${{ steps.scope.outputs.classes }}
         run: |
-          if [ "${{ steps.scope.outputs.level }}" = "RunSpecifiedTests" ]; then
+          if [ "$STUFE" = "RunSpecifiedTests" ]; then
             sf apex run test \
               --test-level RunSpecifiedTests \
-              --class-names "${{ steps.scope.outputs.classes }}" \
+              --class-names "$KLASSEN" \
               --code-coverage \
               --result-format human \
               --output-dir apex-test-results \
@@ -175,12 +183,15 @@ jobs:
       - name: Validate metadata (check-only, advisory)
         if: steps.guard.outputs.has_auth == 'true'
         continue-on-error: true
+        env:
+          STUFE: ${{ steps.scope.outputs.level }}
+          KLASSEN: ${{ steps.scope.outputs.classes }}
         run: |
-          if [ "${{ steps.scope.outputs.level }}" = "RunSpecifiedTests" ]; then
+          if [ "$STUFE" = "RunSpecifiedTests" ]; then
             sf project deploy validate \
               --source-dir force-app \
               --test-level RunSpecifiedTests \
-              --tests "${{ steps.scope.outputs.classes }}" \
+              --tests "$KLASSEN" \
               --wait 30
           else
             sf project deploy validate \
