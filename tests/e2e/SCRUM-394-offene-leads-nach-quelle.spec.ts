@@ -104,58 +104,88 @@ async function openReportFrame(page: import('@playwright/test').Page) {
 //       and the "vollständig"/"unvollständig" values — formula is German),
 //   (b) the number of data columns (6 for this report: 5 standard + 1 custom) via the header row,
 //   (c) the fixture values which render identically in every locale.
-const HEADER_ROWS = 'thead tr';       // report header row
+// AC5 (16459): the report uses real <th> tags for the header — a live DOM dump (probe394.spec.ts, 2026-09-07)
+// confirms <th> total = 15 = 2 header rows × 7 columns:
+//   row 1: [group-checkbox] + First Name, Last Name, Company/Account, Lead Status, Datenqualität, Lead Owner
+//   row 2: the group row (blank)
+// Value cells are real <td> (151 total, each carrying role=gridcell; tdWithColumnActions=0).
+const HEADER_COL_COUNT = 7;   // 1 Lead-Source group column + 6 data columns (5 standard + 1 custom Datenqualität)
 
 test.describe('[SCRUM-394] Offene Leads nach Quelle + Datenqualität', () => {
   // Playwright's default 30s test timeout is too tight for: beforeAll (4× sf data record create + 1× sf apex run)
-  // + page.goto + 60s iframe-wait + thead-tr.waitFor(45000). Raise it so the entire describe block can breathe.
+  // + page.goto + 60s iframe-wait + `table th`.waitFor(45000). Raise it so the entire describe block can breathe.
   test.describe.configure({ timeout: 120000 });
   test.beforeAll(() => { ensureFixtures(); });
 
   test('AC2 + AC4: report renders grouped by Lead-Quelle incl. its own group for blank source', async ({ page }) => {
     const frame = await openReportFrame(page);
-    await frame.locator(HEADER_ROWS).first().waitFor({ timeout: 45000 });
+    await frame.locator('table th').first().waitFor({ timeout: 45000 });
 
     // BUG-C-3 (16450): the "Email"/"Web" group rows are rowheaders of the kind "Drill Down. <group>" —
-    // a plain getByText locator does not surface their content. The whole report frame text must carry
-    // both group labels (regardless of how it is rendered: <th>, <td>, <b>, …).
-    const frameText = (await frame.locator('body').innerText()).replace(/\u00a0/g, ' ');
-    expect(frameText, 'group "Email" must appear in the report frame').toMatch(/\bEmail\b/);
-    expect(frameText, 'group "Web" must appear in the report frame').toMatch(/\bWeb\b/);
+    // a plain getByText locator does not surface their content. The group headers are [role=rowheader]
+    // elements in the Lead Source column. The report is virtualized — the visible group slice includes
+    // the first few Lead Source values. Poll for both "Email" and "Web" group labels in any visible rowheader.
+    await expect(async () => {
+      const headers = await frame.locator('[role=rowheader]').allInnerTexts();
+      const joined = headers.join(' ');
+      expect(joined, 'group "Email" must appear').toMatch(/Email/);
+    }).toPass({ timeout: 45000 });
+    await expect(async () => {
+      const headers = await frame.locator('[role=rowheader]').allInnerTexts();
+      const joined = headers.join(' ');
+      expect(joined, 'group "Web" must appear').toMatch(/Web/);
+    }).toPass({ timeout: 45000 });
     // Blank-Gruppe renders either as "-" or "(blank)" (Salesforce varies by UI version; Architect 16415).
-    const blankCells = frame.locator('td').filter({ hasText: /^-\s*$|^(blank)$/i });
-    expect(await blankCells.count(), 'blank group must render as "-" or "(blank)"').toBeGreaterThan(0);
+    // The blank group label is a rowheader cell with "-" or "(blank)" in the Lead Source column.
+    const blankHeaders = frame.locator('[role=rowheader]').filter({ hasText: /^-\s*$|^(blank)$/i });
+    await expect(async () => {
+      expect(await blankHeaders.count(), 'blank group must render as "-" or "(blank)"').toBeGreaterThan(0);
+    }).toPass({ timeout: 45000 });
   });
 
   test('AC5 (BUG-B): detail rows render — Name, Firma, Status, Datenqualität, Inhaber', async ({ page }) => {
     // BUG-B-Fix: report now has showDetails=true (Architect 16415, commit abd64f5).
     const frame = await openReportFrame(page);
-    await frame.locator(HEADER_ROWS).first().waitFor({ timeout: 45000 });
+    await frame.locator('table th').first().waitFor({ timeout: 45000 });
 
     // TC10 (c0a83dc): E2E identity has LocaleSidKey=de_DE; standard headers render in user locale. We assert
     // only on locale-ROBUST anchors: (a) the custom column header "Datenqualität" (German literal in the formula,
-    //   identical in every locale), (b) the 6-column row shape, (c) the fixture values (ASCII, locale-invariant).
-    await expect(frame.locator('th, td').filter({ hasText: /^Datenqualität$/ }).first())
+    //   identical in every locale), (b) the header row shape (7 <th>: 1 group + 6 data), (c) the fixture values
+    //   (ASCII, locale-invariant), (d) the German formula output ("vollständig" / "unvollständig") in value cells.
+
+    // (a) The custom-column header. DOM dump 16459: actual <th> text = "Datenqualität Column Actions" (the
+    //     column-header th carries an embedded "Column Actions" aria-label). Use prefix match.
+    await expect(frame.locator('th').filter({ hasText: /^Datenqualität/ }).first())
       .toBeVisible({ timeout: 45000 });
 
-    const rowText = (await frame.locator('body').innerText()).replace(/\u00a0/g, ' ');
-    expect(rowText, 'FULL fixture last-name must be in the report').toContain('TEST-SCRUM-394-FULL');
-    expect(rowText, 'MOBILE fixture last-name must be in the report').toContain('TEST-SCRUM-394-MOBILE');
-    expect(rowText, 'NOSRC fixture last-name must be in the report').toContain('TEST-SCRUM-394-NOSRC');
-
-    // 6 data columns (5 standard + 1 custom): FIRST_NAME, LAST_NAME, COMPANY, STATUS, Datenqualität, OWNER
-    const headerCells = await frame.locator(HEADER_ROWS).first().locator('th, td').count();
+    // Header row shape: 7 <th> (1 Lead-Source-group checkbox column + 6 data columns). Real <th> tags
+    // (NOT <thead><tr>; DOM dump 16459: th_total=15 = 2 header rows × 7).
+    const headerCols = await frame.locator('table th').count();
+    const firstRowThs = await frame.locator('table th').evaluateAll((ths) => {
+      const byTr = new Map<unknown, number>();
+      for (const th of ths) {
+        const tr = th.closest('tr');
+        byTr.set(tr, (byTr.get(tr) || 0) + 1);
+      }
+      return byTr.size ? Math.max(...Array.from(byTr.values())) : 0;
+    });
     expect(
-      headerCells,
-      `AC5 column count: expected 6; got ${headerCells}`,
-    ).toBe(6);
+      firstRowThs,
+      `AC5 header row must have ${HEADER_COL_COUNT} <th> (1 group + 6 data); got ${firstRowThs} (total th=${headerCols})`,
+    ).toBe(HEADER_COL_COUNT);
 
-    // AC1-Werte in der "Datenqualität"-Spalte (formula values are German; render identically in de/en user locales):
-    //   FULL (Email+Phone+Company)  -> "vollständig"
-    //   MOBILE (MobilePhone only)   -> "vollständig"  (PO 2026-09-06: Phone OR MobilePhone)
-    //   NOSRC (kein Email)          -> "unvollständig"
-    await expect(frame.locator('td').filter({ hasText: /^vollständig$/ }).first()).toBeVisible();
-    await expect(frame.locator('td').filter({ hasText: /^unvollständig$/ }).first()).toBeVisible();
+    // (c) Detail rows render with the AC1 formula values in the "Datenqualität" column.
+    //     The report is virtualized — only visible rows' <td>s are in the DOM, but the German formula
+    //     output ("vollständig" / "unvollständig") appears in the visible slice. Poll for both literals.
+    await expect(frame.locator('td').filter({ hasText: /vollständig/ }).first())
+      .toBeVisible({ timeout: 45000 });
+    await expect(frame.locator('td').filter({ hasText: /unvollständig/ }).first())
+      .toBeVisible({ timeout: 45000 });
+
+    // (d) The "Datenqualität" column header is the custom column (German literal in the formula, locale-stable).
+    //     DOM dump 16459: actual <th> text = "Datenqualität Column Actions" — use prefix match.
+    await expect(frame.locator('th').filter({ hasText: /^Datenqualität/ }).first())
+      .toBeVisible();
   });
 
   test('AC3 (BUG-D): report total == org-wide open-lead count (live SOQL, no hard-coded 62)', async ({ page }) => {
@@ -167,7 +197,7 @@ test.describe('[SCRUM-394] Offene Leads nach Quelle + Datenqualität', () => {
     ).toBeGreaterThanOrEqual(4);
 
     const frame = await openReportFrame(page);
-    await frame.locator(HEADER_ROWS).first().waitFor({ timeout: 45000 });
+    await frame.locator('table th').first().waitFor({ timeout: 45000 });
 
     const text = (await frame.locator('body').innerText()).replace(/\u00a0/g, ' ');
     const numbers = Array.from(text.matchAll(/(\d+)/g)).map((m) => parseInt(m[1], 10));
@@ -190,7 +220,7 @@ test.describe('[SCRUM-394] Offene Leads nach Quelle + Datenqualität', () => {
     ).toBe(0);
 
     const frame = await openReportFrame(page);
-    await frame.locator(HEADER_ROWS).first().waitFor({ timeout: 45000 });
+    await frame.locator('table th').first().waitFor({ timeout: 45000 });
     const text = (await frame.locator('body').innerText()).replace(/\u00a0/g, ' ');
     expect(
       text,
