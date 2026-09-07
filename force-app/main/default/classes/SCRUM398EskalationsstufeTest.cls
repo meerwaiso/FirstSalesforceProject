@@ -54,8 +54,8 @@ private class SCRUM398EskalationsstufeTest {
     static void highPriorityOverdue_showsKritisch() {
         Case c = makeCase('TEST-398-KRITISC', 'High', true);
         System.assertEquals(
-            'kritisch', readValue(c.Id),
-            'High Priority + Overdue -> "kritisch" (AC1)'
+            'Kritisch', readValue(c.Id),
+            'High Priority + Overdue -> "Kritisch" (AC1)'
         );
     }
 
@@ -63,8 +63,8 @@ private class SCRUM398EskalationsstufeTest {
     static void mediumPriorityOverdue_showsErhoht() {
         Case c = makeCase('TEST-398-ERHOH', 'Medium', true);
         System.assertEquals(
-            'erhöht', readValue(c.Id),
-            'Medium Priority + Overdue -> "erhöht" (AC1)'
+            'Erhöht', readValue(c.Id),
+            'Medium Priority + Overdue -> "Erhöht" (AC1)'
         );
     }
 
@@ -72,8 +72,8 @@ private class SCRUM398EskalationsstufeTest {
     static void lowPriorityOverdue_showsNormal() {
         Case c = makeCase('TEST-398-NORMAL', 'Low', true);
         System.assertEquals(
-            'normal', readValue(c.Id),
-            'Low Priority + Overdue -> "normal" (AC1: no escalation rule for Low)'
+            'Normal', readValue(c.Id),
+            'Low Priority + Overdue -> "Normal" (AC1: no escalation rule for Low)'
         );
     }
 
@@ -81,8 +81,8 @@ private class SCRUM398EskalationsstufeTest {
     static void highPriorityNotOverdue_showsNormal() {
         Case c = makeCase('TEST-398-NOTOD', 'High', false);
         System.assertEquals(
-            'normal', readValue(c.Id),
-            'High Priority + Not Overdue -> "normal" (AC1)'
+            'Normal', readValue(c.Id),
+            'High Priority + Not Overdue -> "Normal" (AC1)'
         );
     }
 
@@ -91,8 +91,8 @@ private class SCRUM398EskalationsstufeTest {
         // SCRUM-390 rule: "Geschlossener Case ist nie überfällig"
         Case c = makeCase('TEST-398-CLOSED', 'High', false);
         System.assertEquals(
-            'normal', readValue(c.Id),
-            'Closed Case -> "normal" even if Priority=High (SCRUM-390 formula enforces this)'
+            'Normal', readValue(c.Id),
+            'Closed Case -> "Normal" even if Priority=High (SCRUM-390 formula enforces this)'
         );
     }
 
@@ -100,7 +100,7 @@ private class SCRUM398EskalationsstufeTest {
     static void valueFollowsCurrentState_notPersistedStale() {
         // AC1: the value must reflect CURRENT Is_Overdue__c + Priority at view time.
         Case c = makeCase('TEST-398-FLIP', 'Low', false);
-        System.assertEquals('normal', readValue(c.Id), 'Precondition: Low/NotOverdue -> normal');
+        System.assertEquals('Normal', readValue(c.Id), 'Precondition: Low/NotOverdue -> Normal');
 
         // Update to High/Overdue
         c.Priority = 'High';
@@ -108,8 +108,8 @@ private class SCRUM398EskalationsstufeTest {
         c.Processing_Duration__c = 3;
         update c;
         System.assertEquals(
-            'kritisch', readValue(c.Id),
-            'After High/Overdue -> must flip to "kritisch" (AC1: current state)'
+            'Kritisch', readValue(c.Id),
+            'After High/Overdue -> must flip to "Kritisch" (AC1: current state)'
         );
     }
 
