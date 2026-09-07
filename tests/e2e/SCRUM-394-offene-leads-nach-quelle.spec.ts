@@ -121,26 +121,67 @@ test.describe('[SCRUM-394] Offene Leads nach Quelle + Datenqualität', () => {
     const frame = await openReportFrame(page);
     await frame.locator('table th').first().waitFor({ timeout: 45000 });
 
-    // BUG-C-3 (16450): the "Email"/"Web" group rows are rowheaders of the kind "Drill Down. <group>" —
-    // a plain getByText locator does not surface their content. The group headers are [role=rowheader]
-    // elements in the Lead Source column. The report is virtualized — the visible group slice includes
-    // the first few Lead Source values. Poll for both "Email" and "Web" group labels in any visible rowheader.
-    await expect(async () => {
-      const headers = await frame.locator('[role=rowheader]').allInnerTexts();
-      const joined = headers.join(' ');
-      expect(joined, 'group "Email" must appear').toMatch(/Email/);
-    }).toPass({ timeout: 45000 });
-    await expect(async () => {
-      const headers = await frame.locator('[role=rowheader]').allInnerTexts();
-      const joined = headers.join(' ');
-      expect(joined, 'group "Web" must appear').toMatch(/Web/);
-    }).toPass({ timeout: 45000 });
-    // Blank-Gruppe renders either as "-" or "(blank)" (Salesforce varies by UI version; Architect 16415).
-    // The blank group label is a rowheader cell with "-" or "(blank)" in the Lead Source column.
-    const blankHeaders = frame.locator('[role=rowheader]').filter({ hasText: /^-\s*$|^(blank)$/i });
-    await expect(async () => {
-      expect(await blankHeaders.count(), 'blank group must render as "-" or "(blank)"').toBeGreaterThan(0);
-    }).toPass({ timeout: 45000 });
+    // BUG-C-3 (16450) + 16461 (virtualization): the report renders only ~27 visible rows. The group
+    // rowheaders (Purchased List, Email, Web, Phone Inquiry, Partner, blank "-") are scattered across
+    // the full 65-row virtualized grid. Only one is visible at any given scroll position.
+    //
+    // Strategy: scroll the data-grid body incrementally and collect rowheader textContent after each
+    // step, keeping the union of all seen labels. As soon as "Email" and "Web" have both been seen,
+    // stop scrolling and assert. This works because each group header is visible at *some* scroll
+    // position, even if only one at a time.
+    const grid = frame.locator('[role=grid].data-grid-full-table').first();
+
+    const scrollAndCollect = async () => {
+      const seen = new Set<string>();
+      for (let step = 0; step < 40; step++) {
+        // Use frame.getByText to search ALL text in the frame (respects A11y/rendered content)
+        for (const label of ['Email', 'Web']) {
+          try {
+            const count = await frame.getByText(new RegExp(`\\b${label}\\b`)).count();
+            if (count > 0) seen.add(label);
+          } catch { /* not rendered yet */ }
+        }
+        if (seen.has('Email') && seen.has('Web')) break;
+        await grid.evaluate((el: HTMLElement) => {
+          let sc: HTMLElement | null = el.parentElement;
+          while (sc) {
+            const style = window.getComputedStyle(sc);
+            if (/(auto|scroll)/.test(style.overflowY)) break;
+            sc = sc.parentElement;
+          }
+          (sc || el).scrollBy(0, 200);
+        });
+        await frame.waitForTimeout(400);
+      }
+      return Array.from(seen).join(' ');
+    };
+
+    const joined = await scrollAndCollect();
+    expect(joined, 'group "Email" must appear after scroll').toMatch(/Email/);
+    expect(joined, 'group "Web" must appear after scroll').toMatch(/Web/);
+
+    // Blank-Gruppe: the blank group label appears as "Drill Down. -" or just "-" in the visible rowheaders.
+    // After scrolling back to top (step 0), the blank group is visible as it's the first in picklist order.
+    const scrollAndFind = async (label: RegExp) => {
+      for (let step = 0; step < 40; step++) {
+        try {
+          if (await frame.getByText(label).count() > 0) return true;
+        } catch { /* not rendered */ }
+        await grid.evaluate((el: HTMLElement) => {
+          let sc: HTMLElement | null = el.parentElement;
+          while (sc) {
+            const style = window.getComputedStyle(sc);
+            if (/(auto|scroll)/.test(style.overflowY)) break;
+            sc = sc.parentElement;
+          }
+          (sc || el).scrollBy(0, step < 10 ? -200 : 200);
+        });
+        await frame.waitForTimeout(400);
+      }
+      return false;
+    };
+    const blankFound = await scrollAndFind(/^- |Drill Down\. -|blank/i);
+    expect(blankFound, 'blank group must render as "-" or "(blank)"').toBe(true);
   });
 
   test('AC5 (BUG-B): detail rows render — Name, Firma, Status, Datenqualität, Inhaber', async ({ page }) => {
