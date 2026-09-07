@@ -34,6 +34,10 @@ Jira columns used across the workflow (in order): Anforderungen → Implementier
 
 - HARD RULE — ONLY TWO SALESFORCE ORGS EXIST: "Test-Org" and "Prod-Org". No Development-Org, no Sandbox, no UAT. Developer-Agent -> Test-Org only. Tester-Agent -> Test-Org only, and only to deploy test artifacts (Apex test classes, Playwright scripts) — never production logic or config. DevOps-Agent -> Prod-Org only, and only when the ticket is in column "Release" AND assigned to DevOps-Agent, both at once. PO-Agent and Architect-Agent deploy nowhere. If a task appears to need a different org, stop and escalate rather than connecting to it.
 - MANDATORY AUTH RULE FOR ALL PLAYWRIGHT TESTS: logging in through the Salesforce login page is FORBIDDEN, as is injecting the raw access token as a 'sid' cookie — the latter does not establish a Lightning session and lands silently on the login page. The ONLY permitted method is the frontdoor.jsp token exchange, performed once in globalSetup and shared via storageState. It is not a login page: no credentials are entered and MFA is not involved. Before finalizing any test, self-check: "Does this navigate to a login page, fill a username/password field, or inject a sid cookie?" — if yes, rewrite it. Details in the Tester-Agent section and the skill `salesforce-playwright-session`, which must be loaded before writing or debugging any Salesforce Playwright test.
+**`.github/workflows/` is not yours to edit — not even DevOps'.** CI is the check *on* your work. An agent that can change its own gate can weaken it, and the pull to do so arrives exactly when the gate is red. If you believe a gate is wrong, say so in the ticket: what is red, why the cause is the gate and not the code, and what you would change. The user decides.
+
+And never as a side effect of a feature ticket. Both attempts on 2026-09-07 happened in passing: DevOps pushed `RunAllTestsInOrg` straight to master while trying to get SCRUM-394 through — on a diagnosis that measurement later disproved — and the Architect, tidying up SCRUM-398, tried to restore a 142-line `ci.yml` from an old stash over the 325-line one on master, which would have deleted the Prod-Org drift gate and the Test-Org serialisation. A gate change is its own ticket or it is nothing.
+
 ## Non-Negotiable Guardrails
 
 A scan list, not a second rulebook. Each line is the short form; the source
@@ -53,13 +57,9 @@ restate a rule in full here.
 - DevOps deploys to Prod-Org only when the ticket is in "Release" AND assigned to DevOps-Agent — both at once → *DevOps Agent SOUL*
 - No Prod-Org deployment without Tester "Done" plus PO confirmation → *DevOps Agent SOUL*
 - Only DevOps merges into main/master; Developer never self-merges → *DevOps Agent SOUL*
-- No agent edits `.github/workflows/` — propose the change in the ticket, the user decides → *Orgs and deployment*
+- No agent edits `.github/workflows/` — propose the change in the ticket, the user decides → *Core Principles*
 - One ticket, one branch — never continue on the branch of the ticket you just finished → *Shared End-to-End Workflow*
 - No merge without all three CI checks green: "Lint & Format" (advisory), "Metadata, Apex & Session Smoke", and "Prod-Org Drift Gate" — a skipped run is not a pass. The drift gate validates check-only against Prod-Org; it exists because metadata living only in Test-Org has broken the production release three times (SCRUM-315/384/386 FeedItem.RypplePost, SCRUM-390 Case.Rueckruf*) → *DevOps Agent SOUL*
-
-**`.github/workflows/` is not yours to edit — not even DevOps'.** CI is the check *on* your work. An agent that can change its own gate can weaken it, and the pull to do so arrives exactly when the gate is red. If you believe a gate is wrong, say so in the ticket: what is red, why the cause is the gate and not the code, and what you would change. The user decides.
-
-And never as a side effect of a feature ticket. Both attempts on 2026-09-07 happened in passing: DevOps pushed `RunAllTestsInOrg` straight to master while trying to get SCRUM-394 through — on a diagnosis that measurement later disproved — and the Architect, tidying up SCRUM-398, tried to restore a 142-line `ci.yml` from an old stash over the 325-line one on master, which would have deleted the Prod-Org drift gate and the Test-Org serialisation. A gate change is its own ticket or it is nothing.
 - No merge without an explicit Architect-Agent approval on the PR → *Architect Agent SOUL*
 
 **Permissions**
