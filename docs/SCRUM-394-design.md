@@ -392,12 +392,54 @@ Ordner „Sales“ existiert bereits.)
   steuert nur die **Sichtbarkeit** des Berichts, nicht AC3-Datensatzbereich.
 - **TC7 (AC3 konvertiert außen):** 1 konvertierter Lead (`IsConverted=true`)
   → erscheint **nicht** im Bericht.
+  **Seed-Recipe (2026-09-07 gegen Test-Org verifiziert, Architect-Review von `e96693c`):**
+  Ein konvertierter Lead ist **nicht** per DML/API-Create seedbar:
+  - `Lead.IsConverted`: `createable=true, updateable=false` (Read-back `sobjects/Lead/describe`).
+  - Create mit `IsConverted=true` → `FIELD_INTEGRITY_EXCEPTION: Converted Account empty
+    for a Converted Lead` (Probe 2026-09-07).
+  - Direktes Setzen von `ConvertedAccountId`/`ConvertedOpportunityId` beim Create →
+    `INVALID_FIELD_FOR_INSERT_UPDATE` (FLS nur lesbar, auch für Admin; Probe 2026-09-07).
+  - **Funktionierender Weg (Probe + Read-back verifiziert):** Lead als offene Lead anlegen,
+    dann per anonymem Apex konvertieren (`sf apex run -o Test-Org -f <File>`):
+
+    ```apex
+    Database.LeadConvert lc = new Database.LeadConvert();
+    lc.setLeadId('<LeadId>');
+    lc.setConvertedStatus('Closed - Converted'); // einziger IsConverted=true-Picklistwert (SOQL-Read-back)
+    lc.setDoNotCreateOpportunity(true);          // kein Opportunity (Fixture bleibt selbsttragend)
+    Database.LeadConvertResult r = Database.convertLead(lc);
+    // Read-back verifizieren: IsConverted=true, ConvertedAccountId gesetzt
+    // (Account + Contact werden platformseitig angelegt — Testdaten, verbleiben in der Test-Org)
+    ```
+
+    Die E2E-Fixture ist idempotent wie die übrigen (anlegen falls fehlt; konvertieren nur,
+    wenn `IsConverted=false`), Assert auf Abwesenheit per LastName im Report.
+  **Eigener Design-Doc-Fehler (alte Spec, Heeds `abd64f5`/`e96693c`):** Die alte 4. E2E-Test
+    assertete Abwesenheit der „CONV“-Fixture mit `Status='Closed - Not Converted'` — dieser
+    Status ist laut `LeadStatus.IsConverted=false` (SOQL-Read-back 2026-09-07) **kein**
+    konvertierter Wert, die Fixture war also eine **offene** Lead, die laut FILTER IM Report
+    erscheinen muss. Die Test-Prämisse war kaputt (Fehler dieses Docs). Den alten Test zu löschen
+    und dafür keinen echten konvertierten Lead zu seeden, lässt das explizite
+    Akzeptanzkriterium „Konvertierte Leads bleiben außen vor“ ohne benanntes,
+    bewiesenes Artefakt — das ist ein Coverage-Regression und kein zulässiger Ausweg.
 - **TC8 (AC4 Blank-Gruppe):** Lead mit leerer `LeadSource` → erscheint in der
   **(blank)**-Gruppe im Summary, mit Count ≥ 1.
 - **TC9 (AC4 Record Count):** 2 offene Leads mit Quelle „Website“ + 1 ohne →
   Gruppe „Website“: Count 2, Gruppe (blank): Count 1.
 - **TC10 (AC5 Spalten):** Berichtsrow zeigt: Name (Last+First), Firma
   (`COMPANY`), Status, Datenqualität, Inhaber (Owner).
+  **Achtung Locale (2026-09-07, Architect-Review von `e96693c`):** Die E2E-Identität
+  `devops-agent@cline.test` hat `LocaleSidKey=de_DE` (SOQL-Read-back `User`;
+  `LanguageLocaleKey=en_US`). Die **Standard**-Tabellenkopf-Labels eines Standard-Reports
+  rendern in der **User-Locale** (de_DE → „Vorname", „Nachname", „Firma / Konto",
+  „Lead-Status" …), **nicht** in `LanguageLocaleKey`. Die E2E-Spec assertet aber
+  englische Header („First Name", „Last Name", „Company / Account", "Lead Status",
+  "Lead Owner") → bricht bei laufendem de_DE-Benutzer. Fix-Optionen (Developer wählen):
+  Assertions auf die deutschen Standard-Labels umstellen, **oder** Header nicht per
+  Display-Text sondern per Position/`data-name` asserten (lokalitätsstabil), **oder**
+  E2E-Identität auf en_US (Org-Konfiguration, kein Spec-Fix; mit PO abstimmen).
+  Die Custom-Spalte „Datenqualität" ist sprachneutral; nur die Standard-Header
+  sind lokalisiert.
 - **TC11 (AC1 Layout Classic):** Feld `Data_Quality__c` sichtbar auf dem
   Lead-LAYOUT in Classic, `Readonly` (grau), in Section „Datenqualität“.
 - **TC12 (AC1 Layout Lightning):** Feld sichtbar auf der Lightning-Record-
