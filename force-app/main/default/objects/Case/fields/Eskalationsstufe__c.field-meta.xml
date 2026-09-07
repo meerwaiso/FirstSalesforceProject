@@ -3,7 +3,7 @@
     <fullName>Eskalationsstufe__c</fullName>
     <description>Abgeleitete Eskalationsstufe aus Überfälligkeits-Status und Priorität (SCRUM-398): &quot;kritisch&quot; wenn überfällig UND Priorität High, &quot;erhöht&quot; wenn überfällig UND Priorität Medium, sonst &quot;normal&quot;. Quelle: Is_Overdue__c + Priority; systemgerechnet, von Hand nicht änderbar.</description>
     <externalId>false</externalId>
-    <formula>IF(AND(Is_Overdue__c, TEXT(Priority) = &apos;High&apos;), &apos;kritisch&apos;, IF(AND(Is_Overdue__c, TEXT(Priority) = &apos;Medium&apos;), &apos;erhöht&apos;, &apos;normal&apos;))</formula>
+    <formula>IF(AND(Is_Overdue__c, TEXT(Priority) = &apos;High&apos;), &apos;Kritisch&apos;, IF(AND(Is_Overdue__c, TEXT(Priority) = &apos;Medium&apos;), &apos;Erhöht&apos;, &apos;Normal&apos;))</formula>
     <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
     <label>Eskalationsstufe</label>
     <required>false</required>
