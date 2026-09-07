@@ -50,6 +50,20 @@ jobs:
     name: Metadata, Apex & Session Smoke
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Salesforce runs at most ONE broad Apex test run per org at a time. A
+    # second one is refused — sometimes as ALREADY_IN_PROCESS, sometimes as a
+    # bare UNKNOWN_EXCEPTION that aborts in two seconds with no test results.
+    # The workflow-level group above is per-ref, so two branches could reach
+    # Test-Org at the same moment; on 2026-09-06 a master run and a PR run
+    # started 23 seconds apart and collided.
+    #
+    # This group is deliberately NOT ref-scoped and does NOT cancel: a second
+    # run waits for the first instead of being refused. It serialises CI
+    # against CI. It cannot serialise CI against an agent deploying from a
+    # terminal — see the AGENTS.md guardrail on test levels for that half.
+    concurrency:
+      group: apex-test-org
+      cancel-in-progress: false
     env:
       SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
     steps:
