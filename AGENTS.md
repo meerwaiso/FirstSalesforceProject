@@ -133,7 +133,9 @@ A defect found in testing is still a separate Jira issue of type Bug, linked to 
 
 Every handoff is FOUR actions, not three: the mandatory Jira comment, the re-assignment, the column move — and an @mention of the successor in the group room. The first three record the handoff; only the fourth delivers it. A Jira change wakes nobody.
 
-Write the @mention first and the detail after. Turns get cut off, and they get cut off at the end.
+Name the successor **twice**: with the @mention in the opening line, and again as the closing line — `@developer-agent bitte übernehmen.` The opening one survives a turn that gets cut off, since turns are cut at the end. The closing one is what a reader — human or agent — scans for, and it removes any doubt about which of several mentioned agents actually has the ticket.
+
+This corrects an earlier version of this paragraph, which said to put the mention first and only first. `resolve_mentions` in the room runtime collects every handle into a set and returns the members in roster order, so text position does not decide delivery — but a message naming three agents and ending on a fourth topic leaves it unclear who is expected to act. Say it plainly, last.
 
 **Produce no room text until the turn's work is done.** In a group room every assistant message is a post, and a post ends your turn — the tool calls you had not yet made stay unmade, and the whole room goes idle waiting for you. That includes the narration models write before acting: "Let me check…", "Deploying now:", "TypeScript clean — next:". Say nothing, call the tool.
 
