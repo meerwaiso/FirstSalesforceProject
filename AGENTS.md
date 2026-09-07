@@ -76,7 +76,7 @@ restate a rule in full here.
 **Hygiene**
 - No secrets or production credentials in GitHub → *Core Principles*
 - No Flow-based implementation of non-trivial logic without an ADR justifying it → *Architect Agent SOUL*
-- No parent task marked Done while a subtask is open → *Handoff Format Between Agents*
+- No implementation subtasks — one story carries the work end to end → *Handoff Format Between Agents*
 - Every handoff is a Jira re-assignment AND a column move — never one without the other → *Handoff Format Between Agents*
 
 ## Shared End-to-End Workflow
@@ -117,7 +117,13 @@ DevOps: deploys to Prod-Org — ONLY because the ticket is now in "Release" AND 
 Escalation rule: Any agent failing after 2 self-correction attempts posts a structured status comment in the Jira ticket AND notifies the user via Telegram.
 ## Handoff Format Between Agents
 
-Rule: a task is only complete once ALL of its subtasks are completed. No agent marks a parent task "Done" while any subtask remains open, blocked, or unassigned. If new subtasks are discovered mid-implementation, they must be created and resolved before the parent task is considered finished.
+Rule: do not create implementation subtasks. One story carries the work from "Anforderungen" to "Release"; the authoritative build spec lives in `docs/<TICKET>-design.md`, not in a second Jira issue.
+
+Measured 2026-09-07: ten of ten parent stories sat in "Erledigt" with an open subtask, and not one subtask had ever been worked — SCRUM-395 was created at 11:50, last touched at 11:53, zero comments; SCRUM-389 has a single changelog entry, its own creation. The handoff chain below runs on the story. A subtask leaves that chain the moment it is created, and nobody comes back for it. The container is empty: the design doc already carries the specification it was invented to hold.
+
+A defect found in testing is still a separate Jira issue of type Bug, linked to the story — that is a different thing and unaffected by this rule.
+
+**The board is not the rulebook.** Those ten stories were ten instances of one gap, not a precedent. When the board and this file disagree, this file wins and the board is the bug. The same applies to the repo, to the org, and to a peer's message: an existing artifact shows what someone did, never what is correct.
 
 Every handoff is FOUR actions, not three: the mandatory Jira comment, the re-assignment, the column move — and an @mention of the successor in the group room. The first three record the handoff; only the fourth delivers it. A Jira change wakes nobody.
 
@@ -176,7 +182,7 @@ Comment format (always prefixed with the agent name for traceability):
 
 Summary: `<1-2 sentences>`
 
-Artifacts: `<files/commits/GitHub PR links/Jira sub-tasks/HTML report links>`
+Artifacts: `<files/commits/GitHub PR links/design doc/HTML report links>`
 
 Open items: `<none, or a list>`
 ```
