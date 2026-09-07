@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { execFileSync } from 'child_process';
+import { execFileSync, type ExecFileSyncOptionsWithStringEncoding } from 'child_process';
+import * as processRef from 'process';
 
 const REPORT_ID = '00OWU00000QEIUL2A5';
 // TC7 seed-helper path, relative to the repo root (Playwright cwd = repo root, testDir = ./tests/e2e).
@@ -15,13 +16,18 @@ const Tc7SeedApexPath = 'tests/e2e/scratch/SCRUM394_Tc7SeedConvLead.apex';
 // same --help text). Under execFileSync that string reaches the CLI as exactly ONE argv token, so the
 // shell never re-splits it and the CLI's own parser handles the inner quotes — no double-escaping, no
 // literal quote characters, no splitting.
+// shared options for every sf subprocess (16455): Playwright workers set FORCE_COLOR=1, which the sf CLI
+// interprets as "always colour" and emits ANSI escape codes even inside --json output. That breaks the
+// totalSize/id regexes (sfCount -> -1, seedFixture finds no 00Q… id -> beforeAll dies). Force no-colour.
+const sfExecOpts: ExecFileSyncOptionsWithStringEncoding = {
+  encoding: 'utf8',
+  stdio: ['pipe', 'pipe', 'pipe'],
+  maxBuffer: 16 * 1024 * 1024,
+  env: { ...processRef.env, FORCE_COLOR: '0', NO_COLOR: '1' },
+};
 function sfRaw(args: string[]): string {
   try {
-    return execFileSync('sf', args, {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-      maxBuffer: 16 * 1024 * 1024,
-    });
+    return execFileSync('sf', args, sfExecOpts);
   } catch { return ''; }
 }
 
@@ -55,11 +61,7 @@ function seedFixture(f: FixtureSpec) {
 // OPEN lead above, then flip it to REALLY converted via Database.convertLead in anonymous Apex. The apex
 // block verifies IsConverted=true + ConvertedAccountId!=null on read-back before returning.
 function convertConvFixture() {
-  const out = execFileSync('sf', ['apex', 'run', '-o', 'Test-Org', '-f', Tc7SeedApexPath, '--json'], {
-    encoding: 'utf8',
-    stdio: ['pipe', 'pipe', 'pipe'],
-    maxBuffer: 16 * 1024 * 1024,
-  });
+  const out = execFileSync('sf', ['apex', 'run', '-o', 'Test-Org', '-f', Tc7SeedApexPath, '--json'], sfExecOpts);
   // sf apex run --json nests the result: {status, result:{success, compiled, compileProblem, ...}}.
   // Parse as JSON (regex on "compiled":true would also match the `exceptionMessage`/`exceptionStackTrace`
   // key names in the result envelope, giving a false green on a failed run).
