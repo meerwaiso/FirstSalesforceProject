@@ -107,6 +107,9 @@ async function openReportFrame(page: import('@playwright/test').Page) {
 const HEADER_ROWS = 'thead tr';       // report header row
 
 test.describe('[SCRUM-394] Offene Leads nach Quelle + Datenqualität', () => {
+  // Playwright's default 30s test timeout is too tight for: beforeAll (4× sf data record create + 1× sf apex run)
+  // + page.goto + 60s iframe-wait + thead-tr.waitFor(45000). Raise it so the entire describe block can breathe.
+  test.describe.configure({ timeout: 120000 });
   test.beforeAll(() => { ensureFixtures(); });
 
   test('AC2 + AC4: report renders grouped by Lead-Quelle incl. its own group for blank source', async ({ page }) => {
