@@ -36,8 +36,7 @@ private class SCRUM398EskalationsstufeTest {
             Priority = priority,
             Origin = 'Phone',
             ClosedDate = closed,
-            Type = 'Support'}}
-</tool_call>,
+            Type = 'Support',
             Processing_Duration__c = duration
         );
         insert c;

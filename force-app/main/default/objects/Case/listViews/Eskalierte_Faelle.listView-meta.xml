@@ -9,7 +9,7 @@
     <filters>
         <field>Eskalationsstufe__c</field>
         <operation>includes</operation>
-        <value>kritisch, erhöht</value>
+        <value>Kritisch, Erhöht</value>
     </filters>
     <filters>
         <field>Status</field>

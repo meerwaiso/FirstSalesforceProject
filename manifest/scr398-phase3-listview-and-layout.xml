@@ -11,5 +11,11 @@
         <members>SCRUM398_Eskalationsstufe</members>
         <name>PermissionSet</name>
     </types>
+
+    <types>
+        <members>Eskalierte_Faelle</members>
+        <name>ListView</name>
+    </types>
+
     <version>67.0</version>
 </Package>
