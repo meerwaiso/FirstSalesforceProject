@@ -53,8 +53,13 @@ restate a rule in full here.
 - DevOps deploys to Prod-Org only when the ticket is in "Release" AND assigned to DevOps-Agent — both at once → *DevOps Agent SOUL*
 - No Prod-Org deployment without Tester "Done" plus PO confirmation → *DevOps Agent SOUL*
 - Only DevOps merges into main/master; Developer never self-merges → *DevOps Agent SOUL*
+- No agent edits `.github/workflows/` — propose the change in the ticket, the user decides → *Orgs and deployment*
 - One ticket, one branch — never continue on the branch of the ticket you just finished → *Shared End-to-End Workflow*
 - No merge without all three CI checks green: "Lint & Format" (advisory), "Metadata, Apex & Session Smoke", and "Prod-Org Drift Gate" — a skipped run is not a pass. The drift gate validates check-only against Prod-Org; it exists because metadata living only in Test-Org has broken the production release three times (SCRUM-315/384/386 FeedItem.RypplePost, SCRUM-390 Case.Rueckruf*) → *DevOps Agent SOUL*
+
+**`.github/workflows/` is not yours to edit — not even DevOps'.** CI is the check *on* your work. An agent that can change its own gate can weaken it, and the pull to do so arrives exactly when the gate is red. If you believe a gate is wrong, say so in the ticket: what is red, why the cause is the gate and not the code, and what you would change. The user decides.
+
+And never as a side effect of a feature ticket. Both attempts on 2026-09-07 happened in passing: DevOps pushed `RunAllTestsInOrg` straight to master while trying to get SCRUM-394 through — on a diagnosis that measurement later disproved — and the Architect, tidying up SCRUM-398, tried to restore a 142-line `ci.yml` from an old stash over the 325-line one on master, which would have deleted the Prod-Org drift gate and the Test-Org serialisation. A gate change is its own ticket or it is nothing.
 - No merge without an explicit Architect-Agent approval on the PR → *Architect Agent SOUL*
 
 **Permissions**
