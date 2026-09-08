@@ -4,13 +4,8 @@
     <columns>Processing_Duration__c</columns>
     <filters>
         <field>Eskalationsstufe__c</field>
-        <operation>includes</operation>
+        <operation>equals</operation>
         <value>Kritisch, Erhöht</value>
-    </filters>
-    <filters>
-        <field>Status</field>
-        <operation>notEqual</operation>
-        <value>Closed</value>
     </filters>
     <fullName>Eskalierte_Faelle</fullName>
     <filterScope>Everything</filterScope>
