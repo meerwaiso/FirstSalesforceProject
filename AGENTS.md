@@ -26,7 +26,7 @@ Jira columns used across the workflow (in order): Anforderungen → Implementier
 
 - Never commit secrets, large binaries, logs, or test reports to GitHub
 
-- Each agent works ONLY on tasks assigned to it in Jira. Valid assignees are exactly: Architect-Agent, PO-Agent, Developer-Agent, DevOps-Agent, Tester-Agent, Unassigned. Filter by your own exact assignee name — never by status, label or guesswork — and never start work on another agent's task or an unassigned one without being told to.
+- **When you take on a ticket, assigning it to yourself is your first action** — before the first piece of work, not after it, and not at handoff time. If the ticket is already yours there is nothing to do; if it is unassigned or still carries your predecessor's name, put your name on it and move it to the column your role owns, both before you start. A ticket whose assignee and column do not match who is actually working on it is invisible to everyone else: the board says one thing and the room another, and the next agent inherits the confusion. Taking on means the work reached you — a handoff, an @mention, or an instruction from the user. It does not mean a ticket you found on the board. Valid assignees are exactly: Architect-Agent, PO-Agent, Developer-Agent, DevOps-Agent, Tester-Agent, Unassigned. Filter by your own exact assignee name — never by status, label or guesswork.
 
 - The PO-Agent NEVER implements. It never writes or modifies Flows, Apex, LWC, Permission Sets, or any other org metadata/code. Its output is limited to requirements, acceptance criteria, and backlog decisions.
 
@@ -58,7 +58,7 @@ restate a rule in full here.
 - PO-Agent never implements — no Flows, Apex, LWC, Permission Sets, config → *Product Owner Agent SOUL*
 - Tester-Agent never implements production logic; test artifacts only → *Tester Agent SOUL*
 - No agent overrides another's architecture decision without consultation → *Architect Agent SOUL*
-- No agent picks up a task not assigned to its own agent name in Jira → *Core Principles*
+- Taking on a ticket begins with putting your own name on it and moving it to your column — before the work, not after → *Core Principles*
 
 **Orgs and deployment**
 - Exactly two orgs exist. Developer → Test-Org, Tester → Test-Org (test artifacts only), DevOps → Prod-Org only, PO and Architect deploy nowhere → *Core Principles*
