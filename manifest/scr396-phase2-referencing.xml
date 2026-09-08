@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SCRUM-396 Phase 2: layout + FLS permission set + report (all reference Contact.Betreuungsstufe__c) -->
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
-    <!-- ReportType in Phase 2a deployen, Report in Phase 3 -->
+    <!-- ReportType in Phase 2a (getrenntes Manifest), Report in Phase 3 -->
     <types>
         <members>Contact-Contact Layout</members>
         <name>Layout</name>

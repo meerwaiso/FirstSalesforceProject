@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ReportType xmlns="http://soap.sforce.com/2006/04/metadata">
     <baseObject>Contact</baseObject>
-    <category>customReport</category>
+    <category>other</category>
     <deployed>true</deployed>
-    <description>Betreuungslast nach Firma: Kontakte mit Betreuungsstufen, offene Fälle und Bearbeitungszeiten (SCRUM-396)</description>
+    <description>SCRUM-396: ALLE Kontakte der Org (inkl. ohne Account) mit Betreuungsstufe und offenen Fällen; Gruppierung nach Account.</description>
     <label>Betreuungslast nach Firma</label>
     <sections>
         <columns>
@@ -13,12 +13,7 @@
         </columns>
         <columns>
             <checkedByDefault>true</checkedByDefault>
-            <field>Account.Name</field>
-            <table>Contact</table>
-        </columns>
-        <columns>
-            <checkedByDefault>true</checkedByDefault>
-            <field>Betreuungsstufe__c</field>
+            <field>Owner</field>
             <table>Contact</table>
         </columns>
         <columns>
@@ -28,9 +23,14 @@
         </columns>
         <columns>
             <checkedByDefault>true</checkedByDefault>
-            <field>Processing_Duration_Total__c</field>
+            <field>Betreuungsstufe__c</field>
             <table>Contact</table>
         </columns>
-        <masterLabel>Betreuungslast</masterLabel>
+        <columns>
+            <checkedByDefault>true</checkedByDefault>
+            <field>Account.Name</field>
+            <table>Contact</table>
+        </columns>
+        <masterLabel>Kontakte</masterLabel>
     </sections>
 </ReportType>

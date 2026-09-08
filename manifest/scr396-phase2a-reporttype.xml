@@ -3,7 +3,7 @@
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
     <types>
         <members>SCRUM396_Betreuungslast</members>
-        <name>CustomReportType</name>
+        <name>ReportType</name>
     </types>
     <version>67.0</version>
 </Package>
