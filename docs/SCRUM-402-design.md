@@ -32,9 +32,9 @@ Verifiziert per `sf data query` + `sf project retrieve start` (Read-back der Org
 
 ## Komponenten
 
-### 1. Bug-Fix `Value_Tier__c` — `formulaTreatBlanksAs`
+### 1. Bug-Fix `Value_Tier__c` — Blank-Semantik des Currency-Felds
 **Pfad:** `force-app/main/default/objects/Opportunity/fields/Value_Tier__c.field-meta.xml`
-**Änderung:** `BlankAsZero` → **`ErrorIfAnyBlank`** (alleinige Änderung an der Datei, Formel + Label unverändert).
+**Änderung:** `BlankAsZero` → **`BlankAsBlank`** (alleinige Änderung an der Datei, Formel + Label unverändert).
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -43,7 +43,7 @@ Verifiziert per `sf data query` + `sf project retrieve start` (Read-back der Org
     <description>Wertstufe offener Verkaufschancen nach Volumen (SCRUM-401/402): "Hoch" ab 100.000, "Mittel" ab 50.000, "Gering" darunter, "Unbekannt" wenn Amount leer. Formelfeld aus Amount, systemberechnet, read-only.</description>
     <externalId>false</externalId>
     <formula>IF(ISBLANK(Amount), &quot;Unbekannt&quot;, IF(Amount &gt;= 100000, &quot;Hoch&quot;, IF(Amount &gt;= 50000, &quot;Mittel&quot;, &quot;Gering&quot;)))</formula>
-    <formulaTreatBlanksAs>ErrorIfAnyBlank</formulaTreatBlanksAs>
+    <formulaTreatBlanksAs>BlankAsBlank</formulaTreatBlanksAs>
     <label>Wertstufe</label>
     <required>false</required>
     <trackTrending>false</trackTrending>
@@ -51,7 +51,7 @@ Verifiziert per `sf data query` + `sf project retrieve start` (Read-back der Org
 </CustomField>
 ```
 
-Warum `ErrorIfAnyBlank` und warum es den `Unbekannt`-Zweig rettet: `ISBLANK(Amount)` ist die **erste** Operation und liefert für leerem `Amount` den Literal `„Unbekannt“` — der leere Wert erreicht nie eine numerische Vergleichsoperation, ergo kein Fehler, sondern der Sentinel-Wert. (Mit `BlankAsZero` wird der Blank vor der Auswertung zu `0` coerced, `ISBLANK` liefert `false`, die Formel fällt durch `>=50000` hindurch in `„Gering“` — genau der beobachtete Defect.) Das ist dasselbe Muster wie `Customer_Since_Days__c` (SCRUM-382, null-guard) und war in `SCRUM-401-design.md` bereits so spezifiziert — die Implementierung ist hier von der spec abgewichen.
+⚠️ **Korrektur (Read-back, 2026-09-08):** Der ursprüngliche Spec-Wert `ErrorIfAnyBlank` ist in dieser Org **nicht deploybar** — dry-run validiert nur `BlankAsBlank` (0) und `BlankAsZero` (0), `ErrorIfAnyBlank` sowie ein Kontroll-Wert `BogusValueXYZ` fallen beide (1). Die Entwickler-Feststellung stimmt. Mit `BlankAsBlank` bleibt `ISBLANK(Amount)` die wirksame Leerprüfung: leerer `Amount` → `ISBLANK` liefert `true` → Literal `„Unbekannt“`, die Formel fällt nie in eine numerische Op. (Mit `BlankAsZero` wird der Blank vor der Prüfung zu `0` coerced, `ISBLANK` → `false` → `„Gering“` — genau der beobachtete Defect.) **Live bestätigt** (`sf data query`, offen): 8 Hoch · 2 Mittel · 3 Gering · 2 Unbekannt (TEST-DBG/TEST-DBG2 zeigen jetzt „Unbekannt“) = 15, exakt die PO-Zahlen.
 
 ### 2. Listenansicht „Hochwertige Chancen“ (Erst-Deploy)
 **Pfad:** `force-app/main/default/objects/Opportunity/listViews/Hochwertige_Chancen.listView-meta.xml`
@@ -63,14 +63,14 @@ Warum `ErrorIfAnyBlank` und warum es den `Unbekannt`-Zweig rettet: `ISBLANK(Amou
     <fullName>Hochwertige_Chancen</fullName>
     <label>Hochwertige Chancen</label>
     <filterScope>Everything</filterScope>
-    <columns>NAME</columns>
+    <columns>OPPORTUNITY.NAME</columns>
     <columns>ACCOUNT.NAME</columns>
-    <columns>AMOUNT</columns>
-    <columns>CLOSE_DATE</columns>
-    <columns>VALUE_TIER__C</columns>
+    <columns>OPPORTUNITY.AMOUNT</columns>
+    <columns>OPPORTUNITY.CLOSE_DATE</columns>
+    <columns>Value_Tier__c</columns>
     <columns>CORE.USERS.ALIAS</columns>
     <filters>
-        <field>StageName</field>
+        <field>OPPORTUNITY.STAGE_NAME</field>
         <operation>notEqual</operation>
         <value>Closed Won,Closed Lost</value>
     </filters>
@@ -87,6 +87,19 @@ Warum `ErrorIfAnyBlank` und warum es den `Unbekannt`-Zweig rettet: `ISBLANK(Amou
 - Spalten entsprechen dem AC (Name, Konto, Betrag, Abschlussdatum, Wertstufe, Inhaber).
 - House-Pattern: `Case/Eskalierte_Faelle.listView-meta.xml` (SCRUM-398).
 - ⚠️ **Kein `temp-test-lv.xml`-Drift:** das Probe-Artefakt in der Arbeitshand hat andere Spalten (`AccountName`, `AccountId`, `OPPORTUNIT.NAME`, Filter `notEqual Closed`). Es wird **nicht** Teil des Builds — die oben stehende Datei ist maßgeblich.
+
+**⚠️ Spalten-Tokens (Org-validiert, 2026-09-08):** In dieser Org round-trippen Standard-ListView-Spalten **nicht** die SOQL-API-Namen (`Name`, `Amount` … werden verworfen mit *„Could not resolve list view column“*), und **auch nicht** die nackte Report-Schreibweise `NAME`. Die Org-Realität (per deploy + byte-identischem retrieve verifiziert) ist die **`OPPORTUNITY.<TOKEN>`**-Schreibweise für Standardfelder, die Custom-Feld-API bleibt wie ist, Inhaber = `CORE.USERS.ALIAS`. Die oben stehende Spaltenzeile ist exakt diese validierte Form — sie ist die autoritative Source-of-Truth:
+
+| Anzeigespalte | validiertes `<columns>`-Token |
+|---|---|
+| Name | `OPPORTUNITY.NAME` |
+| Konto | `ACCOUNT.NAME` |
+| Betrag | `OPPORTUNITY.AMOUNT` |
+| Abschlussdatum | `OPPORTUNITY.CLOSE_DATE` |
+| Wertstufe | `Value_Tier__c` |
+| Inhaber | `CORE.USERS.ALIAS` |
+
+Filter-Feld analog: `OPPORTUNITY.STAGE_NAME` (nicht `StageName`). Diese 6er-Kombination + beide Filter deployed sauber und liest sich per `sf project retrieve` **byte-identisch zurück** (deployed View `FinalProbeOK`, danach wieder entfernt).
 
 ### 3. Permission Set — bereits korrekt, nur in den Build nehmen
 **Pfad:** `force-app/main/default/permissionsets/SCRUM401_Value_Tier_Read.permissionset-meta.xml`
