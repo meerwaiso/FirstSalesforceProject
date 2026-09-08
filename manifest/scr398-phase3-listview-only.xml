@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-398 Phase 3: List View only — Layout und PS sind bereits live -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Eskalierte_Faelle</members>
+        <name>ListView</name>
+    </types>
+    <version>67.0</version>
+</Package>

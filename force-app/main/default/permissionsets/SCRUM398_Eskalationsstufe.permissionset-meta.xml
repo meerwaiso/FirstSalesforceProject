@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.Eskalationsstufe__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM398_Eskalationsstufe</label>
+    <description>Read-FLS für Case "Eskalationsstufe" (SCRUM-398). Systemgerechnetes Picklist-Formelfeld (read-only); kein Write-PS, keine Apex/DML.</description>
+</PermissionSet>

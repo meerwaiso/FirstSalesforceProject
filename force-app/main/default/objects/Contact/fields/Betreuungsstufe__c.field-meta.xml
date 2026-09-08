@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Betreuungsstufe__c</fullName>
+    <description>Abgeleitete Betreuungseinstufung aus der Anzahl offener Faelle (SCRUM-396): 0 = keine, 1-2 = normal, 3 oder mehr = hoch. Quelle: Open_Cases_Count__c (CaseOpenCountTrigger, SCRUM-365); systemgerechnet, von Hand nicht aenderbar.</description>
+    <externalId>false</externalId>
+    <formula>IF(Open_Cases_Count__c &gt;= 3, &quot;hoch&quot;, IF(Open_Cases_Count__c &gt;= 1, &quot;normal&quot;, &quot;keine&quot;))</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <label>Betreuungsstufe</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+</CustomField>
