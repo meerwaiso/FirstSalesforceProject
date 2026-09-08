@@ -22,25 +22,39 @@
 private class SCRUM398EskalationsstufeTest {
 
     private static Case makeCase(String tag, String priority, Boolean isOverdue) {
-        Integer duration = 0;
+        // Case open and old enough to trigger Is_Overdue__c via Processing_Duration__c.
+        // Is_Overdue__c formula: AND(ISBLANK(ClosedDate), OR(Priority='High' & dur > 2, ...))
+        // We set CreatedDate far in the past; Status stays 'New' (open).
+        Date createdDate = Date.today();
         
         if (isOverdue) {
-            duration = priority == 'High' ? 3 : (priority == 'Medium' ? 6 : 11);
+            // Create case at least threshold-days ago (High=2, Medium=5, Low=10)
+            Date created = (priority == 'High') ? Date.today().addDays(-3)
+                              : (priority == 'Medium') ? Date.today().addDays(-6)
+                              : Date.today().addDays(-11);
+            
+            Case c = new Case(
+                Subject = tag,
+                Status = 'New',
+                Priority = priority,
+                Origin = 'Phone',
+                Type = 'Support',
+                CreatedDate = created
+            );
+            insert c;
+            return c;
+        } else {
+            // Recent case → Processing_Duration__c is low → never overdue
+            Case c = new Case(
+                Subject = tag,
+                Status = 'New',
+                Priority = priority,
+                Origin = 'Phone',
+                Type = 'Support'
+            );
+            insert c;
+            return c;
         }
-        
-        Case c = new Case(
-            Subject = tag,
-            Status = 'New',
-            Priority = priority,
-            Origin = 'Phone',
-            Type = 'Support'
-        );
-        insert c;
-        
-        // ClosedDate is a formula (SCRUM-390) — it reflects Status, not a writable field.
-        // To simulate overdue: we set Status='New' (not Closed) and a duration past threshold.
-        // The test data is open cases — which is exactly what Is_Overdue__c checks.
-        return c;
     }
 
     private static String readValue(String caseId) {
@@ -125,12 +139,8 @@ private class SCRUM398EskalationsstufeTest {
             'Eskalationsstufe__c must be read-only (formula, no user edit)'
         );
         System.assert(
-            f.getType() == Schema.DisplayType.PICKLIST,
-            'Eskalationsstufe__c must be a Picklist field (returns kritisch/erhöht/normal)'
-        );
-        System.assertEquals(
-            3, f.getPicklistValues().size(),
-            'Eskalationsstufe__c must have exactly 3 Picklist values (kritisch, erhöht, normal)'
+            f.getType() == Schema.DisplayType.TEXT,
+            'Eskalationsstufe__c must be a Text field (formula returns string literals; formula fields cannot be Picklist in Salesforce)'
         );
     }
 }

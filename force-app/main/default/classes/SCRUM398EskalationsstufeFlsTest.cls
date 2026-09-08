@@ -1,6 +1,6 @@
 /**
  * [SCRUM-398] FLS negative + positive proof for Case.Eskalationsstufe__c
- * („Eskalationsstufe“, read-only Picklist formula).
+ * („Eskalationsstufe“, read-only Text formula, formula field returns string literals — cannot be Picklist in Salesforce).
  *
  * The field ships with a read-only FLS Permission Set
  * SCRUM398_Eskalationsstufe. A brand-new custom field is FLS-gated by default:
