@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Time_Since_Last_Case__c</fullName>
+    <description>Menschenlesbare Dauer seit dem juingsten Anliegen des Kontakts (SCRUM-403): «heute» / «gestern» / «vor N Tagen» / «vor M Monaten». Read-only Formel ueber Last_Case_Date__c — sie kann nie vom Datum abdriften. Blank wenn kein Fall vorhanden.</description>
+    <externalId>false</externalId>
+    <formula>IF(ISBLANK(Last_Case_Date__c), null, IF(TODAY() = Last_Case_Date__c, &quot;heute&quot;, IF(TODAY() - Last_Case_Date__c &lt;= 1, &quot;gestern&quot;, IF(TODAY() - Last_Case_Date__c &lt;= 30, &quot;vor &quot; &amp; TEXT(TODAY() - Last_Case_Date__c) &amp; &quot; Tagen&quot;, &quot;vor &quot; &amp; TEXT(ROUND((TODAY() - Last_Case_Date__c) / 30, 0)) &amp; &quot; Monaten&quot;))))</formula>
+    <label>Wie lange her</label>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>
