@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-396 Phase 2a: ReportType alone (Report cannot reference it until deployed) -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM396_Betreuungslast</members>
+        <name>CustomReportType</name>
+    </types>
+    <version>67.0</version>
+</Package>

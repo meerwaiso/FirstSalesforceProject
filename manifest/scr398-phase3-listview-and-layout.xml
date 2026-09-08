@@ -16,6 +16,10 @@
         <members>Eskalierte_Faelle</members>
         <name>ListView</name>
     </types>
+    <types>
+        <members>Sales/Betreuungslast_nach_Firma</members>
+        <name>Report</name>
+    </types>
 
     <version>67.0</version>
 </Package>
