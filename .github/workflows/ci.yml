@@ -67,7 +67,11 @@ jobs:
     env:
       SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
     steps:
+      # Full history: the scope step below diffs against the base to find out
+      # whether any deployable metadata changed at all. A shallow clone cannot.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -122,7 +126,26 @@ jobs:
         id: scope
         env:
           ZWEIG: ${{ github.head_ref || github.ref_name }}
+          BASIS: ${{ github.base_ref }}
+          VORHER: ${{ github.event.before }}
         run: |
+          # Nothing deployable changed? Then there is nothing to test. A pull
+          # request touching only AGENTS.md spent 52 rows of the budget on
+          # 2026-09-07 and hung on a red Apex gate it could not have caused.
+          # An empty diff means "could not determine" — then we do NOT skip.
+          geaendert=""
+          if [ -n "$BASIS" ]; then
+            geaendert=$(git diff --name-only "origin/$BASIS...HEAD" 2>/dev/null || true)
+          elif [ -n "$VORHER" ] && [ "$VORHER" != "0000000000000000000000000000000000000000" ]; then
+            geaendert=$(git diff --name-only "$VORHER" HEAD 2>/dev/null || true)
+          fi
+          if [ -n "$geaendert" ] && ! printf '%s\n' "$geaendert" | grep -q '^force-app/'; then
+            echo "level=NoTests" >> "$GITHUB_OUTPUT"
+            echo "classes=" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Apex test scope::NoTests — nothing under force-app/ changed"
+            exit 0
+          fi
+
           klassen=""
           if [ "$ZWEIG" != "master" ]; then
             ticket=$(printf '%s' "$ZWEIG" | grep -oE 'SCRUM-?[0-9]+' | head -1 | tr -d '-')
@@ -152,7 +175,7 @@ jobs:
       # on this path; named runs green).
       # See Jira SCRUM-394 comment 16496 for the full BUG-A context.
       - name: Run Apex tests
-        if: steps.guard.outputs.has_auth == 'true'
+        if: steps.guard.outputs.has_auth == 'true' && steps.scope.outputs.level != 'NoTests'
         env:
           STUFE: ${{ steps.scope.outputs.level }}
           KLASSEN: ${{ steps.scope.outputs.classes }}
@@ -181,7 +204,7 @@ jobs:
       # is the honest pre-deploy gate, because production deployments enforce
       # exactly this threshold.
       - name: Validate metadata (check-only, advisory)
-        if: steps.guard.outputs.has_auth == 'true'
+        if: steps.guard.outputs.has_auth == 'true' && steps.scope.outputs.level != 'NoTests'
         continue-on-error: true
         env:
           STUFE: ${{ steps.scope.outputs.level }}
