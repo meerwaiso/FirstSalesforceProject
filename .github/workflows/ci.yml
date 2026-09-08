@@ -146,12 +146,21 @@ jobs:
             exit 0
           fi
 
+          # Which tickets does this run carry? The branch name is one source and
+          # not a trustworthy one on its own: PR #67 was named after SCRUM-398
+          # and shipped SCRUM-396 in the same branch, so a branch-name-only
+          # selection would have left half of it untested — green meaning
+          # nothing. The changed paths are the second source, and they cannot
+          # lie about what is in the diff. Union of both, never one alone.
           klassen=""
           if [ "$ZWEIG" != "master" ]; then
-            ticket=$(printf '%s' "$ZWEIG" | grep -oE 'SCRUM-?[0-9]+' | head -1 | tr -d '-')
-            if [ -n "$ticket" ]; then
+            tickets=$( { printf '%s\n' "$ZWEIG"; printf '%s\n' "$geaendert"; } \
+              | grep -oE 'SCRUM-?[0-9]+' | tr -d '-' | sort -u )
+            if [ -n "$tickets" ]; then
+              muster=$(printf '%s\n' "$tickets" | paste -sd'|' -)
               klassen=$(ls force-app/main/default/classes/ \
-                | sed -n "s/^\(${ticket}[A-Za-z0-9_]*Test\)\.cls$/\1/p" \
+                | grep -E "^(${muster})[A-Za-z0-9_]*Test\.cls$" \
+                | sed 's/\.cls$//' \
                 | paste -sd, -)
             fi
           fi
