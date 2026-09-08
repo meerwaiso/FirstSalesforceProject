@@ -25,7 +25,7 @@
  * @date 2026-09-09
  */
 public without sharing class LastCaseDateRebuilder
-        implements Database.Batchable<Contact>, Database.Stateful {
+        implements Database.Batchable<SObject>, Database.Stateful {
 
     /** Batch-Größe (Kontakte pro Chunk). 200 = Governor-Limit-Vollauslastung. */
     public static final Integer DEFAULT_BATCH_SIZE = 200;

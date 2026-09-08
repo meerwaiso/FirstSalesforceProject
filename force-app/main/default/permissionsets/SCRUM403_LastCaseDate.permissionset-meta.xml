@@ -12,5 +12,5 @@
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>SCRUM403_LastCaseDate</label>
-    <description>Read-only FLS für Contact.Last_Case_Date__c (Letztes Anliegen) und Contact.Time_Since_Last_Case__c (Wie lange her, SCRUM-403). Beide Felder sind systemmaintained (LastCaseDateTrigger/Rebuilder) — kein Update für irgendwen. Systemwrites laufen im System-Modus und umgehen FLS. PO-Festlegung: Zugriff Service/Leitung, nur lesen.</description>
+    <description>Read-only FLS fur Contact.Last_Case_Date__c (Letztes Anliegen) + Contact.Time_Since_Last_Case__c (Wie lange her, SCRUM-403). Beide systemmaintained via LastCaseDateTrigger/Rebuilder - kein Update-Right fur irgendwen. PO: Service/Leitung, nur lesen.</description>
 </PermissionSet>
