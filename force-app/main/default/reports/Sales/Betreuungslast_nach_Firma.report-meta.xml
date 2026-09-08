@@ -1,28 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Report xmlns="http://soap.sforce.com/2006/04/metadata">
-    <name>Betreuungslast_nach_Firma</name>
-    <description>Betreuungslast je Firma (SCRUM-396): alle Kontakte (scope organization, AC3), gruppiert nach Account; ohne Account in null-Gruppe (AC4). Je Gruppe: Record Count + Sum offene Faelle (AC5); Detail: Name, Firma, Stufe, offene Faelle, Inhaber (AC6).</description>
-    <reportType>SCRUM396_Betreuungslast</reportType>
-    <scope>organization</scope>
-    <format>Summary</format>
     <columns>
-        <field>Contact.Name</field>
+        <field>FIRST_NAME</field>
+    </columns>
+    <columns>
+        <field>LAST_NAME</field>
     </columns>
     <columns>
         <field>Contact.Betreuungsstufe__c</field>
     </columns>
     <columns>
-        <field>Contact.Open_Cases_Count__c</field>
         <aggregateTypes>Sum</aggregateTypes>
+        <field>Contact.Open_Cases_Count__c</field>
     </columns>
     <columns>
-        <field>Contact.Owner</field>
+        <field>OWNER_FULL_NAME</field>
     </columns>
+    <description>Betreuungslast je Firma: ALLE Kontakte der Organisation (scope org), gruppiert nach Account; Kontakte ohne Account in eigener Gruppe. Je Gruppe: Anzahl Kontakte + Summe offener Faelle. Detail: Name, Firma, Betreuungsstufe, offene Faelle, Inhaber.</description>
+    <format>Summary</format>
     <groupingsDown>
-        <field>Contact.Account.Name</field>
+        <dateGranularity>Day</dateGranularity>
+        <field>ACCOUNT.NAME</field>
         <sortOrder>Asc</sortOrder>
     </groupingsDown>
+    <name>Betreuungslast_nach_Firma</name>
+    <params>
+        <name>co</name>
+        <value>1</value>
+    </params>
+    <reportType>ContactList</reportType>
+    <scope>organization</scope>
     <showDetails>true</showDetails>
     <showGrandTotal>true</showGrandTotal>
     <showSubTotals>true</showSubTotals>
+    <timeFrameFilter>
+        <dateColumn>LAST_ACTIVITY</dateColumn>
+        <interval>INTERVAL_CUSTOM</interval>
+    </timeFrameFilter>
 </Report>
