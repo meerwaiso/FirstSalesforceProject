@@ -38,6 +38,18 @@ Jira columns used across the workflow (in order): Anforderungen → Implementier
 
 And never as a side effect of a feature ticket. Both attempts on 2026-09-07 happened in passing: DevOps pushed `RunAllTestsInOrg` straight to master while trying to get SCRUM-394 through — on a diagnosis that measurement later disproved — and the Architect, tidying up SCRUM-398, tried to restore a 142-line `ci.yml` from an old stash over the 325-line one on master, which would have deleted the Prod-Org drift gate and the Test-Org serialisation. A gate change is its own ticket or it is nothing.
 
+**A pattern you cite must reproduce the example you cite it from.** Reading a house pattern out of the repository is not the same as understanding it, and the gap between the two is invisible from the inside — you have an example in front of you and feel informed. Hold your sentence against your example before the work leaves your hands: if the sentence cannot produce the example, the sentence is the bug.
+
+Measured 2026-09-08. The Architect designed a list view, found the three working examples in the repo, and quoted one of them as the house pattern:
+
+    <columns>CASES.CASE_NUMBER</columns>
+
+One line above it he had written that "columns reference the object's API fields". `CASES.CASE_NUMBER` is not an API field name — it is a token, and that single difference is why the previous list view cost a day. Two lines later the design specified `Name, AccountId, Amount, CloseDate, OwnerId`: plain API names, which do not resolve. The example was right there and disagreed with him.
+
+The same failure produced the wrong diagnosis a day earlier, from the opposite direction: "only custom fields work as list view columns" was generalised from two working examples that happened to contain only custom fields, without checking whether the repo's third example carried a standard one. It did.
+
+A file in the repository is also not the platform. It shows what someone once wrote, not what the org accepts — and a file that was itself never deployed shows nothing at all. `sf project retrieve start --metadata "ListView:Opportunity.*"` answers the question in one call; on 2026-09-08 the design was written without a single command against any org.
+
 **A bare `UNKNOWN_EXCEPTION` from an Apex run is a budget message, not a defect.** It has two causes and names neither. Either another broad run holds the org — also reported as `ALREADY_IN_PROCESS` — or the org's 24-hour test budget is spent: it accepts `max(500, 10 × test classes)` `ApexTestQueueItem` rows per ROLLING 24 hours, and every class in every run costs one row. Check the budget first; it is one query and five seconds:
 
     sf data query -o Test-Org -t -q "SELECT COUNT(Id) FROM ApexTestQueueItem WHERE CreatedDate = LAST_N_DAYS:1"
@@ -82,6 +94,7 @@ restate a rule in full here.
 - One broad Apex test run per org at a time. Deploy your own work with `--test-level RunSpecifiedTests --tests <your classes>`; the full suite belongs to CI, once, at the end → *Core Principles*
 - A bare `UNKNOWN_EXCEPTION` from an Apex run means the org is busy or its 24 h test budget is spent — check the budget before anything else, and never retry into a full window → *Core Principles*
 - Reading back your own action is not verification. Confirming that the comment posted, the review landed or the file was written checks your action, not the result. Before you state that something IS in a given state — a CI run, a ticket's assignee, a branch head, a value in the org — look at that state. And a peer's report is never a primary source: on 2026-09-07 an approval called a CI run "queued" four minutes after it had failed, a tester reported a handoff he had not performed, and a CLI flag was introduced that the CLI rejects by name. Each was one command away from being checked → *Core Principles*
+- A pattern you cite must reproduce the example you cite it from — if your sentence cannot produce your example, the sentence is the bug → *Core Principles*
 - Never guess any name the platform owns — a field, a report column, a picklist value, a scope value, a metadata path. Ask the platform: `sf sobject describe`, `analytics/reportTypes/<Type>`, the CLI's own metadataRegistry.json. A deploy validator is a rejection oracle: it answers "is THIS name right?" with no, and never "what names are there?" — a name space cannot be searched with it. Skill: `salesforce-describe-first` → *Core Principles*
 - `waitForLoadState('networkidle')` is forbidden on Lightning pages → *Tester Agent SOUL*
 - No dummy assertions, and no assertion reachable only inside an `if` without a failing branch → *Tester Agent SOUL*
@@ -152,6 +165,8 @@ A defect found in testing is still a separate Jira issue of type Bug, linked to 
 **The board is not the rulebook.** Those ten stories were ten instances of one gap, not a precedent. When the board and this file disagree, this file wins and the board is the bug. The same applies to the repo, to the org, and to a peer's message: an existing artifact shows what someone did, never what is correct.
 
 Every handoff is FOUR actions, not three: the mandatory Jira comment, the re-assignment, the column move — and an @mention of the successor in the group room. The first three record the handoff; only the fourth delivers it. A Jira change wakes nobody.
+
+Carry the numbers forward. When the ticket states how many records a criterion is expected to match, that count belongs in every artifact built on it — the design, the implementation note, the coverage table. On 2026-09-08 the PO measured and handed over four counts; the design written from that ticket repeated none of them, so the expectation stopped travelling at the first station and the Tester had nothing to compare against.
 
 Name the successor **twice**: with the @mention in the opening line, and again as the closing line — `@developer-agent bitte übernehmen.` The opening one survives a turn that gets cut off, since turns are cut at the end. The closing one is what a reader — human or agent — scans for, and it removes any doubt about which of several mentioned agents actually has the ticket.
 
