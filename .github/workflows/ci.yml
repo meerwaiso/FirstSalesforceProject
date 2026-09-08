@@ -67,7 +67,11 @@ jobs:
     env:
       SFDX_AUTH_URL: ${{ secrets.SFDX_AUTH_URL }}
     steps:
+      # Full history: the scope step below diffs against the base to find out
+      # whether any deployable metadata changed at all. A shallow clone cannot.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -99,23 +103,108 @@ jobs:
             --set-default --alias Test-Org
           rm -f "$RUNNER_TEMP/sfdx-auth.txt"
 
+      # Apex test scope — a quota decision, not a thoroughness decision.
+      #
+      # The org accepts max(500, 10 x test classes) ApexTestQueueItem rows per
+      # ROLLING 24 h. With 26 test classes the floor of 500 applies, and every
+      # test class in a run costs one row. Gate 1 plus the advisory validate
+      # below spent ~52 rows per CI run — about nine runs a day for five agents,
+      # CI and manual runs together. On 2026-09-07 the budget was gone by 19:16
+      # and every Apex run in the org then failed with a bare UNKNOWN_EXCEPTION
+      # that names neither tests nor the budget.
+      #
+      # So a branch runs only its own ticket's tests, master runs everything.
+      # Test classes are named SCRUM<nnn>...Test, so the ticket in the branch
+      # name selects them. No ticket in the name, no matching class, or master:
+      # fall back to the full run. Spending budget beats skipping tests silently.
+      #
+      # The branch name reaches the script through the environment, never by
+      # ${{ }} interpolation: git permits $, backticks, parentheses and ';' in
+      # ref names, so an interpolated name would be executable text.
+      - name: Determine Apex test scope
+        if: steps.guard.outputs.has_auth == 'true'
+        id: scope
+        env:
+          ZWEIG: ${{ github.head_ref || github.ref_name }}
+          BASIS: ${{ github.base_ref }}
+          VORHER: ${{ github.event.before }}
+        run: |
+          # Nothing deployable changed? Then there is nothing to test. A pull
+          # request touching only AGENTS.md spent 52 rows of the budget on
+          # 2026-09-07 and hung on a red Apex gate it could not have caused.
+          # An empty diff means "could not determine" — then we do NOT skip.
+          geaendert=""
+          if [ -n "$BASIS" ]; then
+            geaendert=$(git diff --name-only "origin/$BASIS...HEAD" 2>/dev/null || true)
+          elif [ -n "$VORHER" ] && [ "$VORHER" != "0000000000000000000000000000000000000000" ]; then
+            geaendert=$(git diff --name-only "$VORHER" HEAD 2>/dev/null || true)
+          fi
+          if [ -n "$geaendert" ] && ! printf '%s\n' "$geaendert" | grep -q '^force-app/'; then
+            echo "level=NoTests" >> "$GITHUB_OUTPUT"
+            echo "classes=" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Apex test scope::NoTests — nothing under force-app/ changed"
+            exit 0
+          fi
+
+          # Which tickets does this run carry? The branch name is one source and
+          # not a trustworthy one on its own: PR #67 was named after SCRUM-398
+          # and shipped SCRUM-396 in the same branch, so a branch-name-only
+          # selection would have left half of it untested — green meaning
+          # nothing. The changed paths are the second source, and they cannot
+          # lie about what is in the diff. Union of both, never one alone.
+          klassen=""
+          if [ "$ZWEIG" != "master" ]; then
+            tickets=$( { printf '%s\n' "$ZWEIG"; printf '%s\n' "$geaendert"; } \
+              | grep -oE 'SCRUM-?[0-9]+' | tr -d '-' | sort -u )
+            if [ -n "$tickets" ]; then
+              muster=$(printf '%s\n' "$tickets" | paste -sd'|' -)
+              klassen=$(ls force-app/main/default/classes/ \
+                | grep -E "^(${muster})[A-Za-z0-9_]*Test\.cls$" \
+                | sed 's/\.cls$//' \
+                | paste -sd, -)
+            fi
+          fi
+          if [ -n "$klassen" ]; then
+            echo "level=RunSpecifiedTests" >> "$GITHUB_OUTPUT"
+            echo "classes=$klassen" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Apex test scope::RunSpecifiedTests — $klassen"
+          else
+            echo "level=RunAllTestsInOrg" >> "$GITHUB_OUTPUT"
+            echo "classes=" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Apex test scope::RunAllTestsInOrg (full suite)"
+          fi
+
       # Gate 1 — Apex tests must pass. `sf apex run test` reports coverage but
       # does not enforce a threshold, which is what we want here: the suite is
       # green today (15/15) while overall coverage is still 37%.
       #
-      # TEST-LEVEL: RunAllTestsInOrg. Same broad path as `RunLocalTests` without
-      # `--class-names` — the explicit spelling, kept so a runner flake can be
-      # read directly as such (the BUG-A repro was on this path; named runs green).
+      # TEST-LEVEL: set by the step above. RunAllTestsInOrg is the same broad
+      # path as `RunLocalTests` without `--class-names` — the explicit spelling,
+      # kept so a runner flake can be read directly as such (the BUG-A repro was
+      # on this path; named runs green).
       # See Jira SCRUM-394 comment 16496 for the full BUG-A context.
       - name: Run Apex tests
-        if: steps.guard.outputs.has_auth == 'true'
+        if: steps.guard.outputs.has_auth == 'true' && steps.scope.outputs.level != 'NoTests'
+        env:
+          STUFE: ${{ steps.scope.outputs.level }}
+          KLASSEN: ${{ steps.scope.outputs.classes }}
         run: |
-          sf apex run test \
-            --test-level RunAllTestsInOrg \
-            --code-coverage \
-            --result-format human \
-            --output-dir apex-test-results \
-            --wait 30
+          if [ "$STUFE" = "RunSpecifiedTests" ]; then
+            sf apex run test \
+              --test-level RunSpecifiedTests \
+              --class-names "$KLASSEN" \
+              --code-coverage \
+              --result-format human \
+              --output-dir apex-test-results \
+              --wait 30
+          else
+            sf apex run test \
+              --test-level RunAllTestsInOrg \
+              --code-coverage \
+              --result-format human \
+              --output-dir apex-test-results \
+              --wait 30
+          fi
 
       # Advisory — a full check-only deploy. Currently blocked by Salesforce's
       # 75% coverage requirement (org-wide coverage is 37%, and
@@ -124,13 +213,24 @@ jobs:
       # is the honest pre-deploy gate, because production deployments enforce
       # exactly this threshold.
       - name: Validate metadata (check-only, advisory)
-        if: steps.guard.outputs.has_auth == 'true'
+        if: steps.guard.outputs.has_auth == 'true' && steps.scope.outputs.level != 'NoTests'
         continue-on-error: true
+        env:
+          STUFE: ${{ steps.scope.outputs.level }}
+          KLASSEN: ${{ steps.scope.outputs.classes }}
         run: |
-          sf project deploy validate \
-            --source-dir force-app \
-            --test-level RunLocalTests \
-            --wait 30
+          if [ "$STUFE" = "RunSpecifiedTests" ]; then
+            sf project deploy validate \
+              --source-dir force-app \
+              --test-level RunSpecifiedTests \
+              --tests "$KLASSEN" \
+              --wait 30
+          else
+            sf project deploy validate \
+              --source-dir force-app \
+              --test-level RunLocalTests \
+              --wait 30
+          fi
 
       # Gate 3 — proves the Playwright auth layer still works against this org
       - name: Install Chromium
