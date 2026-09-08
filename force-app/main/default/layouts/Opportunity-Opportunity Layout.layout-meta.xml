@@ -71,6 +71,10 @@
                 <behavior>Readonly</behavior>
                 <field>Is_Overdue__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Value_Tier__c</field>
+            </layoutItems>
         </layoutColumns>
         <style>TwoColumnsTopToBottom</style>
     </layoutSections>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-402: consolidated build. Field (formulaTreatBlanksAs fix), PermissionSet,
+     ListView (first deploy), Layout (add Value_Tier__c), Apex tests.
+     House pattern. Single manifest; split into phase1/phase2 if the field
+     must be deployed before its dependents (unordered-batch regression). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Opportunity.Value_Tier__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>SCRUM401_Value_Tier_Read</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Opportunity.Hochwertige_Chancen</members>
+        <name>ListView</name>
+    </types>
+    <types>
+        <members>Opportunity-Opportunity Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>SCRUM402WertstufeTest</members>
+        <members>SCRUM402WertstufeFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

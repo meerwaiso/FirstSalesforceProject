@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Value_Tier__c</fullName>
+    <description>Wertstufe offener Verkaufschancen nach Volumen (SCRUM-401/402): &quot;Hoch&quot; ab 100.000, &quot;Mittel&quot; ab 50.000, &quot;Gering&quot; darunter, &quot;Unbekannt&quot; wenn Amount leer. Formelfeld aus Amount, systemberechnet, read-only.</description>
+    <externalId>false</externalId>
+    <formula>IF(ISBLANK(Amount), &quot;Unbekannt&quot;, IF(Amount &gt;= 100000, &quot;Hoch&quot;, IF(Amount &gt;= 50000, &quot;Mittel&quot;, &quot;Gering&quot;)))</formula>
+    <formulaTreatBlanksAs>BlankAsBlank</formulaTreatBlanksAs>
+    <label>Wertstufe</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+</CustomField>
