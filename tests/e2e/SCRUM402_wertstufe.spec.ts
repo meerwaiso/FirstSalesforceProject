@@ -48,17 +48,6 @@ function sfCount(query: string): number {
   return m ? parseInt(m[1], 10) : -1;
 }
 
-function sfQueryNames(query: string): string[] {
-  const out = sfRaw(['data', 'query', '-o', 'Test-Org', '-q', query, '--json']);
-  try {
-    const d = JSON.parse(out.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, ''));
-    const recs = (d.result?.records ?? d.records ?? []) as { Name?: string }[];
-    return recs.map((r) => r.Name ?? '');
-  } catch {
-    return [];
-  }
-}
-
 function sfQueryFirst(query: string): { Id?: string } {
   const out = sfRaw(['data', 'query', '-o', 'Test-Org', '-q', query, '--json']);
   try {
@@ -70,11 +59,36 @@ function sfQueryFirst(query: string): { Id?: string } {
   }
 }
 
+/** SOQL record Ids (lowercased) — the collision-free key to prove WHICH org records
+ *  a list renders, independent of duplicate Name strings (org has 2 shared between
+ *  the open-«Hoch» and closed-«Hoch» sets). */
+function sfQueryIds(query: string): string[] {
+  const out = sfRaw(['data', 'query', '-o', 'Test-Org', '-q', query, '--json']);
+  try {
+    const d = JSON.parse(out.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, ''));
+    const recs = (d.result?.records ?? d.records ?? []) as { Id?: string }[];
+    return recs.map((r) => (r.Id ?? '').toLowerCase());
+  } catch {
+    return [];
+  }
+}
+
 /** German currency: "120.000,00 €" → 120000.00 */
 function parseDeCurrency(text: string): number {
   const t = text.replace(/[€\s]/g, '');
   if (!t) return NaN;
   return parseFloat(t.replace(/\./g, '').replace(',', '.'));
+}
+
+/** One rendered data row from the «Hochwertige Chancen» list (see column map below). */
+interface OppRow {
+  id: string;
+  name: string;
+  account: string;
+  amount: string;
+  date: string;
+  wert: string;
+  owner: string;
 }
 
 /**
@@ -87,7 +101,7 @@ function parseDeCurrency(text: string): number {
 async function openOpportunityList(page: Page): Promise<{
   header: string;
   headers: string[];
-  rows: string[][];
+  rows: OppRow[];
 }> {
   await page.goto('/lightning/o/Opportunity/list?filterName=Hochwertige_Chancen', {
     waitUntil: 'domcontentloaded',
@@ -103,11 +117,40 @@ async function openOpportunityList(page: Page): Promise<{
   const headers = (await page.locator('table[role="grid"] thead th, table[role="grid"] tr:has(th) th').allInnerTexts())
     .map((h) => h.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim());
 
+  // Each row: the record Name is a <th rowheader> (the link to the record), NOT
+  // a <td>. The 8 <td> columns are:
+  //   td[0]=RowNumber  td[1]=Select  td[2]=Account  td[3]=Amount
+  //   td[4]=CloseDate  td[5]=Wertstufe  td[6]=OwnerAlias  td[7]=Action
+  // Reading the Name from a td index is wrong — it silently lands on a later column.
   const rowLoc = page.locator('table[role="grid"] tbody tr[role="row"]');
   const n = await rowLoc.count();
-  const rows: string[][] = [];
+  const rows: OppRow[] = [];
   for (let i = 0; i < n; i++) {
-    rows.push((await rowLoc.nth(i).locator('td').allInnerTexts()).map((c) => c.trim()));
+    const tr = rowLoc.nth(i);
+    const tds = tr.locator('td');
+    const cell = async (x: number): Promise<string> => {
+      const raw = await tds.nth(x).innerText().catch(() => '');
+      // Lightning appends an inline affordance like "Edit <Col>" / "Locked <Col>"
+      // after the value; the first token-run before it is the value itself.
+      const first = raw.split('\n')[0] ?? raw;
+      return first.replace(/\s+(Edit|Locked)\b.*$/, '').trim();
+    };
+    // The rowheader is a link to /lightning/r/<Id>/view — the row's record Id,
+    // the only collision-free key for identifying which org record a row shows.
+    const rhHref = (await tr.locator('[role="rowheader"] a').first().getAttribute('href').catch(() => '')) ?? '';
+    const idMatch = rhHref.match(/\/lightning\/r\/([0-9a-zA-Z]{15,18})/);
+    rows.push({
+      id: idMatch ? idMatch[1] : '',
+      name: (await tr.locator('[role="rowheader"]').first().innerText().catch(() => ''))
+        .split('\n')[0]
+        .replace(/\s+Edit\b.*$/, '')
+        .trim(),
+      account: await cell(2),
+      amount: await cell(3),
+      date: await cell(4),
+      wert: await cell(5),
+      owner: await cell(6),
+    });
   }
   return { header, headers, rows };
 }
@@ -145,9 +188,12 @@ async function readFieldValueAfterLabel(page: Page, label: string): Promise<stri
 test.describe('[SCRUM-402] Wertstufe für offene Verkaufs-Chance', () => {
   let hochId = '';
   let unbekanntId = '';
-  // Ground truth from the org (read-back, not tool output)
-  let openHochNames: string[] = [];
-  let closedHochNames: string[] = [];
+  // Ground truth from the org (read-back, not tool output) — records as Id, nicht Name:
+  // die Test-Org hat 2 Opportunity-Namen, die sowohl offen-«Hoch» als auch
+  // geschlossen-«Hoch» tragen ("United Oil Installations", "United Oil Refinery
+  // Generators"). Nur die Id erlaubt einen eindeutigen Satz-Vergleich.
+  let openHochIds: string[] = [];
+  let closedHochIds: string[] = [];
   let closedHochCount = 0;
 
   test.beforeAll(() => {
@@ -164,18 +210,18 @@ test.describe('[SCRUM-402] Wertstufe für offene Verkaufs-Chance', () => {
     );
     expect(assigned, `Session user ${sessionUser} must carry SCRUM401_Value_Tier_Read (AC3 positive side)`).toBe(1);
 
-    // Precondition 2 — the 8 «Hoch» records actually exist in the org.
-    openHochNames = sfQueryNames(
-      `SELECT Name FROM Opportunity WHERE StageName NOT IN ('Closed Won','Closed Lost') AND Value_Tier__c='Hoch'`
+    // Precondition 2 — the 8 «Hoch» records actually exist in the org (as Ids).
+    openHochIds = sfQueryIds(
+      `SELECT Id FROM Opportunity WHERE StageName NOT IN ('Closed Won','Closed Lost') AND Value_Tier__c='Hoch'`
     );
-    expect(openHochNames.length, `Org must contain exactly 8 open «Hoch» opportunities, found ${openHochNames.length}`).toBe(8);
+    expect(openHochIds.length, `Org must contain exactly 8 open «Hoch» opportunities, found ${openHochIds.length}`).toBe(8);
 
-    // Precondition 3 — closed «Hoch» records that must NOT appear (10, measured).
+    // Precondition 3 — closed «Hoch» records that must NOT appear (10, measured, as Ids).
     closedHochCount = sfCount(
       `SELECT Id FROM Opportunity WHERE StageName IN ('Closed Won','Closed Lost') AND Value_Tier__c='Hoch'`
     );
-    closedHochNames = sfQueryNames(
-      `SELECT Name FROM Opportunity WHERE StageName IN ('Closed Won','Closed Lost') AND Value_Tier__c='Hoch'`
+    closedHochIds = sfQueryIds(
+      `SELECT Id FROM Opportunity WHERE StageName IN ('Closed Won','Closed Lost') AND Value_Tier__c='Hoch'`
     );
 
     // UI reference records for AC1: one 100.000 (boundary → Hoch), one with empty Amount (→ Unbekannt).
@@ -221,33 +267,39 @@ test.describe('[SCRUM-402] Wertstufe für offene Verkaufs-Chance', () => {
     // 3) Exactly 8 lines (DO-D O1: «exactly 8» as PS-holding user in the UI)
     expect(rows.length, `List should show exactly 8 rows, showed ${rows.length}`).toBe(8);
 
-    // 4) Every row: Wertstufe=«Hoch» (col 6), Amount ≥ 100.000 (col 4), Name present (col 2)
-    const listedNames: string[] = [];
-    for (const [i, cells] of rows.entries()) {
-      expect(cells.length, `Row ${i + 1} has ${cells.length} cells, expected 8 (row number + 6 data + actions)`).toBe(8);
-      const name = cells[2];
-      const amount = parseDeCurrency(cells[4]);
-      const wertstufe = cells[6];
-      expect(name, `Row ${i + 1} has empty Name`).toBeTruthy();
-      expect(amount, `Row ${i + 1}: Amount «${cells[4]}» not ≥ 100.000 (would violate Hoch-tier)`).toBeGreaterThanOrEqual(100000);
-      expect(wertstufe, `Row ${i + 1}: Wertstufe «${wertstufe}» must be «Hoch»`).toBe('Hoch');
-      listedNames.push(name);
+    // 4) Every row: all six required columns populated — Name (rowheader), Konto,
+    //    Betrag ≥ 100.000, Abschlussdatum, Wertstufe = «Hoch», Inhaber.
+    const listedIds: string[] = [];
+    for (const [i, row] of rows.entries()) {
+      const amount = parseDeCurrency(row.amount);
+      expect(row.id, `Row ${i + 1} has no resolvable record Id (rowheader link missing)`).toMatch(/^[0-9a-zA-Z]{15,18}$/);
+      expect(row.name, `Row ${i + 1} has empty Name`).toBeTruthy();
+      expect(row.account, `Row ${i + 1} has empty Konto (Account)`).toBeTruthy();
+      expect(Number.isFinite(amount), `Row ${i + 1}: Amount «${row.amount}» is not a number`).toBe(true);
+      expect(amount, `Row ${i + 1}: Amount «${row.amount}» not ≥ 100.000 (a "Hoch" record must be)`).toBeGreaterThanOrEqual(100000);
+      expect(row.date, `Row ${i + 1} has empty Abschlussdatum (Close Date)`).toBeTruthy();
+      expect(row.wert, `Row ${i + 1}: Wertstufe «${row.wert}» must be «Hoch»`).toBe('Hoch');
+      expect(row.owner, `Row ${i + 1} has empty Inhaber (Owner)`).toBeTruthy();
+      listedIds.push(row.id.toLowerCase());
     }
 
-    // 5) Line set matches org ground truth line by line (not just line count)
+    // 5) Set of rendered records == the 8 open «Hoch» records of the org. By ID, not
+    //    by name — because "United Oil Installations" and "United Oil Refinery
+    //    Generators" exist as a closed-Hoch record in addition to the open-Hoch
+    //    record, and Name-based comparisons become ambiguous (and wrongly red).
     expect(
-      listedNames.slice().sort(),
-      'Listed names must equal the 8 open «Hoch» opportunities in the org'
-    ).toEqual(openHochNames.slice().sort());
+      listedIds.slice().sort(),
+      'The records being rendered must correspond exactly to the 8 open «Hoch» opportunities from the org (per record ID)'
+    ).toEqual(openHochIds.slice().sort());
 
-    // 6) Closed «Hoch» records must be excluded — by line count (8 vs 10 present) as well as by name
-    for (const closedName of closedHochNames) {
+    // 6) Closed «Hoch» records must be excluded — per record ID, unambiguous in any case
+    for (const closedId of closedHochIds) {
       expect(
-        listedNames.includes(closedName),
-        `Closed opportunity «${closedName}» must not appear in the view`
+        listedIds.includes(closedId),
+        `A closed record (${closedId}) must not be displayed (this is also covered by the set comparison in 5, but this makes individual violations visible)`
       ).toBe(false);
     }
-    expect(closedHochCount, 'Sanity: org has 10 closed «Hoch» records that are being excluded').toBe(10);
+    expect(closedHochCount, 'Sanity: the org has 10 closed «Hoch» records that will be excluded').toBe(10);
   });
 
   test('AC3: FLS — without PS does not see the field, with PS read-only (Apex runAs, fresh)', async () => {
