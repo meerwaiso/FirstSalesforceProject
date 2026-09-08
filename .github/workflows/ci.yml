@@ -365,8 +365,33 @@ jobs:
           def ist_jobblocker(problem):
               return any(t in problem for t in JOBTEXTE)
 
-          apex  = [b for b in befunde if ist_jobblocker(b[1])]
-          drift = [b for b in befunde if not ist_jobblocker(b[1])]
+          # A report cannot reference its own report type inside one package:
+          # Salesforce does not resolve that dependency during a validation, the
+          # type has to be present in the org already. For work that has not
+          # been released yet it is not — which is the normal state before a
+          # release, not drift. Measured 2026-09-08: report and report type
+          # deployed together fail exactly like the report alone.
+          #
+          # It IS drift when the type is missing from the repo too. The three
+          # cases this gate has caught so far were all of that kind, and they
+          # still fail here: no file, no exemption.
+          import pathlib
+          def typ_liegt_im_repo(name, problem):
+              if "invalid report type" not in problem.lower():
+                  return False
+              bericht = pathlib.Path("force-app/main/default/reports") / f"{name}.report-meta.xml"
+              if not bericht.is_file():
+                  return False
+              m = re.search(r"<reportType>([^<]+)</reportType>", bericht.read_text(encoding="utf-8"))
+              if not m:
+                  return False
+              typ = pathlib.Path("force-app/main/default/reporttypes") / f"{m.group(1).strip()}.reportType-meta.xml"
+              return typ.is_file()
+
+          apex   = [b for b in befunde if ist_jobblocker(b[1])]
+          rest   = [b for b in befunde if not ist_jobblocker(b[1])]
+          unveroeffentlicht = [b for b in rest if typ_liegt_im_repo(*b)]
+          drift  = [b for b in rest if not typ_liegt_im_repo(*b)]
 
           # A gate that cannot read its own result must not wave the change through.
           if not befunde and not r:
@@ -383,6 +408,13 @@ jobs:
                     f"not this PR. Enable 'Allow deployments of components when corresponding "
                     f"Apex jobs are pending or in progress' in Setup > Deployment Settings.")
               print(f"  {', '.join(klassen)}")
+
+          if unveroeffentlicht:
+              print(f"::warning title=Not yet in Prod-Org::{len(unveroeffentlicht)} report(s) reference a "
+                    f"report type that is in this repository but not yet released to Prod-Org. Not drift — "
+                    f"the type is deployed with the release, and a validation cannot create it beforehand.")
+              for name, problem in unveroeffentlicht:
+                  print(f"  {name}: {problem[:200]}")
 
           if drift:
               print(f"::error title=Prod-Org drift::{len(drift)} component(s) do not resolve in Prod-Org")
