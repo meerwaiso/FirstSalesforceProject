@@ -22,24 +22,25 @@
 private class SCRUM398EskalationsstufeTest {
 
     private static Case makeCase(String tag, String priority, Boolean isOverdue) {
-        Integer duration = 0;
-        
-        if (isOverdue) {
-            duration = priority == 'High' ? 3 : (priority == 'Medium' ? 6 : 11);
-        }
-        
+        // Is_Overdue__c is a formula over Processing_Duration__c, which is itself
+        // TODAY() - DATEVALUE(CreatedDate). Neither is writeable, so the only way
+        // to make a case overdue in a test is Test.setCreatedDate AFTER the insert.
+        // Assigning CreatedDate in the constructor does not compile:
+        // "Field is not writeable: Case.CreatedDate".
         Case c = new Case(
-            Subject = tag,
-            Status = 'New',
+            Subject  = tag,
+            Status   = 'New',
             Priority = priority,
-            Origin = 'Phone',
-            Type = 'Support'
+            Origin   = 'Phone',
+            Type     = 'Support'
         );
         insert c;
-        
-        // ClosedDate is a formula (SCRUM-390) — it reflects Status, not a writable field.
-        // To simulate overdue: we set Status='New' (not Closed) and a duration past threshold.
-        // The test data is open cases — which is exactly what Is_Overdue__c checks.
+
+        if (isOverdue) {
+            // Thresholds from the Is_Overdue__c formula: High > 2, Medium > 5, Low > 10
+            Integer tage = (priority == 'High') ? 3 : (priority == 'Medium') ? 6 : 11;
+            Test.setCreatedDate(c.Id, DateTime.now().addDays(-tage));
+        }
         return c;
     }
 
@@ -98,8 +99,11 @@ private class SCRUM398EskalationsstufeTest {
     @isTest
     static void valueFollowsCurrentState_notPersistedStale() {
         // AC1: the value must reflect CURRENT Is_Overdue__c + Priority at view time.
-        Case c = makeCase('TEST-398-FLIP', 'Low', false);
-        System.assertEquals('Normal', readValue(c.Id), 'Precondition: Low/NotOverdue -> Normal');
+        // Created 11 days ago: past the Low threshold (10) and the High one (2).
+        // Low always reads 'Normal' by the formula, so the precondition holds while
+        // the case is already old enough for the flip to change anything.
+        Case c = makeCase('TEST-398-FLIP', 'Low', true);
+        System.assertEquals('Normal', readValue(c.Id), 'Precondition: Low -> Normal');
 
         // Update to High/Overdue
         c.Priority = 'High';
@@ -125,12 +129,8 @@ private class SCRUM398EskalationsstufeTest {
             'Eskalationsstufe__c must be read-only (formula, no user edit)'
         );
         System.assert(
-            f.getType() == Schema.DisplayType.PICKLIST,
-            'Eskalationsstufe__c must be a Picklist field (returns kritisch/erhöht/normal)'
-        );
-        System.assertEquals(
-            3, f.getPicklistValues().size(),
-            'Eskalationsstufe__c must have exactly 3 Picklist values (kritisch, erhöht, normal)'
+            f.getType() == Schema.DisplayType.STRING,
+            'Eskalationsstufe__c must be a Text field (formula returns string literals; formula fields cannot be Picklist in Salesforce)'
         );
     }
 }

@@ -1,13 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ListView xmlns="http://soap.sforce.com/2006/04/metadata">
-    <columns>Eskalationsstufe__c</columns>
+    <fullName>Eskalierte_Faelle</fullName>
+    <columns>CASES.CASE_NUMBER</columns>
+    <columns>CASES.SUBJECT</columns>
+    <columns>CASES.PRIORITY</columns>
     <columns>Processing_Duration__c</columns>
+    <columns>Eskalationsstufe__c</columns>
+    <columns>CORE.USERS.ALIAS</columns>
+    <filterScope>Everything</filterScope>
     <filters>
         <field>Eskalationsstufe__c</field>
         <operation>equals</operation>
-        <value>Kritisch, Erhöht</value>
+        <value>Kritisch,Erhöht</value>
     </filters>
-    <fullName>Eskalierte_Faelle</fullName>
-    <filterScope>Everything</filterScope>
+    <filters>
+        <field>CASES.STATUS</field>
+        <operation>notEqual</operation>
+        <value>Closed</value>
+    </filters>
     <label>Eskalierte Fälle</label>
 </ListView>
