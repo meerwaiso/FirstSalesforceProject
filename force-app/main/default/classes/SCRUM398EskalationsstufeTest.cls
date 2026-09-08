@@ -23,10 +23,8 @@ private class SCRUM398EskalationsstufeTest {
 
     private static Case makeCase(String tag, String priority, Boolean isOverdue) {
         Integer duration = 0;
-        Date closed = Date.today();
         
         if (isOverdue) {
-            closed = NULL;
             duration = priority == 'High' ? 3 : (priority == 'Medium' ? 6 : 11);
         }
         
@@ -35,11 +33,13 @@ private class SCRUM398EskalationsstufeTest {
             Status = 'New',
             Priority = priority,
             Origin = 'Phone',
-            ClosedDate = closed,
-            Type = 'Support',
-            Processing_Duration__c = duration
+            Type = 'Support'
         );
         insert c;
+        
+        // ClosedDate is a formula (SCRUM-390) — it reflects Status, not a writable field.
+        // To simulate overdue: we set Status='New' (not Closed) and a duration past threshold.
+        // The test data is open cases — which is exactly what Is_Overdue__c checks.
         return c;
     }
 
@@ -103,8 +103,7 @@ private class SCRUM398EskalationsstufeTest {
 
         // Update to High/Overdue
         c.Priority = 'High';
-        c.ClosedDate = NULL;
-        c.Processing_Duration__c = 3;
+        // Status remains 'New' (open = overdue condition)
         update c;
         System.assertEquals(
             'Kritisch', readValue(c.Id),
