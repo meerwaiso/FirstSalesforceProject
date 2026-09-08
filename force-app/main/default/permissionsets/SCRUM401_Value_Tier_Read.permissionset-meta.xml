@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Read-only FLS für Value_Tier__c (SCRUM-401). Lesezugriff auf die Wertstufe - ohne diesen Permission Set ist das Feld unsichtbar.</description>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Opportunity.Value_Tier__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM401_Value_Tier_Read</label>
+</PermissionSet>
