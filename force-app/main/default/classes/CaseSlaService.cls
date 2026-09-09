@@ -63,9 +63,9 @@ public without sharing class CaseSlaService {
      * Release-Voraussetzung, kein Nice-to-have.
      */
     @testVisible
-    public static DateTime addBusinessHours(DateTime from, Integer totalHours) {
+    public static DateTime addBusinessHours(DateTime startDate, Integer totalHours) {
         Long ms = (Long) totalHours * 3600L * 1000L;
-        return BusinessHours.add(null, from, ms);
+        return BusinessHours.add(null, startDate, ms);
     }
 
     /**

@@ -10,7 +10,8 @@ trigger CaseSlaFirstResponseTaskTrigger on Task (after insert) {
         // ActivityDate ist der ADR-3-Zeitstempel (backdatebar).
         // Fallback auf CreatedDate, falls ActivityDate null ist.
         DateTime ts = t.ActivityDate != null
-            ? t.ActivityDate.addHours(0) : t.CreatedDate;
+            ? DateTime.newInstance(t.ActivityDate.year(), t.ActivityDate.month(), t.ActivityDate.day(), 0, 0, 0)
+            : t.CreatedDate;
         if (ts == null) continue;
         DateTime existing = caseToEarliest.get(t.WhatId);
         if (existing == null || ts < existing) {
