@@ -9,7 +9,7 @@
 public without sharing class CaseSlaScheduler implements Database.Batchable<Case> {
     private Set<Id> collectedIds = new Set<Id>();
 
-    public Database.QueryLocator start(Database.BatchableContext ctx) {
+    public Database.QueryLocator start(Database.BatchableContext bc) {
         return Database.getQueryLocator(
             'SELECT Id, Reaktionsfrist__c ' +
             'FROM Case ' +
@@ -20,7 +20,7 @@ public without sharing class CaseSlaScheduler implements Database.Batchable<Case
         );
     }
 
-    public void execute(Database.BatchableContext ctx, List<Case> scope) {
+    public void execute(Database.BatchableContext bc, List<Case> scope) {
         if (scope == null || scope.isEmpty()) return;
         Boolean oldFlag = CaseSlaGuard.WRITING_ALERT;
         CaseSlaGuard.WRITING_ALERT = true;
@@ -35,14 +35,14 @@ public without sharing class CaseSlaScheduler implements Database.Batchable<Case
         }
     }
 
-    public void finish(Database.BatchableContext ctx) {
+    public void finish(Database.BatchableContext bc) {
         if (!collectedIds.isEmpty()) {
             System.enqueueJob(new CaseSlaNotification(new List<Id>(collectedIds)));
         }
     }
 
-    global class Cron implements Schedulable {
-        global void execute(SchedulableContext ctx) {
+    public class Cron implements Schedulable {
+        public void execute(SchedulableContext ctx) {
             Database.executeBatch(new CaseSlaScheduler(), 200);
         }
     }

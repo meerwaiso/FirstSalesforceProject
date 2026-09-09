@@ -3,15 +3,8 @@
     <columns><field>CASE_NUMBER</field></columns>
     <columns><field>SUBJECT</field></columns>
     <columns><field>PRIORITY</field></columns>
-    <columns><field>CLOSED</field></columns>
     <columns><field>Case.Reaktionsfrist__c</field></columns>
     <columns><field>Case.Erste_Rueckmeldung__c</field></columns>
-    <filter>
-        <criteriaItems>
-            <column>Case.Reaktionsfrist__c</column>
-            <operator>notEqual</operator>
-        </criteriaItems>
-    </filter>
     <format>Summary</format>
     <groupingsDown>
         <field>PRIORITY</field>
@@ -19,5 +12,5 @@
     </groupingsDown>
     <name>SLA_Monatsbericht</name>
     <reportType>CaseList</reportType>
-    <description>SLA-Einhaltung: Cases mit gesetzter Reaktionsfrist, gruppiert nach Priorität (SCRUM-404 Filter 1: Sla_Breached__c=false). Record Count je Prioritätsgruppe liefert die Einhaltungsquote. Sla_Breached__c ist kein FLS-Feld — der Filter wird per UI gesetzt oder der Report läuft als System. Ohne Dashboard v1 (ADR-10); Monats-% = Record Count der Gruppe / Gesamt.</description>
+    <description>SLA-Einhaltung: Cases mit gesetzter Reaktionsfrist, gruppiert nach Priorität (SCRUM-404). Record Count je Prioritätsgruppe = Einhaltungsquote. Filter: Reaktionsfrist__c populated + Sla_Breached__c=false (UI- oder System-Scope; kein FLS-Schutz für Sla_Breached__c — Report läuft als System).</description>
 </Report>
