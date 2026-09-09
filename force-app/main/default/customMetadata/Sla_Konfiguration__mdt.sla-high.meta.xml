@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>sla-high</fullName>
+    <label>sla-high</label>
+    <protected>false</protected>
+    <values>
+        <field>Prioritaet__c</field>
+        <value xsi:type="Picklist">High</value>
+    </values>
+    <values>
+        <field>Sla_Std__c</field>
+        <value xsi:type="Double">4</value>
+    </values>
+</CustomMetadata>

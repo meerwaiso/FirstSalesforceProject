@@ -5,21 +5,23 @@
     <description>Prioritätsstufe, zu der diese SLA-Zeile gehört (SCRUM-404): High = dringend, Medium = normal, Low = niedrige. Leer bei der globalen Zeile (Teamlead + Alert-Kanal).</description>
     <type>Picklist</type>
     <valueSet>
-        <restricted>true</restricted>
-        <value>
-            <fullName>High</fullName>
-            <default>false</default>
-            <label>High</label>
-        </value>
-        <value>
-            <fullName>Medium</fullName>
-            <default>false</default>
-            <label>Medium</label>
-        </value>
-        <value>
-            <fullName>Low</fullName>
-            <default>false</default>
-            <label>Low</label>
-        </value>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>High</fullName>
+                <default>false</default>
+                <label>High</label>
+            </value>
+            <value>
+                <fullName>Medium</fullName>
+                <default>false</default>
+                <label>Medium</label>
+            </value>
+            <value>
+                <fullName>Low</fullName>
+                <default>false</default>
+                <label>Low</label>
+            </value>
+        </valueSetDefinition>
     </valueSet>
 </CustomField>

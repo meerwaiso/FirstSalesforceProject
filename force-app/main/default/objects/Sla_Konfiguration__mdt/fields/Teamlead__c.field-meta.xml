@@ -2,10 +2,8 @@
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Teamlead__c</fullName>
     <label>Teamlead</label>
-    <description>Über die SLA-Verletzung dieser Priorität(n) wird dieser Benutzer informiert, wenn die Frist abläuft, ohne dass eine erste Rückmeldung vorliegt (SCRUM-404). Leer = kein Alert (deterministisch, ADR-6). Nur in der globalen MDT-Zeile gesetzt.</description>
-    <externalId>false</externalId>
-    <type>Lookup</type>
-    <referenceTo>User</referenceTo>
-    <relationshipLabel>SLA-Konfiguration</relationshipLabel>
-    <relationshipName>SLA_Konfiguration</relationshipName>
+    <description>ID des Benutzers, über den die SLA-Verletzung dieser Priorität(n) informiert wird, wenn die Frist abläuft ohne erste Rückmeldung (SCRUM-404). MDT-Felder können keinen Lookup auf User (Plattform-Limitierung) — therefore Text mit 18-stelliger User-ID (005…/005…). Leer = kein Alert (deterministisch, ADR-6). Nur in der globalen MDT-Zeile gesetzt.</description>
+    <length>255</length>
+    <type>Text</type>
+    <unique>false</unique>
 </CustomField>
