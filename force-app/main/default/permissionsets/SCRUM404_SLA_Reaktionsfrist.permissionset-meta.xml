@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.Reaktionsfrist__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.Erste_Rueckmeldung__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM404_SLA_Reaktionsfrist</label>
+    <description>Read-FLS für Case "Reaktionsfrist" und "Erste Reaktion" (SCRUM-404). Beide systemgepflegt (stummer vor-update-Guard, ADR-5); kein Write-PS, keine Apex/DML. Die 3 internen Felder (Sla_Breached__c, Sla_Compliance__c, Sla_Alert_Sent__c) haben kein FLS — nur Batch/Queueable + Trigger haben Zugriff, die Report-Abfrage läuft als System.</description>
+</PermissionSet>

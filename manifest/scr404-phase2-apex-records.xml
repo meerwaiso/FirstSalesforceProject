@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-404 Phase 2: Apex, Trigger, PermissionSet, Report, MDT-Records
+         (Records via Manifest-Member in metadata-format, CLI zippt sie ohne --source-dir). -->
+    <types>
+        <members>CaseSlaService</members>
+        <members>CaseSlaGuard</members>
+        <members>CaseSlaFirstResponseHandler</members>
+        <members>CaseSlaScheduler</members>
+        <members>CaseSlaNotification</members>
+        <members>CaseSlaSlaTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>CaseSlaTrigger</members>
+        <members>CaseSlaFirstResponseTaskTrigger</members>
+        <members>CaseSlaFirstResponseEventTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <types>
+        <members>SCRUM404_SLA_Reaktionsfrist</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Service/SLA_Monatsbericht</members>
+        <name>Report</name>
+    </types>
+    <types>
+        <members>sla-high</members>
+        <members>sla-medium</members>
+        <members>sla-low</members>
+        <members>global</members>
+        <name>CustomMetadata</name>
+    </types>
+    <version>62.0</version>
+</Package>
