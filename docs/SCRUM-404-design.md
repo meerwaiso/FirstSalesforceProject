@@ -44,12 +44,26 @@ nach Priorität ist pro Monat auswertbar.
 Kein Flow → keine Flow-apiVersion-Spezifikation nötig (Pre-Handoff-Checklist erfüllt als «nicht anwendbar»).
 Alle Apex-Metadaten: **apiVersion 67.0** (Hausstandard, s. `manifest/scr403-phase2-referencing.xml`).
 
-### ADR-2: Business Hours = Plattform-Objekt (Org-Konfiguration), Berechnung = Apex `BusinessHours.nextBusinessHours()`
+### ADR-2: Business Hours = Plattform-Objekt (Org-Konfiguration), Berechnung = Apex `BusinessHours.add()`
 
 Die Arbeitszeitregelung **und** der Feiertagskalender leben in der existierenden `BusinessHours`-Record +
 `Holiday`-Records (Setup-UI, **kein Deploy** — PO-Forderung «ohne Deploy» erfüllt auf Plattformebene).
-Die Frist berechnet ein Apex-Trigger via `BusinessHours.nextBusinessHours(CreatedDate, nStunden)` — die
-öffentliche Apex-API, die Arbeitszeiten **und** Holidays der aktiven BusinessHours-Record respektiert.
+Die Frist berechnet ein Apex-Trigger via **`BusinessHours.add(businessHoursId, startDateTime, ms)`** (gibt
+`DateTime` zurück) — die öffentliche Apex-API, die Arbeitszeiten **und** Holidays der angegebenen
+BusinessHours-Record respektiert. `nStunden` wird in Millisekunden übersetzt (`stunden * 3600 * 1000L`).
+
+⚠️ **Berichtigung 2026-09-09 (Architekt — kompiliert & gegen Test-Org verifiziert):**
+`BusinessHours.nextBusinessHours(CreatedDate, nStunden)` existiert in dieser Signatur **nicht** (Compile:
+«Method does not exist or incorrect signature»). Das korrekte Primtivist ist `add()`. **Zwei verifizierte Fallen:**
+1. **`add(null, …)` wirft `System.NPE: «Business Hours Id cannot be null»`** (verifiziert 17:10 org-log).
+   Die Id der Default-BH-Record SOQL-holen und übergeben
+   (`[SELECT Id FROM BusinessHours WHERE IsDefault = true LIMIT 1]`) — **nie `null`**.
+2. **Unkonfigurierte Default-Record = reine Kalenderzeit** (verifiziert: Fr 16:00 + 4 h → Fr 20:00,
+   überspringt SA/SO **nicht**). §8 Schritt 1 (Mo–Fr 08:00–17:00 + Holidays) ist damit
+   **Voraussetzung für die Korrektheit von AC 2/3**, nicht nur Org-Politur.
+
+Der `add()`-NPE-Fix (1) und die BH-Konfiguration (2) sind **zwei getrennte Dinge**: (1) ist Code (Id
+übergeben), (2) ist Org-Setup. Deren Verwechslung hat in der 1. Testrunde 2 der 7 Fails erzeugt.
 
 Warum nicht Formelfeld mit `nDaysAgo()`/`nHoursAgo()` (Business-Hours-Formelfunktionen): diese Funktionen
 sind **nur** in SLA-/Entitlement-Kontexten erlaubt, in einem normalen Case-Formelfeld nicht compilierbar.
@@ -72,17 +86,18 @@ wechselbar über das MDT (Setup → Custom Metadata → **SLA-Konfiguration**), 
   Subsekunden-Drift ist für eine Stunden-/Tages-SLA irrelevant). Test-Determinismus:
   `@testVisible static DateTime NOW_OVERRIDE` in `CaseSlaService` (null → `DateTime.now()`); der Test setzt
   einen Fix-Zeitpunkt und assertet den exakten Wert daraus.
-- **`BusinessHours.nextBusinessHours()` nutzt die aktive Default-BH-Record.** Die Test-Org hat genau eine
-  (`Default`, IsDefault belegt) — ein **eigener** Test-BH-Record wäre unwirksam. Richtiges Test-Setup: die
-  org-eigene `Default`-Record in der Test-Transaktion **per Update** auf Mo–Fr 08:00–17:00 setzen +
-  `Holiday`-Rows inserten; der Test-Transaction-Rollback stellt beides her. (Heutiger Zustand: Default ohne
-  konfigurierte Zeiten — die Prod-/Release-Organisation steht in §8 Schritt 1.)
+- **`BusinessHours.add()` braucht die Id der Default-BH-Record** (verifiziert: `add(null, …)` → NPE).
+  Die Test-Org hat genau eine (`Default`, IsDefault belegt). Richtiges Test-Setup: in der Test-Transaktion
+  die org-eigene `Default`-Record **per Update** auf Mo–Fr 08:00–17:00 setzen + `Holiday`-Rows inserten;
+  der Test-Rollback stellt beides her. Die `CaseSlaService` liest die Id pro Lauf (`IsDefault = true`).
+  (Heutiger Zustand: Default ohne konfigurierte Zeiten — die Release-Organisation steht in §8 Schritt 1;
+  ohne Konfiguration liefert `add()` reine Kalenderzeit, verifiziert.)
 
 ⚠️ **Berichtigung eines Szenario-Zielwerts (PO):** SC 2 behauptet «Freitag 16:00 + 4h → Dienstag 12:00».
 Bei 08:00–17:00 Mo–Fr ist das arithmetisch nicht erreichbar in keiner Interpretation. Nach
-`BusinessHours.nextBusinessHours(Fre 16:00, 4)` ist das Ergebnis **Montag 11:00** (Fre 16–17 = 1h,
+`BusinessHours.add(bhId, Fre 16:00, 4h)` ist das Ergebnis **Montag 11:00** (Fre 16–17 = 1h,
 Mo 08–11 = 3h). Das PO-Szenario selbst hedged («exakter Wert je definiert von der Arbeitszeitregel») —
-**die Plattform-Semantik (nextBusinessHours ab Anlagezeitpunkt) gilt**, der Apex-Test (AC 2) assertet den
+**die Plattform-Semantik (`add()` ab Anlagezeitpunkt) gilt**, der Apex-Test (AC 2) assertet den
 exakten Wert. PO/Tester: bitte den Szenario-Wert im Ticket bestätigen, blockiert nichts.
 
 ### ADR-3: Definition «erste Reaktion»
@@ -106,8 +121,31 @@ null` (→ AC 7: Bestand-Cases ohne Frist bleiben leer, auch wenn später Tasks 
   - Felder: `Prioritaet__c` (Picklist High/Medium/Low, leer bei Global-Zeile), `Sla_Std__c` (Number 5,0 —
     Business-Stunden), `Teamlead__c` (User), `Alert_Kanal__c` (Picklist `InApp,Email,Beides`, Default-Wert in
     Global-Zeile `Beides`).
-  - Initial-Zeilen: `sla-high` (High, 4), `sla-medium` (Medium, 8), `sla-low` (Low, 24), `global`
-    (Prioritaet leer, `Teamlead__c` = **Platzhalter, open item §9**, `Alert_Kanal__c` = Beides).
+  - Initial-Zeilen (DeveloperName = Label): `sla_high` (High, 4), `sla_medium` (Medium, 8), `sla_low` (Low,
+    24), `global` (Prioritaet leer, `Teamlead__c` = **Platzhalter, open item §9**, `Alert_Kanal__c` = Beides).
+  - **⚠️ Record-Namen ohne Bindestriche — verifizierter Deploy-Blocker (2026-09-09):** Der Deploy-Server
+    lehnt DeveloperName mit `-` ab («can only contain underscores and alphanumeric characters»).
+    `sla-high`/`sla-medium`/`sla-low` sind **ungültig**, `sla_high`/`sla_medium`/`sla_low`/`global` nicht.
+    Der Apex-Readout fragt nach `Prioritaet__c`, nicht nach DeveloperName → die Umbenennung bricht nichts.
+  - **File-Format (verifiziert, dry-run grün, 4/4):** Source-Format in Subverzeichnissen, nicht
+    `customMetadata/<Type>.<label>.md`:
+
+    ```
+    force-app/main/default/customMetadata/Sla_Konfiguration__mdt/
+      Sla_Konfiguration__mdt.sla_high.md-meta.xml
+      Sla_Konfiguration__mdt.sla_medium.md-meta.xml
+      Sla_Konfiguration__mdt.sla_low.md-meta.xml
+      Sla_Konfiguration__mdt.global.md-meta.xml
+    ```
+
+    Inhalt je File (Shape = Repository-Anker `ChurnThreshold__mdt.Standard_Churn_Threshold.md-meta.xml`,
+    SCRUM-292): Wurzelelement `CustomMetadata`, `xmlns` (metadata), `xmlns:xsi`, `xmlns:xsd`,
+    `<label>`, `<protected>false</protected>`, `<values>` mit `<field>` + `<value xsi:type="xsd:string|xsd:double">`.
+    **Keine** `entity`- und `fullName`-Attribute — das ist metadata-format; im Source-Format leitet die CLI
+    den DeveloperName aus dem Dateinamen ab: `<Typ>.<DeveloperName>.md-meta.xml`. Das alte
+    `customMetadata/<Typ>.<label>.md` mit `entity`-Attribut + `<fullName>` wird von der CLI als
+    «metadata format … but the directory … is for source formatted files» **ignoriert** →
+    `numberComponentsTotal: 0` + `UNKNOWN_EXCEPTION (-315522575)` (Logs #17292 + Nachvollzug 2026-09-09).
   - Apex-Readout: 1 MDT-Query pro Trigger-Lauf (MDT wird zur Compilezeit geladen — kein Governor-Thema).
 - **Business Hours + Holiday**: Org-Konfiguration (Setup), §8 Org-Schritt 1.
 
@@ -273,14 +311,17 @@ Felder `Prioritaet__c` (Picklist High/Medium/Low), `Sla_Std__c` (Number 5,0), `T
    - `force-app/main/default/objects/Sla_Konfiguration__mdt/fields/Sla_Std__c.field-meta.xml`
    - `force-app/main/default/objects/Sla_Konfiguration__mdt/fields/Teamlead__c.field-meta.xml`
    - `force-app/main/default/objects/Sla_Konfiguration__mdt/fields/Alert_Kanal__c.field-meta.xml`
-   - `force-app/main/default/customMetadata/Sla_Konfiguration__mdt.sla-high.md` (High, 4)
-   - `...mdt/...sla-medium.md` (Medium, 8) · `...sla-low.md` (Low, 24) · `...global.md` (Teamlead = open item, Kanal Beides)
+   - `force-app/main/default/customMetadata/Sla_Konfiguration__mdt/Sla_Konfiguration__mdt.sla_high.md-meta.xml` (High, 4)
+   - `.../Sla_Konfiguration__mdt.sla_medium.md-meta.xml` (Medium, 8) · `...sla_low.md-meta.xml` (Low, 24) ·
+     `...global.md-meta.xml` (Teamlead = open item, Kanal Beides) — **Shape: ADR-4-Berichtigung, keine
+     `entity`/`fullName`-Attribute, DeveloperName ohne Bindestrich.**
 2. **Case-Felder** (Phase 1): `force-app/main/default/objects/Case/fields/{Reaktionsfrist__c,Erste_Rueckmeldung__c,Sla_Breached__c,Sla_Compliance__c,Sla_Alert_Sent__c}.field-meta.xml` (Formeln exakt aus §3; DateTime ohne `<length>`/`unique` — Hausmuster `Is_Overdue__c`/`Processing_Duration__c`). **Zusätzlich NUR wenn** die Custom-Summary-Option verworfen wird (ADR-7-⚠️): `Sla_Counted__c` + `Sla_Met__c` (Number 1,0, Formeln: `Sla_Counted__c = IF(ISBLANK(Reaktionsfrist__c), 0, IF(ISBLANK(Erste_Rueckmeldung__c), IF(NOW() > Reaktionsfrist__c, 1, 0), 1))`; `Sla_Met__c = IF(AND(Reaktionsfrist__c != null, Erste_Rueckmeldung__c != null, Erste_Rueckmeldung__c <= Reaktionsfrist__c), 1, 0)`) — in Phase 1 mitdeployen, falls gewählter Weg.
 3. **Klassen** (Phase 2, je 1 `.cls` + `.cls-meta.xml`, `apiVersion 67.0`):
    - `CaseSlaService` — statik: `Map<String, Integer> slaHoursByPriority()` (liest die MDT-Zeilen,
      Priorität → Business-Stunden; Global-Zeile: Teamlead + Kanal) und `void setDeadlinesForNewCases(
      List<Case> newCases)` (vor-insert: `Reaktionsfrist__c` via
-     `BusinessHours.nextBusinessHours(CreatedDate, std)` **setzen**, dazu die Pre-Fills von
+     `BusinessHours.add(businessHoursId, (NOW_OVERRIDE ?? DateTime.now()), std * 3600000L)` **setzen**
+     (`businessHoursId` = SOQL `IsDefault = true`; **nie null** — ADR-2-Berichtigung), dazu die Pre-Fills von
      `Erste_Rueckmeldung__c`/`Sla_Alert_Sent__c` hart entfernen, ADR-5).
    - `CaseSlaGuard` — statik-Booleans `WRITING_DEADLINE, WRITING_RESPONSE, WRITING_ALERT`,
      `@testVisible static Boolean TEST_BYPASS = false`, statik `void guardOnUpdate(List<Case> old, List<Case> new)`
@@ -341,7 +382,8 @@ public without sharing class CaseSlaService {
     // ADR-2-Pitfall: CreatedDate ist im before insert null → Deadline aus NOW_OVERRIDE (null → DateTime.now())
     @testVisible public static DateTime NOW_OVERRIDE = null;
     @testVisible public static Map<String, Integer> slaHoursByPriority();   // 1 MDT-Query pro Txn
-    // vor-insert: Reaktionsfrist__c = BusinessHours.nextBusinessHours(NOW_OVERRIDE ?? DateTime.now(), std)
+    // vor-insert: Reaktionsfrist__c = BusinessHours.add(businessHoursId, NOW_OVERRIDE ?? DateTime.now(), std * 3600000L)
+    //   (businessHoursId = SOQL IsDefault=true, nie null — ADR-2)
     // je Priorität; dazu Pre-Fills von Erste_Rueckmeldung__c / Sla_Alert_Sent__c hart entfernen (ADR-5).
     public static void setDeadlinesForNewCases(List<Case> newCases);
 }
