@@ -15,12 +15,5 @@
         <members>Sla_Konfiguration__mdt</members>
         <name>CustomObject</name>
     </types>
-    <types>
-        <members>Sla_Konfiguration__mdt.sla-high</members>
-        <members>Sla_Konfiguration__mdt.sla-medium</members>
-        <members>Sla_Konfiguration__mdt.sla-low</members>
-        <members>Sla_Konfiguration__mdt.global</members>
-        <name>CustomMetadata</name>
-    </types>
     <version>67.0</version>
 </Package>

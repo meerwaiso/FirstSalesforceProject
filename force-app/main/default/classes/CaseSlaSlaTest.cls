@@ -92,38 +92,36 @@ private class CaseSlaSlaTest {
 
     @isTest
     static void AC3_responseBeforeDeadline() {
-        DateTime deadline = DateTime.newInstance(2026, 9, 7, 11, 0, 0);
-        Case c = createCaseWithDeadline('Normal', deadline);
+        // AC3: Frist in der Zukunft, Task im laufenden Insert (CreatedDate = NOW).
+        DateTime deadline = DateTime.now().addHours(1);
+        Case c = createCaseWithDeadline('Medium', deadline);
 
-        addTaskToCase(c.Id, Date.parse('2026-09-04')); // Fri 2026-09-04
+        addTaskToCase(c.Id, DateTime.now().date()); // Task "now" — before deadline
 
         Case reloaded = [SELECT Erste_Rueckmeldung__c, Sla_Compliance__c, Sla_Breached__c
                          FROM Case WHERE Id = :c.Id];
-        // Sla_Compliance__c = 100.0 (response before deadline)
-        System.assertEquals(100.0, reloaded.Sla_Compliance__c, 'Should be 100 (compliant)');
-        System.assertEquals(false, reloaded.Sla_Breached__c, 'Should not be breached');
+        System.assertEquals(100.0, reloaded.Sla_Compliance__c,
+            'Compliance must be 100 (response before deadline)');
+        System.assertEquals(false, reloaded.Sla_Breached__c,
+            'Should not be breached — response arrived before deadline');
     }
 
     // ── AC 4: Rückmeldung nach Frist → verfehlt (0) ────────────────────────
+    // ADR-3: Zeitstempel = ActivityDate der Activity (backdatebar).
+    // Deadline in der Vergangenheit + ActivityDate in der Zukunft → Compliance = 0.
 
     @isTest
     static void AC4_responseAfterDeadline() {
-        DateTime deadline = DateTime.newInstance(2026, 9, 4, 10, 0, 0); // Fri 10:00
-        Case c = createCaseWithDeadline('Normal', deadline);
+        DateTime deadline = DateTime.now().addHours(-1); // 1 hour ago
+        Case c = createCaseWithDeadline('Medium', deadline);
 
-        addTaskToCase(c.Id, Date.parse('2026-09-04')); // Same day task
+        // Task mit ActivityDate +1 Tag → nach der Deadline
+        addTaskToCase(c.Id, Date.today().addDays(1));
 
         Case reloaded = [SELECT Erste_Rueckmeldung__c, Sla_Compliance__c, Sla_Breached__c
                          FROM Case WHERE Id = :c.Id];
-        // The Task trigger fires on insert, and the Task.CreatedDate is NOW (test time).
-        // If NOW > deadline, compliance = 0. If NOW <= deadline, compliance = 100.
-        // Since we can't control the exact test clock precisely, assert:
-        // Either both compliance and breached are consistent with the formula.
-        System.assert(
-            (reloaded.Sla_Compliance__c == 0.0 && !reloaded.Sla_Breached__c) ||
-            (reloaded.Sla_Compliance__c == 100.0 && !reloaded.Sla_Breached__c),
-            'Compliance and Breached should be consistent: formula gives 0/100 and Breached=false when response exists'
-        );
+        System.assertEquals(0.0, reloaded.Sla_Compliance__c,
+            'Compliance must be exactly 0 (response after deadline)');
     }
 
     // ── AC 5: Keine Rückmeldung nach Ablauf → überfällig ───────────────────
@@ -131,7 +129,7 @@ private class CaseSlaSlaTest {
     @isTest
     static void AC5_noResponse_breached() {
         DateTime deadline = DateTime.now().addHours(-1); // 1 hour ago
-        Case c = createCaseWithDeadline('Normal', deadline);
+        Case c = createCaseWithDeadline('Medium', deadline);
 
         Case reloaded = [SELECT Sla_Breached__c, Sla_Compliance__c FROM Case WHERE Id = :c.Id];
         System.assertEquals(true, reloaded.Sla_Breached__c, 'Should be breached (no response, after deadline)');
@@ -143,7 +141,7 @@ private class CaseSlaSlaTest {
     @isTest
     static void AC6_alertDeduplication() {
         DateTime deadline = DateTime.now().addHours(-1);
-        Case c = createCaseWithDeadline('Normal', deadline);
+        Case c = createCaseWithDeadline('Medium', deadline);
 
         Boolean oldFlag = CaseSlaGuard.WRITING_ALERT;
         CaseSlaGuard.WRITING_ALERT = true;
@@ -169,7 +167,7 @@ private class CaseSlaSlaTest {
     @isTest
     static void AC7_taskTriggerSetsFirstResponse() {
         DateTime deadline = DateTime.now().addHours(24);
-        Case c = createCaseWithDeadline('Normal', deadline);
+        Case c = createCaseWithDeadline('Medium', deadline);
 
         // First task (earlier date).
         addTaskToCase(c.Id, Date.parse('2026-09-01'));
@@ -188,7 +186,7 @@ private class CaseSlaSlaTest {
     @isTest
     static void AC9_guardSilentRevert() {
         DateTime deadline = DateTime.newInstance(2026, 9, 7, 11, 0, 0);
-        Case c = createCaseWithDeadline('Normal', deadline);
+        Case c = createCaseWithDeadline('Medium', deadline);
 
         // Attempt to change deadline — Guard should revert silently (no exception).
         c.Reaktionsfrist__c = DateTime.newInstance(2026, 12, 31, 0, 0, 0);
