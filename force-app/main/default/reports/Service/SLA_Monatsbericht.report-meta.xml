@@ -2,7 +2,6 @@
 <Report xmlns="http://soap.sforce.com/2006/04/metadata">
     <columns><field>CASE_NUMBER</field></columns>
     <columns><field>SUBJECT</field></columns>
-    <columns><field>PRIORITY</field></columns>
     <columns><field>Case.Reaktionsfrist__c</field></columns>
     <columns><field>Case.Erste_Rueckmeldung__c</field></columns>
     <format>Summary</format>
