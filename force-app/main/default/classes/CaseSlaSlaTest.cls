@@ -170,12 +170,12 @@ private class CaseSlaSlaTest {
         Case c = createCaseWithDeadline('Medium', deadline);
 
         // First task (earlier date).
-        addTaskToCase(c.Id, Date.parse('2026-09-01'));
+        addTaskToCase(c.Id, Date.today().addDays(-1));
         Case after1 = [SELECT Erste_Rueckmeldung__c FROM Case WHERE Id = :c.Id];
         System.assert(after1.Erste_Rueckmeldung__c != null, 'First response should be set after first task');
 
         // Second task (later date) — should NOT overwrite.
-        addTaskToCase(c.Id, Date.parse('2026-09-02'));
+        addTaskToCase(c.Id, Date.today());
         Case after2 = [SELECT Erste_Rueckmeldung__c FROM Case WHERE Id = :c.Id];
         System.assertEquals(after1.Erste_Rueckmeldung__c, after2.Erste_Rueckmeldung__c,
             'Second task must not overwrite first response');
@@ -189,6 +189,7 @@ private class CaseSlaSlaTest {
         Case c = createCaseWithDeadline('Medium', deadline);
 
         // Attempt to change deadline — Guard should revert silently (no exception).
+        // TEST_BYPASS is now false (reset in createCaseWithDeadline), so Guard blocks.
         c.Reaktionsfrist__c = DateTime.newInstance(2026, 12, 31, 0, 0, 0);
         update c; // Should not throw
 

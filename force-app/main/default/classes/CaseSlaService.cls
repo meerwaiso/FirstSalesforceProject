@@ -64,7 +64,11 @@ public without sharing class CaseSlaService {
                     + ' — Deadline bleibt leer (Case ' + c.Id + ').');
                 continue;
             }
-            c.Reaktionsfrist__c = addBusinessHours(now, hours);
+            // Nur setzen, wenn noch null — TEST_BYPASS-Cases können eine
+            // explizite Deadline mitbringen, die übergibben bleibt.
+            if (c.Reaktionsfrist__c == null) {
+                c.Reaktionsfrist__c = addBusinessHours(now, hours);
+            }
         }
     }
 
