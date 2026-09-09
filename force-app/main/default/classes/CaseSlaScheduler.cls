@@ -1,23 +1,20 @@
 /**
  * SCRUM-404: CaseSlaScheduler — 15-min-Batch für den Überfälligkeits-Alert.
  * ADR-6: Such-Kriterium = Frist gesetzt, KEINE erste Rückmeldung, Frist < NOW(),
- * Alert noch nicht gesendet. Dedup über Sla_Alert_Sent__c (2. Lauf findet die
- * Fälle nicht mehr). finish() enqueuet CaseSlaNotification (Queueable).
- *
- * Schedulable-Wrapper (Cron) wie Hausmuster OpportunityOverdueScheduler.
+ * Alert noch nicht gesendet. Dedup über Sla_Alert_Sent__c.
+ * finish() enqueuet CaseSlaNotification (Queueable).
  */
-public without sharing class CaseSlaScheduler implements Database.Batchable<Case> {
+public without sharing class CaseSlaScheduler implements Database.Batchable<Case>, Database.Stateful {
     private Set<Id> collectedIds = new Set<Id>();
 
     public Database.QueryLocator start(Database.BatchableContext bc) {
-        return Database.getQueryLocator(
-            'SELECT Id, Reaktionsfrist__c ' +
+        String soql = 'SELECT Id, Reaktionsfrist__c ' +
             'FROM Case ' +
             'WHERE Reaktionsfrist__c != null ' +
             'AND Erste_Rueckmeldung__c = null ' +
-            'AND Reaktionsfrist__c < :DateTime.now() ' +
-            'AND Sla_Alert_Sent__c = false'
-        );
+            'AND Reaktionsfrist__c < ' + DateTime.now().format() + ' ' +
+            'AND Sla_Alert_Sent__c = false';
+        return Database.getQueryLocator(soql);
     }
 
     public void execute(Database.BatchableContext bc, List<Case> scope) {
