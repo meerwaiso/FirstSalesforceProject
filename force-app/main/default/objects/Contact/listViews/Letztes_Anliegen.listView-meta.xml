@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns>Contact.Last_Case_Date__c</columns>
+    <fullName>Letztes_Anliegen</fullName>
+    <filterScope>Everything</filterScope>
+    <label>Letztes Anliegen</label>
+</ListView>

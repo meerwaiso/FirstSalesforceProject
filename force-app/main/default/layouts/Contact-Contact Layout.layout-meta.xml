@@ -83,6 +83,10 @@
                 <behavior>Readonly</behavior>
                 <field>Open_Cases_Count__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Last_Case_Date__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>
@@ -92,6 +96,10 @@
             <layoutItems>
                 <behavior>Readonly</behavior>
                 <field>Betreuungsstufe__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Time_Since_Last_Case__c</field>
             </layoutItems>
         </layoutColumns>
         <style>TwoColumnsTopToBottom</style>

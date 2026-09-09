@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-403 Phase 3: CustomListView «Letztes Anliegen» am Contact (child-type ListView),
+         Spalte Contact.Last_Case_Date__c — Träger für die PO-Forderung
+         „keine Anliegen seit N Monaten herausfiltern“ (AC 8 List-View-Filter/Sort). -->
+    <types>
+        <members>Contact.Letztes_Anliegen</members>
+        <name>ListView</name>
+    </types>
+    <version>62.0</version>
+</Package>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-403 Phase 2: alles, was die Phase-1-Felder referenziert
+         (gleiche 2-Phasen-Regel wie SCRUM-365: erst Felder, dann Referenzierendes).
+         Test-Klassen liegen BEI den Klassen, die sie testen, damit die
+         RunSpecifiedTests-Validierung sie als echtes Compile-/Ausführungsgate
+         ausführt (Muster scrum365-phase2-referencing.xml). -->
+    <types>
+        <members>LastCaseDateTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <types>
+        <members>LastCaseDateRebuilder</members>
+        <members>LastCaseDateTrigger</members>
+        <members>SCRUM403LastCaseDateFlsTest</members>
+        <members>SCRUM403LastCaseDateTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>Contact-Contact Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>SCRUM403_LastCaseDate</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>
