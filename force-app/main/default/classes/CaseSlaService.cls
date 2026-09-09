@@ -9,6 +9,24 @@
 public without sharing class CaseSlaService {
     @testVisible public static DateTime NOW_OVERRIDE = null;
 
+    // Cache für die Id des Default-BusinessHours-Records (ADR-2-Berichtigung):
+    // add(null, …) wirft NPE — Id per SOQL IsDefault=true holen, nie null.
+    // Pro Trigger-Lauf einmal geholt, dann gecacht (kein Governor-Thema).
+    private static Id cachedBhId = null;
+    private static Boolean bhIdFetched = false;
+
+    /**
+     * Holt (einmal pro Lauf, danach gecacht) die Id des Default-BusinessHours-Records.
+     * ADR-2-Berichtigung: add(null, …) warft NPE — die Id MUSS übergeben werden.
+     */
+    private static Id defaultBusinessHoursId() {
+        if (bhIdFetched) return cachedBhId;
+        List<BusinessHours> bhRecs = [SELECT Id FROM BusinessHours WHERE IsDefault = true LIMIT 1];
+        cachedBhId = bhRecs.isEmpty() ? null : bhRecs[0].Id;
+        bhIdFetched = true;
+        return cachedBhId;
+    }
+
     /**
      * Liest die SLA-Konfiguration (Custom Metadata) und liefert die
      * Priorität → Business-Stunden-Map. Global-Zeile (Prioritaet leer) liefert
@@ -51,12 +69,15 @@ public without sharing class CaseSlaService {
     }
 
     /**
-     * Liefert den DateTime, der `totalHours` Business-Stunden nach `from` liegt,
+     * Liefert den DateTime, der `totalHours` Business-Stunden nach `startDate` liegt,
      * basierend auf dem Default-BusinessHours-Record der Org.
      *
-     * Primtivist: BusinessHours.add(null, DateTime, Long ms) — natives
+     * Primtivist: BusinessHours.add(Id, DateTime, Long ms) — natives
      * Business-Time-Primtivist, respektiert Business-Hours-Konfiguration
-     * und Feiertage automatisch. (Architekten-Findung, 2026-09-09: ADR-2 Pivot.)
+     * und Feiertage automatisch.
+     *
+     * ADR-2-Berichtigung: add(null, …) warft NPE — die Id des Default-BHs
+     * wird per SOQL (IsDefault=true) geholt, nie null.
      *
      * WICHTIG: Wenn der Default-BH-Record unkonfiguriert ist, fällt add()
      * auf Kalenderzeit zurück — §8.1 (BH Mo–Fr 08:00–17:00 setzen) ist
@@ -65,7 +86,13 @@ public without sharing class CaseSlaService {
     @testVisible
     public static DateTime addBusinessHours(DateTime startDate, Integer totalHours) {
         Long ms = (Long) totalHours * 3600L * 1000L;
-        return BusinessHours.add(null, startDate, ms);
+        Id bhId = defaultBusinessHoursId();
+        if (bhId == null) {
+            // Kein Default-BH in der Org — Fallback auf pure Kalenderzeit,
+            // damit die Deadline gesetzt wird statt NPE (Release-Blocker bleibt BH-Konfig).
+            return startDate.addHours(totalHours);
+        }
+        return BusinessHours.add(bhId, startDate, ms);
     }
 
     /**

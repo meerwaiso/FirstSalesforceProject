@@ -26,9 +26,9 @@
         <name>Report</name>
     </types>
     <types>
-        <members>sla-high</members>
-        <members>sla-medium</members>
-        <members>sla-low</members>
+        <members>sla_high</members>
+        <members>sla_medium</members>
+        <members>sla_low</members>
         <members>global</members>
         <name>CustomMetadata</name>
     </types>
