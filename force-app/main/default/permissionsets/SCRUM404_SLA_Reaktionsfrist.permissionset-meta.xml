@@ -12,5 +12,5 @@
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>SCRUM404_SLA_Reaktionsfrist</label>
-    <description>Read-FLS für Case "Reaktionsfrist" und "Erste Reaktion" (SCRUM-404). Beide systemgepflegt via stummer vor-update-Guard (ADR-5); kein Write-PS, keine Apex/DML. Die 3 internen Felder (Sla_Breached__c, Sla_Compliance__c, Sla_Alert_Sent__c) haben kein FLS — nur Batch/Queueable + Trigger haben Zugriff.</description>
+    <description>Read-FLS für Reaktionsfrist__c und Erste_Rueckmeldung__c (SCRUM-404). Systemgepflegt via vor-update-Guard; kein Write-Zugriff. Sla_Breached/Compliance/Alert_Sent: kein FLS (nur Batch+Trigger).</description>
 </PermissionSet>

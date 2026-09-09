@@ -12,5 +12,5 @@
     </groupingsDown>
     <name>SLA_Monatsbericht</name>
     <reportType>CaseList</reportType>
-    <description>SLA-Einhaltung: Cases mit gesetzter Reaktionsfrist, gruppiert nach Priorität (SCRUM-404). Record Count je Prioritätsgruppe = Einhaltungsquote. Filter: Reaktionsfrist__c populated + Sla_Breached__c=false (UI- oder System-Scope; kein FLS-Schutz für Sla_Breached__c — Report läuft als System).</description>
+    <description>SLA-Einhaltung: Cases mit Reaktionsfrist, gruppiert nach Priorität (SCRUM-404). Record Count je Priorität = Einhaltungsquote.</description>
 </Report>
