@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Sla_Breached__c</fullName>
+    <label>Überfällig (Reaktion)</label>
+    <description>Überfällig-Flag für die Reaktionsfrist (SCRUM-404): true wenn eine Frist gesetzt ist, noch KEINE erste Rückmeldung vorliegt und NOW() die Frist übertroffen hat. Formelfeld, systemberechnet, read-only. Kein PII.</description>
+    <formula>AND(NOT(ISBLANK(Reaktionsfrist__c)), ISBLANK(Erste_Rueckmeldung__c), NOW() &gt; Reaktionsfrist__c)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <type>Checkbox</type>
+</CustomField>

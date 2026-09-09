@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Sla_Alert_Sent__c</fullName>
+    <label>Alert gesendet</label>
+    <description>Technisches Dedup-Flag (SCRUM-404): true, wenn der Überfälligkeits-Alert an den Teamlead bereits einmal gesendet wurde. Nur false-&gt;true durch den Batch mit vor-Update-Guard (ADR-6), kein manuelles Zurücksetzen. Von Service-Nutzern unsichtbar (kein FLS-Entry).</description>
+    <defaultValue>false</defaultValue>
+    <type>Checkbox</type>
+</CustomField>

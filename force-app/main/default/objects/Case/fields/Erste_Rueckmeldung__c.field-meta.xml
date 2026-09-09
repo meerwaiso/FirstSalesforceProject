@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Erste_Rueckmeldung__c</fullName>
+    <label>Erste Rückmeldung</label>
+    <description>Zeitpunkt der ersten Rückmeldung (SCRUM-404): wird beim ersten auf den Case gesetzten Task oder Event (CreatedDate) einmalig fixiert und wird danach nie wieder verändert (vor-Update-Guard ADR-5). Kein PII.</description>
+    <type>DateTime</type>
+</CustomField>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Reaktionsfrist__c</fullName>
+    <label>Reaktionsfrist</label>
+    <description>Zuletzt gültiger Zeitpunkt der Reaktionsfrist (SCRUM-404): bei Anlage per BusinessHours.nextBusinessHours() aus Priorität und konfigurierter Arbeitszeit (MDT SLA-Konfiguration) berechnet. Systemgepflegt (Trigger), faktisch read-only (vor-Update-Guard ADR-5). Kein PII.</description>
+    <type>DateTime</type>
+</CustomField>

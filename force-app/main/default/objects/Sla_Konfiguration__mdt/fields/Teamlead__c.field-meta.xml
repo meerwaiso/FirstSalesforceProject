@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Teamlead__c</fullName>
+    <label>Teamlead</label>
+    <description>Über die SLA-Verletzung dieser Priorität(n) wird dieser Benutzer informiert, wenn die Frist abläuft, ohne dass eine erste Rückmeldung vorliegt (SCRUM-404). Leer = kein Alert (deterministisch, ADR-6). Nur in der globalen MDT-Zeile gesetzt.</description>
+    <externalId>false</externalId>
+    <type>Lookup</type>
+    <referenceTo>User</referenceTo>
+    <relationshipLabel>SLA-Konfiguration</relationshipLabel>
+    <relationshipName>SLA_Konfiguration</relationshipName>
+</CustomField>

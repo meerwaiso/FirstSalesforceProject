@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Sla_Compliance__c</fullName>
+    <label>SLA eingehalten (%)</label>
+    <description>Einhaltungsgrad der Reaktionsfrist (SCRUM-404): 100 = erste Rückmeldung vor/gleich Frist, 0 = Rückmeldung nach Frist oder Frist verletzt (noch offen), null = Fall zählt NICHT in den Durchschnitt (offen ohne Verletzung oder kein Fristfeld/Bestand). Formelfeld, systemberechnet, read-only. Kein PII.</description>
+    <formula>IF(ISBLANK(Reaktionsfrist__c), null, IF(ISBLANK(Erste_Rueckmeldung__c), IF(NOW() &gt; Reaktionsfrist__c, 0, null), IF(Erste_Rueckmeldung__c &lt;= Reaktionsfrist__c, 100, 0)))</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <precision>6</precision>
+    <scale>1</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

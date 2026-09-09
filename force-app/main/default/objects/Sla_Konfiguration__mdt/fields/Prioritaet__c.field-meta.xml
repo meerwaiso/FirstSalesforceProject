@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Prioritaet__c</fullName>
+    <label>Priorität</label>
+    <description>Prioritätsstufe, zu der diese SLA-Zeile gehört (SCRUM-404): High = dringend, Medium = normal, Low = niedrige. Leer bei der globalen Zeile (Teamlead + Alert-Kanal).</description>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <value>
+            <fullName>High</fullName>
+            <default>false</default>
+            <label>High</label>
+        </value>
+        <value>
+            <fullName>Medium</fullName>
+            <default>false</default>
+            <label>Medium</label>
+        </value>
+        <value>
+            <fullName>Low</fullName>
+            <default>false</default>
+            <label>Low</label>
+        </value>
+    </valueSet>
+</CustomField>

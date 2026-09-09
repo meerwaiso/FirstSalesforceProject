@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Alert_Kanal__c</fullName>
+    <label>Alert-Kanal</label>
+    <description>Kanal der Überfälligkeits-Benachrichtigung an den Teamlead (SCRUM-404): InApp = Feed-Post auf der User-Seite, Email = E-Mail, Beides = beide. Nur in der globalen Zeile gesetzt (Default Beides).</description>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <value>
+            <fullName>InApp</fullName>
+            <default>true</default>
+            <label>InApp</label>
+        </value>
+        <value>
+            <fullName>Email</fullName>
+            <default>false</default>
+            <label>Email</label>
+        </value>
+        <value>
+            <fullName>Beides</fullName>
+            <default>false</default>
+            <label>Beides</label>
+        </value>
+    </valueSet>
+</CustomField>
