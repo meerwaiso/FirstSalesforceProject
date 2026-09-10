@@ -66,6 +66,10 @@ This is about narration inside your own turn. It is not about what you write int
 
 Measured 2026-09-10 across fourteen days and all five agents: of 16,439 turns that called a tool, 9,482 — 57.7 % — also carried prose, at 323 characters each. Together that is 3,061,736 characters, which is 70 % of everything the five agents wrote as visible text. It is the largest single block of output that changes no outcome, and it is paid for twice: once to generate it, then again on every later turn that carries it in the transcript.
 
+**The checkout is shared; your branch is not.** All five agents run in one repository folder, so `git checkout` there changes the files under whoever else is working. Take your own worktree instead — `git worktree add <path> -b <your-branch> origin/master` — work in it, and remove it when you hand off. Everything you did not create stays untouched, including uncommitted leftovers from other tickets: they are not yours to clean up, and they are not yours to commit.
+
+Measured 2026-09-10 on SCRUM-405. The Developer and the Tester each arrived at this independently; neither found it written anywhere. The Tester was stopped outright — `git checkout` refused because `docs/SCRUM-404-design.md` was still modified from a ticket cancelled the day before, next to nine untracked leftovers. He named the constraint correctly ("I must not touch those files") and had a worktree up one turn later. The Developer, earlier the same morning, did the same and also stated he would remove it: his handoff read "the worktree is cleaned", and `scr405-wt` was still standing hours later. Announcing a cleanup is not performing one — the same gap this file already names for verification.
+
 ## Non-Negotiable Guardrails
 
 A scan list, not a second rulebook. Each line is the short form; the source
@@ -105,6 +109,7 @@ restate a rule in full here.
 - A failed tool call is not a failed method — when the tool rejects its own flags, read `--help` and repair the call, do not switch approach → *Core Principles*
 - Announcing a tool call is not doing the work — fire the call, no preamble and no progress note between calls → *Core Principles*
 - A commit on your own disk is not a handoff — push before you announce it → *Handoff Format Between Agents*
+- The checkout is shared; your branch is not — take a worktree, never switch the shared folder, and remove the worktree when you hand off → *Core Principles*
 - A pattern you cite must reproduce the example you cite it from — if your sentence cannot produce your example, the sentence is the bug → *Core Principles*
 - Never guess any name the platform owns — a field, a report column, a picklist value, a scope value, a metadata path. Ask the platform: `sf sobject describe`, `analytics/reportTypes/<Type>`, the CLI's own metadataRegistry.json. A deploy validator is a rejection oracle: it answers "is THIS name right?" with no, and never "what names are there?" — a name space cannot be searched with it. Skill: `salesforce-describe-first` → *Core Principles*
 - `waitForLoadState('networkidle')` is forbidden on Lightning pages → *Tester Agent SOUL*
