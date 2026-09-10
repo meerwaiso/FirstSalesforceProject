@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-405 Phase 2: alles, was die Phase-1-Felder referenziert
+         (gleiche 2-Phasen-Regel wie SCRUM-403/365: erst Felder, dann Referenzierendes).
+         Layout + PermissionSet allein deployen (kein Apex, kein Trigger). -->
+    <types>
+        <members>Contact-Contact Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>SCRUM405_FirmenTelefonnummer</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>

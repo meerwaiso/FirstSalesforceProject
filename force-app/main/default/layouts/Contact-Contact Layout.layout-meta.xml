@@ -47,6 +47,10 @@
                 <field>Phone</field>
             </layoutItems>
             <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Firmen_Telefonnummer__c</field>
+            </layoutItems>
+            <layoutItems>
                 <behavior>Edit</behavior>
                 <field>HomePhone</field>
             </layoutItems>

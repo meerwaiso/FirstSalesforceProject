@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Contact.Firmen_Telefonnummer__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM405_FirmenTelefonnummer</label>
+    <description>Read-only FLS fur Contact.Firmen_Telefonnummer__c (Telefon Firma, SCRUM-405). Text-Formel mit Live-Referenz auf Account.Phone - kein Update-Right fur irgendwen. PO: neben der Durchwahl, immer aktuell, kein Zweitspeichern.</description>
+</PermissionSet>

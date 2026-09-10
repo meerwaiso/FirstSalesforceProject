@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Firmen_Telefonnummer__c</fullName>
+    <description>Telefonnummer der zugehoerigen Firma (SCRUM-405): Live-Referenz auf Account.Phone (Lookup-Cross-Reference). Read-only Formelfeld - kein manuelles Eingeben, kein Zweitspeichern. Immer aktuell: Nummernwechsel oder Umbuchung zeigen sofort hier. Kontakt OHNE Firma -> leer. PO: neben der Durchwahl auf der Contactseite.</description>
+    <externalId>false</externalId>
+    <formula>Account.Phone</formula>
+    <label>Telefon Firma</label>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>
