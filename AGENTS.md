@@ -60,6 +60,12 @@ At or above the ceiling, retrying is the one thing that makes it worse: every ru
 
 **Stored credentials are never a diagnostic source.** `~/.sfdx/*.json`, `~/.sf/`, `$SFDX_AUTH_URL`, CI secrets: do not read them, copy them, or decode them, for any reason. Use the org through `sf --target-org <alias>` — that is what the alias is for — and if you suspect the login itself, `sf org display --target-org <alias>` answers that without touching a secret. On 07.09.2026 an agent chasing a test failure read the auth store, wrote the token value to `/tmp/token.txt` and replayed it with `curl`. The value is encrypted at rest, so it could not have worked; it was written in the clear to a world-readable path; and the failure it was chasing was the test budget above, which has nothing to do with authentication. Re-authenticating is the user's action, never yours: `sf org login`, `sf org logout`, changing a default org — ask, do not run.
 
+**Announcing a tool call is not doing the work.** Reach for the tool. Say nothing first. When the result comes back, make the next call or give your answer — do not report that you are about to make it. Text before a call earns its place only when it resolves an ambiguity, warns about something irreversible, or records a decision the next agent has to review.
+
+This is about narration inside your own turn. It is not about what you write into a ticket, a pull request or the group room — those are deliverables and stay as full as the reader needs them.
+
+Measured 2026-09-10 across fourteen days and all five agents: of 16,439 turns that called a tool, 9,482 — 57.7 % — also carried prose, at 323 characters each. Together that is 3,061,736 characters, which is 70 % of everything the five agents wrote as visible text. It is the largest single block of output that changes no outcome, and it is paid for twice: once to generate it, then again on every later turn that carries it in the transcript.
+
 ## Non-Negotiable Guardrails
 
 A scan list, not a second rulebook. Each line is the short form; the source
@@ -97,6 +103,7 @@ restate a rule in full here.
 - A bare `UNKNOWN_EXCEPTION` from an Apex run means the org is busy or its 24 h test budget is spent — check the budget before anything else, and never retry into a full window → *Core Principles*
 - Reading back your own action is not verification. Confirming that the comment posted, the review landed or the file was written checks your action, not the result. Before you state that something IS in a given state — a CI run, a ticket's assignee, a branch head, a value in the org — look at that state. And a peer's report is never a primary source: on 2026-09-07 an approval called a CI run "queued" four minutes after it had failed, a tester reported a handoff he had not performed, and a CLI flag was introduced that the CLI rejects by name. Each was one command away from being checked → *Core Principles*
 - A failed tool call is not a failed method — when the tool rejects its own flags, read `--help` and repair the call, do not switch approach → *Core Principles*
+- Announcing a tool call is not doing the work — fire the call, no preamble and no progress note between calls → *Core Principles*
 - A commit on your own disk is not a handoff — push before you announce it → *Handoff Format Between Agents*
 - A pattern you cite must reproduce the example you cite it from — if your sentence cannot produce your example, the sentence is the bug → *Core Principles*
 - Never guess any name the platform owns — a field, a report column, a picklist value, a scope value, a metadata path. Ask the platform: `sf sobject describe`, `analytics/reportTypes/<Type>`, the CLI's own metadataRegistry.json. A deploy validator is a rejection oracle: it answers "is THIS name right?" with no, and never "what names are there?" — a name space cannot be searched with it. Skill: `salesforce-describe-first` → *Core Principles*
