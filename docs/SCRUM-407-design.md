@@ -111,8 +111,8 @@ dem nächsten Schritt. „Deploy" ≠ „Rendert" — nur der ui-api-Read-back b
 
 | # | Schritt | Wer | Aktion | Read-back (Beweis) |
 |---|---------|-----|--------|--------------------|
-| 0 | **Pre-Flight** | DevOps | CI grün (Lint, Smoke, Drift-Gate); PR gemerged. **Layout-DeveloperName ermitteln:** `sf project retrieve start --metadata "Layout:Contact.*" -o Prod-Org --dry-run` oder `sf data query -t -o Prod-Org -q "SELECT Id, DeveloperName, Label FROM LayoutEntity ..."` — welcher Kontakt-Layout DeveloperName ist in Prod aktiv? | CI grün; Layout-Name dokumentiert im Ticket |
-| 1 | **Live-Layout retrieven** | DevOps | `sf project retrieve start --metadata "Layout:Contact.<DeveloperName>" -o Prod-Org` → das **wirkliche** Prod-Layout landet im Repo. **Vorher-Dokumentation:** `git diff --stat` — welches Layout ist vorher im repo? (Master-Version). | Retrieve Exit 0; neue `Contact-Contact Layout.layout-meta.xml` liegt in `force-app/main/default/layouts/`; **`git diff` zeigt die Abweichung zwischen Master- und Prod-Version** → DevOps dokumentiert beide im Ticket |
+| 0 | **Pre-Flight + Layout-Name** | DevOps | CI grün (Lint, Smoke, Drift-Gate). **Layout-`FullName` ermitteln** (Tooling — der einzige reliable Weg; `Layout` im Tooling API hat **kein** `DeveloperName`/`Label`-Feld, sondern `FullName` + `Name` + `LayoutType`):<br>`sf data query -t -o Prod-Org -q "SELECT FullName, Name, NamespacePrefix, LayoutType FROM Layout WHERE Name = 'Contact Layout'"` → liefert **`Contact-Contact Layout`** (verifiziert 2026-09-10, Standard-Layout, null-Namespace). **Nicht** die Wildcard `Layout:Contact.*` — die liefert `cannot be found`, kein Permission-Fehler. | CI grün; **`FullName = Contact-Contact Layout`** dokumentiert im Ticket |
+| 1 | **Live-Layout retrieven** | DevOps | `sf project retrieve start --metadata "Layout:Contact-Contact Layout" -o Prod-Org` → das **wirkliche** Prod-Layout landet in `force-app/main/default/layouts/Contact-Contact Layout.layout-meta.xml` (verifiziert: Retrieve `Status: Succeeded`, 1 Layout, State `Changed`). **Drift-Doku:** `git diff --stat` gegen die master-Version → Prod driftet stark (verifiziert: +137/−17) — deshalb Path A, kein Blind-Deploy der master-Version. | Retrieve Exit 0; **kein** Permission-Fehler („proper permissions to access Layout" taucht **nicht** auf bei korrektem `FullName`); Drift-Size dokumentiert im Ticket |
 | 2 | **Feld eintragen** | Developer | Im **retrieften** Layout: `<field>Firmen_Telefonnummer__c</field>` in die „Contact Information"-Sektion, Spalte 2, direkt nach `<field>Phone</field>` einfügen. **Nur diese eine Zeile.** | `git diff -- "force-app/main/default/layouts/Contact-Contact Layout.layout-meta.xml"` zeigt **genau eine** neue Zeile (`+<field>Firmen_Telefonnummer__c</field>`), nichts anderes |
 | 3 | **validate** | DevOps | `sf project deploy validate --target-org Prod-Org --manifest manifest/scr407-layout.xml` | validate grün, **keine** Feld-Fehler → Layout referenziert nur in-Prod-existinges |
 | 4 | **deploy** | DevOps | `sf project deploy start --target-org Prod-Org --manifest manifest/scr407-layout.xml` | Deploy: 1/1 Layout erfolgreich |
@@ -180,7 +180,7 @@ GET /services/data/v62.0/ui-api/record-ui/{Contact.ID}?layoutTypes=Full&modes=Vi
 
 | Risiko | Likelihood | Mitigation |
 |--------|-----------|------------|
-| Live-Prod-Layout hat **anderen DeveloperName** als `Contact-Contact Layout` | mittel | Schritt 0 ermittelt den echten Namen; Manifest + retrieve-Parameter daran anpassen. DevOps dokumentiert den Namen. |
+| Layout-**Permission-Block** („proper permissions to access Layout") | **abgeklärt 2026-09-10** | **Reproduziert NICHT** — identischer User, korrektes `FullName`: Retrieve `Status: Succeeded`. Das Fehlerbild kam aus der **falschen retrieve-Bezeichnung** (`Layout:Contact.*` Wildcard und `Layout:Contact.Contact Layout` Punkt → „cannot be found" = Name-Mismatch, **kein** Permission-Fehler). Erster Schritt ist immer: `FullName` via Tooling `Layout` lesen, **dann** retrieve — nie Wildcard/Punkt. |
 | `ui-api` zeigt das Feld **nicht** trotz erfolgreichem Deploy | niedrig | FLS-PS-Assignee prüfen (Schritt 5), Read-back als **genau der** zugewiesene User ausführen. Fehlt PS → `sf org permission assign`. |
 | Retrieve holt **mehr** (anderes Prod-Live-Layout, andere Sektionen) | niedrig | `git diff` (AC-T1) muss **genau 1 Zeile** zeigen. Mehr → STOP, Scope-Review mit Architect. |
 | Test-Kontakt lässt sich in Prod **nicht** anlegen (OWD) | niedrig | DevOps legt ihn als Admin an; Aufräumen dokumentiert. `ui-api`-Read-back funktioniert auch ohne OWD-Zugriff (FLS-genug). |
@@ -190,7 +190,7 @@ GET /services/data/v62.0/ui-api/record-ui/{Contact.ID}?layoutTypes=Full&modes=Vi
 
 ## 6. Offene Punkte (vor Start)
 
-- [ ] Schritt 0: Echter **DeveloperName** des Live-Prod-Contact-Layouts ermitteln (DevOps, vor PR).
+- [x] Schritt 0: **`FullName` des Live-Prod-Contact-Layouts = `Contact-Contact Layout`** (verifiziert 2026-09-10 per Tooling `Layout WHERE Name='Contact Layout'`; Standard-Layout, null-Namespace). Retrieve: `sf project retrieve start --metadata "Layout:Contact-Contact Layout" -o Prod-Org` — getestet, `Status: Succeeded`.
 - [ ] Bestätigung: `SCRUM405_FirmenTelefonnummer` ist **noch** zugewiesen (Step 5-Read-back). Falls nicht, `sf org permission assign -o Prod-Org --assignee <user> --permission-set SCRUM405_FirmenTelefonnummer`.
 - [ ] Branch-Name bestätigt: `feature/scr407-prod-layout-405` (Developer).
 
@@ -201,11 +201,11 @@ GET /services/data/v62.0/ui-api/record-ui/{Contact.ID}?layoutTypes=Full&modes=Vi
 **Branch:** `feature/scr407-prod-layout-405` (neu von `master`)
 
 **Task (einzig):**
-1. Warte auf DevOps: Live-Contact-Layout aus Prod retrieve (`sf project retrieve start --metadata "Layout:Contact.<DeveloperName>" -o Prod-Org`).
-2. Im **retrievenen** File `force-app/main/default/layouts/Contact-<DeveloperName>.layout-meta.xml`: `<field>Firmen_Telefonnummer__c</field>` einfügen an die Position nach `<field>Phone</field>` in der „Contact Information"-Sektion (Spalte 2, `TwoColumnsTopToBottom`).
+1. Warte auf DevOps: Live-Contact-Layout aus Prod retrieve (`sf project retrieve start --metadata "Layout:Contact-Contact Layout" -o Prod-Org`).
+2. Im **retrievenen** File `force-app/main/default/layouts/Contact-Contact Layout.layout-meta.xml`: `<field>Firmen_Telefonnummer__c</field>` einfügen an die Position nach `<field>Phone</field>` in der „Contact Information"-Sektion (Spalte 2, `TwoColumnsTopToBottom`).
 3. `git diff` prüfen: **genau eine** neue Zeile.
 4. Commit + PR (Titel: `[Architect][SCRUM-407] Prod-Contact-Layout: Firmen_Telefonnummer__c eintragen`), Branch `feature/scr407-prod-layout-405`.
-5. Jira-Kommentar mit PR-Link + Branch, Ticket an Architect zurück in „Review" (Transition 24 = *In Überprüfung*), Architect-Agent zuweisen.
+5. Jira-Kommentar mit PR-Link + Branch, Ticket an Architect zurück in „Review" (Transition **31** = *In Überprüfung*), Architect-Agent zuweisen.
 
 **Nichts anderes anfassen.** Kein Master-Layout, keine anderen Felder, keine PS-Änderungen
 
