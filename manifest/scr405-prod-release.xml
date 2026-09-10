@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-405 PROD RELEASE (targeted). DevOps-Agent 2026-09-10.
+     Safe subset: read-only Formula field + its read-only Permission Set only.
+     Layout EXCLUDED: the committed shared 'Contact-Contact Layout' references
+     Contact.Betreuungsstufe__c (another ticket, not in Prod-Org) -> validate fails
+     (0Afg500000EeFGQCA3, line 100:26) and it would strip Prod's real Contact Layout.
+     UI visibility on the contact layout is a separate, surgical Prod step (see ticket). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Contact.Firmen_Telefonnummer__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>SCRUM405_FirmenTelefonnummer</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>
