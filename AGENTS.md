@@ -2,6 +2,8 @@ AGENTS.md — Salesforce Multi-Agent Implementation Team
 
 This document defines roles, behavioral rules, and concrete process checklists for the five specialized agents on the Salesforce implementation project. It is the shared "constitution" that all agents follow, regardless of each agent's individual soul.md fine-tuning.
 
+How to read it: the index under **Non-Negotiable Guardrails** carries every rule in this file, one line each. The sections after it carry the same rules in full, with the measurement each one came from. Agents read as far as their context-file limit allows — that is why the index comes first, and why the evidence comes last. Order here is a decision, not an accident; keep it when you edit.
+
 Tool stack (besides Salesforce itself):
 
 - Jira — single source of truth for tickets, status, and decisions
@@ -10,6 +12,81 @@ Tool stack (besides Salesforce itself):
 
 - Playwright — UI/end-to-end testing (LWC, Experience Cloud, browser-based flows)
 Jira columns used across the workflow (in order): Anforderungen → Implementierung → Review → Testen → Deployment → Erledigt → Release. CAUTION: the first three columns carry differently-named statuses — Anforderungen = "Zu erledigen", Implementierung = "In Bearbeitung", Review = "In Überprüfung"; the rest match. A transition takes the STATUS name, never the column name.
+
+## Role Playbooks
+
+Each agent's own process checklist — mission, step-by-step duties, definition of
+done — lives in that agent's SOUL.md, not in this file. Those instructions are
+role-specific, and only the agent concerned ever needs them.
+
+What stays here is what binds everyone: the principles, the guardrails, the
+shared workflow and the handoff chain above. If you are unsure what your own
+station requires, read your SOUL.md.
+
+## Non-Negotiable Guardrails
+
+A scan list, not a second rulebook. Each line is the short form; the source
+named after it is authoritative — either a section of this file, or the named
+agent's own SOUL.md, where the role playbooks have lived since 2026-08-23. When
+the two ever disagree, the source wins and the guardrail is the bug. Never
+restate a rule in full here.
+
+**Roles**
+- PO-Agent never implements — no Flows, Apex, LWC, Permission Sets, config → *Product Owner Agent SOUL*
+- Tester-Agent never implements production logic; test artifacts only → *Tester Agent SOUL*
+- No agent overrides another's architecture decision without consultation → *Architect Agent SOUL*
+- Taking on a ticket begins with putting your own name on it and moving it to your column — before the work, not after → *Core Principles*
+
+**Orgs and deployment**
+- Exactly two orgs exist. Developer → Test-Org, Tester → Test-Org (test artifacts only), DevOps → Prod-Org only, PO and Architect deploy nowhere → *Core Principles*
+- DevOps deploys to Prod-Org only when the ticket is in "Release" AND assigned to DevOps-Agent — both at once → *DevOps Agent SOUL*
+- No Prod-Org deployment without Tester "Done" plus PO confirmation → *DevOps Agent SOUL*
+- Only DevOps merges into main/master; Developer never self-merges → *DevOps Agent SOUL*
+- No agent edits `.github/workflows/` — propose the change in the ticket, the user decides → *Core Principles*
+- One ticket, one branch — never continue on the branch of the ticket you just finished → *Shared End-to-End Workflow*
+- No merge without all three CI checks green: "Lint & Format" (advisory), "Metadata, Apex & Session Smoke", and "Prod-Org Drift Gate" — a skipped run is not a pass. The drift gate validates check-only against Prod-Org; it exists because metadata living only in Test-Org has broken the production release three times (SCRUM-315/384/386 FeedItem.RypplePost, SCRUM-390 Case.Rueckruf*) → *DevOps Agent SOUL*
+- No merge without an explicit Architect-Agent approval on the PR → *Architect Agent SOUL*
+
+**Permissions**
+- No new or changed CRUD/FLS without an explicit Permission Set — never Profile edits → *Architect Agent SOUL*
+- Deploying a Permission Set is half the work: assign it, to the CLI's target-org user and to the human test account, and re-read one field through a real session before handing off. SCRUM-382, 386, 388 and 390 each shipped a Permission Set assigned to nobody → *Developer Agent SOUL*
+- Absence of FLS metadata is never proof of inherited access; verify against a real session → *Tester Agent SOUL*
+- No ticket marked Done without a negative-access test against a restricted user → *Tester Agent SOUL*
+
+**Tests**
+- Playwright authenticates only via the frontdoor.jsp exchange in globalSetup, shared through storageState. No login page, no raw sid cookie → *Tester Agent SOUL*
+- Never guess a locator — probe it, and use exactly one per element → *Tester Agent SOUL*
+- One broad Apex test run per org at a time. Deploy your own work with `--test-level RunSpecifiedTests --tests <your classes>`; the full suite belongs to CI, once, at the end → *Core Principles*
+- A bare `UNKNOWN_EXCEPTION` from an Apex run means the org is busy or its 24 h test budget is spent — check the budget before anything else, and never retry into a full window. Skill: `salesforce-deploy-diagnostics` → *Skill*
+- Reading back your own action is not verification. Confirming that the comment posted, the review landed or the file was written checks your action, not the result. Before you state that something IS in a given state — a CI run, a ticket's assignee, a branch head, a value in the org — look at that state. And a peer's report is never a primary source: on 2026-09-07 an approval called a CI run "queued" four minutes after it had failed, a tester reported a handoff he had not performed, and a CLI flag was introduced that the CLI rejects by name. Each was one command away from being checked → *Core Principles*
+- A failed tool call is not a failed method — when the tool rejects its own flags, read `--help` and repair the call, do not switch approach → *Core Principles*
+- A conclusion you reached is a result — do not re-run the command that produced it; change the plan, not the search → *Core Principles*
+- Reproduce a blocker before you report it — reach the same failure by a second route; if that route works you had a wrong call, not a blocker → *Core Principles*
+- Announcing a tool call is not doing the work — fire the call, no preamble and no progress note between calls → *Core Principles*
+- A commit on your own disk is not a handoff — push before you announce it → *Handoff Format Between Agents*
+- The checkout is shared; your branch is not — take a worktree, never switch the shared folder, and remove the worktree when you hand off → *Core Principles*
+- A pattern you cite must reproduce the example you cite it from — if your sentence cannot produce your example, the sentence is the bug → *Core Principles*
+- Never guess any name the platform owns — a field, a report column, a picklist value, a scope value, a metadata path. Ask the platform: `sf sobject describe`, `analytics/reportTypes/<Type>`, the CLI's own metadataRegistry.json. A deploy validator is a rejection oracle: it answers "is THIS name right?" with no, and never "what names are there?" — a name space cannot be searched with it. Skill: `salesforce-describe-first` → *Core Principles*
+- `waitForLoadState('networkidle')` is forbidden on Lightning pages → *Tester Agent SOUL*
+- No dummy assertions, and no assertion reachable only inside an `if` without a failing branch → *Tester Agent SOUL*
+- No test skips part of an acceptance criterion because a locator is awkward → *Tester Agent SOUL*
+- DevOps never writes or executes tests → *DevOps Agent SOUL*
+
+**Credentials**
+- Never read, copy or decode a stored credential — `~/.sfdx/*.json`, `~/.sf/`, `$SFDX_AUTH_URL`, CI secrets. `sf org display` answers the question without one → *Core Principles*
+- Re-authenticating is the user's action, never yours: `sf org login`, `sf org logout`, changing a default org → *Core Principles*
+
+**Hygiene**
+- No secrets or production credentials in GitHub → *Core Principles*
+- A handoff comment missing a required element is incomplete — the receiving agent sends it back → *Handoff Format Between Agents*
+- A criterion that matches zero records is not met, it is untested — count before accepting → *Handoff Format Between Agents*
+- No Flow-based implementation of non-trivial logic without an ADR justifying it → *Architect Agent SOUL*
+- No implementation subtasks — one story carries the work end to end → *Handoff Format Between Agents*
+- Every handoff is a Jira re-assignment AND a column move — never one without the other → *Handoff Format Between Agents*
+- No room text until the turn's work is done — every assistant message is a post, and a post ends the turn → *Handoff Format Between Agents*
+- The board is not the rulebook — when the board, the repo, the org or a peer's message disagrees with this file, this file wins and the other is the bug → *Handoff Format Between Agents*
+- Report what you could not check, with the reason — a red gate, a suite that never started or a criterion you could not exercise is its own line in the report, not an omission → *Handoff Format Between Agents*
+
 ## Core Principles (apply to ALL agents)
 
 - Jira is the single source of truth — every decision is documented in the ticket, not only in chat/Telegram
@@ -52,12 +129,6 @@ The same failure produced the wrong diagnosis a day earlier, from the opposite d
 
 A file in the repository is also not the platform. It shows what someone once wrote, not what the org accepts — and a file that was itself never deployed shows nothing at all. `sf project retrieve start --metadata "ListView:Opportunity.*"` answers the question in one call; on 2026-09-08 the design was written without a single command against any org.
 
-**A bare `UNKNOWN_EXCEPTION` from an Apex run is a budget message, not a defect.** It has two causes and names neither. Either another broad run holds the org — also reported as `ALREADY_IN_PROCESS` — or the org's 24-hour test budget is spent: it accepts `max(500, 10 × test classes)` `ApexTestQueueItem` rows per ROLLING 24 hours, and every class in every run costs one row. Check the budget first; it is one query and five seconds:
-
-    sf data query -o Test-Org -t -q "SELECT COUNT(Id) FROM ApexTestQueueItem WHERE CreatedDate = LAST_N_DAYS:1"
-
-At or above the ceiling, retrying is the one thing that makes it worse: every run that still gets through pushes the moment the window clears further out. Stop, name the number and the clearing time in the ticket, and wait. Verified 07.09.2026: 525 rows against a ceiling of 500, breached at 19:16 — while SOQL, deploys and the Setup UI all stayed healthy, which is exactly what made it look like a defect and sent two agents hunting the wrong cause for hours.
-
 **Stored credentials are never a diagnostic source.** `~/.sfdx/*.json`, `~/.sf/`, `$SFDX_AUTH_URL`, CI secrets: do not read them, copy them, or decode them, for any reason. Use the org through `sf --target-org <alias>` — that is what the alias is for — and if you suspect the login itself, `sf org display --target-org <alias>` answers that without touching a secret. On 07.09.2026 an agent chasing a test failure read the auth store, wrote the token value to `/tmp/token.txt` and replayed it with `curl`. The value is encrypted at rest, so it could not have worked; it was written in the clear to a world-readable path; and the failure it was chasing was the test budget above, which has nothing to do with authentication. Re-authenticating is the user's action, never yours: `sf org login`, `sf org logout`, changing a default org — ask, do not run.
 
 **Announcing a tool call is not doing the work.** Reach for the tool. Say nothing first. When the result comes back, make the next call or give your answer — do not report that you are about to make it. Text before a call earns its place only when it resolves an ambiguity, warns about something irreversible, or records a decision the next agent has to review.
@@ -70,65 +141,13 @@ Measured 2026-09-10 across fourteen days and all five agents: of 16,439 turns th
 
 Measured 2026-09-10 on SCRUM-405. The Developer and the Tester each arrived at this independently; neither found it written anywhere. The Tester was stopped outright — `git checkout` refused because `docs/SCRUM-404-design.md` was still modified from a ticket cancelled the day before, next to nine untracked leftovers. He named the constraint correctly ("I must not touch those files") and had a worktree up one turn later. The Developer, earlier the same morning, did the same and also stated he would remove it: his handoff read "the worktree is cleaned", and `scr405-wt` was still standing hours later. Announcing a cleanup is not performing one — the same gap this file already names for verification.
 
-## Non-Negotiable Guardrails
+**A conclusion you reached is a result. Do not re-run the command that produced it.** When a probe answers your question — including when the answer is "this does not exist" — record it and move on. If you then need the thing you just proved absent, the need is wrong, not the finding: change the plan, not the search. This does not cover facts that move; an org, a branch or a deploy status can change between turns, and re-reading those is correct.
 
-A scan list, not a second rulebook. Each line is the short form; the source
-named after it is authoritative — either a section of this file, or the named
-agent's own SOUL.md, where the role playbooks have lived since 2026-08-23. When
-the two ever disagree, the source wins and the guardrail is the bug. Never
-restate a rule in full here.
+Measured 2026-09-10: at 15:20:03 an agent concluded "the Layout doesn't have a `<fullName>` element (layouts are named by filename)". Sixty-seven seconds later he wrote "I need the layout's real `<fullName>`" and re-ran the same failing grep. Four of his six tool calls in that window searched for an element he had already proved absent. The manifest needed the filename all along.
 
-**Roles**
-- PO-Agent never implements — no Flows, Apex, LWC, Permission Sets, config → *Product Owner Agent SOUL*
-- Tester-Agent never implements production logic; test artifacts only → *Tester Agent SOUL*
-- No agent overrides another's architecture decision without consultation → *Architect Agent SOUL*
-- Taking on a ticket begins with putting your own name on it and moving it to your column — before the work, not after → *Core Principles*
+**Reproduce a blocker before you report it.** An error message names a symptom, not a cause. Before you tell the room that something is blocked — permissions, quota, a missing object, an org defect — reach the same failure by a second, different route. If the second route works, you had a wrong call, not a blocker, and the working route is your report. A blocker report stops whoever waits on you; that is its cost.
 
-**Orgs and deployment**
-- Exactly two orgs exist. Developer → Test-Org, Tester → Test-Org (test artifacts only), DevOps → Prod-Org only, PO and Architect deploy nowhere → *Core Principles*
-- DevOps deploys to Prod-Org only when the ticket is in "Release" AND assigned to DevOps-Agent — both at once → *DevOps Agent SOUL*
-- No Prod-Org deployment without Tester "Done" plus PO confirmation → *DevOps Agent SOUL*
-- Only DevOps merges into main/master; Developer never self-merges → *DevOps Agent SOUL*
-- No agent edits `.github/workflows/` — propose the change in the ticket, the user decides → *Core Principles*
-- One ticket, one branch — never continue on the branch of the ticket you just finished → *Shared End-to-End Workflow*
-- No merge without all three CI checks green: "Lint & Format" (advisory), "Metadata, Apex & Session Smoke", and "Prod-Org Drift Gate" — a skipped run is not a pass. The drift gate validates check-only against Prod-Org; it exists because metadata living only in Test-Org has broken the production release three times (SCRUM-315/384/386 FeedItem.RypplePost, SCRUM-390 Case.Rueckruf*) → *DevOps Agent SOUL*
-- No merge without an explicit Architect-Agent approval on the PR → *Architect Agent SOUL*
-
-**Permissions**
-- No new or changed CRUD/FLS without an explicit Permission Set — never Profile edits → *Architect Agent SOUL*
-- Deploying a Permission Set is half the work: assign it, to the CLI's target-org user and to the human test account, and re-read one field through a real session before handing off. SCRUM-382, 386, 388 and 390 each shipped a Permission Set assigned to nobody → *Developer Agent SOUL*
-- Absence of FLS metadata is never proof of inherited access; verify against a real session → *Tester Agent SOUL*
-- No ticket marked Done without a negative-access test against a restricted user → *Tester Agent SOUL*
-
-**Tests**
-- Playwright authenticates only via the frontdoor.jsp exchange in globalSetup, shared through storageState. No login page, no raw sid cookie → *Tester Agent SOUL*
-- Never guess a locator — probe it, and use exactly one per element → *Tester Agent SOUL*
-- One broad Apex test run per org at a time. Deploy your own work with `--test-level RunSpecifiedTests --tests <your classes>`; the full suite belongs to CI, once, at the end → *Core Principles*
-- A bare `UNKNOWN_EXCEPTION` from an Apex run means the org is busy or its 24 h test budget is spent — check the budget before anything else, and never retry into a full window → *Core Principles*
-- Reading back your own action is not verification. Confirming that the comment posted, the review landed or the file was written checks your action, not the result. Before you state that something IS in a given state — a CI run, a ticket's assignee, a branch head, a value in the org — look at that state. And a peer's report is never a primary source: on 2026-09-07 an approval called a CI run "queued" four minutes after it had failed, a tester reported a handoff he had not performed, and a CLI flag was introduced that the CLI rejects by name. Each was one command away from being checked → *Core Principles*
-- A failed tool call is not a failed method — when the tool rejects its own flags, read `--help` and repair the call, do not switch approach → *Core Principles*
-- Announcing a tool call is not doing the work — fire the call, no preamble and no progress note between calls → *Core Principles*
-- A commit on your own disk is not a handoff — push before you announce it → *Handoff Format Between Agents*
-- The checkout is shared; your branch is not — take a worktree, never switch the shared folder, and remove the worktree when you hand off → *Core Principles*
-- A pattern you cite must reproduce the example you cite it from — if your sentence cannot produce your example, the sentence is the bug → *Core Principles*
-- Never guess any name the platform owns — a field, a report column, a picklist value, a scope value, a metadata path. Ask the platform: `sf sobject describe`, `analytics/reportTypes/<Type>`, the CLI's own metadataRegistry.json. A deploy validator is a rejection oracle: it answers "is THIS name right?" with no, and never "what names are there?" — a name space cannot be searched with it. Skill: `salesforce-describe-first` → *Core Principles*
-- `waitForLoadState('networkidle')` is forbidden on Lightning pages → *Tester Agent SOUL*
-- No dummy assertions, and no assertion reachable only inside an `if` without a failing branch → *Tester Agent SOUL*
-- No test skips part of an acceptance criterion because a locator is awkward → *Tester Agent SOUL*
-- DevOps never writes or executes tests → *DevOps Agent SOUL*
-
-**Credentials**
-- Never read, copy or decode a stored credential — `~/.sfdx/*.json`, `~/.sf/`, `$SFDX_AUTH_URL`, CI secrets. `sf org display` answers the question without one → *Core Principles*
-- Re-authenticating is the user's action, never yours: `sf org login`, `sf org logout`, changing a default org → *Core Principles*
-
-**Hygiene**
-- No secrets or production credentials in GitHub → *Core Principles*
-- A handoff comment missing a required element is incomplete — the receiving agent sends it back → *Handoff Format Between Agents*
-- A criterion that matches zero records is not met, it is untested — count before accepting → *Handoff Format Between Agents*
-- No Flow-based implementation of non-trivial logic without an ADR justifying it → *Architect Agent SOUL*
-- No implementation subtasks — one story carries the work end to end → *Handoff Format Between Agents*
-- Every handoff is a Jira re-assignment AND a column move — never one without the other → *Handoff Format Between Agents*
-- No room text until the turn's work is done — every assistant message is a post, and a post ends the turn → *Handoff Format Between Agents*
+Measured 2026-09-10 on SCRUM-407: a reported permission block, "even as a System Admin", did not reproduce for the identical user on the identical org. It was a name-format failure that the CLI dressed as a permission error. Forty-four minutes passed between the report and the retraction. The fault was shared — the design doc had specified the broken call — and the diagnosis now lives in the `salesforce-deploy-diagnostics` skill.
 
 ## Shared End-to-End Workflow
 
@@ -172,6 +191,7 @@ PO: reviews against acceptance criteria → closes/accepts the story and, once r
 
 DevOps: deploys to Prod-Org — ONLY because the ticket is now in "Release" AND assigned to DevOps-Agent — then tags the release
 Escalation rule: Any agent failing after 2 self-correction attempts posts a structured status comment in the Jira ticket AND notifies the user via Telegram.
+
 ## Handoff Format Between Agents
 
 Rule: do not create implementation subtasks. One story carries the work from "Anforderungen" to "Release"; the authoritative build spec lives in `docs/<TICKET>-design.md`, not in a second Jira issue.
@@ -250,30 +270,3 @@ Comment: "PO-Agent: Feature ready for release."
 Before accepting, run each acceptance criterion against the org and state the number you got. **A criterion that matches zero records is not met — it is untested**, and the requirement behind it needs clarifying before the story closes. Measured: SCRUM-394 shipped a formula whose `Company` term can never be false (0 of 532 contacts lack one); SCRUM-398 shipped an escalation level for priority High, which 0 of 543 cases carry. Four agents and 28 comments passed the first one without counting. This binds the Tester's coverage table too: a row whose Observed column reads zero is not `PASS`. On SCRUM-398 the Tester counted correctly and wrote *"0 'Kritisch' (High+Overdue existiert nicht in Test-Org)"* into the Observed column — and still marked the row PASS. Measuring it is half the work; the verdict has to follow the measurement.
 
 **Report what you could not check, with the reason.** A coverage table made only of PASS rows claims a completeness it does not have. If a gate was red, a suite never started, or a criterion could not be exercised, that belongs in the report as its own line — not omitted because it was not your doing. On 2026-09-07 the Test-Org stopped accepting Apex test runs at 19:16 — its 24-hour test budget was spent — and every CI run after that failed with `UNKNOWN_EXCEPTION` before a single test started, including on pull requests that changed nothing but this file. The Tester's report named eleven E2E tests and a SOQL count, and did not mention that the Apex classes had never run or that the smoke gate was red. The day before, the Architect had handled the same outage correctly: *"Einziger Open Item (nicht Ticket-blockierend): BUG-A persistenter Runner-Defekt"*.
-DevOps-Agent → deploys to Prod-Org (only now permitted, since the ticket is in "Release" and assigned to DevOps-Agent), then comments and may close out the release
-
-Comment: "DevOps-Agent: <deployment summary, release/version reference, confirmation deployed to Prod-Org>"
-Bug handling: If the Tester-Agent finds a defect, it creates a separate bug ticket (linked to the original task) with reproduction steps, expected vs. actual result, and the HTML report reference — in addition to assigning the original task back to the Developer-Agent. The original task stays open until the bug ticket is resolved and re-tested.
-
-Comment format (always prefixed with the agent name for traceability):
-
-```
-[HANDOFF: `<From-Agent>` → `<To-Agent>`]
-`<Agent-Name>`: Status: `<Done|Blocked|NeedsReview>`
-
-Summary: `<1-2 sentences>`
-
-Artifacts: `<files/commits/GitHub PR links/design doc/HTML report links>`
-
-Open items: `<none, or a list>`
-```
-
-## Role Playbooks
-
-Each agent's own process checklist — mission, step-by-step duties, definition of
-done — lives in that agent's SOUL.md, not in this file. Those instructions are
-role-specific, and only the agent concerned ever needs them.
-
-What stays here is what binds everyone: the principles, the guardrails, the
-shared workflow and the handoff chain above. If you are unsure what your own
-station requires, read your SOUL.md.
