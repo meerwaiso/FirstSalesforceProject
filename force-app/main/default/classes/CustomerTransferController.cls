@@ -1,12 +1,13 @@
 /**
  * [SCRUM-410] Controller für die LWC `betreuungsuebergabe` (Quick Action auf User).
  *
- * Zwei Aufgaben, beide ohne DML:
- *   - preview(fromUser, toUser): AC1 — read-only Zählung, was bei einer Übergabe
- *     den Owner wechseln wür (Accounts, Kontakte, offene Cases, laufende Opps).
+ * Drei read-only Aufgaben, keine davon mit DML:
+ *   - preview(fromUser, toUser): AC1 — Zählung, was bei einer Übergabe den
+ *     Owner wechseln würde (Accounts, Kontakte, offene Cases, laufende Opps).
  *   - launch(fromUser, toUser): AC2 — validiert und enqueues den atomaren
  *     Queueable-Job CustomerTransferJob. Der Audit-Insert passiert IM Job,
  *     damit Audit + Transfer eine Transaktion sind (Design-ADR 2).
+ *   - availableUsers(excludeUser): Picker-Optionen für „Übernimmt".
  *
  * without sharing (bewusst, SCRUM-365-Präzedenz): Die Vorschau zählt die
  * vollständige Betreuungslast der abgebenden Person — die Teamleitung, die den
@@ -22,18 +23,14 @@ public without sharing class CustomerTransferController {
     public static Map<String, Object> preview(Id fromUserId, Id toUserId) {
         validateUsers(fromUserId, toUserId);
         Map<String, Object> result = new Map<String, Object>();
-        result.put('accounts', (Integer)[
-            SELECT COUNT(Id) FROM Account WHERE OwnerId = :fromUserId
-        ]);
-        result.put('contacts', (Integer)[
-            SELECT COUNT(Id) FROM Contact WHERE OwnerId = :fromUserId
-        ]);
-        result.put('openCases', (Integer)[
-            SELECT COUNT(Id) FROM Case WHERE OwnerId = :fromUserId AND IsClosed = false
-        ]);
-        result.put('openOpportunities', (Integer)[
-            SELECT COUNT(Id) FROM Opportunity WHERE OwnerId = :fromUserId AND IsClosed = false
-        ]);
+        result.put('accounts',
+            [SELECT COUNT(Id) cnt FROM Account WHERE OwnerId = :fromUserId][0].get('cnt'));
+        result.put('contacts',
+            [SELECT COUNT(Id) cnt FROM Contact WHERE OwnerId = :fromUserId][0].get('cnt'));
+        result.put('openCases',
+            [SELECT COUNT(Id) cnt FROM Case WHERE OwnerId = :fromUserId AND IsClosed = false][0].get('cnt'));
+        result.put('openOpportunities',
+            [SELECT COUNT(Id) cnt FROM Opportunity WHERE OwnerId = :fromUserId AND IsClosed = false][0].get('cnt'));
         return result;
     }
 
@@ -44,6 +41,22 @@ public without sharing class CustomerTransferController {
         Map<String, Object> result = new Map<String, Object>();
         result.put('jobId', jobId);
         return result;
+    }
+
+    /**
+     * Name des User-Records, auf dem die Quick Action geöffnet wurde.
+     * Kleiner Ersatz für den lightning/schema-Import, dessen Modul-Reference
+     * das LWC-Compile scheitern lässt.
+     */
+    @AuraEnabled
+    public static String userName(Id userId) {
+        if (userId == null) {
+            return null;
+        }
+        for (User u : [SELECT Name FROM User WHERE Id = :userId LIMIT 1]) {
+            return u.Name;
+        }
+        return null;
     }
 
     /**
@@ -95,10 +108,10 @@ public without sharing class CustomerTransferController {
             );
         }
         if (!byId.get(fromUserId).IsActive) {
-            throw new AuraHandledException('Die abgebende Person ist inaktiver Nutzer.');
+            throw new AuraHandledException('Die abgebende Person ist ein inaktiver Nutzer.');
         }
         if (!byId.get(toUserId).IsActive) {
-            throw new AuraHandledException('Die übernehmende Person ist inaktiver Nutzer.');
+            throw new AuraHandledException('Die übernehmende Person ist ein inaktiver Nutzer.');
         }
     }
 }
