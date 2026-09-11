@@ -455,9 +455,20 @@ muss mit Zählung + Deploy-Zeitstempel im Ticket dokumentiert werden.
 ## 8. Deploy-Phasen & Org-Schritte
 
 **Deploy (Developer/DevOps, Reihenfolge):** Phase 1 (CMT + 5 Felder, `validate` mit `NoTestRun`) →
-Phase 2 (Trigger + Klassen + **RunSpecifiedTests `SCRUM404CaseSlaTest SCRUM404SlaReaktionFlsTest`** +
-Layout + List View + Report + PS; AGENTS.md-Guardrail: Test-Org erlaubt 1 breiten Apex-Lauf gleichzeitig —
-eigene Klassen, nie `RunAllTestsInOrg`).
+Phase 2 (Trigger + Klassen + **RunSpecifiedTests der eigenen Test-Classes** +
+Layout + List View + Report + PS; AGENTS.md-Guardrail: Test-Org erlaubt 1 breiten
+Apex-Lauf gleichzeitig — eigene Klassen, nie `RunAllTestsInOrg`).
+**Warum AC1/AC2 aktuell rot sind (2026-09-09, verifiziert via Apex-Read-back in Test-Org):**
+die zwei roten Tests (AC1 `10 h ab Mo 10:00`, AC2 `4 h ab Fr 16:00`) scheitern, weil der
+**Business-Hours-Default-Record der Org unkonfiguriert** ist — alle Tage `00:00:00`,
+`TimeZoneSidKey = America/Los_Angeles`. `BusinessHours.add(bhId, …)` liefert daraus dann
+keine echten Business-Time-Inkremente (Read-back: `addBusinessHours(Mo 10:00, 2 h)` = `Mo 10:00`,
+`(…, 10 h)` = `Mo 18:00` — Kalendernäherung statt 9h/Tag Mo–Do). **Root-Cause = Org-Setup
+§8.1** (Default Mo–Fr `08:00–17:00`, TZ `Europe/Berlin` auf dem **Business-Hours-Record**,
+plus ≥1 zukünftiger `Holiday`) — **kein Code-Bug, kein Zeitzonen-Drift.** `DateTime.now()` ist
+CEST (`Europe/Berlin`), keine Pacific-Versatz; das `America/Los_Angeles` ist nur das
+`TimeZoneSidKey`-Feld des unkonfigurierten BH-Records. AC1/AC2-Expected-Werte bleiben calendar-
+korrekt gegen einen 9h Mo–Do-Tag; Testlauf erst **nach** §8.1 wiederholen.
 
 **Org-Schritte (blocken die Implementierung NICHT — Owner @devops-agent beim Release):**
 1. **Business Hours konfigurieren**: `Default`-Record Mo–Fr **08:00–17:00**, TimeZone **Europe/Berlin**
@@ -500,3 +511,87 @@ E-Mail), genau eine einzige. Am Monatsende zeigt der Report **«SLA-Reaktionsfri
 Prioritätsstufe einen Prozent-Wert: wie oft wir unser Versprechen gehalten, wie oft verletzt haben.
 Alles lässt sich bei Vertragsänderungen in den Settings nachsteuern, ohne dass wir Code deployen.
 Alte Fälle (vor Go-Live) bleiben unberührt — es wird nichts nachgerechnet.
+
+---
+
+## 11. Review 2026-09-09 — REJECTED (b9784f5)
+
+Architektur-Verifizierung gegen die Test-Org vor Freigabe (alle Befunde live nachgelesen, kein
+Vertrauen auf Handoff-Darstellungen):
+
+- **MDT-Records: IN DER ORG.** `SELECT ... FROM Sla_Konfiguration__mdt` → 4/4 Zeilen
+  (`global`, `sla_high`=4, `sla_medium`=8, `sla_low`=24, alle `Alert_Kanal__c=Beides`),
+  korrekte Shapes. Der Tester-Befund «cannot be found» stammt aus einem **type-level
+  `sf project retrieve --metadata CustomMetadata:Sla_Konfiguration__mdt` (Succeeded, 0 Files)** —
+  das ist NICHT der korrekte Record-Read-Back für CustomMetadata-Instanzen (typischerweise
+  `CustomMetadata:Sla_Konfiguration__mdt.<name>` oder Tooling/SOQL). **Hold-Prämisse fällt weg.**
+- **8/10 reproduziert** (synchronous `-n CaseSlaSlaTest`): grün AC3, AC4, AC5, AC6, AC7, AC9,
+  AC10, notification_noTeamlead; rot AC1, AC2. Root-Cause verifiziert via Apex-Read-back:
+  Default-BusinessHours `01mWU00000InFl7YAF` ist unkonfiguriert (alle Tage `00:00:00`,
+  `TimeZoneSidKey=America/Los_Angeles`) → `BusinessHours.add()` liefert Kalendernäherung statt
+  Business-Time. **§8.1-Setup (Mo–Fr 08:00–17:00, TZ Europe/Berlin, ≥1 zukünftiger Holiday) ist
+  für AC1/AC2-Grünläufigkeit zwingend — kein Code-Fix, kein TZ-Drift.**
+  (`DateTime.now()` = CEST; das `America/Los_Angeles` ist nur ein Feld des unkonfigurierten
+  BH-Records.)
+
+### Pflicht-Rework (blockiert die Freigabe)
+
+1. **PR öffnen.** Zum Zeitpunkt der Review existierte **kein PR** mit
+   `head=feature/scr404-sla-reaktionsfrist` (`gh pr list --state all` → leer). Der
+   Entwickler-Claim «PR → Review» war verfrüht. PR auf `develop` öffnen, dann Review-Endorsement.
+2. **SC 8: Report liefert den %** (`SLA_Monatsbericht.report-meta.xml`). Aktuell nur
+   `Record Count` nach `PRIORITY` — das ist NICHT «Einhaltungsgrad je Prioritätsstufe in %», wie
+   die Gherkin-AC es verlangt. Der Report muss `Sla_Compliance__c` als **Custom Summary AVG**
+   (`<field>Case.Sla_Compliance__c</field>` + `<customLabel>` + `Avg`-Aggregation) tragen.
+   Fallback (falls AVG nicht deploybar, SCRUM-394-Schema): SUM-Spalten `Sla_Met__c` /
+   `Sla_Counted__c` im Report, KPI = Met/Counted.
+3. **SC 8: Report-Scope.** Das File hat **kein `<scope>`-Element** (identisch zum SCRUM-394-Bug:
+   house reports `Offene_Leads_nach_Quelle` = `<scope>org</scope>`,
+   `Betreuungslast_nach_Firma` = `<scope>organization</scope>` — beide org-weit). Ohne
+   `<scope>` defaultet Salesforce auf «My Records» → Dienstleitung sieht ≈ ihre eigenen Cases,
+   nicht die Monatsauswertung. **Pflicht: `<scope>org</scope>` im Quell-XML** (Haus-Präfix).
+4. **PS FLS korrigieren (ADR-5/ADR-8-Konflikt).** Das PS `SCRUM404_SLA_Reaktionsfrist` trägt
+   aktuell `Sla_Alert_Sent__c` mit `editable=true` — das widerspricht ADR-8 („keinerlei
+   fieldPermission-Entry, unsichtbar für Service-Nutzer") **und** der ADR-5-Auslegung („die
+   Trigger schreiben in Benutzerkontext; mit editable=false würde jeder systemseitige
+   Schreib-Versuch als `FLSPeException` scheitern"). ADR-5-konforme Lösung: `Reaktionsfrist__c`
+   **und** `Erste_Rueckmeldung__c` → `readable=true, editable=true` (der vor-Update-Guard macht
+   sie faktisch read-only), `Sla_Alert_Sent__c` → **kein `fieldPermissions`-Entry** (Batch/Trigger
+   schreiben als Admin/Queueable; kein Service-User braucht die Sicht). `Sla_Breached__c` /
+   `Sla_Compliance__c` bleiben Formel-Read-only (`editable=false`). `description` aktualisieren —
+   ist veraltet („kein FLS" bei Alert_Sent/Sla_Breached/Sla_Compliance). **FlsTest**
+   (`SCRUM404SlaReaktionFlsTest`) fehlt komplett im Repo — §7 AC10 fordert „ohne PS nicht
+   readable; mit PS readable + faktisch read-only (DML-Revert-Assert)". Nach dem PS-Fix: FlsTest
+   neu anlegen, gegen die SCRUM-394/388/390-Hauspatterns schreiben, Deploy + Test-Run grüner.
+5. **Gherkin-AC-Abdeckung schließen (Pflicht: „every criterion has a named artefact").**
+   Aktuelle Lücke (10 SCs → Test-Artefakte):
+
+   | SC | Gherkin-THEMA | Test im Repo? |
+   |---|---|---|
+   | 1 | Case mit gesetzter Frist (Servicezeit, Feiertag überspringt) | Teilgewisse (AC1 direct) |
+   | 2 | Fr 16:00 → Mo 11:00 | AC2 (rot, §8.1-Blocker) |
+   | 3 | Feiertag überspringt | ❌ **kein Test** (Holiday insert via TestContext, ADR-3-SOQL-Holiday-Limit) |
+   | 4 | Erste Rückmeldung einmalig | AC7 (Task-Pfad; Event-Pfad ❌) |
+   | 5 | Frist verpasst → **Alert feuert + dedup** | AC6 (dedup) — ❌ **Alert-Auslösung** (Batch-executeBatch +
+     `CaseSlaNotification.feedCount`/`emailCount` Assert) fehlt |
+   | 6 | Kein Doppel-Alarm | AC6 ✓ |
+   | 7 | Bestand nicht angefasst | **Strukturell (ADR-9)**: Org-Datencheck mit
+     Zählung + Deploy-Zeitstempel (devops/tester); kein Apex-Test nötig. |
+   | 8 | Monatsauswertung in % | ❌ **kein Apex-Formeltest** (pünktlich=100, verspätet=0, offen=null
+     → AVG); Report selbst liefert aktuell keine % (Punkt 2). |
+   | 9 | Konfigurierbarkeit (MDT 3→5) ohne Deploy | ❌ **kein Test** (MDT-Zeile upsert, alter Case
+     bleibt unverändert, neuer Case = neue Frist). |
+   | 10 | FLS via PS | ❌ **FlsTest fehlt** (Punkt 4) + Lightning-FlexiPage §8.2 = Org-Schritt. |
+
+   Mindest-Paket für die Re-Review: SC3, SC5-Alert, SC8-Formel, SC9 + FlsTest.
+
+### Nicht-Blocker, vermerken (in der Re-Review mitnehmen)
+
+- `CaseSlaSlaTest`-Header-Kommentar (Zeilen 4-6) ist **stark veraltet** und falsch: er behauptet
+  «The MDT records are NOT deployed via CLI (known SF CLI 2.139 defect). They will be created via
+  DevOps after deployment.» — beides **falsch**: die 4 Records sind via CLI im Org
+  (SOQL nachgelesen, siehe oben), und der #17292-Defekt war File-Format, kein CLI-Defekt.
+  Nach dem #17325-Shape-Fix hat der Header nichts mehr zum DML-Vorgang zu sagen und ist zu
+  löschen oder durch den aktuellen Stand zu ersetzen (SSoT = dieses Review-§, nicht der
+  Header-Kommentar).
+
