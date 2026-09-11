@@ -31,7 +31,7 @@ private class SCRUM370OpenCasesRatingTest {
         return c.Id;
     }
 
-    /** Erzeugt `n` offene Falle (Status 'New') fuer den Contact.
+    /** Erzeugt `n` offene Fälle (Status 'New') für den Contact.
      *  Bulk-Insert: ein einziger DML-Satz feuert die Case-Trigger exakt EINMAL
      *  (statt n Einzel-Inserts -> n Trigger-Aufrufe -> ~4n SOQL, die Limit sprengen). */
     private static void openCases(Id contactId, Integer n) {
