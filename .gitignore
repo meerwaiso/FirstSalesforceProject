@@ -66,3 +66,14 @@ temp-retrieve/
 
 # verwaiste Sperrdateien von Office-Programmen
 .~lock.*
+
+# Sondierungen und Zwischenstaende der Agenten. Beim Untersuchen einer Org
+# entstehen laufend Wegwerf-Pakete; sie gehoeren nicht ins Repo, und sie
+# blockieren den gemeinsamen Auscheck, wenn sie liegenbleiben.
+# Fertige Manifeste ohne diese Praefixe werden weiterhin committet.
+tmp/
+temp-*.xml
+manifest/_*.xml
+
+# Rollentexte des Users fuer andere Werkzeuge (Cline u. a.)
+.cline-roles/
