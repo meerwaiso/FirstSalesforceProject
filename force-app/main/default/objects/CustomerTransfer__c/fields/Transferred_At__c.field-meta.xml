@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Transferred_At__c</fullName>
+    <label>Übergeben am</label>
+    <description>SCRUM-410: Zeitpunkt (System.now()), zu dem der atomare Ownership-Wechsel ausgeführt wurde.</description>
+    <externalId>false</externalId>
+    <required>false</required>
+    <type>DateTime</type>
+</CustomField>

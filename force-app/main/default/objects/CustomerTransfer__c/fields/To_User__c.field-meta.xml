@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>To_User__c</fullName>
+    <label>Übernimmt</label>
+    <description>SCRUM-410: übernehmende Betreuungsperson, der die übertragenen Records ab dem Übergabe-Zeitpunkt gehören.</description>
+    <referenceTo>User</referenceTo>
+    <relationshipLabel>Betreuungs-Übergaben (an)</relationshipLabel>
+    <relationshipName>CustomerTransfers_To</relationshipName>
+    <required>true</required>
+    <type>Lookup</type>
+</CustomField>

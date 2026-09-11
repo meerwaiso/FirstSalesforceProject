@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Status__c</fullName>
+    <description>SCRUM-410: Ergebnis der Übergabe. Abgeschlossen = atomarer Job hat alle 4 Bulk-Updates erfolgreich ausgeführt; Fehler = dokumentiert für eine spätere Fehler-Audit-Story (bewusst nicht in SCRUM-410 belegt).</description>
+    <externalId>false</externalId>
+    <label>Status</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Abgeschlossen</fullName>
+                <default>true</default>
+                <label>Abgeschlossen</label>
+            </value>
+            <value>
+                <fullName>Fehler</fullName>
+                <default>false</default>
+                <label>Fehler</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Open_Opportunities_Transferred__c</fullName>
+    <label>Übergebene laufende Chancen</label>
+    <description>SCRUM-410: Anzahl der laufenden Opportunities (IsClosed=false), die bei dieser Übergabe den Owner gewechselt haben. Closed-Won/Closed-Lost-Chancen bleiben beim alten Betreuer (AC4).</description>
+    <precision>18</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>
