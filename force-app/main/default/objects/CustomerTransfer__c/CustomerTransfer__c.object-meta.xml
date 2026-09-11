@@ -3,11 +3,6 @@
     <label>Betreuungs-Übergabe</label>
     <pluralLabel>Betreuungs-Übergaben</pluralLabel>
     <sharingModel>Private</sharingModel>
-    <enableSearch>true</enableSearch>
-    <enableActivityTracking>false</enableActivityTracking>
-    <enableFeeds>false</enableFeeds>
-    <enableHistory>false</enableHistory>
-    <enableReports>true</enableReports>
     <deploymentStatus>Deployed</deploymentStatus>
     <nameField>
         <displayFormat>TRANSFER-{0000}</displayFormat>

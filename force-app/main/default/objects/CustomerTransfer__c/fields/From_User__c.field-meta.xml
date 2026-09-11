@@ -6,6 +6,6 @@
     <referenceTo>User</referenceTo>
     <relationshipLabel>Betreuungs-Übergaben (von)</relationshipLabel>
     <relationshipName>CustomerTransfers_From</relationshipName>
-    <required>true</required>
+    <required>false</required>
     <type>Lookup</type>
 </CustomField>

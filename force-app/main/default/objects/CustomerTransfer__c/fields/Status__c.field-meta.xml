@@ -4,7 +4,6 @@
     <description>SCRUM-410: Ergebnis der Übergabe. Abgeschlossen = atomarer Job hat alle 4 Bulk-Updates erfolgreich ausgeführt; Fehler = dokumentiert für eine spätere Fehler-Audit-Story (bewusst nicht in SCRUM-410 belegt).</description>
     <externalId>false</externalId>
     <label>Status</label>
-    <length>255</length>
     <required>false</required>
     <type>Picklist</type>
     <valueSet>
