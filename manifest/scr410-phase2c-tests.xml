@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-410 Phase 2c: Apex-Tests — NUR NACH Phase 2a + PS-Zuweisung
+         (devops-agent + Meerwais Osmani). Grund: der Job schreibt die
+         CustomerTransfer__c-Zeile als der auslösende Nutzer; bis das PS
+         existiert UND zugewiesen ist, läuft der Test mit
+         „fields being inaccessible" (FLS-Wall, verifiziert 2026-09-11).
+         Deployment-Sequenz: 2a (Klassen/LWC/Metadaten/PS) → PS zuweisen
+         → 2c (Tests; hier laufen die 149 Apex-Tests inkl. 300-Skalenlauf
+         beim Deploy mit) → 2b (QuickAction, braucht das LWC erst in der Org).
+    -->
+    <types>
+        <members>SCRUM410CustomerTransferTest</members>
+        <name>ApexClass</name>
+    </types>
+</Package>

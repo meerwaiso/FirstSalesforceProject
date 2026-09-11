@@ -8,53 +8,53 @@
         <apexClass>CustomerTransferJob</apexClass>
         <enabled>true</enabled>
     </classAccesses>
-    <description>SCRUM-410: Sichtbarkeitsrechte für die Audit-Spur der Betreuung-Übergabe (AC6). Read auf CustomerTransfer__c + Read-FLS auf allen 7 Feldern, viewAllRecords auf das Objekt — jeder in der Spur kann „Warum betreue ich diesen Kunden?" nachvollziehen. KEIN Edit (das Objekt wird vom Apex-Job CustomerTransferJob selbst gepflegt; System-Mode umgeht FLS).</description>
+    <description>SCRUM-410: Zugang zur Audit-Spur der Uebergabe (AC6). viewAllRecords + FLS/Read+Edit auf 7 Feldern + Create/Edit auf CustomerTransfer__c, damit der Job die Zeile schreiben kann (Haus-Präzedenz SCRUM367). Delete nein.</description>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>CustomerTransfer__c.From_User__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>CustomerTransfer__c.To_User__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>CustomerTransfer__c.Transferred_At__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>CustomerTransfer__c.Accounts_Transferred__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>CustomerTransfer__c.Contacts_Transferred__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>CustomerTransfer__c.Open_Cases_Transferred__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>CustomerTransfer__c.Open_Opportunities_Transferred__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>CustomerTransfer__c.Status__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>SCRUM410_CustomerTransfer</label>
     <objectPermissions>
-        <allowCreate>false</allowCreate>
+        <allowCreate>true</allowCreate>
         <allowDelete>false</allowDelete>
-        <allowEdit>false</allowEdit>
+        <allowEdit>true</allowEdit>
         <allowRead>true</allowRead>
         <modifyAllRecords>false</modifyAllRecords>
         <object>CustomerTransfer__c</object>
