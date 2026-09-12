@@ -62,6 +62,8 @@ restate a rule in full here.
 - A failed tool call is not a failed method — when the tool rejects its own flags, read `--help` and repair the call, do not switch approach → *Core Principles*
 - A conclusion you reached is a result — do not re-run the command that produced it; change the plan, not the search → *Core Principles*
 - Reproduce a blocker before you report it — reach the same failure by a second route; if that route works you had a wrong call, not a blocker → *Core Principles*
+- Before you call the system broken, read back what you asked it for — an error that quotes a name is evidence about your file → *Core Principles*
+- A probe that cannot fail under your hypothesis is not evidence for it — name the result that would prove you wrong, or the check confirms nothing → *Core Principles*
 - Announcing a tool call is not doing the work — fire the call, no preamble and no progress note between calls → *Core Principles*
 - A commit on your own disk is not a handoff — push before you announce it → *Handoff Format Between Agents*
 - The checkout is shared; your branch is not — take a worktree, never switch the shared folder, and remove the worktree when you hand off → *Core Principles*
@@ -148,6 +150,16 @@ Measured 2026-09-10: at 15:20:03 an agent concluded "the Layout doesn't have a `
 **Reproduce a blocker before you report it.** An error message names a symptom, not a cause. Before you tell the room that something is blocked — permissions, quota, a missing object, an org defect — reach the same failure by a second, different route. If the second route works, you had a wrong call, not a blocker, and the working route is your report. A blocker report stops whoever waits on you; that is its cost.
 
 Measured 2026-09-10 on SCRUM-407: a reported permission block, "even as a System Admin", did not reproduce for the identical user on the identical org. It was a name-format failure that the CLI dressed as a permission error. Forty-four minutes passed between the report and the retraction. The fault was shared — the design doc had specified the broken call — and the diagnosis now lives in the `salesforce-deploy-diagnostics` skill.
+
+**Before you call the system broken, read back what you asked it for.** When the platform says it cannot find something you created, the error names a string. Compare that string, character by character, against the name in your own file before you conclude the platform is at fault. An error message that quotes a name is evidence about your file, not only about the org.
+
+This does not weaken the rule that you verify at the target system. It adds the other half: the system's answer is an answer to the question you sent. Verify both ends.
+
+Measured 2026-09-12 on SCRUM-411. A FlexiPage referenced `c_betreuungsuebergabe` for a component named `betreuungsuebergabe`, and the LWC declared `lightning__RecordAction` without the required `actionType`. Both are one-line fixes in files this team wrote. Instead four agents spent four hours, ran a deploy matrix across two orgs, concluded the org's Lightning design-time index was defective, and prepared a Salesforce Support escalation. The malformed name was quoted 183 times in messages — the doubled `c` was in every one of them. Over the same period 328 probes went to the org or the deploy engine and 65 opened a `*-meta.xml`. The org was never wrong: `AuraDefinitionBundle` was empty because the repository contains no Aura component at all.
+
+**A probe that cannot fail under your hypothesis is not evidence for it.** Before you run the next check, say what result would prove you wrong. If no result would, the check confirms nothing — you are collecting reassurance, not evidence. Five findings that all fit one explanation are one finding.
+
+Measured 2026-09-12 on SCRUM-411. Four probes were run — LWC alone green, LWC plus QuickAction red, QuickAction alone red, QuickAction real deploy red — and read as mounting proof of a broken org resolver. Every one of them fits a misspelled component reference just as well, which is what it was. The probe that separates the two was never run: deploy against a component that already resolves, or compare the name in the file with the name in the org.
 
 ## Shared End-to-End Workflow
 
