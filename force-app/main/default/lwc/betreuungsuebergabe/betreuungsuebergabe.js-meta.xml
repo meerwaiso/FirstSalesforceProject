@@ -6,6 +6,7 @@
     <description>SCRUM-410: Betreuung (Accounts, Kontakte, offene Fälle, laufende Chancen) an eine andere Person übergeben — Vorschau, atomarer Bulk-Lauf, Audit-Spur.</description>
     <targets>
         <target>lightning__RecordAction</target>
+        <target>lightning__RecordPage</target>
     </targets>
     <targetConfigs>
         <targetConfig targets="lightning__RecordAction">
