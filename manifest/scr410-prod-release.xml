@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-410 Prod-Release Manifest (DevOps, 2026-09-12) — PR #96, master tip 872533b/53542ea -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>CustomerTransferController</members>
+        <members>CustomerTransferJob</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>betreuungsuebergabe</members>
+        <name>LightningComponentBundle</name>
+    </types>
+    <types>
+        <members>CustomerTransfer__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>CustomerTransfer__c</members>
+        <name>CustomTab</name>
+    </types>
+    <types>
+        <members>CustomerTransfer__c-Betreuungs-Uebergabe Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>BetreuungsuebergabePage</members>
+        <name>FlexiPage</name>
+    </types>
+    <types>
+        <members>SCRUM410_CustomerTransfer</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>64.0</version>
+</Package>
