@@ -227,7 +227,7 @@
         </itemInstances>
         <itemInstances>
             <componentInstance>
-                <componentName>c_betreuungsuebergabe</componentName>
+                <componentName>c:betreuungsuebergabe</componentName>
                 <identifier>c_betreuungsuebergabe</identifier>
             </componentInstance>
         </itemInstances>

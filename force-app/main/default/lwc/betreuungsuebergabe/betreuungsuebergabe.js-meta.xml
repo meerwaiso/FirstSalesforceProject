@@ -13,6 +13,7 @@
             <objects>
                 <object>User</object>
             </objects>
+            <actionType>ScreenAction</actionType>
         </targetConfig>
     </targetConfigs>
 </LightningComponentBundle>
