@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-411: NUR das LWC, echtes (nicht dry-run) Deploy.
+         Root Cause (devops 18248, architect bestätigt per Read-Back):
+         AuraDefinitionBundle WHERE DeveloperName='betreuungsuebergabe' → 0 Zeilen —
+         die LWC war nie persist in der Test-Org. LWC ALLEIN → GRÜN (Dry-Run
+         0AfWU00000bL6Rh0AK); LWC+QuickAction zusammen heilt NICHT.
+         Danach Read-Back: AuraDefinitionBundle = 1 Zeile → dann Phase 2b
+         (QuickAction) deployen. -->
+    <types>
+        <members>betreuungsuebergabe</members>
+        <name>LightningComponentBundle</name>
+    </types>
+    <version>67.0</version>
+</Package>

@@ -1,0 +1,68 @@
+<template>
+    <div class="transfer">
+        <p class="transfer__intro">
+            Die Kunden, Kontakte, offenen Fälle und laufenden Chancen der abgebenden
+            Person wechseln auf die übernehmende Person. Abgeschlossene Historie
+            (geschlossene Fälle / Closed-Won- und Closed-Lost-Chancen) bleibt beim
+            alten Betreuer. Es wechselt ausschließlich die Betreuung.
+        </p>
+
+        <template lwc:if={error}>
+            <p class="transfer__error" role="alert">{error}</p>
+        </template>
+
+        <template lwc:if={done}>
+            <p class="transfer__done">{done}</p>
+        </template>
+
+        <template lwc:if={formVisible}>
+            <span class="transfer__label" id="transfer-from-label">Gibt ab (aktueller Nutzer)</span>
+            <input
+                class="slds-input"
+                type="text"
+                readonly
+                aria-label="Gibt ab — aktueller Nutzer"
+                value={fromUserName}
+            />
+
+            <span class="transfer__label" id="transfer-to-label">Übernimmt</span>
+            <select class="slds-select" aria-label="Übernimmt — Person wählen" onchange={handleToChange}>
+                <option value="">— bitte wählen —</option>
+                <template for:each={toOptions} for:item="opt">
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                </template>
+            </select>
+
+            <div class="transfer__actions">
+                <template lwc:if={canPreview}>
+                    <button
+                        class="slds-button slds-button_brand"
+                        onclick={handlePreview}
+                        disabled={previewLoading}
+                    >{previewLoading ? 'Wird gezählt …' : 'Vorschau'}</button>
+                </template>
+                <template lwc:if={preview}>
+                    <button
+                        class="slds-button slds-button_brand slds-button_neutral"
+                        onclick={handleLaunch}
+                        disabled={launching}
+                    >{launching ? 'Übergabe läuft …' : 'Übergeben (jetzt ausführen)'}</button>
+                </template>
+            </div>
+
+            <template lwc:if={preview}>
+                <div class="transfer__preview">
+                    <p class="transfer__preview-heading">
+                        Bei Ausführung würde wechseln:
+                    </p>
+                    <ul class="transfer__preview-list">
+                        <li><strong>{preview.accounts}</strong> Accounts</li>
+                        <li><strong>{preview.contacts}</strong> Kontakte</li>
+                        <li><strong>{preview.openCases}</strong> offene Fälle</li>
+                        <li><strong>{preview.openOpportunities}</strong> laufende Chancen</li>
+                    </ul>
+                </div>
+            </template>
+        </template>
+    </div>
+</template>

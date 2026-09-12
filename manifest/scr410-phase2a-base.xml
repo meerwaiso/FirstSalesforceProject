@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-410 Phase 2a: Basis-Komponenten — NACH Phase 1
+         (Objekt + Felder müssen existieren). Enthält APEX + LWC + Tab + PS + Layout,
+         aber OHNE die QuickAction: die QuickAction referenziert das neue LWC
+         `betreuungsuebergabe`, das das Org beim Validate gegen den VOR-Deployment-
+         Zustand auflöst und dort noch nicht existiert. D => Phase 2b. -->
+    <types>
+        <members>SCRUM410_CustomerTransfer</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>CustomerTransfer__c-Betreuungs-Uebergabe Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>CustomerTransfer__c</members>
+        <name>CustomTab</name>
+    </types>
+    <types>
+        <members>betreuungsuebergabe</members>
+        <name>LightningComponentBundle</name>
+    </types>
+    <types>
+        <members>CustomerTransferController</members>
+        <members>CustomerTransferJob</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>
