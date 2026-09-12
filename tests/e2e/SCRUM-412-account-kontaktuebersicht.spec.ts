@@ -48,10 +48,16 @@ function seedE2EData(): { accIds: string[]; contactIds: string[]; acctNoContacts
     "sf data query -o Test-Org --json -q \"SELECT Id FROM Profile WHERE Name='System Administrator' LIMIT 1\""
   ).result.records[0].Id;
 
+  // NOTE (Tester, SCRUM-412): the sf CLI `data create -v` key=value parser
+  // splits on spaces and only honours a space inside a *balanced pair of
+  // double quotes that reach the parser*. The OUTER single-quotes below are
+  // shell quotes that /bin/sh strips, so a value with a space must be wrapped
+  // in INNER double-quotes (kept by oclif, seen by the parser):
+  //   -v 'Name="[tag] Akte 0"'   (not -v 'Name=[tag] Akte 0')
   const accIds: string[] = [];
   for (let i = 0; i < 3; i++) {
     const a = sfJson(
-      `sf data create record -s Account -v 'Name=[SCRUM-412-e2e] Akte ${i}' --target-org Test-Org --json`
+      `sf data create record -s Account -v 'Name="[SCRUM-412-e2e] Akte ${i}"' --target-org Test-Org --json`
     ).result;
     accIds.push(recId(a));
   }
@@ -60,11 +66,11 @@ function seedE2EData(): { accIds: string[]; contactIds: string[]; acctNoContacts
   // Contacts für die ersten 2 Accounts (AC1, AC2, AC3)
   for (let i = 0; i < 2; i++) {
     const c1 = sfJson(
-      `sf data create record -s Contact -v 'FirstName=Ansprech' 'LastName=Partner ${i}a' 'AccountId=${accIds[i]}' 'Phone=0800-${100+i}' 'Email=ansprech${i}a@beispiel.invalid' --target-org Test-Org --json`
+      `sf data create record -s Contact -v 'FirstName=Ansprech LastName="Partner ${i}a" AccountId=${accIds[i]} Phone=0800-${100+i} Email=ansprech${i}a@beispiel.invalid' --target-org Test-Org --json`
     ).result;
     contactIds.push(recId(c1));
     const c2 = sfJson(
-      `sf data create record -s Contact -v 'FirstName=Ansprech' 'LastName=Partner ${i}b' 'AccountId=${accIds[i]}' 'Phone=0800-${200+i}' 'Email=ansprech${i}b@beispiel.invalid' --target-org Test-Org --json`
+      `sf data create record -s Contact -v 'FirstName=Ansprech LastName="Partner ${i}b" AccountId=${accIds[i]} Phone=0800-${200+i} Email=ansprech${i}b@beispiel.invalid' --target-org Test-Org --json`
     ).result;
     contactIds.push(recId(c2));
   }
