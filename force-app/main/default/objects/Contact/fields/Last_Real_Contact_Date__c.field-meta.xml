@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Last_Real_Contact_Date__c</fullName>
+    <description>Datum des neuesten ABGESCHLOSSENEN Calls (Task Type='Call' und Status='Completed'), gemessen an der ActivityDate (SCRUM-413). Wird ausschliesslich vom System gepflegt (LastRealContactDateTrigger/Rebuilder); von Hand nicht aenderbar. Blank = der Kontakt hat noch nie einen abgeschlossenen Call („nie erreicht").</description>
+    <label>Letzter echter Kontakt</label>
+    <required>false</required>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Date</type>
+    <unique>false</unique>
+</CustomField>
