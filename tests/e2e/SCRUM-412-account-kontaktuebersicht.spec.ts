@@ -125,9 +125,11 @@ test.describe('[SCRUM-412] Account-Kontaktübersicht — Lightning UI (Test-Org)
 
     await openAccount(page, accIds[0]);
 
-    // Kontakt-Related-List: mind. 2 Kontakt-Karten (role=article)
+    // Präziser Anker: exakt ein Namens-Link pro Kontakt-Karte (a11y-verifiziert).
+    // Zählung auf article würde in dieser Org Wrapper-Artikel inkludieren.
+    const nameLinks = page.getByRole('link', { name: /^Ansprech Partner 0[ab]$/ });
+    await expect(nameLinks).toHaveCount(2, { timeout: 20000 });
     const cards = contactCards(page);
-    await expect(cards).toHaveCount(2, { timeout: 20000 });
 
     // Wert-Anker: die Karte des Kontakts enthält live Phone + Email (a11y-
     // verifiziert: term "Email:"/"Phone:" mit Definition = mailto/tel-Link).
