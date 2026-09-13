@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-413 Phase 1: neuer Feld am Contact (ZUERST deployen, Because Trigger/
+         Layout/PS referenzieren ihn). -->
+    <types>
+        <members>Contact.Last_Real_Contact_Date__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Contact.Last_Real_Contact_Date__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM413_LastRealContactDate</label>
+    <description>Read-only FLS fur Contact.Last_Real_Contact_Date__c (Letzter echter Kontakt, SCRUM-413). Systemmaintained via LastRealContactDateTrigger/Rebuilder - kein Update-Right fur irgendwen. PO: Sales, nur lesen.</description>
+</PermissionSet>

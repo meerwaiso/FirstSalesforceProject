@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-413 Phase 3: CustomListView «Letzter echter Kontakt» am Contact
+         (child-type ListView), Spalte Contact.Last_Real_Contact_Date__c —
+         Traeger fur die PO-Forderung „Kunden filtern, die > 6 Monate nicht erreicht". -->
+    <types>
+        <members>Contact.Letzter_Real_Kontakt</members>
+        <name>ListView</name>
+    </types>
+    <version>62.0</version>
+</Package>

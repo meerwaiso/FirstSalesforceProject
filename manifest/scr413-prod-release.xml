@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-413 PROD RELEASE (targeted). DevOps-Agent 2026-09-13.
+     Enthaelt ALLE SCRUM-413-Komponenten AUSSER dem Contact-Contact Layout.
+     Layout bewusst ausgeschlossen: die committed Repo-Layout-Version referenziert
+     Betreuungsstufe__c (anderes Ticket), das NICHT in Prod-Org deployed ist
+     → Layout-Deploy wuerde fehlschlagen und Lightning platformActionList/summaryLayout
+     des Prod-Layouts entfernen.
+     Classic-Layout-Drift wird separat geroutet.
+     Sichtbarkeit fuer Sales-User in Lightning laeuft ueber die FlexiPage
+     (Org-Step, Architekten-Entscheidung). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Contact.Last_Real_Contact_Date__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>LastRealContactDateTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <types>
+        <members>LastRealContactDateRebuilder</members>
+        <members>LastRealContactDateTrigger</members>
+        <members>SCRUM413LastRealContactDateFlsTest</members>
+        <members>SCRUM413LastRealContactDateTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>SCRUM413_LastRealContactDate</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Contact.Letzter_Real_Kontakt</members>
+        <name>ListView</name>
+    </types>
+    <version>67.0</version>
+</Package>
