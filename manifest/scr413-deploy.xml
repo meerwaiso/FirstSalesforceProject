@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <versions>
+        <members>Contact.Last_Real_Contact_Date__c</members>
+        <name>CustomField</name>
+    </versions>
+    <types>
+        <members>LastRealContactDateTrigger</members>
+        <members>LastRealContactDateRebuilder</members>
+        <members>SCRUM413LastRealContactDateTest</members>
+        <members>SCRUM413LastRealContactDateFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>LastRealContactDateTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <types>
+        <members>Contact-Contact Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>SCRUM413_LastRealContactDate</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>
