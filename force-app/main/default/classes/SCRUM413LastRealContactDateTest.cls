@@ -8,8 +8,16 @@ private class SCRUM413LastRealContactDateTest {
         insert c;
         return c.Id;
     }
+    private static Map<Id, Date> lastContactDates(List<Id> contactIds) {
+        Map<Id, Date> result = new Map<Id, Date>();
+        for (Contact c : [SELECT Id, Last_Real_Contact_Date__c FROM Contact WHERE Id IN :contactIds]) {
+            result.put(c.Id, c.Last_Real_Contact_Date__c);
+        }
+        return result;
+    }
     private static Date lastContactDateOf(Id contactId) {
-        return [SELECT Last_Real_Contact_Date__c FROM Contact WHERE Id = :contactId].Last_Real_Contact_Date__c;
+        Map<Id, Date> m = lastContactDates(new List<Id>{contactId});
+        return m.get(contactId);
     }
     @isTest static void completedCall_setsDate() {
         Id a = newContact('Finished');
@@ -114,9 +122,13 @@ private class SCRUM413LastRealContactDateTest {
         List<Task> tasks = new List<Task>();
         for (Id cid : ids)
             tasks.add(new Task(WhoId = cid, Status = 'Completed', Type = 'Call', ActivityDate = Date.Today()));
+        Test.startTest();
         insert tasks;
+        Test.stopTest();
+        // Batch-query all 200 contacts at once to stay within governor
+        Map<Id, Date> dates = lastContactDates(ids);
         for (Id cid : ids)
-            System.assertEquals(Date.Today(), lastContactDateOf(cid), 'Bulk jeder Contact → heute');
+            System.assertEquals(Date.Today(), dates.get(cid), 'Bulk jeder Contact → heute');
     }
     @isTest static void callWithoutWhoId_silent() {
         insert new Task(Status = 'Completed', Type = 'Call', ActivityDate = Date.Today());

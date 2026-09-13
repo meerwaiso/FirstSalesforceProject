@@ -24,6 +24,17 @@ public without sharing class LastRealContactDateTrigger {
             return 0;
         }
 
+        // Filter to Contact IDs only (prefix '003'), ignore Leads/other WhoIds.
+        Set<Id> contactIds = new Set<Id>();
+        for (Id wid : whoIds) {
+            if (String.valueOf(wid).startsWith('003')) {
+                contactIds.add(wid);
+            }
+        }
+        if (contactIds.isEmpty()) {
+            return 0;
+        }
+
         // SOQL — ActivityDate unterstützt MAX() in AggregateResult NICHT.
         // Stattdessen: ORDER BY DESC LIMIT 1 pro WhoId über eine Grouping-Query.
         Map<Id, Date> latest = new Map<Id, Date>();
@@ -41,16 +52,17 @@ public without sharing class LastRealContactDateTrigger {
 
         // 2. SOQL: aktueller Zustand der betroffenen Kontakte.
         Map<Id, Date> cur = new Map<Id, Date>();
-        for (Contact c : [
+        List<Contact> contacts = [
             SELECT Id, Last_Real_Contact_Date__c
             FROM Contact
-            WHERE Id IN :whoIds
-        ]) {
+            WHERE Id IN :contactIds
+        ];
+        for (Contact c : contacts) {
             cur.put(c.Id, c.Last_Real_Contact_Date__c);
         }
 
         List<Contact> toUpdate = new List<Contact>();
-        for (Id wid : whoIds) {
+        for (Id wid : contactIds) {
             Date newDate     = latest.get(wid);
             Date currentDate = cur.get(wid);
             Boolean mustWrite = (currentDate == null)
