@@ -2,7 +2,7 @@
  * SCRUM-413: Bestandsmigration — rückwirkendes Befüllen von Last_Real_Contact_Date__c.
  *
  * Batch über ALLE Kontakte (Chunk 200), pro Chunk recompute(Ids).
- * ADR-6: kein Button, kein Log-Zeile, finish=no-op. Idempotent.
+ * ADR-7: kein Button, kein Log-Zeile, finish=no-op. Idempotent.
  */
 public without sharing class LastRealContactDateRebuilder
         implements Database.Batchable<SObject>, Database.Stateful {
