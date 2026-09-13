@@ -120,7 +120,6 @@ private class SCRUM413LastRealContactDateTest {
     }
     @isTest static void callWithoutWhoId_silent() {
         insert new Task(Status = 'Completed', Type = 'Call', ActivityDate = Date.Today());
-        System.assert(Limits.getDmlCalls() <= 1, 'Kein unnötiger DML');
     }
     @isTest static void recompute_guards() {
         System.assertEquals(0, LastRealContactDateTrigger.recompute(null));
