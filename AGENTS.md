@@ -66,6 +66,7 @@ restate a rule in full here.
 - A probe that cannot fail under your hypothesis is not evidence for it — name the result that would prove you wrong, or the check confirms nothing → *Core Principles*
 - Announcing a tool call is not doing the work — fire the call, no preamble and no progress note between calls → *Core Principles*
 - A commit on your own disk is not a handoff — push before you announce it → *Handoff Format Between Agents*
+- An uncommitted artifact does not survive the turn — create the file as soon as you can name what goes in it, commit, then keep investigating → *Core Principles*
 - The checkout is shared; your branch is not — take a worktree, never switch the shared folder, and remove the worktree when you hand off → *Core Principles*
 - The shared checkout is neither current nor shared — fetch before you cite what the repo contains, push before you call it a handoff → *Core Principles*
 - A pattern you cite must reproduce the example you cite it from — if your sentence cannot produce your example, the sentence is the bug → *Core Principles*
@@ -192,6 +193,12 @@ Standing on `master` is the same violation and the easier one to miss, because n
 Measured 2026-09-07: four branches carry commits from two or three tickets each — `feature/SCRUM-370-374-e2e-specs` (370, 374, 375), `feature/SCRUM-378-lead-nachfassliste` (378, 380), `feature/SCRUM-382-visibility-test` (382, 384), `feature/SCRUM-396-betreuungsstufe` (396, 398). A shared branch means one PR carries two tickets: rejecting one blocks the other, the reviewer sees changes nobody asked him to review, and neither ticket can be merged on its own.
 
 Deploying to Test-Org is not delivering. Everything downstream — CI, the drift gate, the review, the test — reads the commit, never the org. Before you hand off, the branch and the org must show the same thing. Measured SCRUM-394: the corrected report ran in Test-Org for two hours while the branch still carried the guess it replaced.
+
+**An uncommitted artifact does not survive the turn.** A turn has a hard time limit and it counts through compactions, so the deadline is not where the current session started. Create the file as soon as you can name one thing that belongs in it, commit it, and go on investigating — a skeleton in the repository outlives an abort, and a finished draft in memory does not. After a compaction the next turn does not know the file ever existed and writes it again from nothing.
+
+Measured 2026-09-14 on SCRUM-414: the Tester's turn was prompted at 13:08:24 and cut at 14:38:24. His decisive evidence was in hand at 14:29 — a DOM measurement showing zero checkbox, textbox and radio controls for both fields, which is the read-only proof — and the live list view was confirmed at 14:23, the Apex run at 13:53. The spec was written at 14:34:19: 195 lines, 29 assertions, sound work. Not committed, not run, not handed off. Eighty-five minutes of evidence, five minutes of delivery.
+
+The evidence gathering was right: counted in both directions, Apex 7/7 plus 14/14 on the rename regression, DOM rather than layout XML. Only the order was wrong. The same turn on the Developer's side went the other way — Phase 1 pushed after fifty minutes, which left room to finish Phase 2 and hand off with twenty-eight minutes to spare. Raising the time limit does not fix this; it moves the last minute.
 
 ↓ (max. 2 self-correction loops on validation error)
 
