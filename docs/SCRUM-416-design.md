@@ -213,25 +213,27 @@ public without sharing class OpenOpportunityRollupHandler {
 <?xml version="1.0" encoding="UTF-8"?>
 <Report xmlns="http://soap.sforce.com/2006/04/metadata">
     <columns>
-        <field>Name</field>
+        <field>ACCOUNT.NAME</field>
     </columns>
     <columns>
-        <field>Open_Opportunity_Count__c</field>
+        <field>Account.Open_Opportunity_Count__c</field>
     </columns>
     <columns>
         <aggregateTypes>Sum</aggregateTypes>
-        <field>Open_Opportunity_Value__c</field>
-        <sortOrder>Desc</sortOrder>
+        <field>Account.Open_Opportunity_Value__c</field>
     </columns>
     <description>Kunden nach offenem Chancenwert (absteigend): Anzahl offener Chancen + Summe der offenen Beträge (IsClosed = false), alle Kunden der Org inkl. 0/0.</description>
     <format>Summary</format>
-    <generateReportInstances>true</generateReportInstances>
     <name>Offene_Werte_nach_Kunde</name>
     <reportType>AccountList</reportType>
     <scope>organization</scope>
     <showDetails>true</showDetails>
+    <sortColumn>Account.Open_Opportunity_Value__c</sortColumn>
+    <sortOrder>Desc</sortOrder>
 </Report>
 ```
+
+**Template-Befund (2026-09-14, Review PR #109):** Die ursprüngliche Vorlage hier hatte zwei Fehler, die der Developer beim Build über die Deploy-Validate korrigiert hat — das jetzt gezeigte XML ist die **deployverifizierte** Fassung: (1) `sortOrder`/`sortColumn` gibt top-level im `Report`-Element, **nicht** im einzelnen ReportColumn; (2) Report-Feldreferenzen tragen den Objekt-Präfix (`ACCOUNT.NAME`, `Account.Open_Opportunity_Value__c`).
 
 Format `Summary` ohne Gruppierung = flache Tabelle, Standardsortierung absteigend nach Wert (AC5); jeder Kunde erscheint, auch ohne offene Chancen (0/0).
 
