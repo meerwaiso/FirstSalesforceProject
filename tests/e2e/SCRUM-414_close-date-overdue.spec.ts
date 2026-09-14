@@ -87,28 +87,33 @@ test.describe('[SCRUM-414] Absatz-termin-überfällig (Test-Org, Lightning)', ()
     expect(headerText).toContain('Überfällig (Abschluss)');
 
     // ---- Sort "schlimmste zuerst": drive the days column to DESCENDING ----
-    const dayTh = page.locator('th[aria-label="Tage überfällig (Abschluss)"]').first();
-    await expect(dayTh).toBeVisible({ timeout: 15000 });
-    const sortLink = dayTh.locator('a[role="button"], [role="button"]').first();
-    const direction = async () => {
-      const cls = (await dayTh.getAttribute('class')) || '';
-      if (/slds-is-sorted_desc/.test(cls)) return 'desc';
-      if (/slds-is-sorted\b/.test(cls)) return 'asc';
-      return 'none';
-    };
+    // The visible interactive sort control is the in-header button; the <th>
+    // itself can be resolved but report as hidden (frozen header duplicate),
+    // so we read aria-sort from it and click the button.
+    const dayCol = 'Days_Close_Date_Overdue__c';
+    const sortButton = page.getByRole('button', {
+      name: /^Sort by: Tage überfällig \(Abschluss\)$/,
+    });
+    await expect(sortButton).toBeVisible({ timeout: 20000 });
+
+    const ariaSort = async () =>
+      (await page
+        .locator(`th[data-col-key-value^="${dayCol}"]`)
+        .first()
+        .getAttribute('aria-sort')) || 'none';
     // Click until the days column sorts descending (worst / most days first).
-    let d = await direction();
-    if (d === 'none') {
-      await sortLink.click({ force: true });
+    let dir = await ariaSort();
+    if (dir !== 'descending') {
+      await sortButton.click({ timeout: 20000 });
       await page.waitForTimeout(2500);
-      d = await direction();
+      dir = await ariaSort();
+      if (dir !== 'descending') {
+        await sortButton.click({ timeout: 20000 });
+        await page.waitForTimeout(2500);
+        dir = await ariaSort();
+      }
     }
-    if (d === 'asc') {
-      await sortLink.click({ force: true });
-      await page.waitForTimeout(2500);
-      d = await direction();
-    }
-    expect(d, 'days column must sort descending (schlimmste zuerst)').toBe('desc');
+    expect(dir, 'days column must sort descending (schlimmste zuerst)').toBe('descending');
 
     // The org's own header text names the active sort column.
     await expect(page.getByText('Sorted by Tage überfällig (Abschluss)').first()).toBeVisible({
