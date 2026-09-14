@@ -16,6 +16,37 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 14.09.2026 — Verkaufschancen mit ueberschrittenem Abschlusstermin auf einen Blick (SCRUM-414)
+
+**Was sich aendert.** Jede offene Verkaufschance, deren geplantes Abschlussdatum
+schon vorbei ist, wird jetzt automatisch als ueberfaellig markiert — von selbst,
+ohne dass jemand etwas ankreuzt oder nachtraegt. Und man sieht, wie schlimm es
+ist: es steht die Zahl der Tage, seit der Termin her ist. Eine Chance, die im
+Maerz haeitte abgeschlossen werden sollen und im September immer noch offen
+steht, faellt damit sofort ins Auge.
+
+**Wo man es sieht.** Auf der Verkaufschance im Abschnitt
+«Ueberschrittene Abschluesse»: eine Ja/Nein-Abfrage «Ueberfaellig» und die Zahl
+«Tage ueberfaellig« — beides pflegt sich von selbst. Dazu die fertige
+Listenansicht «Ueberfaellige Chancen»: offener Status + ueberfaellig, sortiert
+nach den Tagen absteigend — «die schlimmsten zuerst». Filter und Sortierung
+ueber die Standardfilter.
+
+**Was bewusst fehlt.** Gewonnene und verlorene Chancen bleiben sauber ignoriert,
+egal wie alt ihr Datum ist — abgeschlossen ist abgeschlossen. Ein noch
+zukuenftiges Datum ist nicht ueberfaellig. Gezaehlt wird nur, was noch offen
+ist. Das vorhandene Feld «Is Overdue» (14 Tage ohne Aktivitaet) ist ein anderes
+Thema und ist bewusst unangetastet geblieben.
+
+**Belege.** SCRUM-414 (Deploy `0Afg500000EpvU1CAJ`, 5/5 Komponenten, 7/7
+Tests). Nachgelesen an echten Prod-Datensaetzen (PO-eigenes `sf data query` in
+der Prod-Org): 13 offene Chancen mit ueberfaelligem Abschlussdatum, die
+schlimmsten zuerst (186 bis 80 Tage), 0 geschlossene markiert, das SCRUM-319-
+Feld `Is_Overdue__c` unangetastet. Sichtbarkeit fuer die End-User explizit
+vergeben (PO-Read-Back: 2/2).
+
+---
+
 ## 13.09.2026 — Ansprechpartner eines Accounts direkt in der Account-Uebersicht (SCRUM-412)
 
 **Was sich aendert.** Wenn man einen Account oeffnet, steht bei jedem
