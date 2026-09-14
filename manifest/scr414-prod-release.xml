@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-414 PROD release package (REVISED 2026-09-14 nach roter Prod-Valid;
+     ADR-2-Prod-Seite, Ticket-Kommentar 18845).
+
+     Prod trägt den alten SCRUM-319-Stack LIVE auf Is_Overdue__c (altes Feld + alter
+     Trigger/Classes/PS, unverändert). Der Release deployt die 414-Komponenten
+     DANEBEN (SCRUM-390-Pattern) und enthält bewusst NICHTS, das
+     Opportunity.Is_Inactive__c referenziert — das Feld existiert in Prod nicht
+     und wird in Prod NICHT deployt (keine Renames, keine Überschreibungen).
+     Ausgenommen gegenüber der ersten Fassung: Is_Inactive__c, Opportunity-Layout,
+     SCRUM319_OverdueOpportunity (PS), OpportunityOverdueService,
+     OpportunityOverdueReset (Trigger), SCRUM319OverdueOpportunityTest. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Opportunity.Is_Close_Date_Overdue__c</members>
+        <members>Opportunity.Days_Close_Date_Overdue__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>SCRUM414_CloseDateOverdue</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Opportunity.Ueberfaellige_Chancen</members>
+        <name>ListView</name>
+    </types>
+    <types>
+        <members>SCRUM414CloseDateOverdueTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

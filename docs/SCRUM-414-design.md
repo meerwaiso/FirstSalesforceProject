@@ -55,9 +55,13 @@ Namen und derselben Label-Art wären im UI unauflösbar.
 | neue Zahl | `Days_Close_Date_Overdue__c` | Tage überfällig (Abschluss) | `formula` |
 | SCRUM-319-Feld, **umbenannt** | `Is_Inactive__c` (war `Is_Overdue__c`) | Inaktiv | `Checkbox`, unchanged otherwise |
 
-- Rename via `sf field rename -r` (API-Name-Wechsel preserves Data und
-  Referenzen über die neue API; `LastModifiedDate`-Logik des SCRUM-319-Stacks
-  bleibt ansonsten 1:1).
+- ⚠️ **`sf field rename -r` existiert NICHT** (verifiziert 2026-09-14:
+  CLI 2.139.6 und aktuellste 2.150.6 — `Command field:rename not found`).
+  Die Test-Org hatte `Opportunity.Is_Overdue__c` ohnehin nicht (Read-Back
+  Phase 1) → das SCRUM-319-Feld wurde unter dem Endnamen `Is_Inactive__c`
+  als neues Feld deployt, alle Referenzen per API-Namen mitgezogen
+  (realisierte Form). `OpportunityOverdueScheduler`/`-Notification`
+  referenzieren das Feld nicht (Repo-Scan) und bleiben daher unangetastet.
 - `Is_Close_Date_Overdue__c` statt `Is_Overdue__c`/`Is_Close_Due__c`: eindeutig
   gegenüber `Is_Inactive__c`, kein API-Kollisions-Risiko, Haus-Konvention
   (englische API-Namen, exakte deutsche Labels).
@@ -82,10 +86,27 @@ Namen und derselben Label-Art wären im UI unauflösbar.
   - **Kein Layout-/Report-/Formelbezug außerhalb** der oben genannten Dateien
     (Repo-weiter Scan: `Eskalationsstufe__c.formula` belegt `Case.Is_Overdue__c`,
     nicht das Opportunity-Feld).
-- **@devops-agent:** Falls SCRUM-319 in prod ein aktives Feld hat: `sf field rename -r`
-  ist in prod derselbe, sichere Operation (keine Datenverlust, Preserve
-  History). Falls das Feld in prod existiert → Rename **vor** dem Deploy der
-  Phase-2-Dateien, sonst Deploy-Schema-Fehler.
+- **ADR-2-PROD (Stand 2026-09-14, nach roter Prod-Valid 0Afg500000EpnkzCAB):**
+  Prod trägt den SCRUM-319-Stack **live auf `Is_Overdue__c`** (altes Feld +
+  alter Trigger `OpportunityOverdueReset` + alte Classes + PS, unverändert).
+  Prod wird in 414 **NICHT** umbenannt und **NICHT** überschrieben:
+  1. `sf field rename -r` existiert nicht (s. oben) — ein Rename bräuchte
+     Retrieve + File-Edit + Deploy, also ein SCRUM-319-Scope außerhalb von
+     414.
+  2. SCRUM-319 ist `Erledigt` **ohne Prod-Release** — sein aktiver Prod-Stack
+     ist `Is_Overdue__c`-basiert. Das 414-Deployment darf ihn nicht
+     durchbrechen.
+  → **414 deployt seine eigene Komponente daneben** (SCRUM-390-Pattern):
+     `manifest/scr414-prod-release.xml` enthält NUR die reinen 414-Artefakte
+     (2 Formelfelder, PS `SCRUM414_CloseDateOverdue`, ListView
+     `Ueberfaellige_Chancen`, Test `SCRUM414CloseDateOverdueTest`) —
+     **kein** `Is_Inactive__c`-Bezug, kein Layout, kein Trigger, keine
+     SCRUM-319-Klassen/PS. Damit sind in Prod: `Is_Overdue__c` (SCRUM-319,
+     lebt weiter mit seiner eigenen Logik) + die 414-Felder — zwei Felder,
+     zwei Labels, keine Kollision. **Repo-Follow-up (nicht blockierend für
+     414-Prod):** Master/Prod-Drift beim SCRUM-319-Stack (Repo sagt jetzt
+     `Is_Inactive__c`, Prod `Is_Overdue__c`) + `Is_Inactive__c` fehlt in
+     Master-Test-Layout → eigener Cleanup-Tick
 
 ### ADR-3: **Formeln**
 
