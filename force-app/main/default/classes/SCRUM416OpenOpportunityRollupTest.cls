@@ -257,19 +257,29 @@ private class SCRUM416OpenOpportunityRollupTest {
             expectedCount.put(ac.Id, 0);
             expectedValue.put(ac.Id, 0);
         }
+        Integer idx = 0;
         for (Integer i = 0; i < 200; i++) {
-            Id accId = accs[i % 10].Id;
+            Id accId = accs[idx].Id;
             expectedCount.put(accId, expectedCount.get(accId) + 1);
             expectedValue.put(accId, expectedValue.get(accId) + (10 + i));
+            idx = idx + 1;
+            if (idx == 10) {
+                idx = 0;
+            }
         }
 
         List<Opportunity> ops = new List<Opportunity>();
+        idx = 0;
         for (Integer i = 0; i < 200; i++) {
             ops.add(new Opportunity(
                 Name = 'V416 bulk-' + i,
-                AccountId = accs[i % 10].Id,
+                AccountId = accs[idx].Id,
                 StageName = 'Prospecting',
                 Amount = 10 + i));
+            idx = idx + 1;
+            if (idx == 10) {
+                idx = 0;
+            }
         }
         insert ops;
 

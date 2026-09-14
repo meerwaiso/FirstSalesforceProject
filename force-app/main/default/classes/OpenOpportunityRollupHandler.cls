@@ -81,13 +81,14 @@ public without sharing class OpenOpportunityRollupHandler {
 
         Map<Id, Decimal> sumById = new Map<Id, Decimal>();
         Map<Id, Integer> cntById = new Map<Id, Integer>();
-        for (Aggregate a : [SELECT AccountId acc, COUNT(Id) cnt, SUM(Amount) amt
-                            FROM Opportunity
-                            WHERE AccountId IN :accountIds AND IsClosed = false
-                            GROUP BY AccountId]) {
-            Id accId = (Id) a.get('acc');
-            cntById.put(accId, (Integer) a.get('cnt'));
-            sumById.put(accId, (Decimal) a.get('amt'));
+        // Muster wie CaseOpenCountTrigger (SCRUM-396): AggregateResult-Loop.
+        for (AggregateResult r : [SELECT AccountId, COUNT(Id) cnt, SUM(Amount) amt
+                                   FROM Opportunity
+                                   WHERE AccountId IN :accountIds AND IsClosed = false
+                                   GROUP BY AccountId]) {
+            Id accId = (Id) r.get('AccountId');
+            cntById.put(accId, (Integer) r.get('cnt'));
+            sumById.put(accId, (Decimal) r.get('amt'));
         }
 
         List<Account> toUpdate = new List<Account>();
