@@ -36,7 +36,7 @@ private class SCRUM319OverdueOpportunityTest {
             StageName = 'Proposal',
             CloseDate = Date.today().addDays(30),
             OwnerId = testUser.Id,
-            Is_Inactive__c = false
+            Is_Overdue__c = false
         );
         insert oldOpenOpp;
 
@@ -46,7 +46,7 @@ private class SCRUM319OverdueOpportunityTest {
             StageName = 'Prospecting',
             CloseDate = Date.today().addDays(30),
             OwnerId = testUser.Id,
-            Is_Inactive__c = false
+            Is_Overdue__c = false
         );
         insert recentOpenOpp;
 
@@ -56,7 +56,7 @@ private class SCRUM319OverdueOpportunityTest {
             StageName = 'Closed Won',
             CloseDate = Date.today().addDays(-20),
             OwnerId = testUser.Id,
-            Is_Inactive__c = false
+            Is_Overdue__c = false
         );
         insert closedWonOpp;
 
@@ -69,7 +69,7 @@ private class SCRUM319OverdueOpportunityTest {
             StageName = 'Closed Lost',
             CloseDate = Date.today().addDays(-20),
             OwnerId = testUser.Id,
-            Is_Inactive__c = false,
+            Is_Overdue__c = false,
             Loss_Reason__c = 'ZuTeuer'
         );
         insert closedLostOpp;
@@ -80,7 +80,7 @@ private class SCRUM319OverdueOpportunityTest {
             StageName = 'Negotiation',
             CloseDate = Date.today().addDays(30),
             OwnerId = testUser.Id,
-            Is_Inactive__c = true
+            Is_Overdue__c = true
         );
         insert alreadyMarkedOpp;
     }
@@ -93,8 +93,8 @@ private class SCRUM319OverdueOpportunityTest {
         List<Id> newlyMarkedIds = OpportunityOverdueService.findAndMarkOverdueOpportunities();
         Test.stopTest();
 
-        Opportunity result = [SELECT Is_Inactive__c FROM Opportunity WHERE Name = 'Old Open Opportunity' LIMIT 1];
-        System.assertEquals(true, result.Is_Inactive__c, 'Old open opportunity should be marked overdue');
+        Opportunity result = [SELECT Is_Overdue__c FROM Opportunity WHERE Name = 'Old Open Opportunity' LIMIT 1];
+        System.assertEquals(true, result.Is_Overdue__c, 'Old open opportunity should be marked overdue');
         System.assertEquals(True, newlyMarkedIds.contains(result.Id), 'Newly marked list should contain the old open opportunity');
     }
 
@@ -104,8 +104,8 @@ private class SCRUM319OverdueOpportunityTest {
         OpportunityOverdueService.findAndMarkOverdueOpportunities();
         Test.stopTest();
 
-        Opportunity result = [SELECT Is_Inactive__c FROM Opportunity WHERE Name = 'Recent Open Opportunity' LIMIT 1];
-        System.assertEquals(false, result.Is_Inactive__c, 'Recent opportunity should NOT be marked overdue');
+        Opportunity result = [SELECT Is_Overdue__c FROM Opportunity WHERE Name = 'Recent Open Opportunity' LIMIT 1];
+        System.assertEquals(false, result.Is_Overdue__c, 'Recent opportunity should NOT be marked overdue');
     }
 
     @isTest
@@ -114,8 +114,8 @@ private class SCRUM319OverdueOpportunityTest {
         OpportunityOverdueService.findAndMarkOverdueOpportunities();
         Test.stopTest();
 
-        Opportunity result = [SELECT Is_Inactive__c FROM Opportunity WHERE Name = 'Closed Won Opportunity' LIMIT 1];
-        System.assertEquals(false, result.Is_Inactive__c, 'Closed Won opportunity should NOT be marked overdue');
+        Opportunity result = [SELECT Is_Overdue__c FROM Opportunity WHERE Name = 'Closed Won Opportunity' LIMIT 1];
+        System.assertEquals(false, result.Is_Overdue__c, 'Closed Won opportunity should NOT be marked overdue');
     }
 
     @isTest
@@ -124,8 +124,8 @@ private class SCRUM319OverdueOpportunityTest {
         OpportunityOverdueService.findAndMarkOverdueOpportunities();
         Test.stopTest();
 
-        Opportunity result = [SELECT Is_Inactive__c FROM Opportunity WHERE Name = 'Closed Lost Opportunity' LIMIT 1];
-        System.assertEquals(false, result.Is_Inactive__c, 'Closed Lost opportunity should NOT be marked overdue');
+        Opportunity result = [SELECT Is_Overdue__c FROM Opportunity WHERE Name = 'Closed Lost Opportunity' LIMIT 1];
+        System.assertEquals(false, result.Is_Overdue__c, 'Closed Lost opportunity should NOT be marked overdue');
     }
 
     @isTest
@@ -159,7 +159,7 @@ private class SCRUM319OverdueOpportunityTest {
             StageName = 'Prospecting',
             CloseDate = Date.today().addDays(30),
             OwnerId = u.Id,
-            Is_Inactive__c = false
+            Is_Overdue__c = false
         );
         insert opp;
 
@@ -191,7 +191,7 @@ private class SCRUM319OverdueOpportunityTest {
             StageName = 'Proposal',
             CloseDate = Date.today().addDays(30),
             OwnerId = u.Id,
-            Is_Inactive__c = true
+            Is_Overdue__c = true
         );
         insert opp;
 
@@ -200,8 +200,8 @@ private class SCRUM319OverdueOpportunityTest {
         update opp;
         Test.stopTest();
 
-        Opportunity result = [SELECT Is_Inactive__c FROM Opportunity WHERE Id = :opp.Id];
-        System.assertEquals(false, result.Is_Inactive__c, 'Overdue flag should be reset on update');
+        Opportunity result = [SELECT Is_Overdue__c FROM Opportunity WHERE Id = :opp.Id];
+        System.assertEquals(false, result.Is_Overdue__c, 'Overdue flag should be reset on update');
     }
 
     @isTest
@@ -225,7 +225,7 @@ private class SCRUM319OverdueOpportunityTest {
             StageName = 'Proposal',
             CloseDate = Date.today().addDays(30),
             OwnerId = u.Id,
-            Is_Inactive__c = false
+            Is_Overdue__c = false
         );
         insert opp;
 
@@ -234,8 +234,8 @@ private class SCRUM319OverdueOpportunityTest {
         update opp;
         Test.stopTest();
 
-        Opportunity result = [SELECT Is_Inactive__c FROM Opportunity WHERE Id = :opp.Id];
-        System.assertEquals(false, result.Is_Inactive__c, 'Non-overdue opportunity should remain false');
+        Opportunity result = [SELECT Is_Overdue__c FROM Opportunity WHERE Id = :opp.Id];
+        System.assertEquals(false, result.Is_Overdue__c, 'Non-overdue opportunity should remain false');
     }
 
     @isTest
@@ -260,7 +260,7 @@ private class SCRUM319OverdueOpportunityTest {
             StageName = 'Qualification',
             CloseDate = Date.today().addDays(30),
             OwnerId = u.Id,
-            Is_Inactive__c = false
+            Is_Overdue__c = false
         );
         insert opp;
 
@@ -269,8 +269,8 @@ private class SCRUM319OverdueOpportunityTest {
         System.schedule('Test Overdue Scheduler', '0 0 6 * * ?', new OpportunityOverdueScheduler());
         Test.stopTest();
 
-        Opportunity result = [SELECT Is_Inactive__c FROM Opportunity WHERE Id = :opp.Id];
-        System.assertEquals(true, result.Is_Inactive__c, 'Scheduler should mark overdue opportunity');
+        Opportunity result = [SELECT Is_Overdue__c FROM Opportunity WHERE Id = :opp.Id];
+        System.assertEquals(true, result.Is_Overdue__c, 'Scheduler should mark overdue opportunity');
     }
 
     @isTest
@@ -297,7 +297,7 @@ private class SCRUM319OverdueOpportunityTest {
                 StageName = 'Proposal',
                 CloseDate = Date.today().addDays(30),
                 OwnerId = u.Id,
-                Is_Inactive__c = false
+                Is_Overdue__c = false
             ));
         }
         insert opportunities;
@@ -308,16 +308,16 @@ private class SCRUM319OverdueOpportunityTest {
         Test.stopTest();
 
         // Count only the bulk opportunities owned by this user (not @TestSetup data)
-        Integer markedCount = [SELECT COUNT() FROM Opportunity WHERE Is_Inactive__c = true AND OwnerId = :u.Id];
-        System.assertEquals(200, markedCount, 'All 200 opportunities should have Is_Inactive__c = true');
+        Integer markedCount = [SELECT COUNT() FROM Opportunity WHERE Is_Overdue__c = true AND OwnerId = :u.Id];
+        System.assertEquals(200, markedCount, 'All 200 opportunities should have Is_Overdue__c = true');
     }
 
     @isTest
     static void testFLS_IsOverdueFieldIsReadonlyForUsers() {
-        Schema.SObjectField overdueField = Opportunity.Is_Inactive__c;
+        Schema.SObjectField overdueField = Opportunity.Is_Overdue__c;
         Schema.DescribeFieldResult fieldDescribe = overdueField.getDescribe();
 
-        System.assertEquals('Is_Inactive__c', fieldDescribe.getName(), 'Field API name matches');
+        System.assertEquals('Is_Overdue__c', fieldDescribe.getName(), 'Field API name matches');
         System.assertEquals(Schema.DisplayType.Boolean, fieldDescribe.getType(), 'Field type is Boolean');
         System.assertEquals(true, fieldDescribe.isAccessible(), 'Field is accessible');
     }
@@ -345,7 +345,7 @@ private class SCRUM319OverdueOpportunityTest {
             StageName = 'Proposal',
             CloseDate = Date.today().addDays(30),
             OwnerId = restrictedUser.Id,
-            Is_Inactive__c = true
+            Is_Overdue__c = true
         );
         insert opp;
 
@@ -354,12 +354,12 @@ private class SCRUM319OverdueOpportunityTest {
             // The field should not be updateable by a user without the permission set
             // Since the field is write-protected (no edit permission), attempting to update it should fail
             // or the field should not be accessible for editing
-            Schema.SObjectField overdueField = Opportunity.Is_Inactive__c;
+            Schema.SObjectField overdueField = Opportunity.Is_Overdue__c;
             Schema.DescribeFieldResult fieldDescribe = overdueField.getDescribe();
 
             // The restricted user without the SCRUM319 permission set should not have update access
             System.assertEquals(false, fieldDescribe.isUpdateable(),
-                'Restricted user without SCRUM319 permission set should NOT have update access to Is_Inactive__c');
+                'Restricted user without SCRUM319 permission set should NOT have update access to Is_Overdue__c');
         }
     }
 
@@ -385,7 +385,7 @@ private class SCRUM319OverdueOpportunityTest {
             StageName = 'Proposal',
             CloseDate = Date.today().addDays(30),
             OwnerId = u.Id,
-            Is_Inactive__c = false
+            Is_Overdue__c = false
         );
         insert opp;
 
@@ -397,8 +397,8 @@ private class SCRUM319OverdueOpportunityTest {
 
         System.assertEquals(True, newlyMarkedIds.contains(opp.Id), 'Opportunity should be marked with threshold=0');
 
-        Opportunity result = [SELECT Is_Inactive__c FROM Opportunity WHERE Id = :opp.Id];
-        System.assertEquals(true, result.Is_Inactive__c, 'Opportunity should be marked overdue with threshold=0');
+        Opportunity result = [SELECT Is_Overdue__c FROM Opportunity WHERE Id = :opp.Id];
+        System.assertEquals(true, result.Is_Overdue__c, 'Opportunity should be marked overdue with threshold=0');
     }
 
     @isTest
@@ -423,14 +423,14 @@ private class SCRUM319OverdueOpportunityTest {
             StageName = 'Proposal',
             CloseDate = Date.today().addDays(30),
             OwnerId = u.Id,
-            Is_Inactive__c = false
+            Is_Overdue__c = false
         );
         Opportunity opp2 = new Opportunity(
             Name = 'Multi Link Opp 2',
             StageName = 'Negotiation',
             CloseDate = Date.today().addDays(30),
             OwnerId = u.Id,
-            Is_Inactive__c = false
+            Is_Overdue__c = false
         );
         insert opp1;
         insert opp2;
@@ -442,7 +442,7 @@ private class SCRUM319OverdueOpportunityTest {
 
         // With threshold=0, ALL open opportunities match (including @TestSetup data).
         // Verify our two specific opportunities were marked by checking owner-specific count.
-        Integer markedCount = [SELECT COUNT() FROM Opportunity WHERE Is_Inactive__c = true AND OwnerId = :u.Id];
+        Integer markedCount = [SELECT COUNT() FROM Opportunity WHERE Is_Overdue__c = true AND OwnerId = :u.Id];
         System.assertEquals(2, markedCount, 'Both multi-link opportunities should be marked overdue');
     }
 }

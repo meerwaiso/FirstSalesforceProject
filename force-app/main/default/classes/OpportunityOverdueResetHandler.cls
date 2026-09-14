@@ -1,7 +1,7 @@
 /**
- * OpportunityOverdueResetHandler — Trigger handler for resetting Is_Inactive__c flag
+ * OpportunityOverdueResetHandler — Trigger handler for resetting Is_Overdue__c flag
  * 
- * Automatically resets Is_Inactive__c to false when an overdue opportunity is updated
+ * Automatically resets Is_Overdue__c to false when an overdue opportunity is updated
  * (any field change on the opportunity indicates renewed activity).
  */
 public with sharing class OpportunityOverdueResetHandler {
@@ -9,7 +9,7 @@ public with sharing class OpportunityOverdueResetHandler {
     @testVisible private static Boolean hasFired = false;
 
     /**
-     * Before-update handler: resets Is_Inactive__c to false for opportunities
+     * Before-update handler: resets Is_Overdue__c to false for opportunities
      * that were previously marked overdue and are now being updated.
      *
      * @param newRecords List of updated Opportunity records (new version)
@@ -25,8 +25,8 @@ public with sharing class OpportunityOverdueResetHandler {
             Opportunity oldOpp = oldMap.get(opp.Id);
 
             // If the opportunity was overdue and is now being updated, reset the flag
-            if (oldOpp != null && oldOpp.Is_Inactive__c == true && opp.Is_Inactive__c == true) {
-                opp.Is_Inactive__c = false;
+            if (oldOpp != null && oldOpp.Is_Overdue__c == true && opp.Is_Overdue__c == true) {
+                opp.Is_Overdue__c = false;
             }
         }
     }
