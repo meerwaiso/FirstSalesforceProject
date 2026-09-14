@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-416 Phase 1: zwei neue read-only Account-Felder (zuerst allein —
+     house-Regel wie SCRUM-365/403/413: erst Felder, dann das Referenzierende). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Account.Open_Opportunity_Count__c</members>
+        <members>Account.Open_Opportunity_Value__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>
