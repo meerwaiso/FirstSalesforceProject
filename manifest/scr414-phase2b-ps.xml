@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-414 Phase 2b: das im Repo umbenannte SCRUM-319 Permission Set
+     (FieldPermission Is_Overdue__c -> Is_Inactive__c) fehlte im Phase-2-Manifest. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM319_OverdueOpportunity</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>
