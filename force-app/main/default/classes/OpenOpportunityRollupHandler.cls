@@ -89,7 +89,7 @@ public without sharing class OpenOpportunityRollupHandler {
             Id accId = (Id) r.get('AccountId');
             cntById.put(accId, (Integer) r.get('cnt'));
             // SUM() liefert null, wenn alle openen Amounts leer sind — als 0 zählen (TA-5).
-            Decimal amt = r.get('amt') == null ? Decimal.ZERO : (Decimal) r.get('amt');
+            Decimal amt = r.get('amt') == null ? 0 : (Decimal) r.get('amt');
             sumById.put(accId, amt);
         }
 
