@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-415 Pfad B (PO-Entscheidung, 18884): Master auf Prod zurueckziehen.
+     Label-only-Deploy gegen Prod-Org:
+     - Is_Overdue__c wird IN-PLACE aktualisiert (Label "Is Overdue" -> "Inaktiv");
+       kein neues Feld, keine Daten-Operation.
+     - Layout kommt mit: 319-Item-Label "Inaktiv" + 414-Section
+       "Ueberschrittene Abschlüsse" (414-Prod-Luecke, ADR 18877).
+     - Kein Force-App-weiter Bestand, keine 414-Komponenten, kein Case. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Opportunity.Is_Overdue__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>OpportunityOverdueService</members>
+        <members>OpportunityOverdueResetHandler</members>
+        <members>SCRUM319OverdueOpportunityTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>SCRUM319_OverdueOpportunity</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Opportunity-Opportunity Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>OpportunityOverdueReset</members>
+        <name>ApexTrigger</name>
+    </types>
+    <version>67.0</version>
+</Package>
