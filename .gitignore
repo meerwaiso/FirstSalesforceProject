@@ -72,8 +72,10 @@ temp-retrieve/
 # blockieren den gemeinsamen Auscheck, wenn sie liegenbleiben.
 # Fertige Manifeste ohne diese Praefixe werden weiterhin committet.
 tmp/
+tmp_*
 temp-*.xml
 manifest/_*.xml
+scripts/_*
 
 # Rollentexte des Users fuer andere Werkzeuge (Cline u. a.)
 .cline-roles/
