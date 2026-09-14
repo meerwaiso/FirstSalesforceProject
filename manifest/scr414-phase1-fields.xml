@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-414 Phase 1: drei neue Opportunity-Felder (Test-Org hatte weder
+     Is_Overdue__c noch Is_Inactive__c — Read-Back FieldDefinition, 2026-09-14;
+     Phase 0 "Org-Rename" entfällt daher, das SCRUM-319-Feld wird hier NEU
+     deployed unter dem Endnamen Is_Inactive__c. Reihenfolge im Manifest:
+     Is_Inactive__c vor den Phase-2-Referenzen, die es referenzieren. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Opportunity.Is_Inactive__c</members>
+        <members>Opportunity.Is_Close_Date_Overdue__c</members>
+        <members>Opportunity.Days_Close_Date_Overdue__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>

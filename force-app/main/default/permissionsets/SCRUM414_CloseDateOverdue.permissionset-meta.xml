@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Opportunity.Is_Close_Date_Overdue__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Opportunity.Days_Close_Date_Overdue__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM414_CloseDateOverdue</label>
+    <description>Read-FLS für Opportunity "Überfällig (Abschluss)" und "Tage überfällig (Abschluss)" (SCRUM-414). Beide systemberechnete Formelfelder (read-only); kein Write-PS, keine Apex/DML.</description>
+</PermissionSet>

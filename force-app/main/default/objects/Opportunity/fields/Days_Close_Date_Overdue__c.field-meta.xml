@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Days_Close_Date_Overdue__c</fullName>
+    <label>Tage überfällig (Abschluss)</label>
+    <description>Tage seit CloseDate für offene Opportunities (SCRUM-414): heute minus CloseDate, wenn offen und CloseDate in der Vergangenheit, sonst 0 (offen, CloseDate leer oder Zukunft) bzw. NULL (geschlossen). Formelfeld, systemberechnet, read-only.</description>
+    <type>Number</type>
+    <precision>10</precision>
+    <scale>0</scale>
+    <unique>false</unique>
+    <formula>IF(OR(ISPICKVAL(StageName, "Closed Won"), ISPICKVAL(StageName, "Closed Lost")), NULL, IF(ISBLANK(CloseDate), 0, MAX(0, TODAY() - CloseDate)))</formula>
+</CustomField>

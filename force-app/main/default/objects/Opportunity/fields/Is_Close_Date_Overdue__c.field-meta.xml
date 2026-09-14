@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Is_Close_Date_Overdue__c</fullName>
+    <label>Überfällig (Abschluss)</label>
+    <description>Überfällig-Flag für offene Opportunities (SCRUM-414): offen und CloseDate in der Vergangenheit. Geschlossene Chancen (Closed Won/Lost) sind nie überfällig. Leeres CloseDate -&gt; nicht überfällig. Systemberechnet, read-only (Formel, kein DML).</description>
+    <type>Checkbox</type>
+    <formula>IF(OR(ISPICKVAL(StageName, "Closed Won"), ISPICKVAL(StageName, "Closed Lost")), FALSE, IF(ISBLANK(CloseDate), FALSE, CloseDate &lt; TODAY()))</formula>
+</CustomField>

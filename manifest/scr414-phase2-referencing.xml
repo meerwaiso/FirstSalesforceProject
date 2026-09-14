@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-414 Phase 2: referenzierende Komponenten — NACH Phase 1 (sonst
+     referenzieren Layout/PS/ListView/Apex noch nicht existierende Felder). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM414_CloseDateOverdue</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Opportunity-Opportunity Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>Opportunity.Ueberfaellige_Chancen</members>
+        <name>ListView</name>
+    </types>
+    <types>
+        <members>OpportunityOverdueService</members>
+        <members>OpportunityOverdueResetHandler</members>
+        <members>OpportunityOverdueNotification</members>
+        <members>SCRUM319OverdueOpportunityTest</members>
+        <members>SCRUM414CloseDateOverdueTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>OpportunityOverdueReset</members>
+        <name>ApexTrigger</name>
+    </types>
+    <version>67.0</version>
+</Package>
