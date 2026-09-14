@@ -46,6 +46,7 @@ restate a rule in full here.
 - One ticket, one branch — never continue on the branch of the ticket you just finished → *Shared End-to-End Workflow*
 - No merge without all three CI checks green: "Lint & Format" (advisory), "Metadata, Apex & Session Smoke", and "Prod-Org Drift Gate" — a skipped run is not a pass. The drift gate validates check-only against Prod-Org; it exists because metadata living only in Test-Org has broken the production release three times (SCRUM-315/384/386 FeedItem.RypplePost, SCRUM-390 Case.Rueckruf*) → *DevOps Agent SOUL*
 - No merge without an explicit Architect-Agent approval on the PR → *Architect Agent SOUL*
+- No merge before the ticket reaches you — assignee and column must be yours, the test verdict must be on record, and the green CI must belong to the head you are merging → *Core Principles*
 
 **Permissions**
 - No new or changed CRUD/FLS without an explicit Permission Set — never Profile edits → *Architect Agent SOUL*
@@ -194,6 +195,14 @@ Measured 2026-09-07: four branches carry commits from two or three tickets each 
 
 Deploying to Test-Org is not delivering. Everything downstream — CI, the drift gate, the review, the test — reads the commit, never the org. Before you hand off, the branch and the org must show the same thing. Measured SCRUM-394: the corrected report ran in Test-Org for two hours while the branch still carried the guess it replaced.
 
+**No merge before the ticket reaches you.** Architecture approval is not the last gate: it answers whether the design is right, never whether the thing works. In this pipeline the Tester sits between the approval and the merge, so the ticket's assignee and column are part of the gate — if it is not yours, someone else is still working on it and the merge takes their decision away from them. Two further things belong to the same check: the test verdict must exist somewhere other than the Tester's own head, and the green CI run must belong to the commit you are actually merging, not to whatever the head was when you looked.
+
+Measured 2026-09-14 on SCRUM-414. CI was checked at 15:00:25 — gate job success, not skipped. The Tester pushed his locator fix at 15:01:05, which made that check stale. The gate was declared satisfied at 15:05:00. The Tester's suite went green at 15:06:09, on record nowhere. The merge happened at 15:06:44. The test report, the reassignment and the column move followed at 15:34 — twenty-eight minutes later.
+
+None of that broke a rule, and that is the point. The gate asked for CI and an approval, and both were genuinely there; the ticket state was even read correctly and said out loud — *"SCRUM-414 liegt in Testen, Assignee tester-agent"* — and merged anyway, because nothing said not to. This document said the opposite: the Architect step used to hand the ticket to the Tester and authorise the merge in the same breath. It now authorises the merge where it belongs, at "Deployment".
+
+It ended well: the suite really was green at 15:05. That was luck. At 15:06:44 nobody had written it down.
+
 **An uncommitted artifact does not survive the turn.** A turn has a hard time limit and it counts through compactions, so the deadline is not where the current session started. Create the file as soon as you can name one thing that belongs in it, commit it, and go on investigating — a skeleton in the repository outlives an abort, and a finished draft in memory does not. After a compaction the next turn does not know the file ever existed and writes it again from nothing.
 
 Measured 2026-09-14 on SCRUM-414: the Tester's turn was prompted at 13:08:24 and cut at 14:38:24. His decisive evidence was in hand at 14:29 — a DOM measurement showing zero checkbox, textbox and radio controls for both fields, which is the read-only proof — and the live list view was confirmed at 14:23, the Apex run at 13:53. The spec was written at 14:34:19: 195 lines, 29 assertions, sound work. Not committed, not run, not handed off. Eighty-five minutes of evidence, five minutes of delivery.
@@ -204,7 +213,7 @@ The evidence gathering was right: counted in both directions, Apex 7/7 plus 14/1
 
 Architect: reviews the PR → approves or rejects via comment
   - Rejected → assigns back to Developer-Agent, column "Implementierung"
-  - Approved → assigns to Tester-Agent, column "Testen"; DevOps-Agent merges the approved PR into main/master (CI green + Architect approval present) — no separate deployment needed, the feature is already live in Test-Org
+  - Approved → assigns to Tester-Agent, column "Testen". The PR stays open: approval answers "is this the right design", never "does it work" — no separate deployment is needed either way, the feature is already live in Test-Org
 
 ↓
 
@@ -212,7 +221,7 @@ Tester: functional + technical + permission tests against Test-Org → Playwrigh
 
 ↓
 
-DevOps: on reaching "Deployment", confirms CI/tests are green and hands off — assigns to PO-Agent, column "Erledigt"
+DevOps: on reaching "Deployment" — and not before — merges the approved PR into main/master, then confirms CI/tests are green and hands off; assigns to PO-Agent, column "Erledigt". Skill: `pr-merge-approval-gate`
 
 ↓
 
