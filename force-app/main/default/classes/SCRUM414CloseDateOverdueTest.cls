@@ -83,15 +83,13 @@ private class SCRUM414CloseDateOverdueTest {
         System.assertEquals(null, r.Days_Close_Date_Overdue__c, 'TC5: closed stage must give NULL (empty), got ' + r.Days_Close_Date_Overdue__c);
     }
 
-    /** TC6: offen, CloseDate LEER -> false / 0 (ADR-3 ISBLANK-Guard, kein DIV-Error). */
-    @isTest
-    static void open_blankCloseDate_notOverdue() {
-        Opportunity o = mkOpp('TC6 open no date', 'Qualification', null);
-        insert o;
-        Opportunity r = readOverdue(o.Id);
-        System.assertEquals(false, r.Is_Close_Date_Overdue__c, 'TC6: open + blank CloseDate must NOT be overdue (no assumption)');
-        System.assertEquals(0, r.Days_Close_Date_Overdue__c, 'TC6: blank CloseDate must give 0, got ' + r.Days_Close_Date_Overdue__c);
-    }
+    /**
+     * TC6 (entfällt in dieser Org): offen + CloseDate LEER wäre defensiv false / 0
+     * (ADR-3 ISBLANK-Guard). In dieser Test-Org ist Opportunity.CloseDate ERFORDERLICH
+     * (REQUIRED_FIELD_MISSING), daher lässt sich kein blank-CloseDate-Record erstellen —
+     * der Guard-Case ist hier nicht ausübbar und wird bewusst NICHT getestet. Die Formel
+     * behält den ISBLANK-Guard für Orgs, die CloseDate optional zulassen.
+     */
 
     /**
      * TC7 (Bestand): eine 60 Tage alte offene Opportunity mit vergangenem
