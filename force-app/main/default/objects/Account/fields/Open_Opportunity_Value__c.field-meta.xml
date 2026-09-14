@@ -8,6 +8,7 @@
     <scale>2</scale>
     <required>false</required>
     <unique>false</unique>
+    <defaultValue>0</defaultValue>
     <externalId>false</externalId>
     <trackTrending>false</trackTrending>
 </CustomField>

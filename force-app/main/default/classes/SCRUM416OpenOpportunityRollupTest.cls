@@ -18,6 +18,8 @@
 @isTest
 private class SCRUM416OpenOpportunityRollupTest {
 
+    private static final Date CLOSE_DATE = Date.today().addMonths(3);
+
     /** Erzeugt einen minimalen Account und gibt die Id zurück. */
     private static Id newAccount(String tag) {
         Account a = new Account(Name = 'V416 ' + tag);
@@ -54,14 +56,14 @@ private class SCRUM416OpenOpportunityRollupTest {
         Id a = newAccount('Mixed');
         List<Opportunity> ops = new List<Opportunity>();
         // 3 offen: 100 + 200 + 300 = 600
-        ops.add(new Opportunity(Name = 'V416 open-1', AccountId = a, StageName = 'Prospecting', Amount = 100));
-        ops.add(new Opportunity(Name = 'V416 open-2', AccountId = a, StageName = 'Qualification', Amount = 200));
-        ops.add(new Opportunity(Name = 'V416 open-3', AccountId = a, StageName = 'Proposed', Amount = 300));
+        ops.add(new Opportunity(Name = 'V416 open-1', AccountId = a, StageName = 'Prospecting', Amount = 100, CloseDate = CLOSE_DATE));
+        ops.add(new Opportunity(Name = 'V416 open-2', AccountId = a, StageName = 'Qualification', Amount = 200, CloseDate = CLOSE_DATE));
+        ops.add(new Opportunity(Name = 'V416 open-3', AccountId = a, StageName = 'Proposed', Amount = 300, CloseDate = CLOSE_DATE));
         // 1 won: 999 (müsste 1600 ergeben, wenn won zählte)
-        ops.add(new Opportunity(Name = 'V416 won', AccountId = a, StageName = 'Closed Won', Amount = 999));
+        ops.add(new Opportunity(Name = 'V416 won', AccountId = a, StageName = 'Closed Won', Amount = 999, CloseDate = CLOSE_DATE));
         // 2 lost: 888 + 777 (müssten 3265 ergeben, wenn lost zählte)
-        ops.add(new Opportunity(Name = 'V416 lost-1', AccountId = a, StageName = 'Closed Lost', Amount = 888));
-        ops.add(new Opportunity(Name = 'V416 lost-2', AccountId = a, StageName = 'Closed Lost', Amount = 777));
+        ops.add(new Opportunity(Name = 'V416 lost-1', AccountId = a, StageName = 'Closed Lost', Amount = 888, CloseDate = CLOSE_DATE));
+        ops.add(new Opportunity(Name = 'V416 lost-2', AccountId = a, StageName = 'Closed Lost', Amount = 777, CloseDate = CLOSE_DATE));
         insert ops;
 
         Account acc = values(a);
@@ -79,7 +81,7 @@ private class SCRUM416OpenOpportunityRollupTest {
     static void closingOpenOpp_removesFromCountAndSum() {
         Id a = newAccount('Close');
         Opportunity open = new Opportunity(
-            Name = 'V416 close-target', AccountId = a, StageName = 'Prospecting', Amount = 500);
+            Name = 'V416 close-target', AccountId = a, StageName = 'Prospecting', Amount = 500, CloseDate = CLOSE_DATE);
         insert open;
         Account acc0 = values(a);
         System.assertEquals(Decimal.valueOf(1), acc0.Open_Opportunity_Count__c);
@@ -108,7 +110,7 @@ private class SCRUM416OpenOpportunityRollupTest {
     static void lostAlsoDrops() {
         Id a = newAccount('Lost');
         Opportunity open = new Opportunity(
-            Name = 'V416 lost-target', AccountId = a, StageName = 'Prospecting', Amount = 350);
+            Name = 'V416 lost-target', AccountId = a, StageName = 'Prospecting', Amount = 350, CloseDate = CLOSE_DATE);
         insert open;
         open.StageName = 'Closed Lost';
         update open;
@@ -128,7 +130,7 @@ private class SCRUM416OpenOpportunityRollupTest {
     static void reopeningMovesSum_deltaOfDifference() {
         Id a = newAccount('Reval');
         Opportunity open = new Opportunity(
-            Name = 'V416 reval', AccountId = a, StageName = 'Prospecting', Amount = 100);
+            Name = 'V416 reval', AccountId = a, StageName = 'Prospecting', Amount = 100, CloseDate = CLOSE_DATE);
         insert open;
         open.Amount = 250;
         update open;
@@ -144,7 +146,7 @@ private class SCRUM416OpenOpportunityRollupTest {
     static void revaluingClosedOpp_doesNotTouchValues() {
         Id a = newAccount('RevalClosed');
         Opportunity won = new Opportunity(
-            Name = 'V416 won-reval', AccountId = a, StageName = 'Closed Won', Amount = 100);
+            Name = 'V416 won-reval', AccountId = a, StageName = 'Closed Won', Amount = 100, CloseDate = CLOSE_DATE);
         insert won;
         Account acc0 = values(a);
         System.assertEquals(Decimal.valueOf(0), acc0.Open_Opportunity_Count__c);
@@ -171,9 +173,9 @@ private class SCRUM416OpenOpportunityRollupTest {
         // Alter Kunde hat zusätzlich eine eigene offene Chance (200),
         // damit sich das −1/−x vom restlichen Bestand abhebt.
         Opportunity other = new Opportunity(
-            Name = 'V416 stay', AccountId = oldAcc, StageName = 'Prospecting', Amount = 200);
+            Name = 'V416 stay', AccountId = oldAcc, StageName = 'Prospecting', Amount = 200, CloseDate = CLOSE_DATE);
         Opportunity mover = new Opportunity(
-            Name = 'V416 mover', AccountId = oldAcc, StageName = 'Prospecting', Amount = 400);
+            Name = 'V416 mover', AccountId = oldAcc, StageName = 'Prospecting', Amount = 400, CloseDate = CLOSE_DATE);
         insert other;
         insert mover;
 
@@ -204,7 +206,7 @@ private class SCRUM416OpenOpportunityRollupTest {
     static void blankAmount_countsButZeroValue() {
         Id a = newAccount('Blank');
         Opportunity open = new Opportunity(
-            Name = 'V416 blank', AccountId = a, StageName = 'Prospecting', Amount = null);
+            Name = 'V416 blank', AccountId = a, StageName = 'Prospecting', Amount = null, CloseDate = CLOSE_DATE);
         insert open;
 
         Account acc = values(a);
@@ -221,7 +223,7 @@ private class SCRUM416OpenOpportunityRollupTest {
     static void deletingOpenOpp_dropsCountAndSum() {
         Id a = newAccount('Del');
         Opportunity open = new Opportunity(
-            Name = 'V416 del', AccountId = a, StageName = 'Prospecting', Amount = 750);
+            Name = 'V416 del', AccountId = a, StageName = 'Prospecting', Amount = 750, CloseDate = CLOSE_DATE);
         insert open;
         Account acc0 = values(a);
         System.assertEquals(Decimal.valueOf(1), acc0.Open_Opportunity_Count__c);
@@ -275,7 +277,7 @@ private class SCRUM416OpenOpportunityRollupTest {
                 Name = 'V416 bulk-' + i,
                 AccountId = accs[idx].Id,
                 StageName = 'Prospecting',
-                Amount = 10 + i));
+                Amount = 10 + i, CloseDate = CLOSE_DATE));
             idx = idx + 1;
             if (idx == 10) {
                 idx = 0;
