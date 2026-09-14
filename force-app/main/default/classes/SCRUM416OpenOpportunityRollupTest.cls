@@ -62,8 +62,8 @@ private class SCRUM416OpenOpportunityRollupTest {
         // 1 won: 999 (müsste 1600 ergeben, wenn won zählte)
         ops.add(new Opportunity(Name = 'V416 won', AccountId = a, StageName = 'Closed Won', Amount = 999, CloseDate = CLOSE_DATE));
         // 2 lost: 888 + 777 (müssten 3265 ergeben, wenn lost zählte)
-        ops.add(new Opportunity(Name = 'V416 lost-1', AccountId = a, StageName = 'Closed Lost', Amount = 888, CloseDate = CLOSE_DATE));
-        ops.add(new Opportunity(Name = 'V416 lost-2', AccountId = a, StageName = 'Closed Lost', Amount = 777, CloseDate = CLOSE_DATE));
+        ops.add(new Opportunity(Name = 'V416 lost-1', AccountId = a, StageName = 'Closed Lost', Amount = 888, Loss_Reason__c = 'ZuTeuer', CloseDate = CLOSE_DATE));
+        ops.add(new Opportunity(Name = 'V416 lost-2', AccountId = a, StageName = 'Closed Lost', Amount = 777, Loss_Reason__c = 'ZuTeuer', CloseDate = CLOSE_DATE));
         insert ops;
 
         Account acc = values(a);
@@ -113,6 +113,7 @@ private class SCRUM416OpenOpportunityRollupTest {
             Name = 'V416 lost-target', AccountId = a, StageName = 'Prospecting', Amount = 350, CloseDate = CLOSE_DATE);
         insert open;
         open.StageName = 'Closed Lost';
+        open.Loss_Reason__c = 'ZuTeuer'; // SCRUM-381 Validation Rule: Verlustgrund bei Closed Lost
         update open;
 
         Account acc = values(a);

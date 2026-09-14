@@ -88,7 +88,9 @@ public without sharing class OpenOpportunityRollupHandler {
                                    GROUP BY AccountId]) {
             Id accId = (Id) r.get('AccountId');
             cntById.put(accId, (Integer) r.get('cnt'));
-            sumById.put(accId, (Decimal) r.get('amt'));
+            // SUM() liefert null, wenn alle openen Amounts leer sind — als 0 zählen (TA-5).
+            Decimal amt = r.get('amt') == null ? Decimal.ZERO : (Decimal) r.get('amt');
+            sumById.put(accId, amt);
         }
 
         List<Account> toUpdate = new List<Account>();
