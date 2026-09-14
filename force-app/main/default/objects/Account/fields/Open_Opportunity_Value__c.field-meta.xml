@@ -4,6 +4,8 @@
     <label>Wert offener Chancen</label>
     <description>Summe der Amount-Beträge aller offenen Chancen (IsClosed = false) des Accounts, fehlende Beträge zählen als 0. Wird ausschliesslich vom System gepflegt (Opportunity-Trigger + OpenOpportunityRollupHandler, SCRUM-416); von Hand nicht änderbar.</description>
     <type>Currency</type>
+    <precision>18</precision>
+    <scale>2</scale>
     <required>false</required>
     <unique>false</unique>
     <externalId>false</externalId>
