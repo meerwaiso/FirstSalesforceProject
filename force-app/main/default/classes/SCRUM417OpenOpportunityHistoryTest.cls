@@ -175,11 +175,10 @@ private class SCRUM417OpenOpportunityHistoryTest {
     static void purePredicate_currentMonth_onlyOpen() {
         Date asOf = Date.today();
         Date curEnd = OpenOpportunityHistoryRebuilder.monthEnd(asOf.year(), asOf.month());
-        System.isTrue(
+        System.assert(
             OpenOpportunityHistoryRebuilder.isCountedInMonth(false, FUTURE_CLOSE, curEnd, asOf),
             'aktueller Monat: offene Chance zählt');
-        System.assertFalse(
-            OpenOpportunityHistoryRebuilder.isCountedInMonth(true, Date.today(), curEnd, asOf),
+        System.assert(!OpenOpportunityHistoryRebuilder.isCountedInMonth(true, Date.today(), curEnd, asOf),
             'aktueller Monat: geschlossene Chance (won/lost) zählt NICHT');
     }
 
@@ -196,20 +195,19 @@ private class SCRUM417OpenOpportunityHistoryTest {
         Date asOf = Date.today();
 
         // Jetzt offen → war Ende Jan offen (vorausgesetzt: CreatedDate <= janEnd).
-        System.isTrue(
+        System.assert(
             OpenOpportunityHistoryRebuilder.isCountedInMonth(false, FUTURE_CLOSE, janEnd, asOf),
             'Jahr-Monat: Chance, die jetzt offen ist, war Ende Jan offen');
 
         // Im (fiktiven) Februar nach Jan-Ende geschlossen → war Ende Jan offen.
         Date afterJan = janEnd.addDays(1);
-        System.isTrue(
+        System.assert(
             OpenOpportunityHistoryRebuilder.isCountedInMonth(true, afterJan, janEnd, asOf),
             'Jahr-Monat: erst Ende Januar/Anfang Februar geschlossen → zählt noch in Jan');
 
         // Erst im Januar selbst geschlossen → nicht offen am Jan-Ende.
         Date midJan = Date.newInstance(y, 1, 15);
-        System.assertFalse(
-            OpenOpportunityHistoryRebuilder.isCountedInMonth(true, midJan, janEnd, asOf),
+        System.assert(!OpenOpportunityHistoryRebuilder.isCountedInMonth(true, midJan, janEnd, asOf),
             'Jahr-Monat: im Januar selbst geschlossen → zählt NICHT in Jan');
     }
 
