@@ -1,17 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
     <types>
-        <members>OpenOpportunityHistory__c</members>
-        <name>CustomTab</name>
-    </types>
-    <types>
-        <members>OpenOpportunityHistory__c.History_Key__c</members>
-        <members>OpenOpportunityHistory__c.Snapshot_Month__c</members>
+        <members>OpenOpportunityHistory__c.Open_Count__c</members>
+        <members>OpenOpportunityHistory__c.Open_Value__c</members>
         <name>CustomField</name>
-    </types>
-    <types>
-        <members>OpenOpportunityHistory__c</members>
-        <name>CustomTab</name>
     </types>
     <types>
         <members>OpenOpportunityHistoryRebuilder</members>
