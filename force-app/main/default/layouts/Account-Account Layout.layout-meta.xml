@@ -295,10 +295,10 @@
     </relatedLists>
     <!-- SCRUM-417: Offener Chancen-Verlauf (read-only, systemmaintained) -->
     <relatedLists>
-        <fields>OPENOPPORTUNITYHISTORY__C.SNAPSHOT_MONTH__C</fields>
-        <fields>OPENOPPORTUNITYHISTORY__C.OPEN_COUNT__C</fields>
-        <fields>OPENOPPORTUNITYHISTORY__C.OPEN_VALUE__C</fields>
-        <relatedList>OpenOpportunityHistory__c</relatedList>
+        <fields>Snapshot_Month__c</fields>
+        <fields>Open_Count__c</fields>
+        <fields>Open_Value__c</fields>
+        <relatedList>OpenOpportunityHistory__c.AccountId__c</relatedList>
     </relatedLists>
     <relatedLists>
         <fields>CASES.CASE_NUMBER</fields>
