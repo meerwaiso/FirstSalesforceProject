@@ -5,7 +5,7 @@
     <description>SCRUM-417: Monats-Snapshot-Datum im ISO-Format yyyy-MM (z. B. 2026-01). Text statt Datum: deterministisches Sortieren + sichere Text-Unique-Key-Formel ohne Lokal-Risiko. Systemmanaged, von Hand nicht änderbar.</description>
     <type>Text</type>
     <length>7</length>
-    <required>false</required>
+    <required>true</required>
     <unique>false</unique>
     <externalId>false</externalId>
     <trackTrending>false</trackTrending>

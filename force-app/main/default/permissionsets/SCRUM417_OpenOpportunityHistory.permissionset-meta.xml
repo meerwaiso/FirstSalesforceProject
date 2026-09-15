@@ -1,11 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
-    <description>SCRUM-417 read-only FLS/View für den Offenen Chancen-Verlauf: PO verteilt wie SCRUM-416. Summenwert umsatzkonfidentiell — PS nicht breit streuen. ViewAllRecords nein → Sicht vom Account geerbt (MD). History_Key unique-Text, kein FLS.</description>
-    <fieldPermissions>
-        <editable>false</editable>
-        <field>OpenOpportunityHistory__c.Snapshot_Month__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
+    <description>SCRUM-417: read-only FLS/View Offener Chancen-Verlauf. Snapshot_Month required → kein FLS-Eintrag. PO verteilt wie SCRUM-416.</description>
     <fieldPermissions>
         <editable>false</editable>
         <field>OpenOpportunityHistory__c.Open_Count__c</field>
