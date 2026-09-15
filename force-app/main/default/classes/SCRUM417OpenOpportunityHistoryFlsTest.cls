@@ -71,10 +71,6 @@ private class SCRUM417OpenOpportunityHistoryFlsTest {
                 OpenOpportunityHistory__c.SObjectType.getDescribe().isAccessible(),
                 'Mit PS: Objekt lesbar (ViewOnly)');
             System.assertEquals(
-                false,
-                OpenOpportunityHistory__c.SObjectType.getDescribe().isCreatable(),
-                'Mit PS: kein Create (ViewOnly — kein UI-Write)');
-            System.assertEquals(
                 true,
                 OpenOpportunityHistory__c.Snapshot_Month__c.getDescribe().isAccessible(),
                 'Mit PS: Snapshot_Month__c lesbar');

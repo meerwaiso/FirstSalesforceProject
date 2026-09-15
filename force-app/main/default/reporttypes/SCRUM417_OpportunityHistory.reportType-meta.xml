@@ -8,7 +8,7 @@
     <sections>
         <columns>
             <checkedByDefault>true</checkedByDefault>
-            <field>Account.Name</field>
+            <field>AccountId__c.Name</field>
             <table>OpenOpportunityHistory__c</table>
         </columns>
         <columns>

@@ -10,10 +10,14 @@
     <description>SCRUM-417 AK1/AK2: Monats-Verlauf der offenen Chancen je Kunde — eine Zeile je Kunde je Monat (flache Gruppierung Kunde → Monat). 2–3 Kunden nebeneinanderlegen via Report-Filter auf Account.Name in der UI; Kurve via Chart-Modus. Scope=Organization.</description>
     <format>Summary</format>
     <groupingsDown>
-        <field>Account.Name</field>
+        <field>AccountId__c.Name</field>
+        <sortField>AccountId__c.Name</sortField>
+        <sortOrder>Asc</sortOrder>
     </groupingsDown>
     <groupingsDown>
         <field>Snapshot_Month__c</field>
+        <sortField>Snapshot_Month__c</sortField>
+        <sortOrder>Asc</sortOrder>
     </groupingsDown>
     <name>Offene_Werte_Verlauf</name>
     <reportType>SCRUM417_OpportunityHistory</reportType>

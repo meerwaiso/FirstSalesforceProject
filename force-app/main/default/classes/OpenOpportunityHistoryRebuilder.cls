@@ -4,8 +4,9 @@
  * `run()` recompute idempotent für ALLE Monate seit Jahresanfang (Januar des
  * laufenden Jahres bis zum aktuellen Monat, Monatsende-Snapshot):
  *   1. je Monat M: 1 Aggregate-SOQL (COUNT offener, SUM offene Beträge)
- *      über alle Kontexte (Accounts mit Chancen); offene Menge je M laut
- *      Zähl-Definition (Single Source of Truth = IsClosed, ADR-1/3 aus 416).
+ *      über alle Kontexte (Accounts mit Chancen). Offen = IsClosed = false
+ *      (Single Source of Truth, ADR-3 aus 416 — dieselbe Menge wie die
+ *      deployed Rollup-Handler → AK4 erfüllt konstruktiv).
  *   2. Kontext-Menge = Kontexte mit Aktivität seit Jahresanfang ∪ Kontexte mit
  *      bestehenden Zeilen (Kontinuität: ein Kunde, der seine Chancen kassiert,
  *      behält 0/0-Zeilen → der Einbruch bleibt sichtbar).
@@ -17,15 +18,6 @@
  * Backfill = erster Produktionslauf (gleicher Code-Pfad — es gibt keinen
  * separaten Backfill-Job). Governor: ≤ 1 Aggregate-SOQL je Monat (nie im
  * Record-Loop) + 1 SELECT bestehender Zeilen + 1 SELECT Accounts + Chunk-DML.
- *
- * Design-Abweichung gegenüber docs/SCRUM-417-design.md (deploy-notwendig):
- *   - History_Key__c ist kein Formelfeld, sondern ein unique Text-Feld, das
- *     dieser Rebuilder pflegt. Grund: Salesforce verbietet <unique> auf
- *     Formelfeldern ("Can not specify unique for CustomFields that have a
- *     formula") und ein Formelfeld kann nie Upsert-Token sein. Unique Text
- *     bewahrt die 1:1-(Kunde,Monat)-Garantie in der DB + kollisionsfreien
- *     Upsert exakt wie vom Design intendiert.
- *   - MD-Feld heißt AccountId__c (kein nacktes „AccountId" = Standard-Field).
  *
  * without sharing (System-Schreiben, ADR-6): FLS ist nur bei DML des
  * Lauf-Users relevant; System-Admin-DML umgeht FLS.
@@ -49,19 +41,33 @@ public without sharing class OpenOpportunityHistoryRebuilder {
         Map<String, Map<Id, Decimal>> valueByMonth = new Map<String, Map<Id, Decimal>>();
         for (Integer i = 0; i < months.size(); i++) {
             String mk = months.get(i);
-            Date endM = monthEnd(year, Integer.valueOf(mk.substring(5)));
-            Boolean current = isCurrentMonth(mk, asOf);
-            // Bind-Variablen einzeln benennen (SOQL erlaubt je Named-Bind ein Mal).
-            Date createdMax = endM;
-            Date closeMin = endM;
-            String where = current
-                ? 'IsClosed = false'
-                : '(IsClosed = false OR (IsClosed = true AND (ClosedDate > :closeMin OR ClosedDate = null)))';
-            String soql = 'SELECT AccountId, COUNT(Id) cnt, SUM(Amount) amt FROM Opportunity '
-                + 'WHERE AccountId != null AND CreatedDate <= :createdMax AND ' + where + ' GROUP BY AccountId';
+            Integer monthNum = Integer.valueOf(mk.substring(5, 7));
+            Date endM = monthEnd(year, monthNum);
             Map<Id, Integer> cBy = new Map<Id, Integer>();
             Map<Id, Decimal> vBy = new Map<Id, Decimal>();
-            List<AggregateResult> agg = Database.query(soql);
+            List<AggregateResult> agg;
+            if (isCurrentMonth(mk, asOf)) {
+                // aktueller Monat: offen = IsClosed = false (exakt 416-Menge).
+                agg = [SELECT AccountId, COUNT(Id) cnt, SUM(Amount) amt
+                       FROM Opportunity
+                       WHERE AccountId != null
+                         AND CreatedDate <= :asOf
+                         AND IsClosed = false
+                       GROUP BY AccountId];
+            } else {
+                // vergangener Monat M: offen am Monatsende M =
+                //   (a) ist jetzt noch offen (IsClosed = false), ODER
+                //   (b) erst NACH Monats-Ende M geschlossen (CloseDate > endM).
+                // Beide Kandidaten müssen vor/bei Monats-Ende M angelegt sein
+                // (CreatedDate <= endM) — sonst zählten neu angelegte Chancen
+                // in einen Monat, in dem sie noch gar nicht entstanden waren.
+                agg = [SELECT AccountId, COUNT(Id) cnt, SUM(Amount) amt
+                       FROM Opportunity
+                       WHERE AccountId != null
+                         AND CreatedDate <= :endM
+                         AND (IsClosed = false OR CloseDate > :endM)
+                       GROUP BY AccountId];
+            }
             for (AggregateResult r : agg) {
                 Id accId = (Id) r.get('AccountId');
                 cBy.put(accId, (Integer) r.get('cnt'));
@@ -90,9 +96,12 @@ public without sharing class OpenOpportunityHistoryRebuilder {
                 ));
             }
         }
-        for (Integer i = 0; i < rows.size(); i += 2000) {
-            Integer end = Math.min(i + 2000, rows.size());
-            Database.upsert(rows.sublist(i, end), OpenOpportunityHistory__c.History_Key__c);
+        Integer total = rows.size();
+        Integer start = 0;
+        while (start < total) {
+            Integer stop = Math.min(start + 2000, total);
+            Database.upsert(rows.subList(start, stop), OpenOpportunityHistory__c.History_Key__c);
+            start = stop;
         }
 
         // 4) Drop-Feld je Kontext: Wert(aktueller Monat) − Wert(Monat davor).
@@ -101,10 +110,12 @@ public without sharing class OpenOpportunityHistoryRebuilder {
             String lastMk = months.get(lastIdx);
             Boolean hasPrev = lastIdx >= 1;
             String prevMk = hasPrev ? months.get(lastIdx - 1) : null;
-            List<Account> accounts = [SELECT Id, Open_Value_Drop_Last_Month__c FROM Account WHERE Id IN :contexts];
+            List<Account> accounts = [SELECT Id, Open_Value_Drop_Last_Month__c
+                                      FROM Account WHERE Id IN :contexts];
             List<Account> toUpdate = new List<Account>();
             Map<Id, Decimal> curVal = valueByMonth.get(lastMk);
-            Map<Id, Decimal> prevVal = (hasPrev && valueByMonth.get(prevMk) != null) ? valueByMonth.get(prevMk) : null;
+            Map<Id, Decimal> prevVal = (hasPrev && valueByMonth.get(prevMk) != null)
+                ? valueByMonth.get(prevMk) : null;
             for (Account acc : accounts) {
                 Decimal cur = (curVal != null) ? curVal.get(acc.Id) : null;
                 Decimal prev = (prevVal != null) ? prevVal.get(acc.Id) : null;
@@ -121,23 +132,22 @@ public without sharing class OpenOpportunityHistoryRebuilder {
     }
 
     /**
-     * Zähl-Definition pro Monat, pure Funktion (einheitliche Quelle, ADR-1/3):
-     *  aktueller Monat (Kontext asOf): offen = IsClosed = false (exakt die
-     *    Menge des SCRUM-416-Live-Feldes → AK4 erfüllt konstruktiv).
-     *  vergangene Monate M: offen am Monatsende M = IsClosed = false (ist noch
-     *    offen) ODER (war am Monatsende M offen und schloss erst danach:
-     *    IsClosed = true AND (ClosedDate > MonatsEnde ODER ClosedDate null)).
-     * (Vorausgesetzt: die Kandidaten sind bereits gefiltert auf
-     *  AccountId != null AND CreatedDate <= MonatsEnde(M).)
+     * Zähl-Definition (unit-testbar): zählt Opportunity o im Monat mit Ende
+     * monthEnd (bezogen auf today asOf) als offen?
+     *   aktueller Monat: offen = IsClosed = false.
+     *   vergangener Monat: offen am Monats-Ende = IsClosed = false ODER
+     *     erst NACH Monats-Ende geschlossen (CloseDate > monthEnd).
+     * (Vorausgesetzt: o.CreatedDate <= monthEnd.)
      */
     public static Boolean isCountedInMonth(Opportunity o, Date monthEnd, Date asOf) {
-        if (isCurrentMonth(monthKey(monthEnd), asOf)) {
+        Boolean current = isCurrentMonth(monthKey(monthEnd), asOf);
+        if (current) {
             return o.IsClosed == false;
         }
         if (o.IsClosed == false) {
             return true;
         }
-        return (o.ClosedDate != null && o.ClosedDate > monthEnd) || o.ClosedDate == null;
+        return (o.CloseDate != null && o.CloseDate > monthEnd);
     }
 
     /** Drop = Wert(aktueller Monat) − Wert(Vormonat); null ohne Vormonat (Januar). */
@@ -145,13 +155,9 @@ public without sharing class OpenOpportunityHistoryRebuilder {
         if (!hasPreviousMonth) {
             return null;
         }
-        if (currentValue == null) {
-            currentValue = 0;
-        }
-        if (previousValue == null) {
-            previousValue = 0;
-        }
-        return currentValue - previousValue;
+        Decimal cur = (currentValue == null) ? 0 : currentValue;
+        Decimal prev = (previousValue == null) ? 0 : previousValue;
+        return cur - prev;
     }
 
     /** Drop-Feld auf Account = Wert(aktueller Monat) − Wert(Vormonat); null im Januar. */
@@ -184,9 +190,5 @@ public without sharing class OpenOpportunityHistoryRebuilder {
     private static String monthKey(Integer year, Integer month) {
         String mm = (month < 10 ? '0' : '') + String.valueOf(month);
         return String.valueOf(year) + '-' + mm;
-    }
-
-    private static String monthKey(Date d) {
-        return monthKey(d.year(), d.month());
     }
 }

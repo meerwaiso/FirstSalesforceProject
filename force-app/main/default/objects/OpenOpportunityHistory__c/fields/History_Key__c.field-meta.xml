@@ -4,9 +4,9 @@
     <label>Verlaufs-Key</label>
     <description>SCRUM-417: Unique-Key (Kunde + Monat), gepflegt vom Rebuilder als Upsert-Token 'TEXT(AccountId__c) &amp; &lt;-&gt; Snapshot_Month__c'. Unique erzwingt max. 1 Zeile je (Kunde, Monat) direkt in der DB; Upsert wird dadurch kollisionsfrei.</description>
     <type>Text</type>
-    <length>30</length>
+    <length>40</length>
     <required>false</required>
     <unique>true</unique>
-    <externalId>false</externalId>
+    <externalId>true</externalId>
     <trackTrending>false</trackTrending>
 </CustomField>

@@ -7,6 +7,8 @@
     <types>
         <members>OpenOpportunityHistoryRebuilder</members>
         <members>OpenOpportunityHistoryScheduler</members>
+        <members>SCRUM417OpenOpportunityHistoryTest</members>
+        <members>SCRUM417OpenOpportunityHistoryFlsTest</members>
         <name>ApexClass</name>
     </types>
     <types>
@@ -15,7 +17,7 @@
     </types>
     <types>
         <members>SCRUM417_OpportunityHistory</members>
-        <name>CustomReportType</name>
+        <name>ReportType</name>
     </types>
     <types>
         <members>Sales/Offene_Werte_Verlauf</members>

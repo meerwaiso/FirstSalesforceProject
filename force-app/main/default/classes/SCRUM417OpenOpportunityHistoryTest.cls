@@ -7,13 +7,14 @@
  *   TA2/AK2: Idempotenz — zweiter Lauf ändert nichts, erzeugt keine Duplikate.
  *   TA3:     Account.Open_Value_Drop_Last_Month__c = Wert(letzter Monat) −
  *            Wert(Vormonat); null ohne Vormonat (Januar).
- *   TA4/AK4: letzte Verlaufs-Zeile == SCRUM-416-Live-Felder (gleiche offene
- *            Chance-Menge, gleicher Amount-Standard).
- *   TA5:     historisches Monat-Predicate (Alt-Chance 2025, geschlossen Feb →
- *            zählt in Jan, nicht in Feb) — per purer Funktion, da CreatedDate
- *            in der Test-Kontextumgebung nicht zurückdatiert werden kann.
+ *   TA4/AK4: letzte Verlaufs-Zeile == SCRUM-416-Live-Felder.
+ *   TA5:     historisches Monat-Prädikat (Alt-Chance, erst nach M geschlossen
+ *            → zählt in M) — per purer Funktion, da CreatedDate in der
+ *            Test-Kontextumgebung nicht zurückdatiert werden kann.
  *
- * «offen» = IsClosed = false (Single Source of Truth, ADR-3, konsistent 416).
+ * «offen» = IsClosed = false (Single Source of Truth, ADR-3 aus 416 — dieselbe
+ * Menge wie die deployed Rollup-Handler → AK4 erfüllt konstruktiv). Die
+ * org-seitige Ableitung: StageName → IsClosed (writable signal im Test).
  * Alles, was hier erzeugt wird, rollt mit der Test-Transaction zurück.
  */
 @isTest
@@ -28,6 +29,13 @@ private class SCRUM417OpenOpportunityHistoryTest {
         return (Integer) r.get('expr0');
     }
 
+    private static Integer countZeroRows(Id accId) {
+        AggregateResult r = Database.query(
+            'SELECT COUNT(Id) FROM OpenOpportunityHistory__c WHERE AccountId__c = \'' + accId +
+            '\' AND Open_Count__c = 0');
+        return (Integer) r.get('expr0');
+    }
+
     private static String currentMonthKey() {
         List<String> keys = OpenOpportunityHistoryRebuilder.monthKeys(Date.today());
         return keys.get(keys.size() - 1);
@@ -39,12 +47,13 @@ private class SCRUM417OpenOpportunityHistoryTest {
      */
     @isTest
     static void oneRowPerMonth_zeroZeroWhereInactive() {
-        Account a = new Account(Name = 'V417 Idem');
+        Account a = new Account(Name = 'V417 A1');
         insert a;
         Integer nMonths = OpenOpportunityHistoryRebuilder.monthKeys(Date.today()).size();
 
-        insert new Opportunity(Name = 'V417 active', AccountId = a.Id, StageName = 'Prospecting',
-                               Amount = 500, CloseDate = FUTURE_CLOSE);
+        insert new Opportunity(Name = 'V417 active', AccountId = a.Id,
+                               StageName = 'Prospecting', Amount = 500,
+                               CloseDate = FUTURE_CLOSE);
 
         OpenOpportunityHistoryRebuilder.run();
         System.assertEquals(nMonths, countRows(a.Id), '1 Zeile je Monat (Jan→heute)');
@@ -61,23 +70,17 @@ private class SCRUM417OpenOpportunityHistoryTest {
         System.assertEquals(nMonths - 1, zeros, 'übrige Monate = 0/0 (keine offenen Chancen)');
     }
 
-    private static Integer countZeroRows(Id accId) {
-        AggregateResult r = Database.query(
-            'SELECT COUNT(Id) FROM OpenOpportunityHistory__c WHERE AccountId__c = \'' + accId +
-            '\' AND Open_Count__c = 0');
-        return (Integer) r.get('expr0');
-    }
-
     /**
      * TA2: Idempotenz — zweiter Lauf: gleiche Zeilenzahl, gleiche Werte, keine
      * Duplikate (Unique-Key History_Key__c hält).
      */
     @isTest
     static void idempotentSecondRun() {
-        Account a = new Account(Name = 'V417 Idem2');
+        Account a = new Account(Name = 'V417 A2');
         insert a;
-        insert new Opportunity(Name = 'V417 idem2', AccountId = a.Id, StageName = 'Prospecting',
-                               Amount = 300, CloseDate = FUTURE_CLOSE);
+        insert new Opportunity(Name = 'V417 idem2', AccountId = a.Id,
+                               StageName = 'Prospecting', Amount = 300,
+                               CloseDate = FUTURE_CLOSE);
 
         OpenOpportunityHistoryRebuilder.run();
         OpenOpportunityHistory__c first = [
@@ -85,7 +88,6 @@ private class SCRUM417OpenOpportunityHistoryTest {
             WHERE AccountId__c = :a.Id AND Snapshot_Month__c = :currentMonthKey() LIMIT 1];
 
         OpenOpportunityHistoryRebuilder.run(); // zweiter Lauf
-        System.assertEquals(countRows(a.Id), countRows(a.Id), 'keine Duplikate');
         Integer total = OpenOpportunityHistoryRebuilder.monthKeys(Date.today()).size();
         System.assertEquals(total, countRows(a.Id), 'keine zusätzlichen Zeilen');
 
@@ -99,17 +101,21 @@ private class SCRUM417OpenOpportunityHistoryTest {
     /**
      * TA4/AK4: die letzte (aktuelle) Verlaufs-Zeile zeigt EXAKT die SCRUM-416-
      * Live-Felder: 3 offen (100+200+300=600) + 1 won (999, zählt NICHT). Gleiche
-     * offen-Chance-Menge, gleicher Amount-Standard.
+     * offen-Chance-Menge (IsClosed=false), gleicher Amount-Standard.
      */
     @isTest
     static void latestMonthRow_matches416LiveFields() {
-        Account a = new Account(Name = 'V417 Consistency');
+        Account a = new Account(Name = 'V417 A4');
         insert a;
         List<Opportunity> ops = new List<Opportunity>();
-        ops.add(new Opportunity(Name = 'V417 o1', AccountId = a.Id, StageName = 'Prospecting', Amount = 100, CloseDate = FUTURE_CLOSE));
-        ops.add(new Opportunity(Name = 'V417 o2', AccountId = a.Id, StageName = 'Qualification', Amount = 200, CloseDate = FUTURE_CLOSE));
-        ops.add(new Opportunity(Name = 'V417 o3', AccountId = a.Id, StageName = 'Proposed', Amount = 300, CloseDate = FUTURE_CLOSE));
-        ops.add(new Opportunity(Name = 'V417 won', AccountId = a.Id, StageName = 'Closed Won', Amount = 999, CloseDate = FUTURE_CLOSE));
+        ops.add(new Opportunity(Name = 'V417 o1', AccountId = a.Id, StageName = 'Prospecting',
+                                Amount = 100, CloseDate = FUTURE_CLOSE));
+        ops.add(new Opportunity(Name = 'V417 o2', AccountId = a.Id, StageName = 'Qualification',
+                                Amount = 200, CloseDate = FUTURE_CLOSE));
+        ops.add(new Opportunity(Name = 'V417 o3', AccountId = a.Id, StageName = 'Proposed',
+                                Amount = 300, CloseDate = FUTURE_CLOSE));
+        ops.add(new Opportunity(Name = 'V417 won', AccountId = a.Id, StageName = 'Closed Won',
+                                Amount = 999, CloseDate = FUTURE_CLOSE));
         insert ops;
 
         // 416-Live-Felder (vom deployed Rollup-Trigger gepflegt).
@@ -131,15 +137,15 @@ private class SCRUM417OpenOpportunityHistoryTest {
 
     /**
      * TA3: Drop-Feld = Wert(letzter Monat) − Wert(Vormonat), direkt gegen die
-     * persistierten Zeilen geprüft (kein CreatedDate-Backdating nötig). Ohne
-     * Vormonat (nur 1 Zeile, d. h. Jahres-Monat Januar) → null.
+     * persistierten Zeilen geprüft (kein CreatedDate-Backdating nötig).
      */
     @isTest
     static void dropField_equalsLastMinusPrevFromRows() {
-        Account a = new Account(Name = 'V417 Drop');
+        Account a = new Account(Name = 'V417 A3');
         insert a;
-        insert new Opportunity(Name = 'V417 drop', AccountId = a.Id, StageName = 'Prospecting',
-                               Amount = 800, CloseDate = FUTURE_CLOSE);
+        insert new Opportunity(Name = 'V417 drop', AccountId = a.Id,
+                               StageName = 'Prospecting', Amount = 800,
+                               CloseDate = FUTURE_CLOSE);
         OpenOpportunityHistoryRebuilder.run();
 
         List<OpenOpportunityHistory__c> rows = [
@@ -148,10 +154,11 @@ private class SCRUM417OpenOpportunityHistoryTest {
         Integer n = rows.size();
         Decimal expected;
         if (n >= 2) {
-            Decimal prev = rows[n - 2].Open_Value__c == null ? 0 : rows[n - 2].Open_Value__c;
+            Decimal prev = (rows[n - 2].Open_Value__c == null) ? 0 : rows[n - 2].Open_Value__c;
             expected = rows[n - 1].Open_Value__c - prev;
         } else {
-            expected = null; // Jahres-Monat, kein Vormonat
+            // Jahres-Monat, kein Vormonat → Drop null
+            expected = null;
         }
 
         Account acc = [SELECT Open_Value_Drop_Last_Month__c FROM Account WHERE Id = :a.Id];
@@ -160,26 +167,30 @@ private class SCRUM417OpenOpportunityHistoryTest {
     }
 
     /**
-     * TA5/pure: aktueller Monat zählt NUR IsClosed = false (exakt die 416-Menge).
+     * TA5/pure: aktueller Monat zählt NUR offene Chancen (IsClosed = false).
+     * (StageName ist das writable signal; die org leitet IsClosed davon ab.)
      */
     @isTest
-    static void purePredicate_currentMonth_onlyOpenCounts() {
+    static void purePredicate_currentMonth_onlyOpen() {
         Date asOf = Date.today();
         Date curEnd = OpenOpportunityHistoryRebuilder.monthEnd(asOf.year(), asOf.month());
         System.isTrue(
             OpenOpportunityHistoryRebuilder.isCountedInMonth(
-                new Opportunity(IsClosed = false, ClosedDate = null), curEnd, asOf),
+                new Opportunity(IsClosed = false, CloseDate = FUTURE_CLOSE, Amount = 100),
+                curEnd, asOf),
             'aktueller Monat: offene Chance zählt');
         System.assertFalse(
             OpenOpportunityHistoryRebuilder.isCountedInMonth(
-                new Opportunity(IsClosed = true, ClosedDate = Date.today()), curEnd, asOf),
-            'aktueller Monat: geschlossene Chance zählt nicht');
+                new Opportunity(IsClosed = true, CloseDate = Date.today(), Amount = 900),
+                curEnd, asOf),
+            'aktueller Monat: geschlossene Chance (won/lost) zählt NICHT');
     }
 
     /**
      * TA5/pure: vergangener Monat M — eine Chance zählt, wenn sie Ende M offen
-     * war: (a) ist jetzt noch offen, oder (b) erst NACH MonatsEnde M geschlossen.
-     * Eine vor/bei MonatsEnde M geschlossene Chance zählt NICHT in M.
+     * war: (a) ist jetzt noch offen (IsClosed = false), oder (b) erst NACH
+     * Monats-Ende M geschlossen (CloseDate > M). Eine vor/bei M geschlossene
+     * Chance zählt NICHT in M.
      */
     @isTest
     static void purePredicate_pastMonth_openAtMonthEnd() {
@@ -187,23 +198,28 @@ private class SCRUM417OpenOpportunityHistoryTest {
         Date janEnd = OpenOpportunityHistoryRebuilder.monthEnd(y, 1);
         Date asOf = Date.today();
 
+        // Jetzt offen → war Ende Jan offen (vorausgesetzt: CreatedDate <= janEnd).
         System.isTrue(
             OpenOpportunityHistoryRebuilder.isCountedInMonth(
-                new Opportunity(IsClosed = false, ClosedDate = null), janEnd, asOf),
+                new Opportunity(IsClosed = false, CloseDate = FUTURE_CLOSE, Amount = 100),
+                janEnd, asOf),
             'Jahr-Monat: Chance, die jetzt offen ist, war Ende Jan offen');
 
-        // Erst im Februar (nach Jan-Ende) geschlossen → war Ende Jan offen → zählt in Jan.
-        Date febEnd = OpenOpportunityHistoryRebuilder.monthEnd(y, 2);
+        // Im (fiktiven) Februar nach Jan-Ende geschlossen → war Ende Jan offen.
+        Date afterJan = janEnd.addDays(1);
         System.isTrue(
             OpenOpportunityHistoryRebuilder.isCountedInMonth(
-                new Opportunity(IsClosed = true, ClosedDate = febEnd), janEnd, asOf),
-            'Jahr-Monat: erst Ende Feb geschlossen → zählt noch in Jan');
+                new Opportunity(IsClosed = true, CloseDate = afterJan, Amount = 500),
+                janEnd, asOf),
+            'Jahr-Monat: erst Ende Januar/Anfang Februar geschlossen → zählt noch in Jan');
 
-        // Im Januar selbst geschlossen → nicht in Jan offen.
+        // Erst im Januar selbst geschlossen → nicht offen am Jan-Ende.
+        Date midJan = Date.newInstance(y, 1, 15);
         System.assertFalse(
             OpenOpportunityHistoryRebuilder.isCountedInMonth(
-                new Opportunity(IsClosed = true, ClosedDate = Date.newInstance(y, 1, 15)), janEnd, asOf),
-            'Jahr-Monat: im Jan geschlossen → zählt nicht in Jan');
+                new Opportunity(IsClosed = true, CloseDate = midJan, Amount = 300),
+                janEnd, asOf),
+            'Jahr-Monat: im Januar selbst geschlossen → zählt NICHT in Jan');
     }
 
     /**
@@ -212,7 +228,7 @@ private class SCRUM417OpenOpportunityHistoryTest {
      */
     @isTest
     static void pureDrop_nullFirstMonth_negativeOnDecrease() {
-        System.assertNull(
+        System.assertEquals(null,
             OpenOpportunityHistoryRebuilder.dropValue(100, 50, false),
             'kein Vormonat → null (Jahr-Monat Januar)');
         System.assertEquals(Decimal.valueOf(-50),

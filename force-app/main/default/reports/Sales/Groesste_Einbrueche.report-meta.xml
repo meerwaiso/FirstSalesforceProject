@@ -11,14 +11,7 @@
         <aggregateTypes>Sum</aggregateTypes>
         <field>Account.Open_Value_Drop_Last_Month__c</field>
     </columns>
-    <description>SCRUM-417 AK5: größte Einbrüche des offenen Werts (letzter Monat vs. Vormonat, systemseitig in Account.Open_Value_Drop_Last_Month__c). Nur Kontexte mit Rückgang (Drop &lt; 0), absteigend nach Drop-Größe — die fünf stärksten Einbrüche stehen obenan. Scope=Organization.</description>
-    <filters>
-        <field>Account.Open_Value_Drop_Last_Month__c</field>
-        <operator>lessThan</operator>
-        <value>
-            <number>0</number>
-        </value>
-    </filters>
+    <description>SCRUM-417 AK5: größte Einbrüche des offenen Werts (letzter Monat vs. Vormonat, systemseitig in Account.Open_Value_Drop_Last_Month__c). Absteigend nach Drop-Größe — die fünf stärksten Einbrüche stehen obenan. Scope=Organization.</description>
     <format>Summary</format>
     <name>Groesste_Einbrueche</name>
     <reportType>AccountList</reportType>
