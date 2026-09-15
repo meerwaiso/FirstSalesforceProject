@@ -217,7 +217,7 @@ PO: reviews against acceptance criteria → closes/accepts the story and, once r
 
 ↓
 
-DevOps: deploys to Prod-Org — ONLY because the ticket is now in "Release" AND assigned to DevOps-Agent — then tags the release
+DevOps: deploys to Prod-Org — ONLY because the ticket is now in "Release" AND assigned to DevOps-Agent — then tags the release as `release/YYYY-MM-DD-SCRUM-NNN` — never under `archiv/`, which marks deleted branches → Beleg [B19](docs/AGENTS-BELEGE.md#b19)
 Escalation rule: Any agent failing after 2 self-correction attempts posts a structured status comment in the Jira ticket AND notifies the user via Telegram.
 
 ## Handoff Format Between Agents

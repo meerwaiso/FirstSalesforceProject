@@ -126,3 +126,13 @@ Measured 12.–15.09.2026, turns against ticket lookups:
 The two ends of the chain are the thin ones, and each drops a different half. Across the whole history the DevOps made six column moves and one field update: he moves tickets without renaming them. The PO made six field updates and one column move: he renames without moving.
 
 On 2026-09-15 both halves failed within the same hour. The PO posted a complete acceptance for SCRUM-416 and left the ticket in "Erledigt" on his own name. The DevOps then deployed three times to the production org against a ticket that was neither in "Release" nor assigned to him — he had read the room message, not the ticket. Neither had to guess: both states are one call away.
+
+## B19
+
+*Release tags are `release/YYYY-MM-DD-SCRUM-NNN`…*
+
+Measured 2026-09-15 on SCRUM-416. The DevOps looked for a tag convention, found 33 tags in the repository and every one of them beginning with `archiv/` or `archive/`, and concluded that was the convention. He tagged the production release `archiv/release-SCRUM-416-offene-chancen`.
+
+The reasoning was right and the answer was wrong. Those 33 tags are gravestones for deleted branches — `archiv/feature-SCRUM-399-eskalationsstufe-fix`, `archive/wip-uncommitted-2026-08-22` — not releases. Not one release had ever been tagged, SCRUM-414 of the previous day included, so there was nothing else to recognise. He was reading a convention off an empty set.
+
+`release/` separates the two kinds, and the leading date sorts chronologically on its own; under the old shape SCRUM-416 would have filed itself between 396 and 399.
