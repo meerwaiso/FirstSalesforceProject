@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>AccountId__c</fullName>
+    <label>Kunde</label>
+    <description>SCRUM-417: Kunde, auf den sich dieser Verlauf bezieht. Master-Detail → Account (required per Object-Metadaten); erbt die Sichtbarkeit des Eltern-Records (keine Sharing Rules nötig).</description>
+    <type>MasterDetail</type>
+    <referenceTo>Account</referenceTo>
+    <relationshipLabel>Offener Chancen-Verlauf</relationshipLabel>
+    <relationshipName>OpenOpportunityHistoryRecords</relationshipName>
+    <relationshipOrder>0</relationshipOrder>
+    <reparentableMasterDetail>false</reparentableMasterDetail>
+    <writeRequiresMasterRead>false</writeRequiresMasterRead>
+</CustomField>
