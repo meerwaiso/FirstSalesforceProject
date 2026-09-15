@@ -16,6 +16,41 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 15.09.2026 — Offene Chancen je Kunde auf einen Blick (SCRUM-416)
+
+**Was sich aendert**
+- Wenn du die Seite eines Kunden aufmachst, stehen jetzt oben **zwei Zahlen**: wie
+  viele Chancen bei diesem Kunden gerade offen sind und wie hoch deren Wert
+  zusammen ist. Gewonnene und verlorene Chancen zaehlen nicht mit.
+- Die Zahlen halten sich von selbst: Wenn eine Chance gewonnen oder verloren
+  wird, der Betrag aendert wird oder eine Chance auf einen anderen Kunden
+  umgehaengt wird, bewegen sich die Zahlen mit — beim alten und beim neuen
+  Kunden gleichermaassen.
+- Es gibt eine neue Liste **„Offene Werte nach Kunde"** im Ordner „Sales":
+  alle Kunden, sortiert nach dem offenen Wert absteigend — wo am meisten liegt,
+  steht oben. Kunden ohne offene Chancen erscheinen mit 0.
+
+**Wo man es sieht**
+Kunde → Detailseite → die beiden Zahlen ganz oben. Liste: Reports → Ordner
+„Sales" → „Offene Werte nach Kunde".
+
+**Was bewusst nicht drin ist**
+- Keine Aenderung der Chance-Daten selbst: Der Betrag, die Stage und der Kunde
+  einer Chance bleiben, wie sie sind; es ist nur die Aufsummirung dazu
+  gekommen. Die 13 schon vorhandenen offenen Chancen wurden einmalig nach
+  dem Deploy nachgerechnet, damit die Zahlen von Anfang an stimmen.
+- Keine Vorhersage-/Forecast-Logik, kein CSV/PDF-Export, keine
+  Historik-Darstellung.
+- Die zwei Zahlen pflegt das System selbst — es gibt nichts zu pflegen.
+
+**Deploy-ID**
+`0Afg500000ErPJaCAN` (Felder), `0Afg500000ErR3dCAF` (Berechtigungen,
+Layouts, Report), `0Afg500000ErP5zCAF` (Logik, 160/160 Tests).
+
+**Live-Beleg (PO-Read-back in Prod, 15.09.):** 13 offene Chancen, 8
+betroffene Kunden — Zaelung und Summe stimmen 1:1 (groesster Eintrag:
+United Oil & Gas Corp., 4 offene Chancen, 1.340.000).
+
 ## 14.09.2026 — SCRUM-319 in Master und Prod wieder identisch, 414-Sektion jetzt im Layout (SCRUM-415)
 
 **Was sich aendert**
