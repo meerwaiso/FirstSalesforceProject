@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-416 Phase 3: Apex — Handler (GROUP-BY-Vollrecompute), Trigger-
+     Erweiterung (after insert/update/delete) und die beiden Testklassen
+     (Funktional + FLS). Deploy mit --test-level RunLocalTests läuft genau
+     diese Tests (Coverage-Gate). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>OpenOpportunityRollupHandler</members>
+        <members>SCRUM416OpenOpportunityFlsTest</members>
+        <members>SCRUM416OpenOpportunityRollupTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>OpportunityOverdueReset</members>
+        <name>ApexTrigger</name>
+    </types>
+    <version>67.0</version>
+</Package>

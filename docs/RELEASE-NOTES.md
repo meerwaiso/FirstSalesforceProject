@@ -16,6 +16,22 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 14.09.2026 — SCRUM-319 in Master und Prod wieder identisch, 414-Sektion jetzt im Layout (SCRUM-415)
+
+**Was sich aendert**
+- Auf der Verkaufschance erscheint die Sektion **„Ueberschrittene Abschlüsse“** jetzt im Layout (Checkbox „Abschlussdatum ueberschritten“ + Tagezähler „Tage ueberfaellig“). Die beiden Felder waren vorhin deployed, aber ohne diesen Layout-Bereich musstest du sie im Detail suchen — jetzt stehen sie zusammen und sichtbar.
+- Dahinter, fuer dich unsichtbar: das alte SCRUM-319-Feld ist in Master und Prod wieder auf **ein und dasselbe Feld** zurueckgefuellt (Label „Inaktiv“ bleibt, es wird **kein zweites Feld** angelegt, die Werte bleiben 1:1 unverändert — 31 Chancen alle „nein“). Damit ist die gesamte Repository-Validierung gegen Prod wieder gruen.
+
+**Wo man es sieht**
+Verkaufschance → Detailseite → Sektion „Ueberschrittene Abschlüsse“.
+
+**Was bewusst nicht drin ist**
+- Keine Datenänderung: Die 13 bereits ueberfaelligen Chancen werden unverändert angezeigt (schlimmste zuerst, 186 Tage max).
+- Kein zweites Feld, keine Migration, keine aenderung der Feldwerte.
+
+**Deploy-ID**
+`0Afg500000Eq9FGCAZ`
+
 ## 14.09.2026 — Verkaufschancen mit ueberschrittenem Abschlusstermin auf einen Blick (SCRUM-414)
 
 **Was sich aendert.** Jede offene Verkaufschance, deren geplantes Abschlussdatum

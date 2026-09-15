@@ -41,6 +41,15 @@
                 <behavior>Edit</behavior>
                 <field>AnnualRevenue</field>
             </layoutItems>
+            <!-- SCRUM-416: Offene Chancen (read-only, systemmaintained) -->
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Open_Opportunity_Count__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Open_Opportunity_Value__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>

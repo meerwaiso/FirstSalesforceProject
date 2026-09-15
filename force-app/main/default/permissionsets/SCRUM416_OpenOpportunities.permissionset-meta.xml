@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Open_Opportunity_Count__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Open_Opportunity_Value__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM416_OpenOpportunities</label>
+    <description>Read-only FLS für Account.Open_Opportunity_Count__c und Open_Opportunity_Value__c (SCRUM-416). Systemmaintained (Opportunity-Trigger), kein Update. PO: Vertrieb, Key Account, Admin. Summenwert umsatzkonfidentiell — PS nicht breit streuen.</description>
+</PermissionSet>

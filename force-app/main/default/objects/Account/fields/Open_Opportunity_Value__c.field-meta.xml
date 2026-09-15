@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Open_Opportunity_Value__c</fullName>
+    <label>Wert offener Chancen</label>
+    <description>Summe der Amount-Beträge aller offenen Chancen (IsClosed = false) des Accounts, fehlende Beträge zählen als 0. Wird ausschliesslich vom System gepflegt (Opportunity-Trigger + OpenOpportunityRollupHandler, SCRUM-416); von Hand nicht änderbar.</description>
+    <type>Currency</type>
+    <precision>18</precision>
+    <scale>2</scale>
+    <required>false</required>
+    <unique>false</unique>
+    <defaultValue>0</defaultValue>
+    <externalId>false</externalId>
+    <trackTrending>false</trackTrending>
+</CustomField>
