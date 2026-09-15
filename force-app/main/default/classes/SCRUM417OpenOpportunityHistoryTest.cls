@@ -167,28 +167,25 @@ private class SCRUM417OpenOpportunityHistoryTest {
     }
 
     /**
-     * TA5/pure: aktueller Monat zählt NUR offene Chancen (IsClosed = false).
-     * (StageName ist das writable signal; die org leitet IsClosed davon ab.)
+     * TA5/pure: aktueller Monat zählt NUR offene Chancen (isClosed = false).
+     * (Pure Funktion — keine DML nötig; isClosed/closeDate sind die einzigen
+     *  Signale des Prädikats.)
      */
     @isTest
     static void purePredicate_currentMonth_onlyOpen() {
         Date asOf = Date.today();
         Date curEnd = OpenOpportunityHistoryRebuilder.monthEnd(asOf.year(), asOf.month());
         System.isTrue(
-            OpenOpportunityHistoryRebuilder.isCountedInMonth(
-                new Opportunity(IsClosed = false, CloseDate = FUTURE_CLOSE, Amount = 100),
-                curEnd, asOf),
+            OpenOpportunityHistoryRebuilder.isCountedInMonth(false, FUTURE_CLOSE, curEnd, asOf),
             'aktueller Monat: offene Chance zählt');
         System.assertFalse(
-            OpenOpportunityHistoryRebuilder.isCountedInMonth(
-                new Opportunity(IsClosed = true, CloseDate = Date.today(), Amount = 900),
-                curEnd, asOf),
+            OpenOpportunityHistoryRebuilder.isCountedInMonth(true, Date.today(), curEnd, asOf),
             'aktueller Monat: geschlossene Chance (won/lost) zählt NICHT');
     }
 
     /**
      * TA5/pure: vergangener Monat M — eine Chance zählt, wenn sie Ende M offen
-     * war: (a) ist jetzt noch offen (IsClosed = false), oder (b) erst NACH
+     * war: (a) ist jetzt noch offen (isClosed = false), oder (b) erst NACH
      * Monats-Ende M geschlossen (CloseDate > M). Eine vor/bei M geschlossene
      * Chance zählt NICHT in M.
      */
@@ -200,25 +197,19 @@ private class SCRUM417OpenOpportunityHistoryTest {
 
         // Jetzt offen → war Ende Jan offen (vorausgesetzt: CreatedDate <= janEnd).
         System.isTrue(
-            OpenOpportunityHistoryRebuilder.isCountedInMonth(
-                new Opportunity(IsClosed = false, CloseDate = FUTURE_CLOSE, Amount = 100),
-                janEnd, asOf),
+            OpenOpportunityHistoryRebuilder.isCountedInMonth(false, FUTURE_CLOSE, janEnd, asOf),
             'Jahr-Monat: Chance, die jetzt offen ist, war Ende Jan offen');
 
         // Im (fiktiven) Februar nach Jan-Ende geschlossen → war Ende Jan offen.
         Date afterJan = janEnd.addDays(1);
         System.isTrue(
-            OpenOpportunityHistoryRebuilder.isCountedInMonth(
-                new Opportunity(IsClosed = true, CloseDate = afterJan, Amount = 500),
-                janEnd, asOf),
+            OpenOpportunityHistoryRebuilder.isCountedInMonth(true, afterJan, janEnd, asOf),
             'Jahr-Monat: erst Ende Januar/Anfang Februar geschlossen → zählt noch in Jan');
 
         // Erst im Januar selbst geschlossen → nicht offen am Jan-Ende.
         Date midJan = Date.newInstance(y, 1, 15);
         System.assertFalse(
-            OpenOpportunityHistoryRebuilder.isCountedInMonth(
-                new Opportunity(IsClosed = true, CloseDate = midJan, Amount = 300),
-                janEnd, asOf),
+            OpenOpportunityHistoryRebuilder.isCountedInMonth(true, midJan, janEnd, asOf),
             'Jahr-Monat: im Januar selbst geschlossen → zählt NICHT in Jan');
     }
 

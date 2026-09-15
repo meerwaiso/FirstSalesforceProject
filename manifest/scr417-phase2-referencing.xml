@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- SCRUM-417 Phase 2: alles, was die Phase-1-Felder referenziert —
-     Apex (Rebuilder + Scheduler), Permission Set (read-only FLS + ViewOnly),
-     Custom Report Type + 2 Reports (Trend + Einbruch), 2x Classic-Layout
-     (Related List + readonly Drop-Feld). Version 67.0. -->
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>OpenOpportunityHistory__c.History_Key__c</members>
+        <members>OpenOpportunityHistory__c.Snapshot_Month__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>OpenOpportunityHistory__c</members>
+        <name>CustomTab</name>
+    </types>
     <types>
         <members>OpenOpportunityHistoryRebuilder</members>
         <members>OpenOpportunityHistoryScheduler</members>
@@ -26,8 +31,7 @@
     </types>
     <types>
         <members>Account-Account Layout</members>
-        <members>Account-Account %28Sales%29 Layout</members>
+        <members>Account-Account (Sales) Layout</members>
         <name>Layout</name>
     </types>
-    <version>67.0</version>
 </Package>

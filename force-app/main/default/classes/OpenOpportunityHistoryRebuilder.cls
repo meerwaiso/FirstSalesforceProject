@@ -29,6 +29,7 @@ public without sharing class OpenOpportunityHistoryRebuilder {
         Date asOf = Date.today();
         List<String> months = monthKeys(asOf);
         Integer year = asOf.year();
+        Date currentEnd = monthEnd(asOf.year(), asOf.month());
 
         // 1) Kontexte mit bestehenden Zeilen (Kontinuität).
         Set<Id> contexts = new Set<Id>();
@@ -46,7 +47,7 @@ public without sharing class OpenOpportunityHistoryRebuilder {
             Map<Id, Integer> cBy = new Map<Id, Integer>();
             Map<Id, Decimal> vBy = new Map<Id, Decimal>();
             List<AggregateResult> agg;
-            if (isCurrentMonth(mk, asOf)) {
+            if (endM == currentEnd) {
                 // aktueller Monat: offen = IsClosed = false (exakt 416-Menge).
                 agg = [SELECT AccountId, COUNT(Id) cnt, SUM(Amount) amt
                        FROM Opportunity
@@ -56,8 +57,9 @@ public without sharing class OpenOpportunityHistoryRebuilder {
                        GROUP BY AccountId];
             } else {
                 // vergangener Monat M: offen am Monatsende M =
-                //   (a) ist jetzt noch offen (IsClosed = false), ODER
-                //   (b) erst NACH Monats-Ende M geschlossen (CloseDate > endM).
+                //   IsClosed = false ODER CloseDate = null (Schluss-Datum fehlt
+                //   → war Ende M nachweisbar nicht geschlossen) ODER erst NACH
+                //   Monats-Ende M geschlossen (CloseDate > endM).
                 // Beide Kandidaten müssen vor/bei Monats-Ende M angelegt sein
                 // (CreatedDate <= endM) — sonst zählten neu angelegte Chancen
                 // in einen Monat, in dem sie noch gar nicht entstanden waren.
@@ -65,7 +67,9 @@ public without sharing class OpenOpportunityHistoryRebuilder {
                        FROM Opportunity
                        WHERE AccountId != null
                          AND CreatedDate <= :endM
-                         AND (IsClosed = false OR CloseDate > :endM)
+                         AND (IsClosed = false
+                              OR CloseDate = null
+                              OR CloseDate > :endM)
                        GROUP BY AccountId];
             }
             for (AggregateResult r : agg) {
@@ -97,11 +101,15 @@ public without sharing class OpenOpportunityHistoryRebuilder {
             }
         }
         Integer total = rows.size();
-        Integer start = 0;
-        while (start < total) {
-            Integer stop = Math.min(start + 2000, total);
-            Database.upsert(rows.subList(start, stop), OpenOpportunityHistory__c.History_Key__c);
-            start = stop;
+        Integer batchStart = 0;
+        while (batchStart < total) {
+            Integer chunkEnd = Math.min(batchStart + 2000, total);
+            List<OpenOpportunityHistory__c> chunk = new List<OpenOpportunityHistory__c>();
+            for (Integer i = batchStart; i < chunkEnd; i++) {
+                chunk.add(rows.get(i));
+            }
+            Database.upsert(chunk, OpenOpportunityHistory__c.History_Key__c);
+            batchStart = chunkEnd;
         }
 
         // 4) Drop-Feld je Kontext: Wert(aktueller Monat) − Wert(Monat davor).
@@ -132,22 +140,22 @@ public without sharing class OpenOpportunityHistoryRebuilder {
     }
 
     /**
-     * Zähl-Definition (unit-testbar): zählt Opportunity o im Monat mit Ende
-     * monthEnd (bezogen auf today asOf) als offen?
-     *   aktueller Monat: offen = IsClosed = false.
-     *   vergangener Monat: offen am Monats-Ende = IsClosed = false ODER
-     *     erst NACH Monats-Ende geschlossen (CloseDate > monthEnd).
-     * (Vorausgesetzt: o.CreatedDate <= monthEnd.)
+     * Zähl-Definition (unit-testbar, PURE): zählt die Chance (isClosed,
+     * closeDate) im Monat mit Ende monthEnd (bezogen auf asOf) als offen?
+     *   aktueller Monat: offen = isClosed = false.
+     *   vergangener Monat: offen am Monats-Ende = isClosed = false ODER
+     *     erst NACH Monats-Ende geschlossen (closeDate > monthEnd).
+     * (Vorausgesetzt: CreatedDate <= monthEnd — im Rebuilder via SOQL gesichert.)
      */
-    public static Boolean isCountedInMonth(Opportunity o, Date monthEnd, Date asOf) {
-        Boolean current = isCurrentMonth(monthKey(monthEnd), asOf);
+    public static Boolean isCountedInMonth(Boolean isClosed, Date closeDate, Date monthEnd, Date asOf) {
+        Boolean current = isCurrentMonth(monthKey(monthEnd.year(), monthEnd.month()), asOf);
         if (current) {
-            return o.IsClosed == false;
+            return isClosed == false;
         }
-        if (o.IsClosed == false) {
+        if (isClosed == false) {
             return true;
         }
-        return (o.CloseDate != null && o.CloseDate > monthEnd);
+        return (closeDate != null && closeDate > monthEnd);
     }
 
     /** Drop = Wert(aktueller Monat) − Wert(Vormonat); null ohne Vormonat (Januar). */

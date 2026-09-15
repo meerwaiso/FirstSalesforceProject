@@ -11,12 +11,10 @@
     <format>Summary</format>
     <groupingsDown>
         <field>AccountId__c.Name</field>
-        <sortField>AccountId__c.Name</sortField>
         <sortOrder>Asc</sortOrder>
     </groupingsDown>
     <groupingsDown>
         <field>Snapshot_Month__c</field>
-        <sortField>Snapshot_Month__c</sortField>
         <sortOrder>Asc</sortOrder>
     </groupingsDown>
     <name>Offene_Werte_Verlauf</name>
