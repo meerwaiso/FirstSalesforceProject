@@ -68,6 +68,7 @@ restate a rule in full here.
 - Announcing a tool call is not doing the work — fire the call, no preamble and no progress note between calls → *Core Principles*
 - A commit on your own disk is not a handoff — push before you announce it → *Handoff Format Between Agents*
 - An uncommitted artifact does not survive the turn — create the file as soon as you can name what goes in it, commit, then keep investigating → *Core Principles*
+- A result nobody was told about is not a result — post the verdict to the room the moment it stands, before the report, the cleanup and the long comment → *Core Principles*
 - The checkout is shared; your branch is not — take a worktree, never switch the shared folder, and remove the worktree when you hand off → *Core Principles*
 - The shared checkout is neither current nor shared — fetch before you cite what the repo contains, push before you call it a handoff → *Core Principles*
 - A pattern you cite must reproduce the example you cite it from — if your sentence cannot produce your example, the sentence is the bug → *Core Principles*
@@ -202,6 +203,12 @@ Measured 2026-09-14 on SCRUM-414. CI was checked at 15:00:25 — gate job succes
 None of that broke a rule, and that is the point. The gate asked for CI and an approval, and both were genuinely there; the ticket state was even read correctly and said out loud — *"SCRUM-414 liegt in Testen, Assignee tester-agent"* — and merged anyway, because nothing said not to. This document said the opposite: the Architect step used to hand the ticket to the Tester and authorise the merge in the same breath. It now authorises the merge where it belongs, at "Deployment".
 
 It ended well: the suite really was green at 15:05. That was luck. At 15:06:44 nobody had written it down.
+
+**A result nobody was told about is not a result.** The room runs on a clock of its own. While you tidy up, the others pass in turn, the round settles, and your message arrives as a late reply — it lands in the log, but nothing is woken by it. The handoff reaches no one, however complete it is. So the order is: verdict to the room first, in three sentences; then commit and push if you have not; then the report, the coverage numbers, the cleanup, the long tracker comment.
+
+Measured in the night of 2026-09-15 on SCRUM-416. The Tester had all six criteria green at 02:24:46 and 8/8 including smoke at 02:34:17 — from there the verdict was complete. What followed was fourteen minutes of packaging: duplicates removed, coverage numbers gathered, CI checked on the PR head, the HTML report's format repaired, the spec committed. At 02:48:50 the tool-call limit cut the turn. The report went to the room at 02:52:55, an hour after the round had settled — the other four had been on "(pass)" since 01:58. The PO never learned the test phase was finished, and the chain stood still until 08:51.
+
+None of it was poor work. The commit was right and it was in time — twenty kilobytes of spec, pushed twenty-six seconds before the cut, exactly as the rule above asks. The evidence was complete and the verdict was correct. Only the order was wrong: fourteen minutes between a finished verdict and telling anyone.
 
 **An uncommitted artifact does not survive the turn.** A turn has a hard time limit and it counts through compactions, so the deadline is not where the current session started. Create the file as soon as you can name one thing that belongs in it, commit it, and go on investigating — a skeleton in the repository outlives an abort, and a finished draft in memory does not. After a compaction the next turn does not know the file ever existed and writes it again from nothing.
 
