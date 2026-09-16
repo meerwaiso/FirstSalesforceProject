@@ -132,15 +132,25 @@ SCRUM-416). Chance O zählt in Monat M bei Kontext C, wenn:
      platzieren = Org-Schritt @devops-agent (House-Befund „Auf allen Layouts“)
 5. **Report `Offene_Werte_Verlauf`** —
    `force-app/main/default/reports/Sales/Offene_Werte_Verlauf.report-meta.xml`
-   - Basis: **Custom Report Type** `SCRUM417_OpportunityHistory`
-     (`reporttypes/SCRUM417_OpportunityHistory.reportType-meta.xml`,
-     `baseObject=OpenOpportunityHistory__c`, House-Pattern
-     `SCRUM396_Betreuungslast`) mit Sektionen: Zeilen-Felder (Count, Value,
-     `Snapshot_Month__c`) + `Account.Name`
-   - Format `Summary`, `groupingsDown` (flach!): `Account.Name` +
-     `OpenOpportunityHistory__c.Snapshot_Month__c`, Sort Asc →
-     **eine Zeile je Kunde je Monat** (Tabelle/Kurvenpunkt-Basis, AK1/AK2)
-   - Spalten: `Open_Count__c`, `Open_Value__c` (Sum), <scope>organization</scope>
+   - Basis: **Custom Report Type** — Verweis-`<reportType>SCRUM417_OpportunityHistory__c</reportType>`
+     (Datei: `reporttypes/SCRUM417_OpportunityHistory.reportType-meta.xml`,
+     `baseObject=OpenOpportunityHistory__c`); House-Custom-RT `SCRUM396_Betreuungslast`
+   - **Token-Namensraum (deploy-validiert 2026-09-15, Commit `083e8cd`,
+     ReportDefinition-Read-back: ReportType=SCRUM417_OpportunityHistory).**
+     Reporting-Metadata-Spalten = **`<table>$<field>`** — **Dollar, kein Punkt**,
+     beide Hälften wörtlich aus der Report-Type-Datei:
+     - Spalten: `OpenOpportunityHistory__c$Open_Count__c` und
+       `OpenOpportunityHistory__c$Open_Value__c` (aggregateTypes Sum)
+     - `groupingsDown` (flach), Sort Asc:
+       `OpenOpportunityHistory__c$AccountId__c.Name` +
+       `OpenOpportunityHistory__c$Snapshot_Month__c`
+       → **eine Zeile je Kunde je Monat** (Tabelle/Kurvenpunkt-Basis, AK1/AK2)
+     - `<reportType>`-Wert `SCRUM417_OpportunityHistory__c`
+     ⚠️ **Drei Namensräume kollidierten hier** (Ursache der 100er-Deploy-Schleife):
+     Metadata-Dateiname/`<members>` (ohne `__c`), Metadata-Verweis `<reportType>`
+     (mit `__c`), Analytics-REST-Token (`.`-Pfad, `__lookup`). Vor dem Schreiben:
+     Namensraum klären, nicht Varianten durchprobieren.
+   - Format `Summary`, <scope>organization</scope>
    - AK2 (2–3 Kunden): interaktiver Report-Filter auf `Account.Name` in der
      UI — kein extra Artefakt; Kurven statt Tabelle = Chart im Report (UI-Klick,
      kostenlos, kein Scope-Delta)
