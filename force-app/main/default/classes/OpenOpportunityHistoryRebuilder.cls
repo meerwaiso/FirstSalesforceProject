@@ -58,7 +58,7 @@ public without sharing class OpenOpportunityHistoryRebuilder {
             } else {
                 // vergangener Monat M: offen am Monatsende M =
                 //   IsClosed = false ODER CloseDate = null (Schluss-Datum fehlt
-                //   → war Ende M nachweisbar nicht geschlossen) ODER erst NACH
+                //   → war Ende M nachweisbar nicht geschlossen) ODER CloseDate null ODER erst NACH
                 //   Monats-Ende M geschlossen (CloseDate > endM).
                 // Beide Kandidaten müssen vor/bei Monats-Ende M angelegt sein
                 // (CreatedDate <= endM) — sonst zählten neu angelegte Chancen
@@ -144,7 +144,7 @@ public without sharing class OpenOpportunityHistoryRebuilder {
      * closeDate) im Monat mit Ende monthEnd (bezogen auf asOf) als offen?
      *   aktueller Monat: offen = isClosed = false.
      *   vergangener Monat: offen am Monats-Ende = isClosed = false ODER
-     *     erst NACH Monats-Ende geschlossen (closeDate > monthEnd).
+     *     CloseDate null ODER erst NACH Monats-Ende geschlossen (closeDate > monthEnd).
      * (Vorausgesetzt: CreatedDate <= monthEnd — im Rebuilder via SOQL gesichert.)
      */
     public static Boolean isCountedInMonth(Boolean isClosed, Date closeDate, Date monthEnd, Date asOf) {
@@ -155,7 +155,7 @@ public without sharing class OpenOpportunityHistoryRebuilder {
         if (isClosed == false) {
             return true;
         }
-        return (closeDate != null && closeDate > monthEnd);
+        return (closeDate == null || closeDate > monthEnd);
     }
 
     /** Drop = Wert(aktueller Monat) − Wert(Vormonat); null ohne Vormonat (Januar). */
