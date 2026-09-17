@@ -25,3 +25,13 @@ Kein `__lookup`-Token (Analytics-REST-Namensraum).
 - Final-Deploy grün: `0AfWU00000bVv1V0AS`, 8/8 Komponenten, RunLocalTests (Full Suite) im Deploy.
 - Read-Back (retrieve aus Org, nicht aus Deploy-Output): Report `Groesste_Einbrueche` Filter `lessThan 0`; PS FLS = 4 Felder readable inkl. `Snapshot_Month__c`; PS an `devops-agent@cline.test` assigned.
 - `History_Key__c` steht nicht in der Tooling-`FieldDefinition`-Liste (15 Felder), aber Rebuilder kompiliert + Upsert-Idempotenz-Test grün → Feld funktional; Ursache der Nicht-Listung ungeklärt, nicht weiter pursued.
+
+## E2E-Lauf 17.09. (Tester, ab 20:00) — Befunde aus Live-Proben, in Spec übernommen
+- **Related-List-Karte auf Record-Page rendert GEKÜRZT**: max 7 Zeilen, Stand 17.09. = 6 sichtbar (2026-01..06). "Eine Zeile je Monat" ist nur auf der View-All-Seite prüfbar:
+  `/lightning/r/Account/{id}/related/OpenOpportunityHistory__c/view` → 9 Zeilen (SOQL: United Oil & Gas = 9 Zeilen; 2DCF1aYAH = 9 Zeilen, 8× 0/0 + Sept 3/600).
+- **View-All via API-Host war der Fehler in allen View-All-Proben**: `instanceUrl` aus `sf org display` = `*.my.salesforce.com` (API-Host) → `title=Login`, 403. Spec läuft über `baseURL` = Lightning-Host (Config) — korrekt. Kein View-All-Beweis aus den Probe-Logs gültig; AK1-ViewAll-Stufe wartet auf den grünen Test-Lauf.
+- **Trend-Report rendert langsamer als 25 s**: frühere 25s-`performance.now()`-Break im Poll-Loop = Test-Artefakt (Abbruch → Assertion auf halbefülltem Puffer "2 Zeilen", kein Platform-Fehler). Grenze jetzt 60 s. (User-Hinweis 17.09.: kein Operator-Precedence-Bug in `"X" && false` — war der Parser nie das Problem.)
+- **Drop-Definition**: `Wert(aktueller Monat) − Wert(Monat davor)` = 2026-09: **Sept − Aug** (kein Aug − Juli). Rebuilder-Kommentar Z4: "4) Drop-Feld je Kontext". Verifiziert 17.09. SOQL: United Oil & Gas Drop=0, Sept=Aug=4/1.340.000; 0 Accounts Drop<0 (SOQL) → AK5-Liste leer.
+- AK5-Test jetzt SOQL-getrieben: Drop-Feld auf JEDEM Account = Sept−Aug aus History-Zeilen (Bulk-Query, 1 Query), UI-Zeilen = Anzahl Drop<0.
+- `sf data query`: `SUM(...)`/AS-Alias wird abgewiesen (bekanntes Quirk) → Plain-Select + JS-`reduce` in Spec.
+- 37 Probe-Skripte in `tests/e2e/scratch/` (2.421 Zeilen) = Ballast; Werkzeug `npm run probe` existiert bereits (scripts/probe-locators.js). Neue Erkenntnisse gehören ins Spec, nicht in Probe #38.
