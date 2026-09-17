@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>OpenOpportunityHistory__c.Snapshot_Month__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>SCRUM417_OpenOpportunityHistory</members>
+        <name>PermissionSet</name>
+    </types>
+    <apiVersion>67.0</apiVersion>
+</Package>

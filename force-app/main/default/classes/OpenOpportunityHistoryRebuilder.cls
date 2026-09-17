@@ -47,26 +47,34 @@ public without sharing class OpenOpportunityHistoryRebuilder {
             Map<Id, Integer> cBy = new Map<Id, Integer>();
             Map<Id, Decimal> vBy = new Map<Id, Decimal>();
             List<AggregateResult> agg;
+            Date nextMonthStart = endM.addDays(1);
             if (endM == currentEnd) {
-                // aktueller Monat: offen = IsClosed = false (exakt 416-Menge).
+                // aktueller Monat: exakte 416-Menge = alle offenen Chancen
+                // (IsClosed = false), unabhängig vom Anlegedatum.
+                // (Kein CreatedDate-Filter: ein Date-Bind wie asOf wird vom
+                //  SOQL-Engine auf Mitternacht des asOf-Tages gecastet —
+                //  "CreatedDate <= :asOf" schließt daher fast alles aus, was
+                //  am asOf-Tag selbst angelegt wurde. Das brach AK4:
+                //  letzte Verlaufs-Zeile == 416-Live-Felder.)
                 agg = [SELECT AccountId, COUNT(Id) cnt, SUM(Amount) amt
                        FROM Opportunity
                        WHERE AccountId != null
-                         AND CreatedDate <= :asOf
                          AND IsClosed = false
                        GROUP BY AccountId];
             } else {
                 // vergangener Monat M: offen am Monatsende M =
-                //   IsClosed = false ODER CloseDate = null (Schluss-Datum fehlt
-                //   → war Ende M nachweisbar nicht geschlossen) ODER CloseDate null ODER erst NACH
+                //   IsClosed = false ODER CloseDate null (Schluss-Datum fehlt
+                //   → war Ende M nachweisbar nicht geschlossen) ODER erst NACH
                 //   Monats-Ende M geschlossen (CloseDate > endM).
-                // Beide Kandidaten müssen vor/bei Monats-Ende M angelegt sein
-                // (CreatedDate <= endM) — sonst zählten neu angelegte Chancen
-                // in einen Monat, in dem sie noch gar nicht entstanden waren.
+                // Beide Kandidaten müssen vor/bei Monats-Ende M angelegt sein:
+                // CreatedDate < 1. Folge-Monat. (Nicht "CreatedDate <= :endM":
+                // ein Date-Bind wird auf Mitternacht von endM gecastet und
+                // würde alle Chancen verlieren, die am letzten Tag von M
+                // angelegt wurden.)
                 agg = [SELECT AccountId, COUNT(Id) cnt, SUM(Amount) amt
                        FROM Opportunity
                        WHERE AccountId != null
-                         AND CreatedDate <= :endM
+                         AND CreatedDate < :nextMonthStart
                          AND (IsClosed = false
                               OR CloseDate = null
                               OR CloseDate > :endM)
