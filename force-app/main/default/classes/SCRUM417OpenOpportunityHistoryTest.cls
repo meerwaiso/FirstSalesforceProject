@@ -205,6 +205,12 @@ private class SCRUM417OpenOpportunityHistoryTest {
             OpenOpportunityHistoryRebuilder.isCountedInMonth(true, afterJan, janEnd, asOf),
             'Jahr-Monat: erst Ende Januar/Anfang Februar geschlossen → zählt noch in Jan');
 
+        // Geschlossen, aber ohne Schluss-Datum (CloseDate = null) → war Ende Jan
+        // nachweisbar nicht geschlossen → zählt in Jan (Design §Zähl-Predicate).
+        System.assert(
+            OpenOpportunityHistoryRebuilder.isCountedInMonth(true, null, janEnd, asOf),
+            'Jahr-Monat: geschlossene Chance ohne CloseDate (null) → zählt in Jan');
+
         // Erst im Januar selbst geschlossen → nicht offen am Jan-Ende.
         Date midJan = Date.newInstance(y, 1, 15);
         System.assert(!OpenOpportunityHistoryRebuilder.isCountedInMonth(true, midJan, janEnd, asOf),
