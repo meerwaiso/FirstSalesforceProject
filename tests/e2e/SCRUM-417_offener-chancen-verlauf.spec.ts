@@ -300,6 +300,25 @@ async function gridDiag(scope: Page | Locator): Promise<string> {
   return parts.join(' || ');
 }
 
+/** Hard-Cap-Wrapper: laesst `fn` laeuft, aber bricht nach `ms` ab (wirft
+ * dann). WARUM (diag6 Suite11, 2026-09-18): die in-Loop-Reads von
+ * historyMonths (ariaSnapshot/allTextContents) sind NICHT selbst gezeitigt —
+ * bei extrem langsamer Org hangt ein einzelner Read (suite11: Karte 677 s auf
+ * einem Call), die Polling-Schleife erreicht ihr timeoutMs nie, und das
+ * weiche Karten-Budget frisst den ganzen Test. TimeoutError abfangen und
+ * leer zurueckgeben: die Karte ist WEICH (View-All tragt die AK1 hart). */
+async function withBudget<T>(ms: number, fn: () => Promise<T>, empty: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const to = new Promise<T>((res) => {
+    timer = setTimeout(() => res(empty), ms);
+  });
+  try {
+    return await Promise.race([fn(), to]) as T;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /**
  * Monatszeilen in einer Related-List (Karte oder View-All-Seite), gelesen
  * über Playwrights native Role-Locators (piercen LWC-Shadow-DOM für die
@@ -323,7 +342,11 @@ async function historyMonths(
     //  (a) Light-DOM — liest die KARTE: Suite 6 saw 6 Monatsrows,
     //      accname-Quirk: Text-Filter hier, nicht im Locator.
     const lightAll =
-      await scopeRH.getByRole('rowheader').allTextContents().catch(() => [] as string[]);
+      await withBudget(
+        20000,
+        () => scopeRH.getByRole('rowheader').allTextContents(),
+        [] as string[]
+      ).catch(() => [] as string[]);
     const lightFound = lightAll.map((t) => t.trim()).filter((t) => /^\d{4}-\d{2}$/.test(t));
     // (b) ariaSnapshot (AX) — NUR wenn Light-DOM ungenuegend: View-All ist
     //     eine GESCHLOSSENE Shadow-Root (Light-DOM dort 9x ""); die Karte
@@ -334,7 +357,12 @@ async function historyMonths(
         typeof (scope as Page).url === 'function'
           ? (scope as Page).locator('body')
           : (scope as import('@playwright/test').Locator);
-      const snap = (await body.ariaSnapshot().catch(() => '')) || '';
+      const snap =
+        (await withBudget(
+          20000,
+          () => body.ariaSnapshot(),
+          ''
+        ).catch(() => '')) || '';
       axAll = snap
         .split('\n')
         .map((l) => {
@@ -349,9 +377,9 @@ async function historyMonths(
     if (found.length >= minMonths) return found.sort();
     const gridFullButBlank = all.length >= minMonths && nonEmpty === 0;
     if (gridFullButBlank || Date.now() - start > timeoutMs) {
-      const anyRH = await scope.getByRole('rowheader').count().catch(() => -1);
-      const grids = await scope.getByRole('grid').count().catch(() => -1);
-      const diag = await gridDiag(scope);
+      const anyRH = await withBudget(15000, () => scope.getByRole('rowheader').count().catch(() => -1), -1);
+      const grids = await withBudget(15000, () => scope.getByRole('grid').count().catch(() => -1), -1);
+      const diag = await withBudget(30000, () => gridDiag(scope), 'diag:timeout');
       throw new Error(
         `historyMonths: ${found.length}/${minMonths} nach ${Math.round((Date.now() - start) / 1000)}s. ` +
           `rowheader(any)=${anyRH} grid=${grids} nonEmpty=${nonEmpty}/${all.length} ` +
@@ -374,7 +402,11 @@ async function axMonthlyRows(
 ): Promise<Map<string, { count: number | undefined; value: number | undefined }>> {
   const bodyLoc: Locator =
     typeof (scope as Page).url === 'function' ? (scope as Page).locator('body') : (scope as Locator);
-  const snap = await bodyLoc.ariaSnapshot().catch(() => '');
+  // Hard-Cap (Suite11 2026-09-18): dieser eine ariaSnapshot hangt unter
+  // extrem langsamer Org (ein einziger Call ohne eigenen Timeout). 20 s
+  // reichen fur einen Snapshot des bereits gerenderten Grids; hangen ist
+  // Fehler => leerer Map => harter Fail mit axRows-Dump (View-All = Gate).
+  const snap = await withBudget(20000, () => bodyLoc.ariaSnapshot(), '').catch(() => '');
   const out = new Map<string, { count: number | undefined; value: number | undefined }>();
   let cur: string | null = null;
   for (const line of snap.split('\n')) {
