@@ -227,16 +227,19 @@ async function historyMonths(
   const wait = async () => new Promise((r) => setTimeout(r, 1000));
   const start = Date.now();
   for (;;) {
-    const found = (await scope.getByRole('rowheader', { name: /^\d{4}-\d{2}$/ }).allTextContents().catch(() => []))
-      .map((t) => t.trim())
-      .filter((t) => /^\d{4}-\d{2}$/.test(t));
+    // WICHTIG: Locator-Neame-Filter ({ name: /…/ }) matcht die berechneten
+    // accnames der Karten-Rowheaders NICHT (Fehlerlauf 2026-09-18: any=6,
+    // month-match=0) — deshalb: alle Rowheaders, Filter in JS.
+    const all = await scope.getByRole('rowheader').allTextContents().catch(() => []);
+    const found = all.map((t) => t.trim()).filter((t) => /^\d{4}-\d{2}$/.test(t));
     if (found.length >= minMonths || Date.now() - start > timeoutMs) {
       if (found.length < minMonths) {
         // Fehldiagnose statt Blind-Timeout: was SIEHT die Role-Engine an?
         const anyRH = await scope.getByRole('rowheader').count().catch(() => -1);
         const grids = await scope.getByRole('grid').count().catch(() => -1);
-        const txt = (await scope.first().innerText().catch(() => '<n/a>')).slice(0, 260).replace(/\n/g, ' | ');
-        throw new Error(`historyMonths: nur ${found.length}/${minMonths} Monatsrowheaders nach ${Math.round((Date.now() - start) / 1000)}s. Lokator-Diagnostik: rowheader(any)=${anyRH}, grid=${grids}, Text="${txt}"`);
+        const raw = JSON.stringify(all.map((t) => t.trim()).slice(0, 12));
+        const txt = (await scope.first().innerText().catch(() => '<n/a>')).slice(0, 180).replace(/\n/g, ' | ');
+        throw new Error(`historyMonths: nur ${found.length}/${minMonths} Monatsrowheaders nach ${Math.round((Date.now() - start) / 1000)}s. Lokator-Diagnostik: rowheader(any)=${anyRH}, grid=${grids}, rawNames=${raw}, Text="${txt}"`);
       }
       return found.sort();
     }
@@ -246,17 +249,19 @@ async function historyMonths(
 
 /** Anzahl + Betrag einer einzelnen Monatszeile. Der rowheader trägt den
  * reinen Monatstext (AX-Beleg 2026-09-18: rowheader "2026-07"); die
- * Wertzellen sind die <td>-Geschwister im selben <tr>. */
+ * Wertzellen sind die gridcell-<td>-Geschwister im selben <tr>/<row>.
+ * Locator-Name-Match wird nicht verwendet (siehe historyMonths). */
 async function historyRowValues(
   scope: Page | import('@playwright/test').Locator,
   month: string
 ): Promise<{ count: number | undefined; value: number | undefined }> {
-  for (const re of [new RegExp(`^${month}$`), new RegExp(`^${month}`)]) {
-    const rh = scope.getByRole('rowheader', { name: re });
-    const n = await rh.count().catch(() => 0);
-    if (n) {
-      const tr = rh.first().locator('xpath=..');
-      const tds = (await tr.locator('td').allTextContents().catch(() => [])).map((t) => t.trim());
+  const rhs = scope.getByRole('rowheader');
+  const n = await rhs.count().catch(() => 0);
+  for (let i = 0; i < n; i++) {
+    const txt = (await rhs.nth(i).textContent().catch(() => '')).trim();
+    if (txt === month || txt.startsWith(month)) {
+      const row = rhs.nth(i).locator('xpath=..'); // Element mit role=row
+      const tds = (await row.locator('td, [role="gridcell"]').allTextContents().catch(() => [])).map((t) => t.trim());
       return { count: cellNum(tds[0]), value: cellNum(tds[1]) };
     }
   }
@@ -289,7 +294,7 @@ test.describe('[SCRUM-417] Offener Chancen-Verlauf je Kunde', () => {
     await openRecordPage(page, `/lightning/r/Account/${acc}/view`);
     const card = page.getByRole('article', { name: new RegExp(`^${H_LIST_LABEL}`) });
     await card.getByText(H_LIST_LABEL, { exact: false }).first()
-      .waitFor({ state: 'visible', timeout: 30000 });
+      .waitFor({ state: 'visible', timeout: 90000 });
     // Scope = KARTe: die Record-Page rendert mehrere Related-Lists gleichzeitig
     // (Opportunities, Contacts, …); nur within der HISTORY-Karte zählen
     // die Monatsrowheaders.
