@@ -78,3 +78,15 @@ Kein `__lookup`-Token (Analytics-REST-Namensraum).
   liefert --help statt Live-DOM — NICHT als Locator-Ground-Truth nutzbar.
   Einziges Live-Werkzeug: npm run probe (INTERAKTIVE Elemente nur,
   data-Zellen blind) + error-context.md + in-spec gridDiag.
+- Suite10 (06:25, 3.5 min): AK2/4/5 GRUEN. AK1 rot an Stufe 1 (Karte): line 438
+  "Karte TEST-SCRUM-416-AK1/2026-01: Zellen ohne Anzahl UND Betrag (leere Zeile)".
+  Fortschritt: nicht mehr View-All (AX-Reader dort ok), sondern der light-DOM
+  historyRowValues-Reader auf der KARTEN-Seite. error-context 06:25:46 (Karten-Page):
+  AX-Baum hat rowheader "2026-01" + gridcell "0" + gridcell "0,00 €" voll -> der
+  AX-Lesepfad ist auch hier der tragfaehige; light-DOM td/[role=gridcell] matcht
+  in der Karte nichts (geschlossene Shadow-Root um die Datenzellen).
+- Fix commit 1942bf0: Stufe 1 (Karte) liest jetzt wie Stufe 2 via axMonthlyRows
+  (ein ariaSnapshot -> Map Monat->{count,value}), light-DOM nur Fallback.
+  diag4 = AK1-alone-Lauf auf 1942bf0.
+  Fallback-Logik: count undefined -> 1. parsierbare Zelle der Zeile; value -> 2.
+  (Snapshot-Zeile: leer, Select-Item-Check, Anzahl, Betrag, Show Actions.)
