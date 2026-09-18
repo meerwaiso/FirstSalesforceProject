@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Frame } from '@playwright/test';
+import { test, expect, type Page, type Frame, type Locator } from '@playwright/test';
 import { execSync } from 'node:child_process';
 import { openRecordPage } from './record-page';
 
@@ -211,38 +211,101 @@ function approx(a: number, b: number, eps = 0.01): boolean {
 }
 
 /**
+ * DOM-Grundwahrheit, wenn Grid-Rows voll sind aber kein monatweiser Text
+ * lesbar ist (Shadow-DOM-Verdacht). Ein rowheader + die Zellen seiner
+ * Monatszeile: Tag, ShadowRoot?, textContent, innerHTML, aria-label — plus
+ * der Name-Match-Test der Role-Engine (das eigentliche Litmus-Kriterium).
+ */
+async function gridDiag(scope: Page | Locator): Promise<string> {
+  const parts: string[] = [];
+  const isPage = typeof (scope as Page).url === 'function';
+  const nameMatch = await scope.getByRole('rowheader', { name: /^\d{4}-\d{2}$/ }).count().catch(() => -1);
+  parts.push(`rh[name=YYYY-MM]=${nameMatch}`);
+  const first = scope.getByRole('rowheader').first();
+  const info = await first
+    .evaluate((el) => {
+      type E = Element & { shadowRoot?: ShadowRoot | null };
+      const out: string[] = [];
+      const walk = (root: Node, d: number) => {
+        const holder = root as unknown as { children?: ArrayLike<Element> };
+        const kids = holder.children ? Array.from(holder.children) : [];
+        for (const c of kids) {
+          const ce = c as E;
+          const t = (c.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 20);
+          out.push('  '.repeat(d) + c.tagName.toLowerCase() + (ce.shadowRoot ? '(sh)' : '') + ` "${t}"`);
+          if (ce.shadowRoot) walk(ce.shadowRoot, d + 1);
+        }
+      };
+      const fe = el as E;
+      out.push(`${el.tagName.toLowerCase()}${fe.shadowRoot ? '(sh)' : ''} text="${(el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 20)}" aria="${el.getAttribute('aria-label') || ''}"`);
+      if (fe.shadowRoot) walk(fe.shadowRoot, 1);
+      walk(el, 1);
+      return out.join(' | ').slice(0, 700);
+    })
+    .catch((e: unknown) => `evaluate-fail:${e instanceof Error ? e.message : 'x'}`);
+  parts.push(`firstRH:${info}`);
+  if (isPage) {
+    const mRH = scope.getByRole('rowheader', { name: /^\d{4}-\d{2}$/ }).first();
+    if ((await mRH.count().catch(() => 0)) > 0) {
+      const handle = await mRH.evaluateHandle((el) => {
+        let n: Element | null = el;
+        for (let k = 0; k < 6 && n; k++) {
+          if (n.getAttribute && n.getAttribute('role') === 'row') return n;
+          n = n.parentElement;
+        }
+        return el.parentElement || el;
+      });
+      const rowLoc = handle.asLocator(scope as Page, '[role=row]');
+      const cells = rowLoc.getByRole('gridcell');
+      const nC = await cells.count().catch(() => -1);
+      parts.push(`cells=${nC}`);
+      for (let k = 0; k < Math.min(nC, 5); k++) {
+        const ci = await cells
+          .nth(k)
+          .evaluate((el) => {
+            const fe = el as unknown as { shadowRoot?: ShadowRoot | null };
+            return `t=${el.tagName.toLowerCase()} sh=${!!fe.shadowRoot} text="${(el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 20)}" inner=${(el.innerHTML || '').replace(/\s+/g, ' ').slice(0, 120)}`;
+          })
+          .catch((e: unknown) => `fail:${e instanceof Error ? e.message : 'x'}`);
+        parts.push(`c${k}:${ci}`);
+      }
+    }
+  }
+  return parts.join(' || ');
+}
+
+/**
  * Monatszeilen in einer Related-List (Karte oder View-All-Seite), gelesen
- * über Playwrights native Role-Locators — die piercen das LWC-Shadow-DOM
- * automatisch. ARIA-Struktur (AX-Snapshot 2026-09-18): row → rowheader
+ * über Playwrights native Role-Locators (piercen LWC-Shadow-DOM für die
+ * ROW-ERKENNUNG). ARIA-Struktur (AX-Snapshot 2026-09-18): row → rowheader
  * "YYYY-MM", gridcell Anzahl, gridcell Betrag, gridcell "Show Actions".
- * `scope` = Page (View-All-Seite) ODER die Karten-Locator (Record-Page,
- * wo mehrere Lists grids gleichzeitig rendern).
+ * `scope` = Page (View-All) ODER Locator (Karte). WICHTIG: der Monats-TEXT
+ * ist u. U. in Shadow-DOM — textContent kann "" liefern, OBWOHL die Row
+ * existiert (Suite9: 9 rows, 9x leer). In dem Fall FAD-BREAK + gridDiag,
+ * statt bis zum Timeout zu warten.
  */
 async function historyMonths(
-  scope: Page | import('@playwright/test').Locator,
+  scope: Page | Locator,
   timeoutMs = 45000,
   minMonths = 3
 ): Promise<string[]> {
   const wait = async () => new Promise((r) => setTimeout(r, 1000));
   const start = Date.now();
   for (;;) {
-    // WICHTIG: Locator-Neame-Filter ({ name: /…/ }) matcht die berechneten
-    // accnames der Karten-Rowheaders NICHT (Fehlerlauf 2026-09-18: any=6,
-    // month-match=0) — deshalb: alle Rowheaders, Filter in JS.
     const all = await scope.getByRole('rowheader').allTextContents().catch(() => []);
     const found = all.map((t) => t.trim()).filter((t) => /^\d{4}-\d{2}$/.test(t));
-    if (found.length >= minMonths || Date.now() - start > timeoutMs) {
-      if (found.length < minMonths) {
-        // Fehldiagnose statt Blind-Timeout: was SIEHT die Role-Engine an?
-        const anyRH = await scope.getByRole('rowheader').count().catch(() => -1);
-        const grids = await scope.getByRole('grid').count().catch(() => -1);
-        const raw = JSON.stringify(all.map((t) => t.trim()).slice(0, 12));
-        const txt: string = 'page' in scope
-          ? ((await (scope as Page).locator('table, [role="row"]').count().catch(() => -1)) + ' rows-cells')
-          : '<locator-scope>';
-        throw new Error(`historyMonths: nur ${found.length}/${minMonths} Monatsrowheaders nach ${Math.round((Date.now() - start) / 1000)}s. Lokator-Diagnostik: rowheader(any)=${anyRH}, grid=${grids}, ${txt}, rawNames=${raw}`);
-      }
-      return found.sort();
+    const nonEmpty = all.filter((t) => t.trim()).length;
+    if (found.length >= minMonths) return found.sort();
+    const gridFullButBlank = all.length >= minMonths && nonEmpty === 0;
+    if (gridFullButBlank || Date.now() - start > timeoutMs) {
+      const anyRH = await scope.getByRole('rowheader').count().catch(() => -1);
+      const grids = await scope.getByRole('grid').count().catch(() => -1);
+      const diag = await gridDiag(scope);
+      throw new Error(
+        `historyMonths: ${found.length}/${minMonths} nach ${Math.round((Date.now() - start) / 1000)}s. ` +
+          `rowheader(any)=${anyRH} grid=${grids} nonEmpty=${nonEmpty}/${all.length} ` +
+          `${gridFullButBlank ? 'GRID-VOLL-ABER-TEXT-NICHT-LESBAR' : 'TIMEOUT'} :: ${diag}`
+      );
     }
     await wait();
   }
