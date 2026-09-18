@@ -449,14 +449,27 @@ test.describe('[SCRUM-417] Offener Chancen-Verlauf je Kunde', () => {
         description: `AK1(Karte) ${name}: Related-List-Karte hat binnen 90 s keine Monatszeilen gerendert — AK1-Vollzähligkeit wird von der View-All-Seite getragen (unten).`,
       });
     } else {
+      // Werte aus EINEEM ariaSnapshot (AX-Baum) — die Karte rendert die
+      // Related-List wie View-All in LWC-Shadow-DOM; light-DOM textContent
+      // (historyRowValues) lieferte dort leere Zeilen (Suite10: Karte/2026-01
+      // "leere Zeile", obwohl der AX-Snapshot desselben Zeitpunkts die Zellen
+      // "0" / "0,00 €" zeigt). ariaSnapshot = konsistente Momentaufnahme, kein
+      // Race zwischen Header- und Zell-Read. Dieselbe Funktion wie Stufe 2.
+      const axCard = await axMonthlyRows(page);
       for (const m of cardMonths) {
         expect(months, `Karte zeigt Monat ${m} außerhalb Januar..heute`).toContain(m);
         // Jede sichtbare Karte-Zeile muss pro Monat Zählung UND Betrag tragen
         // UND = SOQL; leere/falsche Werte sind kein AK-Erfüllnis.
-        const r = await historyRowValues(page, m);
+        const axR = axCard.get(m);
+        let r: { count: number | undefined; value: number | undefined } =
+          axR ?? { count: undefined, value: undefined };
+        if (r.count === undefined || r.value === undefined) {
+          const f = await historyRowValues(page, m);
+          r = { count: f.count ?? r.count, value: f.value ?? r.value };
+        }
         const s = soqlByMonth[m];
         expect(r.count !== undefined && r.value !== undefined,
-          `Karte ${name}/${m}: Zellen ohne Anzahl UND Betrag (leere Zeile)`).toBe(true);
+          `Karte ${name}/${m}: Zellen ohne Anzahl UND Betrag (AX-Reader + light-DOM-Reader leer) — axRows=${JSON.stringify(Object.fromEntries(axCard))}`).toBe(true);
         expect(r.count, `Karte ${name}/${m}: UI-Anzahl ${r.count} != SOQL ${s.count}`).toBe(s.count);
         expect(approx(r.value!, s.value), `Karte ${name}/${m}: UI-Betrag ${r.value} != SOQL ${s.value}`).toBe(true);
       }
