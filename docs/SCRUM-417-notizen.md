@@ -42,3 +42,39 @@ Kein `__lookup`-Token (Analytics-REST-Namensraum).
 - **Fehldiagnose-Ausgang Suite5**: Article-Wait self 30000ms timeout (selbst die Karte-Heading kam nicht in 30 s) → Article-Wait auf 90 s.
 - **AK2**: green seit Suite 4. Kunden-Kontext kommt aus dem Account-Link (href `/lightning/r/<acc>/view`); Gross-Gesamtwert kommt aus der Summary-Leiste (6.352.700,00 € == SOQL sum, 162 == SOQL count — verifiziert, match=True).
 - Commits: d6541c0 (Role-Locators + URL + AX2-Summary), 98c181e (Grid-attached + Fehldiagnose + Link-Regex). Suite6 läuft mit 90-s Article-Wait.
+
+## E2E-Runde 3 (2026-09-18, 03:45–04:05)
+- Suite5: AK1 ✘ 30s-Wait fuer Karten-Label zu kurz (Parallel-Load). Fix: 90s.
+- Suite6: AK1 ✘ accname-Quirk: Locator-Name-Filter ({name:/\d{4}-\d{2}/}) matcht
+  die BERECHNETEN accnames nicht (any=6, name-match=0). Fix: alle rowheader
+  holen, Filter in JS (/^\d{4}-\d{2}$/). Commit f8aeadc (Karte-Poll im
+  Seitenscope: YYYY-MM-Rowheaders sind unique der History-Liste).
+- Suite7: AK1 ✘ Karte: getByText/90s Timeout OBTROTZ gerendert (AX-Snapshot
+  desselben Zeitpunkts zeigt Karte mit 6+ Rows). => Karten-Label-Wait verworfen,
+  Monatsrowheaders als Poll-Anker.
+- Suite8a: AK1 ✘ TypeError in der EIGENEN Diagnose: scope.first() existiert auf
+  Page nicht (nur Locator). Diagnose war der Crash, nicht die Assertion.
+- EVIDENZ Suite8a-Fehlerzeitpunkt (error-context 03:43, View-All 001WU00002DCF1aYAH):
+  ARIA-Grid rendert ALLE 9 Monate (rowgroup>row>rowheader "2026-01".."2026-09")
+  mit gridcells 0/0,00 € bis 2026-08 und 3/600,00 € fuer 2026-09.
+  => View-All-Struktur ist IDENTISCH zur Karte (rowheader+gridcell, NICHT
+  th/td); der Report-Finder reportRows() (table tr) gilt hier NICHT.
+- Fix (ec5f015): Diagnose page-safe; Poll: Karte 90s (WEICH, Warnung bei 0
+  Rows — View-All traegt die AK1), View-All 120s (HART, 9 Monate + Werte=SOQL).
+- Suite8b laeuft (proc_01b8dac4dd8e). AK2/AK4/AK5 seit Suite4 gruen.
+
+## E2E-Runde 4 (2026-09-18, ab 04:10)
+- WURZEL-GRUND AK1-Werte (Suite9): "rowheader(any)=9, 9x textContent leer".
+  View-All rendert die Monatszeilen in GESCHLOSSENER Shadow-Root.
+  Accessibility-Tree (getByRole, ariaSnapshot) zeigt sie KORREKT;
+  Element.textContent/allTextContents sehen nichts. KARTe = Light-DOM
+  (Suite6: 6 Monate lesbar) — umgekehrtes Vertrauensprofil pro Stage.
+- FIX (69a2e28, f8f6187): historyMonths = light-DOM + ariaSnapshot-Union;
+  Werte Stage-2 per axMonthlyRows (1 ariaSnapshot -> Map Monat->{count,value});
+  light-DOM-Fallback. Test-Timeout 480s (Org-Last 6.2 min/file).
+- ariaSnapshot-Format (Playwright 1.61, doc-geprueft): YAML-ish,
+  Zeile "- rowheader: \"2026-01\"" / "- gridcell: \"0,00 EUR\"".
+- Browser-Use-CLI (browser_exec) ist in dieser Umgebung CLI-Wrapper,
+  liefert --help statt Live-DOM — NICHT als Locator-Ground-Truth nutzbar.
+  Einziges Live-Werkzeug: npm run probe (INTERAKTIVE Elemente nur,
+  data-Zellen blind) + error-context.md + in-spec gridDiag.
