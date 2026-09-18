@@ -137,3 +137,22 @@ Kein `__lookup`-Token (Analytics-REST-Namensraum).
 - Tree-Warnung: untracked .clinerules/*, tests/e2e/scratch/probe417*.js,
   reports/, manifest/*, force-app .../SCRUM396_*.xml = NICHT meine Files,
   unanugefasst (anderer Agent / unvollendete Tickets).
+
+## Ergebnis-Suite12 (09:20) + Apex-Verifikation (09:25-)
+- Suite12 auf 921c491: 4/4 GRUEN in 2.1 min. AK1 [AK1-timing]: SOQL 5s,
+  Record 8s, KART 8s (6/9rows, Werte=SOQL), ViewAll 12s (9/9, Jan..Sep,
+  2026-09=3/600). AK2: 12 Monatsrows, Dickenson plc 9x=SOQL, UI 162/
+  6.352.700,00 == SOQL. AK4: TEST-SCRUM-416-AK1 3/600==3/600. AK5: 18
+  Accounts, Drop=Sept-Aug (10x diskriminiert vs Aug-Juli), 0 mit Drop<0 ->
+  0 Report-Zeilen. Lauf-JSON: test-report/playwright-results.json
+  (gitignored; HTML = CI-Artefakt "playwright-report", 14 Tage).
+- PR #114 OPEN + MERGEABLE (gh pr list). CI-Trigger = PR -> master.
+- Apex-Tests laufen: SCRUM417OpenOpportunityHistoryTest (7 static void:
+  oneRowPerMonth_zeroZeroWhereInactive, idempotentSecondRun,
+  latestMonthRow_matches416LiveFields, dropField_equalsLastMinusPrevFromRows,
+  purePredicate_currentMonth_onlyOpen, purePredicate_pastMonth_openAtMonthEnd,
+  pureDrop_nullFirstMonth_negativeOnDecrease) + ...FlsTest (
+  historyInvisibleWithoutPS_readOnlyWithPS — NEGATIVE FLS). ->
+  /tmp/417_apex.json (proc_9db0e79b39e0).
+- Jira-Abschluss-Kommentar + Transition 4 (Deployment) + @devops-agent
+  SOFORT nach Apex-Exit.
