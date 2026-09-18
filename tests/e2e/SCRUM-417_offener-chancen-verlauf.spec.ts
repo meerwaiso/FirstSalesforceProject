@@ -169,7 +169,7 @@ async function reportRows(frame: Frame) {
     if ((await link.count().catch(() => 0)) > 0) {
       const href = (await link.first().getAttribute('href').catch(() => null)) || '';
       const nameTxt = (await link.first().textContent().catch(() => null)) || '';
-      cur = { name: nameTxt.trim(), id: href.match(/\/r\/(\w{18})\/view/)?.[1] ?? '' };
+      cur = { name: nameTxt.trim(), id: href.match(/r\/(?:lightning\/)?(\w{18})\/view/)?.[1] ?? '' };
     }
     out.push({
       customer: cur.name,
@@ -230,7 +230,16 @@ async function historyMonths(
     const found = (await scope.getByRole('rowheader', { name: /^\d{4}-\d{2}$/ }).allTextContents().catch(() => []))
       .map((t) => t.trim())
       .filter((t) => /^\d{4}-\d{2}$/.test(t));
-    if (found.length >= minMonths || Date.now() - start > timeoutMs) return found.sort();
+    if (found.length >= minMonths || Date.now() - start > timeoutMs) {
+      if (found.length < minMonths) {
+        // Fehldiagnose statt Blind-Timeout: was SIEHT die Role-Engine an?
+        const anyRH = await scope.getByRole('rowheader').count().catch(() => -1);
+        const grids = await scope.getByRole('grid').count().catch(() => -1);
+        const txt = (await scope.first().innerText().catch(() => '<n/a>')).slice(0, 260).replace(/\n/g, ' | ');
+        throw new Error(`historyMonths: nur ${found.length}/${minMonths} Monatsrowheaders nach ${Math.round((Date.now() - start) / 1000)}s. Lokator-Diagnostik: rowheader(any)=${anyRH}, grid=${grids}, Text="${txt}"`);
+      }
+      return found.sort();
+    }
     await wait();
   }
 }
@@ -284,7 +293,12 @@ test.describe('[SCRUM-417] Offener Chancen-Verlauf je Kunde', () => {
     // Scope = KARTe: die Record-Page rendert mehrere Related-Lists gleichzeitig
     // (Opportunities, Contacts, …); nur within der HISTORY-Karte zählen
     // die Monatsrowheaders.
-    const cardMonths = await historyMonths(card, 45000);
+    // Der Karten-HEADER rendert sofort, die Grid-DATEN kommen verspätet —
+    // belegtes Empirisches (Fehlerlauf 2026-09-18): 45-s-Poll sah 0 Zeilen,
+    // der AX-Snapshot des Fehlerzeitpunkts wies 6+ Monatsrows vor (Lazy Data
+    // unter Parallel-Load). Zuerst Grid-Container, dann Poll-Fenster 90 s.
+    await card.getByRole('grid').first().waitFor({ state: 'attached', timeout: 90000 });
+    const cardMonths = await historyMonths(card, 90000);
     expect(
       cardMonths.length,
       `Related-List-Karte zeigt keine Monatszeilen für ${name} (erwartet ≥1, gefunden 0)`
