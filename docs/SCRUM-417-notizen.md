@@ -35,3 +35,10 @@ Kein `__lookup`-Token (Analytics-REST-Namensraum).
 - AK5-Test jetzt SOQL-getrieben: Drop-Feld auf JEDEM Account = Sept−Aug aus History-Zeilen (Bulk-Query, 1 Query), UI-Zeilen = Anzahl Drop<0.
 - `sf data query`: `SUM(...)`/AS-Alias wird abgewiesen (bekanntes Quirk) → Plain-Select + JS-`reduce` in Spec.
 - 37 Probe-Skripte in `tests/e2e/scratch/` (2.421 Zeilen) = Ballast; Werkzeug `npm run probe` existiert bereits (scripts/probe-locators.js). Neue Erkenntnisse gehören ins Spec, nicht in Probe #38.
+## E2E-Runde 2 (2026-09-18, nach Suite 4: AK2/AK4/AK5 grün, AK1 rot)
+- **AK1-Reader-Fix**: Playwright-Role-Locators (`getByRole('rowheader'|'grid')`) statt hand-gemachtem Shadow-DFS — piercen das LWC-Shadow-DOM nativ. Karte = `grid` → `row`/`rowheader` "YYYY-MM"/`gridcell` (AX-Snapshot 2026-09-18, Fehlerzeitpunkt).
+- **View-All-URL**: korrekt `…/related/OpenOpportunityHistoryRecords__r/view` (Relationship-Name), NICHT `OpenOpportunityHistory__c`. AX-Beleg: Karten-Heading-Link.
+- **Lazy-Data-Befund AK1**: Karten-HEADER rendert sofort, Grid-DATEN kommen >45 s nach Page-Load (Parallel-Load: 4 Other-Lists gleichzeitig). Suite4: 45-s-Poll sah 0; AX-Snapshot desselben Fehlerzeitpunkts wies 2026-01..06 aus. Fix: `card.getByRole('grid').waitFor({state:'attached'})` VOR dem Poll + 90-s-Fenster + Fehldiagnose (rowheader-count, grid-count, innerText in der Fehlermeldung).
+- **Fehldiagnose-Ausgang Suite5**: Article-Wait self 30000ms timeout (selbst die Karte-Heading kam nicht in 30 s) → Article-Wait auf 90 s.
+- **AK2**: green seit Suite 4. Kunden-Kontext kommt aus dem Account-Link (href `/lightning/r/<acc>/view`); Gross-Gesamtwert kommt aus der Summary-Leiste (6.352.700,00 € == SOQL sum, 162 == SOQL count — verifiziert, match=True).
+- Commits: d6541c0 (Role-Locators + URL + AX2-Summary), 98c181e (Grid-attached + Fehldiagnose + Link-Regex). Suite6 läuft mit 90-s Article-Wait.
