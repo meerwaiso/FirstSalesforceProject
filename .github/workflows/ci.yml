@@ -438,6 +438,17 @@ jobs:
               if gemeldet - gelesen > 1:
                   print(f"::error title=Prod drift gate::Salesforce reports {gemeldet} "
                         f"component error(s) but only {gelesen} line(s) could be parsed.")
+                  # Measured 2026-09-18 (run 35355363613): gemeldet 110, gelesen 108, drift
+                  # empty. The gap came from the job-blocker entries — Salesforce counts them
+                  # in its total but does not print them in the "Error in ..." shape this
+                  # parser matches. Naming that here keeps the next reader from hunting a
+                  # parser bug while the cause sits in the warning above.
+                  if apex:
+                      print(f"  Likely cause: {len({n for n, _ in apex})} class(es) have "
+                            f"pending Apex jobs (see the warning above), not unparsed drift. "
+                            f"Enable 'Allow deployments of components when corresponding Apex "
+                            f"jobs are pending or in progress' in Setup > Deployment Settings, "
+                            f"or abort the jobs before validating.")
                   sys.exit(1)
 
           print(f"No component drift. Deploy status: {r.get('status', d.get('status', '?'))}")
