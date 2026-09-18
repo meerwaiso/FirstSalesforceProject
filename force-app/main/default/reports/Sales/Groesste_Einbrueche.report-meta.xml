@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns>
+        <field>ACCOUNT.NAME</field>
+    </columns>
+    <columns>
+        <aggregateTypes>Sum</aggregateTypes>
+        <field>Account.Open_Opportunity_Value__c</field>
+    </columns>
+    <columns>
+        <aggregateTypes>Sum</aggregateTypes>
+        <field>Account.Open_Value_Drop_Last_Month__c</field>
+    </columns>
+    <description>SCRUM-417 AK5: größte Einbrüche des offenen Werts (letzter Monat vs. Vormonat, systemseitig in Account.Open_Value_Drop_Last_Month__c). Filter Drop &lt; 0, absteigend nach Drop-Größe — fünf stärkste Einbrüche obenan. Scope=Organization.</description>
+    <filter>
+        <criteriaItems>
+            <column>Account.Open_Value_Drop_Last_Month__c</column>
+            <operator>lessThan</operator>
+            <value>0</value>
+        </criteriaItems>
+    </filter>
+    <format>Summary</format>
+    <name>Groesste_Einbrueche</name>
+    <reportType>AccountList</reportType>
+    <scope>organization</scope>
+    <showDetails>true</showDetails>
+    <sortColumn>Account.Open_Value_Drop_Last_Month__c</sortColumn>
+    <sortOrder>Asc</sortOrder>
+</Report>

@@ -50,6 +50,11 @@
                 <behavior>Readonly</behavior>
                 <field>Open_Opportunity_Value__c</field>
             </layoutItems>
+            <!-- SCRUM-417: Wert-Einbruch letzter Monat (read-only, systemmaintained) -->
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Open_Value_Drop_Last_Month__c</field>
+            </layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>
                 <field>NumberOfEmployees</field>
@@ -244,6 +249,13 @@
         <fields>OPPORTUNITY.AMOUNT</fields>
         <fields>OPPORTUNITY.CLOSE_DATE</fields>
         <relatedList>RelatedOpportunityList</relatedList>
+    </relatedLists>
+    <!-- SCRUM-417: Offener Chancen-Verlauf (read-only, systemmaintained) -->
+    <relatedLists>
+        <fields>Snapshot_Month__c</fields>
+        <fields>Open_Count__c</fields>
+        <fields>Open_Value__c</fields>
+        <relatedList>OpenOpportunityHistory__c.AccountId__c</relatedList>
     </relatedLists>
     <relatedLists>
         <fields>CASES.CASE_NUMBER</fields>

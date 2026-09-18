@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-417 Phase 1: neues Custom Object OpenOpportunityHistory__c mit seinen
+     5 Feldern (MD-Account, Snapshot_Month, Open_Count, Open_Value, History_Key)
+     + das neue read-only Account-Feld Open_Value_Drop_Last_Month__c. Zuerst allein
+     (house-Regel: erst Felder, dann das sie Referenzierende). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>OpenOpportunityHistory__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>OpenOpportunityHistory__c.AccountId__c</members>
+        <members>OpenOpportunityHistory__c.Snapshot_Month__c</members>
+        <members>OpenOpportunityHistory__c.Open_Count__c</members>
+        <members>OpenOpportunityHistory__c.Open_Value__c</members>
+        <members>OpenOpportunityHistory__c.History_Key__c</members>
+        <members>Account.Open_Value_Drop_Last_Month__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>

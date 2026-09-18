@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Offener Chancen-Verlauf</label>
+    <pluralLabel>Offener Chancen-Verlauf</pluralLabel>
+    <sharingModel>ControlledByParent</sharingModel>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <nameField>
+        <displayFormat>HIST-{0000}</displayFormat>
+        <label>Lauf-Nr.</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <description>SCRUM-417: Monats-Snapshot des offenen Chancen-Bestands je Kunde (eine Zeile je Kunde je Monat seit Jahresanfang). Wird ausschliesslich vom Apex-Launch OpenOpportunityHistoryRebuilder gepflegt (nachts per Scheduled Job), von Hand nicht zu bearbeiten. Erbt die Sichtbarkeit des Accounts (Master-Detail, SharingModel ControlledByParent).</description>
+</CustomObject>

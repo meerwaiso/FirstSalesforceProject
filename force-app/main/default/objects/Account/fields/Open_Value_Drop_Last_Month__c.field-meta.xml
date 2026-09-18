@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Open_Value_Drop_Last_Month__c</fullName>
+    <label>Offener Wert-Rückgang (letzter Monat)</label>
+    <description>SCRUM-417: Diff zwischen offenem Betrag des aktuellen Monats und des Vormonats: Wert(aktueller Monat) − Wert(Monat davor). Negativ = Einbruch; null im Jahres-Monat (Januar 2026) ohne Vormonat. Dient als Filter-/Sortier-Spalte des Einbruch-Report. Systemmanaged via OpenOpportunityHistoryRebuilder; von Hand nicht änderbar.</description>
+    <type>Currency</type>
+    <precision>18</precision>
+    <scale>2</scale>
+    <required>false</required>
+    <unique>false</unique>
+    <externalId>false</externalId>
+    <trackTrending>false</trackTrending>
+</CustomField>

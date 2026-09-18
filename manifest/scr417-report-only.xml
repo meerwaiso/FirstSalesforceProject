@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Sales/Offene_Werte_Verlauf</members>
+        <name>Report</name>
+    </types>
+    <apiVersion>67.0</apiVersion>
+</Package>

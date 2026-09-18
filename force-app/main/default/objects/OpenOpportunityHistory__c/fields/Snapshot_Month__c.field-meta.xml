@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Snapshot_Month__c</fullName>
+    <label>Snapshots-Monat</label>
+    <description>SCRUM-417: Monats-Snapshot-Datum im ISO-Format yyyy-MM (z. B. 2026-01). Text statt Datum: deterministisches Sortieren + sichere Text-Unique-Key-Formel ohne Lokal-Risiko. Systemmanaged, von Hand nicht änderbar.</description>
+    <type>Text</type>
+    <length>7</length>
+    <required>false</required>
+    <unique>false</unique>
+    <externalId>false</externalId>
+    <trackTrending>false</trackTrending>
+</CustomField>

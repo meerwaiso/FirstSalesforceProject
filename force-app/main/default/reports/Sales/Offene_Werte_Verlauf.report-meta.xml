@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns>
+        <field>OpenOpportunityHistory__c$Open_Count__c</field>
+    </columns>
+    <columns>
+        <aggregateTypes>Sum</aggregateTypes>
+        <field>OpenOpportunityHistory__c$Open_Value__c</field>
+    </columns>
+    <description>SCRUM-417 AK1/AK2: Monats-Verlauf der offenen Chancen je Kunde — eine Zeile je Kunde je Monat (flache Gruppierung Kunde → Monat). 2–3 Kunden nebeneinanderlegen via Report-Filter auf Account.Name in der UI; Kurve via Chart-Modus. Scope=Organization.</description>
+    <format>Summary</format>
+    <groupingsDown>
+        <field>OpenOpportunityHistory__c$AccountId__c.Name</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <groupingsDown>
+        <field>OpenOpportunityHistory__c$Snapshot_Month__c</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <name>Offene_Werte_Verlauf</name>
+    <reportType>SCRUM417_OpportunityHistory__c</reportType>
+    <scope>organization</scope>
+    <showDetails>true</showDetails>
+</Report>

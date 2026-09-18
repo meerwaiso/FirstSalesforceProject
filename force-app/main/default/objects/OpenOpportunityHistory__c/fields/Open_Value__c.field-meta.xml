@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Open_Value__c</fullName>
+    <label>Offene Chancen (Betrag)</label>
+    <description>SCRUM-417: Summe der aktuellen Amount der offenen Chancen dieses Accounts auf Monatsende M (IsClosed = false; fehlende Beträge zählung als 0). Systemmanaged via OpenOpportunityHistoryRebuilder, nicht von Hand änderbar.</description>
+    <type>Currency</type>
+    <precision>18</precision>
+    <scale>2</scale>
+    <required>false</required>
+    <unique>false</unique>
+    <defaultValue>0</defaultValue>
+    <externalId>false</externalId>
+    <trackTrending>false</trackTrending>
+</CustomField>
