@@ -47,7 +47,6 @@ import { openRecordPage } from './record-page';
 
 const REPORT_TREND = '00OWU00000QQhGr2AL'; // Offene_Werte_Verlauf (AK1/AK2)
 const REPORT_DROPS = '00OWU00000QQhjt2AD'; // Groesste_Einbrueche (AK5)
-const H_LIST_LABEL = 'Offener Chancen-Verlauf';
 const HISTORY_OBJECT = 'OpenOpportunityHistory__c';
 
 // Erwarteter Monatsumfang: Januar bis zum Lauf-Monat (2026-09 → 9 Monate).
@@ -292,18 +291,19 @@ test.describe('[SCRUM-417] Offener Chancen-Verlauf je Kunde', () => {
 
     // --- Stufe 1: Related-List-Karte auf der Record-Page (gekürzt rendert) ---
     await openRecordPage(page, `/lightning/r/Account/${acc}/view`);
-    const card = page.getByRole('article', { name: new RegExp(`^${H_LIST_LABEL}`) });
-    await card.getByText(H_LIST_LABEL, { exact: false }).first()
-      .waitFor({ state: 'visible', timeout: 90000 });
-    // Scope = KARTe: die Record-Page rendert mehrere Related-Lists gleichzeitig
-    // (Opportunities, Contacts, …); nur within der HISTORY-Karte zählen
-    // die Monatsrowheaders.
-    // Der Karten-HEADER rendert sofort, die Grid-DATEN kommen verspätet —
-    // belegtes Empirisches (Fehlerlauf 2026-09-18): 45-s-Poll sah 0 Zeilen,
-    // der AX-Snapshot des Fehlerzeitpunkts wies 6+ Monatsrows vor (Lazy Data
-    // unter Parallel-Load). Zuerst Grid-Container, dann Poll-Fenster 90 s.
-    await card.getByRole('grid').first().waitFor({ state: 'attached', timeout: 90000 });
-    const cardMonths = await historyMonths(card, 90000);
+    // NICHT auf den Karten-Text warten: der accname der Karte ändert sich mit
+    // der (n+)-Zählung während des Renders — Suite7 (2026-09-18) timeoutete an
+    // getByText/90s, obwohl der AX-Snapshot desselben Zeitpunkts die Karte mit
+    // allen Rows vorwies. Die Monatsrowheaders (YYYY-MM) sind UNIQUE der
+    // History-Liste (Contacts/Opportunities tragen keine) — direktester
+    // Beweis, dass die Karte lebt, und stabiler Poll-Anker als jeder
+    // Name-Match. 150 s: Karten-Load-Zeit schwankt (5 Related-Lists
+    // parallel; Suite6 <90 s, Suite7 Label >90 s).
+    const cardMonths = await historyMonths(page, 150000);
+    // Wertzellen: page-Scope — die YYYY-MM-Rowheaders sind unique der
+    // History-Liste (Opportunities/Contacts tragen keine), also keine
+    // Kontamination; historyRowValues findet den Monat per Text und liest
+    // die gridcell-Geschwister der ZEILE.
     expect(
       cardMonths.length,
       `Related-List-Karte zeigt keine Monatszeilen für ${name} (erwartet ≥1, gefunden 0)`
@@ -312,7 +312,7 @@ test.describe('[SCRUM-417] Offener Chancen-Verlauf je Kunde', () => {
       expect(months, `Karte zeigt Monat ${m} außerhalb Januar..heute`).toContain(m);
       // Jede sichtbare Karte-Zeile muss pro Monat Zählung UND Betrag tragen —
       // leere Werte sind kein AK-Erfüllnis.
-      const r = await historyRowValues(card, m);
+      const r = await historyRowValues(page, m);
       const s = soqlByMonth[m];
       expect(r.count !== undefined && r.value !== undefined,
         `Karte ${name}/${m}: Zellen ohne Anzahl UND Betrag (leere Zeile)`).toBe(true);
