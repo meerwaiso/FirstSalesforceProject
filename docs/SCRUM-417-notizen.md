@@ -90,3 +90,16 @@ Kein `__lookup`-Token (Analytics-REST-Namensraum).
   diag4 = AK1-alone-Lauf auf 1942bf0.
   Fallback-Logik: count undefined -> 1. parsierbare Zelle der Zeile; value -> 2.
   (Snapshot-Zeile: leer, Select-Item-Check, Anzahl, Betrag, Show Actions.)
+- diag4 (07:14, 8.3 min): AK1 KARTEN-STUFE GRUEN (AX-Reader 1942bf0 ok).
+  Neuer Fehler an spec.ts:489 = View-All-goto: "Test timeout of 480000ms
+  exceeded" + "page.goto: Target page, context or browser has been closed"
+  (record-page.ts:18). NICHT Org-Crash (free -m: 16GB frei, kein OOM in dmesg):
+  das 480s-Test-Budget war erschopft, Playwright schoess den Browser per
+  Timeout. Ursache: 11 aufeinanderfolgende sf-Roundtrips im Setup (pickAccount
+  2 + je Monat 1 x 9); heute (Morgen-Last) ~10-20s je Aufruf -> ~3 min Vorlauf.
+  error-context 07:14:14: 0 rowheaders (Seite tot, kein Live-Grid).
+- Fix 53b482e: soqlByMonthFor() = 1 IN-Query statt 9 (SOQL-Pruefung: IN-Liste
+  laeuft, ~1.4s bei 9 Zeilen). AK1-Budget rechnerisch: Setup ~1 min (3 SOQL
+  statt 11) + Karte 90s + View-All 120s + Rand = ~5-6 min < 480s.
+  diag5 = AK1-alone auf 53b482e (proc_48510822454d).
+  Wenn View-All auch unter Load >120s: historyMonths-Timeout 120000 -> 180000.
