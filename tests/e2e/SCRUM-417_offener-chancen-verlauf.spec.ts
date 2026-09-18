@@ -116,6 +116,32 @@ function historyRow(accountId: string, monthKey: string): { count: number; value
   };
 }
 
+/** Alle History-Zeilen eines Accounts in EINEM SOQL (statt je Monat ein eigener
+ * sf-Roundtrip). diag4 2026-09-18: das AK1-Setup feuerte 11 aufeinanderfolgende
+ * sf-Aufrufe (pickAccount 2 + je Monat 1), auf der langsamen Morgen-Org jeder
+ * ~10-20 s — das fraess ~3 min vom 480-s-Budget, bevor View-All startet (dort
+ * der goto dann am Testtimeout stirbt). 1 IN-Query statt 9 Roundtrips.
+ * Fehlende Zeilen wirft (wie historyRow) — Datenlage gewaendet = harter Fehler. */
+function soqlByMonthFor(
+  accountId: string,
+  months: string[]
+): Record<string, { count: number; value: number }> {
+  const recs = soql(
+    `SELECT Snapshot_Month__c, Open_Count__c, Open_Value__c FROM ${HISTORY_OBJECT} WHERE AccountId__c='${accountId}' AND Snapshot_Month__c IN (${months.map((m) => `'${m}'`).join(',')})`
+  );
+  const out: Record<string, { count: number; value: number }> = {};
+  for (const r of recs) {
+    out[String(r.Snapshot_Month__c)] = {
+      count: Number(r.Open_Count__c ?? 0),
+      value: Number(r.Open_Value__c ?? 0),
+    };
+  }
+  for (const m of months) {
+    if (!out[m]) throw new Error(`History-Zeile ${accountId}/${m} fehlt (SOQL) — Datenlage gewaendet?`);
+  }
+  return out;
+}
+
 function accountLive416(accountId: string): { count: number | null; value: number | null } {
   const recs = soql(`SELECT Open_Opportunity_Count__c, Open_Opportunity_Value__c FROM Account WHERE Id='${accountId}'`);
   if (recs.length !== 1) throw new Error(`Account ${accountId} liefert ${recs.length} Records, erwartet 1`);
@@ -417,8 +443,7 @@ test.describe('[SCRUM-417] Offener Chancen-Verlauf je Kunde', () => {
     test.setTimeout(480000); // Org-Last 2026-09-18: 6.2 min/file; Karte 90 s + View-All 120 s + 10 SOQL-Read-backs
     const { id: acc, name } = pickAccountWithHistory();
     const months = expectedMonths();
-    const soqlByMonth: Record<string, { count: number; value: number }> = {};
-    for (const m of months) soqlByMonth[m] = historyRow(acc, m);
+    const soqlByMonth = soqlByMonthFor(acc, months);
 
     // --- Stufe 1: Related-List-Karte auf der Record-Page (gekürzt rendert) ---
     await openRecordPage(page, `/lightning/r/Account/${acc}/view`);
