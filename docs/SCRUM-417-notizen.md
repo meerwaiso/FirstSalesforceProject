@@ -120,3 +120,20 @@ Kein `__lookup`-Token (Analytics-REST-Namensraum).
   struct. Budget-Problem. 660s bleibt als Puffer.
 - NÄCHSTER SCHRITT: Full-Suite [SCRUM-417] (alle 4 AKs, EINER LAUF, auf
   0a5aefb) -> dann Jira-Abschluss + Übergabe.
+
+## E2E-Runde 6 (08:30-09:30)
+- Suite11 (alle 4 AKs, auf 0a5aefb): AK2/4/5 GRUEN, AK1 ROT. [AK1-timing]:
+  SOQL 4s, Record-goto 8s, DANN "Karte gerendert: 0 Monatsrows +685s"
+  (= 677 s AUF EINEM EINZELNEN Read, obwohl historyMonths-Timeout=90s),
+  dann Test timeout 660s.
+- WURZEL (neuer, 4. Timeout-Treffer): die in-Loop-Reads in historyMonths
+  (ariaSnapshot/allTextContents) sind NICHT selbst gezeitigt. Ein einzelner
+  hungender Read faehrt die While-Schleife, das "timeoutMs" wird nie
+  erreicht. Deckel-erhoehung (300/360/480/660) hat das NIE curierbar
+  gemacht — der Read ignoriert jeden Deckel. Erst der mitBudget-Wrapper
+  (Promise.race, 20s pro Read) macht das Polling-Timeout zu einem echten
+  Hard-Cap. Committed 921c491.
+- Suite12 laeuft auf 921c491 (alle 4 AKs, /tmp/417_suite12.log).
+- Tree-Warnung: untracked .clinerules/*, tests/e2e/scratch/probe417*.js,
+  reports/, manifest/*, force-app .../SCRUM396_*.xml = NICHT meine Files,
+  unanugefasst (anderer Agent / unvollendete Tickets).
