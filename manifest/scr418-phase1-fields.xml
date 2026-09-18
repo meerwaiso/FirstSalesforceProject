@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-418 Phase 1: beide neuen Felder am Case (ZUERST deployen, weil
+         Trigger/Layout/PS/Report darauf referenzieren). 2-Phasen-Regel wie
+         SCRUM-403/365. -->
+    <types>
+        <members>Case.Reactivation_Count__c</members>
+        <members>Case.Last_Reactivation__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>

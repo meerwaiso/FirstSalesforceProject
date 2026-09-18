@@ -180,6 +180,14 @@
                 <behavior>Readonly</behavior>
                 <field>Eskalationsstufe__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Reactivation_Count__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Last_Reactivation__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>

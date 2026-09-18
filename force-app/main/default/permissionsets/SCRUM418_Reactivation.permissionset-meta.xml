@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.Reactivation_Count__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.Last_Reactivation__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM418_Reactivation</label>
+    <description>Read-only FLS für Case.Reactivation_Count__c + Case.Last_Reactivation__c (SCRUM-418). Beide Felder sind systemmaintained (CaseReactionTrigger) — kein Update für irgendwen. Systemwrites laufen im System-Modus und umgehen FLS. PO-Festlegung: wer Case-Lesezugriff hat, sieht die Felder; niemand ändert sie von Hand.</description>
+</PermissionSet>

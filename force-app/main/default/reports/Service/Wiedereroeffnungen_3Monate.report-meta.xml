@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns><field>CASE_NUMBER</field></columns>
+    <columns><field>SUBJECT</field></columns>
+    <columns><field>ACCOUNT</field></columns>
+    <columns><field>CONTACT</field></columns>
+    <columns><field>Case.Reactivation_Count__c</field></columns>
+    <columns><field>Case.Last_Reactivation__c</field></columns>
+    <filter>
+        <logicalOperator>or</logicalOperator>
+        <filterItems>
+            <field>CREATED_DATE</field>
+            <operator>exqlast90days</operator>
+            <value>0</value>
+        </filterItems>
+        <filterItems>
+            <field>Case.Last_Reactivation__c</field>
+            <operator>exqlast90days</operator>
+            <value>0</value>
+        </filterItems>
+    </filter>
+    <format>Summary</format>
+    <groupingsDown>
+        <field>Case.Reactivation_Count__c</field>
+        <sortOrder>Desc</sortOrder>
+    </groupingsDown>
+    <description>Wiedereröffnete Cases der letzten 3 Monate, sortiert absteigend nach Reaktivierungszahl (SCRUM-418). Fenster: Fälle, die in 3 Monaten eröffnet ODER wiederaufgemacht wurden. Zeigt: Fallnummer, Betreff, Kunde (Account + Contact), Reaktivierungszahl, letzte Reaktivierung.</description>
+    <name>Wiedereroeffnungen_3Monate</name>
+    <reportType>caseList</reportType>
+    <scope>allusers</scope>
+</Report>
