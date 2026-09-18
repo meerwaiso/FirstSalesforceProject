@@ -292,7 +292,32 @@ async function historyMonths(
   const wait = async () => new Promise((r) => setTimeout(r, 1000));
   const start = Date.now();
   for (;;) {
-    const all = await scope.getByRole('rowheader').allTextContents().catch(() => []);
+    const scopeRH = scope as import('@playwright/test').Locator;
+    // ZWEI Quellen, ein Ergebnis (Befund Suite9+Snapshot 03:43):
+    //  (a) Light-DOM — liest die KARTE: Suite 6 saw 6 Monatsrows,
+    //      accname-Quirk: Text-Filter hier, nicht im Locator.
+    const lightAll =
+      await scopeRH.getByRole('rowheader').allTextContents().catch(() => [] as string[]);
+    const lightFound = lightAll.map((t) => t.trim()).filter((t) => /^\d{4}-\d{2}$/.test(t));
+    // (b) ariaSnapshot (AX) — NUR wenn Light-DOM ungenuegend: View-All ist
+    //     eine GESCHLOSSENE Shadow-Root (Light-DOM dort 9x ""); die Karte
+    //     ist Light-DOM (Suite 6: 6 Monatsrows) — da den Snapshot sparen.
+    let axAll: string[] = [];
+    if (lightFound.length < minMonths) {
+      const body =
+        typeof (scope as Page).url === 'function'
+          ? (scope as Page).locator('body')
+          : (scope as import('@playwright/test').Locator);
+      const snap = (await body.ariaSnapshot().catch(() => '')) || '';
+      axAll = snap
+        .split('\n')
+        .map((l) => {
+          const m = /rowheader\s*"?(\d{4}-\d{2})"?/.exec(l);
+          return m ? m[1] : '';
+        })
+        .filter((t) => t !== '');
+    }
+    const all = [...new Set([...lightFound, ...axAll])];
     const found = all.map((t) => t.trim()).filter((t) => /^\d{4}-\d{2}$/.test(t));
     const nonEmpty = all.filter((t) => t.trim()).length;
     if (found.length >= minMonths) return found.sort();
@@ -309,6 +334,41 @@ async function historyMonths(
     }
     await wait();
   }
+}
+
+/** AX-Baum der Related-List (Monate + Werte aus EINEM ariaSnapshot).
+ * WARUM: View-All rendert die Monatszeilen in einer GESCHLOSSENEN Shadow-Root:
+ * der Accessibility-Tree (getByRole/ariaSnapshot) traeegt die Monate korrekt,
+ * Light-DOM (textContent) liefert dort "" (Suite9: 9 rowheaders, 9x leer;
+ * AX-Beleg 03:43: 9/9 Monate). ariaSnapshot stoesst geschlossene Roots durch.
+ * Zuruck: Map Monat -> { count (1. parsbare Zelle), value (2. parsbare) }.
+ */
+async function axMonthlyRows(
+  scope: Page | Locator
+): Promise<Map<string, { count: number | undefined; value: number | undefined }>> {
+  const bodyLoc: Locator =
+    typeof (scope as Page).url === 'function' ? (scope as Page).locator('body') : (scope as Locator);
+  const snap = await bodyLoc.ariaSnapshot().catch(() => '');
+  const out = new Map<string, { count: number | undefined; value: number | undefined }>();
+  let cur: string | null = null;
+  for (const line of snap.split('\n')) {
+    const mh = /rowheader\s*:?["']?\s*["']?(20\d{2}-\d{2})/.exec(line);
+    if (mh) {
+      cur = mh[1];
+      if (!out.has(cur)) out.set(cur, { count: undefined, value: undefined });
+      continue;
+    }
+    const mg = /gridcell\s*["']([^"']*)["']/.exec(line);
+    if (mg && cur) {
+      const num = cellNum(mg[1]);
+      const rec = out.get(cur);
+      if (num !== undefined && rec) {
+        if (rec.count === undefined) rec.count = num;
+        else if (rec.value === undefined) rec.value = num;
+      }
+    }
+  }
+  return out;
 }
 
 /** Anzahl + Betrag einer einzelnen Monatszeile. Der rowheader trägt den
@@ -424,12 +484,25 @@ test.describe('[SCRUM-417] Offener Chancen-Verlauf je Kunde', () => {
     ).toBe(months.length);
 
     // Pro Monat: Zählung + Betrag = SOQL-Read-back, exakt.
+    // Werte aus EINEEM ariaSnapshot (AX-Baum): View-All rendert die Zeilen in
+    // geschlossener Shadow-Root — light-DOM textContent ist dort leer
+    // (Suite9: 9 rowheaders, 9x ""). light-DOM-Reader nur als Fallback bei
+    // AX-Formatabweichung; bleibt beides leer, zeigt die Fehldiagnose die
+    // komplette AX-Map (kein Blind-Tuning).
+    const axRows = await axMonthlyRows(page);
     let observed = '';
     for (const m of months) {
-      const r = await historyRowValues(page, m);
+      const axR = axRows.get(m);
+      let r: { count: number | undefined; value: number | undefined } =
+        axR ?? { count: undefined, value: undefined };
+      if (r.count === undefined || r.value === undefined) {
+        const f = await historyRowValues(page, m);
+        r = { count: f.count ?? r.count, value: f.value ?? r.value };
+      }
       const s = soqlByMonth[m];
-      expect(r.count !== undefined && r.value !== undefined,
-        `View-All ${name}/${m}: Zeile ohne Anzahl UND Betrag — leere Zeile genügt der AK nicht`
+      expect(
+        r.count !== undefined && r.value !== undefined,
+        `View-All ${name}/${m}: Zeile ohne Anzahl UND Betrag (AX-Reader + light-DOM-Reader) — axRows=${JSON.stringify(Object.fromEntries(axRows))}`
       ).toBe(true);
       expect(r.count, `View-All ${name}/${m}: UI-Anzahl ${r.count} != SOQL ${s.count}`).toBe(s.count);
       expect(approx(r.value!, s.value), `View-All ${name}/${m}: UI-Betrag ${r.value} != SOQL ${s.value}`).toBe(true);
