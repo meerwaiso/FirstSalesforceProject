@@ -414,7 +414,7 @@ test.describe('[SCRUM-417] Offener Chancen-Verlauf je Kunde', () => {
    *      pro Monat Zählung + Betrag = SOQL-Read-back (exakt, nicht nur ≥0).
    */
   test('AK1: Related-List (Teilmengen-Chek) + View-All zeigt alle Monate Jan..Sep mit Zählung und Summe', async ({ page }) => {
-    test.setTimeout(360000); // Record-Page + View-All (je ~90 s unter Last) + 11 SOQL-Read-backs
+    test.setTimeout(480000); // Org-Last 2026-09-18: 6.2 min/file; Karte 90 s + View-All 120 s + 10 SOQL-Read-backs
     const { id: acc, name } = pickAccountWithHistory();
     const months = expectedMonths();
     const soqlByMonth: Record<string, { count: number; value: number }> = {};
