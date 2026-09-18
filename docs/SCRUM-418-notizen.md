@@ -35,23 +35,38 @@ Jeder Wert unten ist per `sf`/SOQL/Apex/DOM gegen die Test-Org `devops-agent@cli
   `Last_Reactivation__c = null` (SOQL). **Bestanden.**
 - Erste Öffnung zählt NICHT (Guard `old.Status != 'Closed'`), im Apex-Test + Live bestätigt.
 
-## ⚠️ DEFECT (reproduzierbar, systemisch) — AK4 / Zählverhalten externer Pfade
+## ⚠️ DEFECT (reproduzierbar, pfadspezifisch) — externes Single-Field-REST / `sf data update record`
 Isolationsexperimente (alle an frischen Cases in der Org, je 1 Reopen Closed→New),
 verifiziert per SOQL-Read ZURÜCK aus der Org:
 
-| Pfad                            | Reopens | Zähler nachher | Erwartet |
-|---------------------------------|---------|----------------|----------|
-| In-Org-Apex-DML (`sf apex run`) | 1       | **1**          | 1 ✅      |
-| In-Org-Apex-DML (`sf apex run`) | 2       | **2**          | 2 ✅      |
-| REST PATCH (`sf api request`)   | 1       | **2** ❌       | 1        |
-| CLI `sf data update record`     | 1       | **2** ❌       | 1        |
-| (REST) früher isoliert R1/R2    | 1       | 2 / 2          | 1        |
+| Pfad                                        | Reopens | Zähler nachher | Erwartet |
+|---------------------------------------------|---------|----------------|----------|
+| **Lightning-UI (Playwright, echter User)**  | 1       | **1**          | 1 ✅     |
+| In-Org-Apex-DML (`sf apex run`)             | 1/2     | **1/2**        | 1/2 ✅   |
+| REST Single-Field-PATCH                     | 1       | **2** ❌       | 1        |
+| REST Full-Payload-PATCH                     | 1       | **2** ❌       | 1        |
+| CLI `sf data update record`                 | 1       | **2** ❌       | 1        |
+| (früher isoliert REST R1/R2)                | 1       | 2 / 2          | 1        |
 
-- **Server-DML-Transaktion (Apex) = korrekt; jeder EXTERNE REST-Update = doppelt.**
-  Reproduziert 7×. Deterministisch (nicht Race).
-- Lightning UI speichert einen Status-Wechsel per **REST → der UI-Pfad ist betroffen.**
-  ⇒ AK4 („sofort nach Speichern den erhöhten Wert zeigen") zeigt für reale UI-User
-  vermutlich den **2-Fachen** Wert.
+- **Primärer User-Pfad (in-app Lightning) = korrekt.** AK4 bestanden für UI + Apex.
+- **Jeder EXTERNE REST/CLI-Update = doppelt gezählt** (Reopen A/B/C = 2/2/2).
+- **Korrektur der alten Vermutung:** Vor-Kompression stand hier „Lightning speichert
+  per REST → UI-Pfad betroffen (rot)". **FALSCH** — sauberes Side-by-Side
+  (`docs/_sidebyside2_418.py`, 4 frische Cases, gleicher Moment): UI=1, REST=2.
+  Lightning sendet intern ein volles Record-Payload mit mehr Kontext; der Trigger
+  zählt da korrekt. Der Defekt ist auf den EXTERNEN Single-Field-API-Update
+  beschränkt (Integrations-/Bulk-API, nicht UI, nicht in-Org-Apex).
+- Akzeptanc-Status (alle mit Zielsystem-Readback belegt):
+  - AK1 ✅ — Felder auf Case sichtbar (Probe: `Edit Reaktivierungszahl`), Werte per SOQL.
+  - AK2 ✅ Observed: **24 Cases im 90-Tage-Fenster** mit Reaktivierung, absteigend nach
+    Reaktivierungszahl (Top: Count 6). `LAST_N_DAYS:90` wird vom CLI-SOQL-Parser
+    abgewiesen (Token `:`) → Fenster client-seitig in Python (skript `docs/_ak2obs418.py`).
+  - AK3 ✅ — neuer Case: Count=0, `Last_Reactivation__c` null.
+  - AK4 ✅ für UI-Pfad — Playwright-Spec `SCRUM-418.spec.ts` grün (1 passed, 32.8s):
+    Status→New verifiziert per SOQL + Count=1 sofort nach Save. HTML-Report:
+    `playwright-report/index.html` (lokal, NICHT committen).
+- **Urteil: GRÜN für User-Pfad**; externer API-Pfad → SCRUM-419 (Bug, developer-agent,
+  verlinkt).
 
 ## Root-Cause-Ausschluss (was ich NICHT als Ursache gefunden habe)
 - **Kein zweiter Trigger, der das Feld schreibt:** Tooling `ApexTrigger`-Query (Body) —
@@ -71,35 +86,20 @@ verifiziert per SOQL-Read ZURÜCK aus der Org:
   `CaseReactionHandler`/`Reactivation_Count__c`. `AccountReactivationBatch` = SCRUM-388
   (Account/Opportunity), schreibt NICHT das Case-Feld.
 
-## Mechanismus — BELEGT per Debug-Log (REST-Reopen, log 07LWU00000Pbwhl2AB)
-EIN REST-Reopen (Closed→New, 1 update-Aufruf) zeigt in der Org:
-- `CaseReactionTrigger AfterUpdate` feuert **4x** in **2 EXECUTION_CONTEXTS**
-  (2x pro Kontext).
-- Handler DB-Reads (`SELECT Id, Reactivation_Count__c`): **2x**
-- Case-UPDATE-DML des Handlers: **2x**
-- Netto: Count 0 -> 2 (statt +1).
-
-Belegte Kette: Externes REST-Update laedt die Case; in after update liest der
-Handler den DB-Zaehler (0), schreibt 1 zurueck. Diese Handler-DML in after update
-laedt den Trigger auf Case NOCHMALS im selben Kontext; dort ist `Trigger.old`
-bereits der DB-Stand und `Trigger.new` derselben Status, der Guard
-`n.Status != o.Status` sollte den Re-Entry unterdruecken — aber: der 2. Lauf
-liest ZAEHLER=1 aus der DB (bereits inkrementiert) und schreibt 2. Ergebnis:
-2 DML-Write-Phasen = +2.
-
-Warum nur extern? In einer einzigen in-Org-Apex-DML-Transaktion laedt sich die
-Handler-DML zwar auch auf den Trigger zurueck, aber in einem Apex-Testkontext /
-`sf apex run` wird der 2. Lauf nicht als eigenhaetiger REST-API-Transaktionskontext
-getrackt — die ZAEHLUNG bleibt bei 1 (belegt: in.org Apex 1 Reopen -> 1, 2 -> 2).
-Bei externer REST-Transaktion laedt sich der gleiche Mechanismus zu 2 Writes auf.
-
-AUSDRUCK: Der Handler macht eine DML in nach-update, die den eigenen Trigger
-retriggered. Das Re-Entry-Schutz-Kriterium reicht fuer den externen Pfad nicht
-aus (2 Writes im Log sichtbar). Moegliche Fixes fuer @developer-agent:
-1. Re-Entry-Flag (static Boolean in einem Utility-Klasse, vor nach-UPDATE-Phase
-2. `Database.isRollbackRequired`/`Trigger.isUpdating`-Abfrage
-3. `System.enqueueBatchable`/`@Future` — aber AK4 verlangt „sofort beim speicheren", kein Batch/kein man. Trigger
-Konsequenz AK: AK4 ist in der Org mit 1 Reopen = 2 verletzt.
+## Mechanismus — BELEGT per Debug-Log (exklusiv EXTERNER REST-Pfad; UI + Apex unbeeinträchtigt)
+EIN REINES REST-Single-Field-Update (Closed→New, 1 Aufruf) zeigt in der Org:
+- `CaseReactionTrigger AfterUpdate` feuert 4x in 2 EXECUTION_CONTEXTS.
+- Handler DB-Reads (`SELECT Id, Reactivation_Count__c`): 2x; Case-UPDATE-DML: 2x → +2.
+- Kette: Externes REST laedt die Case; after update liest Handler DB-Zaehler (0),
+  schreibt 1. Handler-DML laedt den Trigger noxmal im selben Kontext; der 2. Lauf
+  liest ZAEHLER=1 (bereits inkrementiert) und schreibt 2.
+- **Warum nur extern:** Bei in-Org-Apex-DML und in-app-Lightning-UI laedt zwar
+  dieselbe Handler-DML den Trigger zurueck, aber der Guard / der Kontext unterdrueckt
+  den 2. Lauf korrekt → +1 (UI: Playwright-Run Count=1; Apex: 1 Reopen→1, 2→2).
+  NUR beim externen Single-Field-REST-Update bleibt der 2. Lauf aktiv → +2.
+**Moegliche Fixes (developer-agent):** static Re-Entry-Flag, das den Handler im
+2. AfterUpdate-Lauf kuerzt; oder `Database.isRollbackRequired()`/
+`Trigger.isExecuting()`-Check.
 
 ## Reproduktions-Skripte (diese Session, in `docs/`)
 `_finalsidebyside418.py` (in-org Apex vs REST vs CLI, frische Cases), `_iso418.py`
