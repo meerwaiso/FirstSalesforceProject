@@ -263,7 +263,13 @@ async function historyRowValues(
     if (txt === month || txt.startsWith(month)) {
       const row = rhs.nth(i).locator('xpath=..'); // Element mit role=row
       const tds = (await row.locator('td, [role="gridcell"]').allTextContents().catch(() => [])).map((t) => t.trim());
-      return { count: cellNum(tds[0]), value: cellNum(tds[1]) };
+      // Zellenreihenfolge pro Zeile (AX-Snapshot 2026-09-18, Karte UND View-All):
+      // [leeres gridcell, Checkbox-Zelle "Select Item n", <Anzahl>, <Betrag>,
+      //  "Show Actions"] — Anzahl/Betrag sind damit NICHT tds[0]/tds[1],
+      // sondern die ersten zwei Zellen, die als Zahl parsen (Checkbox-Label
+      // und Actions-Text liefern kein Number).
+      const nums = tds.map(cellNum).filter((n): n is number => n !== undefined);
+      return { count: nums[0], value: nums[1] };
     }
   }
   return { count: undefined, value: undefined };
