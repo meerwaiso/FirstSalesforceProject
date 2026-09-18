@@ -237,8 +237,10 @@ async function historyMonths(
         const anyRH = await scope.getByRole('rowheader').count().catch(() => -1);
         const grids = await scope.getByRole('grid').count().catch(() => -1);
         const raw = JSON.stringify(all.map((t) => t.trim()).slice(0, 12));
-        const txt = (await scope.first().innerText().catch(() => '<n/a>')).slice(0, 180).replace(/\n/g, ' | ');
-        throw new Error(`historyMonths: nur ${found.length}/${minMonths} Monatsrowheaders nach ${Math.round((Date.now() - start) / 1000)}s. Lokator-Diagnostik: rowheader(any)=${anyRH}, grid=${grids}, rawNames=${raw}, Text="${txt}"`);
+        const txt: string = 'page' in scope
+          ? ((await (scope as Page).locator('table, [role="row"]').count().catch(() => -1)) + ' rows-cells')
+          : '<locator-scope>';
+        throw new Error(`historyMonths: nur ${found.length}/${minMonths} Monatsrowheaders nach ${Math.round((Date.now() - start) / 1000)}s. Lokator-Diagnostik: rowheader(any)=${anyRH}, grid=${grids}, ${txt}, rawNames=${raw}`);
       }
       return found.sort();
     }
@@ -297,9 +299,11 @@ test.describe('[SCRUM-417] Offener Chancen-Verlauf je Kunde', () => {
     // allen Rows vorwies. Die Monatsrowheaders (YYYY-MM) sind UNIQUE der
     // History-Liste (Contacts/Opportunities tragen keine) — direktester
     // Beweis, dass die Karte lebt, und stabiler Poll-Anker als jeder
-    // Name-Match. 150 s: Karten-Load-Zeit schwankt (5 Related-Lists
-    // parallel; Suite6 <90 s, Suite7 Label >90 s).
-    const cardMonths = await historyMonths(page, 150000, 1).catch(() => [] as string[]);
+    // Name-Match. Karte ist WEICH (View-All trägt die AK1): 90 s; View-All
+    // unten: 120 s (Snapshot 03:43 zeigte 9/9 nach ~90 s unter Last —
+    // Puffer, weil 5 Related-Lists die Record-Page vor dem Navigieren
+    // erst laden und der Browser warm ist, aber nicht immer).
+    const cardMonths = await historyMonths(page, 90000, 1).catch(() => [] as string[]);
     // Wertzellen: page-Scope — die YYYY-MM-Rowheaders sind unique der
     // History-Liste (Opportunities/Contacts tragen keine), also keine
     // Kontamination; historyRowValues findet den Monat per Text und liest
@@ -313,7 +317,7 @@ test.describe('[SCRUM-417] Offener Chancen-Verlauf je Kunde', () => {
     if (cardMonths.length === 0) {
       test.info().annotations.push({
         type: 'warning-card',
-        description: `AK1(Karte) ${name}: Related-List-Karte hat binnen 150 s keine Monatszeilen gerendert — AK1-Vollzähligkeit wird von der View-All-Seite getragen (unten).`,
+        description: `AK1(Karte) ${name}: Related-List-Karte hat binnen 90 s keine Monatszeilen gerendert — AK1-Vollzähligkeit wird von der View-All-Seite getragen (unten).`,
       });
     } else {
       for (const m of cardMonths) {
@@ -341,7 +345,7 @@ test.describe('[SCRUM-417] Offener Chancen-Verlauf je Kunde', () => {
     // .../related/OpenOpportunityHistoryRecords__r/view (Relationship-Name,
     // NICHT der Objekt-Name — die rendert keine Liste).
     await openRecordPage(page, `/lightning/r/Account/${acc}/related/OpenOpportunityHistoryRecords__r/view`);
-    const vaMonths = await historyMonths(page, 60000, months.length);
+    const vaMonths = await historyMonths(page, 120000, months.length);
     for (const m of months) {
       expect(vaMonths, `View-All: Monat ${m} fehlt (gefunden: ${vaMonths.join(', ')})`).toContain(m);
     }
