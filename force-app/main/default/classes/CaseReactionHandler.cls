@@ -63,22 +63,30 @@ public without sharing class CaseReactionHandler {
             FROM Case
             WHERE Id IN :caseIds
         ]) {
-            // NULL (nie gezählt / Bestand) hier normalisieren auf 0 — für die
-            // ARITHMETIK: (null + 1) wäre ein Compile-/Laufzeitproblem. Der
-            // Ergebniswert ist dadurch immer >= 1 (ein Reopen findet statt).
-            Integer stored = c.Reactivation_Count__c;
+            // Custom Number-Feld ist in Apex immer Decimal (auch scale=0).
+            Decimal stored = c.Reactivation_Count__c;
             currentCounts.put(c.Id, stored == null ? 0 : stored.intValue());
         }
 
         // Inkrement auf dem DB-Stand + Zeitpunkt der letzten Reaktivierung.
+        //
+        // WICHTIG (DML-Pitfall): Trigger.new[i] ist in after update gegen DML
+        // READ-ONLY — ein `update Trigger.new` (oder update auf einer Sub-Liste
+        // davon) schlägt mit "Record is read-only" fehl. Wir bauen daher frische
+        // Instances mit Id + den neuen Werten. Der Re-Entry (neuer after-update
+        // Lauf) läuft dann über dieselbe Guard-Logik: n.Status == o.Status (nur
+        // die Custom-Felder ändern sich, nicht der Status) ⇒ Guard=false ⇒
+        // kein Doppler, keine Rekursion.
         DateTime now = System.now();
         List<Case> toWrite = new List<Case>();
         for (Case n : reopens) {
             Integer oldCount = currentCounts.get(n.Id);
             Integer newCount = (oldCount == null ? 0 : oldCount) + 1;
-            n.Reactivation_Count__c = newCount;
-            n.Last_Reactivation__c = now;
-            toWrite.add(n);
+            toWrite.add(new Case(
+                Id = n.Id,
+                Reactivation_Count__c = newCount,
+                Last_Reactivation__c = now
+            ));
         }
 
         // 1 DML pro Batch (nach-Trigger-Re-Entry, s. ADR-1).

@@ -12,5 +12,5 @@
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>SCRUM418_Reactivation</label>
-    <description>Read-only FLS für Case.Reactivation_Count__c + Case.Last_Reactivation__c (SCRUM-418). Beide Felder sind systemmaintained (CaseReactionTrigger) — kein Update für irgendwen. Systemwrites laufen im System-Modus und umgehen FLS. PO-Festlegung: wer Case-Lesezugriff hat, sieht die Felder; niemand ändert sie von Hand.</description>
+    <description>Read-only FLS für beide SCRUM-418-Reaktivierungsfelder am Case (systemmaintained, CaseReactionTrigger). Wer Case lesen kann, sieht die Felder; niemand ändert sie von Hand (editable=false). Systemwrites laufen im System-Modus und umgehen FLS.</description>
 </PermissionSet>
