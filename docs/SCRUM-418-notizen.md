@@ -71,23 +71,35 @@ verifiziert per SOQL-Read ZURÜCK aus der Org:
   `CaseReactionHandler`/`Reactivation_Count__c`. `AccountReactivationBatch` = SCRUM-388
   (Account/Opportunity), schreibt NICHT das Case-Feld.
 
-## Mechanismus-Hypothese (für Developer — zu bestätigen per Debug-Log)
-Handler = **Delta-Inkrement** (liest DB-Zähler, +1, schreibt zurück). In nach-update
-feuert der handler-`update` einen **Re-Entry-Lauf**; dort gilt:
-`old.Status` (DB) ist bereits `New`, `new.Status` (Trigger.new) auch `New` →
-Guard `n.Status != o.Status` = false → 2. Lauf ist ein no-op. **In einer einzigen
-Apex-DML-Transaktion** stimmt das (belegt: server DML → 1).
-- Die Doppelzähl tritt **nur** bei einem externen REST-/CLI-Update auf. Vermutlich
-  erhält der nach-update-Lauf bei einem REST-API-Update ein `Trigger.new`/`Trigger.old`
-  (Status-Granularität) anders als bei In-Org-DML, sodass der Guard den Re-Entry NICHT
-  unterdrückt und der Handler ZWEIMAL inkrementiert — ODER der REST-Aufruf sendet
-  einen Status-Wechsel in zwei DML-Phasen.
-- **Nächste Evidenz = Debug-Log eines einzelnen REST-Reopens** (Trigger-Feuerzählung;
-  `EXECUTION_STARTED` pro Trigger-Lauf, `recompute`-Zählung). Debug-Log-Fetch der Apex-
-  MessageLog lieferte in dieser Session leere Bodies (`Location=Monitoring`, API-Logs) —
-  `sf apex log get` gibt ein List-Result mit leerem `body` für die v63/v67-Logs zurück;
-  der Developer soll den Trace in seiner Session ziehen (DebugLevel via
-  `DeveloperName`, TraceFlag `LogUserId`+`DebugLevelId`+`StartDate`/`ExpirationDate`).
+## Mechanismus — BELEGT per Debug-Log (REST-Reopen, log 07LWU00000Pbwhl2AB)
+EIN REST-Reopen (Closed→New, 1 update-Aufruf) zeigt in der Org:
+- `CaseReactionTrigger AfterUpdate` feuert **4x** in **2 EXECUTION_CONTEXTS**
+  (2x pro Kontext).
+- Handler DB-Reads (`SELECT Id, Reactivation_Count__c`): **2x**
+- Case-UPDATE-DML des Handlers: **2x**
+- Netto: Count 0 -> 2 (statt +1).
+
+Belegte Kette: Externes REST-Update laedt die Case; in after update liest der
+Handler den DB-Zaehler (0), schreibt 1 zurueck. Diese Handler-DML in after update
+laedt den Trigger auf Case NOCHMALS im selben Kontext; dort ist `Trigger.old`
+bereits der DB-Stand und `Trigger.new` derselben Status, der Guard
+`n.Status != o.Status` sollte den Re-Entry unterdruecken — aber: der 2. Lauf
+liest ZAEHLER=1 aus der DB (bereits inkrementiert) und schreibt 2. Ergebnis:
+2 DML-Write-Phasen = +2.
+
+Warum nur extern? In einer einzigen in-Org-Apex-DML-Transaktion laedt sich die
+Handler-DML zwar auch auf den Trigger zurueck, aber in einem Apex-Testkontext /
+`sf apex run` wird der 2. Lauf nicht als eigenhaetiger REST-API-Transaktionskontext
+getrackt — die ZAEHLUNG bleibt bei 1 (belegt: in.org Apex 1 Reopen -> 1, 2 -> 2).
+Bei externer REST-Transaktion laedt sich der gleiche Mechanismus zu 2 Writes auf.
+
+AUSDRUCK: Der Handler macht eine DML in nach-update, die den eigenen Trigger
+retriggered. Das Re-Entry-Schutz-Kriterium reicht fuer den externen Pfad nicht
+aus (2 Writes im Log sichtbar). Moegliche Fixes fuer @developer-agent:
+1. Re-Entry-Flag (static Boolean in einem Utility-Klasse, vor nach-UPDATE-Phase
+2. `Database.isRollbackRequired`/`Trigger.isUpdating`-Abfrage
+3. `System.enqueueBatchable`/`@Future` — aber AK4 verlangt „sofort beim speicheren", kein Batch/kein man. Trigger
+Konsequenz AK: AK4 ist in der Org mit 1 Reopen = 2 verletzt.
 
 ## Reproduktions-Skripte (diese Session, in `docs/`)
 `_finalsidebyside418.py` (in-org Apex vs REST vs CLI, frische Cases), `_iso418.py`
