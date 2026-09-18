@@ -103,3 +103,20 @@ Kein `__lookup`-Token (Analytics-REST-Namensraum).
   statt 11) + Karte 90s + View-All 120s + Rand = ~5-6 min < 480s.
   diag5 = AK1-alone auf 53b482e (proc_48510822454d).
   Wenn View-All auch unter Load >120s: historyMonths-Timeout 120000 -> 180000.
+
+## E2E-Runde 5 (06:20-07:50)
+- diag5 (07:35, auf 53b482e mit SOQL-Batch): AK1 WIEDER 480s-Timeout am
+  View-All-goto (spec.ts:514). Das SOQL-Batch hat die Vorlaufzeit NICHT
+  entscheidend gesenkt -> die Zeit sitzen in den 2 Lightning-Page-Ladezyklen
+  (Record-Page + View-All) + Polling unter Morgen-Last, NICHT in SOQL.
+- Fix 0a5aefb: AK1-Budget 480s -> 660s + [AK1-timing]-Marker (SOQL-Setup,
+  Record-goto, Karte, ViewAll-goto, ViewAll-gerendert) -> das naechste Log
+  zeigt die Phase, die den Rest frisst.
+- diag6 laeuft auf 0a5aefb (proc_7489b8c278bc, /tmp/417_diag6.log).
+
+- diag6 (08:12, auf 0a5aefb): AK1 GRUEN in 21s (SOQL 4s, Record 8s, Karte 9s
+  mit 6 Monatsrows, View-All 13s mit 9/9). Morgen-Last der Läufe Suite10/
+  diag4-5 war TRANSIENT. Die letzten vier Läufe waren reine Last, kein
+  struct. Budget-Problem. 660s bleibt als Puffer.
+- NÄCHSTER SCHRITT: Full-Suite [SCRUM-417] (alle 4 AKs, EINER LAUF, auf
+  0a5aefb) -> dann Jira-Abschluss + Übergabe.
