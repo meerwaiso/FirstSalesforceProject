@@ -166,3 +166,20 @@ Kein `__lookup`-Token (Analytics-REST-Namensraum).
   (inkl. negatives FLS System.runAs), CI #35315632486 gruen ohne Skips,
   PR #114 mergeable. AK3: Rebuilder-Code Apex-verifiziert; ORG-SEITIGER
   CronTrigger fehlt noch (Deploy-Schritt, in Kommentar dokumentiert).
+
+## Deployment (DevOps-Zug, 18.09.09) — Abschluss
+- PR #114 gemerged → master `869c3cf`. Gate auf HEAD 134ed57: CI 35316781487
+  success; "Metadata, Apex & Session Smoke" + "Prod-Org Drift Gate" = success
+  (nicht skipped), Lint success. Test-Vote = Kommentar 19331.
+- AK3 CronTrigger (Test-Org): war LAUFZEIT-Objekt (keine Metadata) → `System.schedule(
+  'SCRUM-417 Offene Chancen Verlauf','0 0 3 * * ?',
+  new OpenOpportunityHistoryScheduler())`. Kollisions-Check vorher: Test-Org
+  nur 1 CronTrigger (Metalytics, next 19:25) → 3 Uhr frei, EX417=0.
+  Read-back: Job type 7 (Apex), WAITING, fires 0, **NextFire 2026-09-19 03:00:00**.
+  (Befehle: `sf apex run -f … -o Test-Org`; CronTrigger liest man per Apex-Query,
+  `sf data query`/`sf api request rest` lehnen den SObject-Typ ab.)
+- Proof-Lauf: `OpenOpportunityHistoryRebuilder.run()` manuell auf Test-Org →
+  **RUN=OK secs=0 totalRows=207** (idempotent, unique-key Upsert).
+- Handoff: Jira-Kommentar 19364, Transition 41 → Erledigt, Assignee po-agent.
+  **Prod-Org: CronTrigger dort AUCH per System.schedule setzen** (im Kommentar
+  19364 dokumentiert) — Code kommt per Release-Manifest, Org-Schritt nicht.
