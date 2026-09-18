@@ -440,13 +440,19 @@ test.describe('[SCRUM-417] Offener Chancen-Verlauf je Kunde', () => {
    *      pro Monat Zählung + Betrag = SOQL-Read-back (exakt, nicht nur ≥0).
    */
   test('AK1: Related-List (Teilmengen-Chek) + View-All zeigt alle Monate Jan..Sep mit Zählung und Summe', async ({ page }) => {
-    test.setTimeout(480000); // Org-Last 2026-09-18: 6.2 min/file; Karte 90 s + View-All 120 s + 10 SOQL-Read-backs
+    test.setTimeout(660000); // Org-Last 2026-09-18 (diag4/5): 480s reichten NICHT —
+    // 2 Lightning-Page-Ladezyklen + Polling fraessen >480s. 660s + Timing-Marker
+    // ([AK1-timing] im Log), damit die naechste Fehldiagnose die Phase zeigt.
+    const t0 = Date.now();
+    const mark = (l: string) => console.log(`[AK1-timing] ${l} +${((Date.now() - t0) / 1000).toFixed(0)}s`);
     const { id: acc, name } = pickAccountWithHistory();
     const months = expectedMonths();
     const soqlByMonth = soqlByMonthFor(acc, months);
+    mark(`SOQL-Setup fertig (acc=${acc})`);
 
     // --- Stufe 1: Related-List-Karte auf der Record-Page (gekürzt rendert) ---
     await openRecordPage(page, `/lightning/r/Account/${acc}/view`);
+    mark('Record-Page goto fertig');
     // NICHT auf den Karten-Text warten: der accname der Karte ändert sich mit
     // der (n+)-Zählung während des Renders — Suite7 (2026-09-18) timeoutete an
     // getByText/90s, obwohl der AX-Snapshot desselben Zeitpunkts die Karte mit
@@ -458,6 +464,7 @@ test.describe('[SCRUM-417] Offener Chancen-Verlauf je Kunde', () => {
     // Puffer, weil 5 Related-Lists die Record-Page vor dem Navigieren
     // erst laden und der Browser warm ist, aber nicht immer).
     const cardMonths = await historyMonths(page, 90000, 1).catch(() => [] as string[]);
+    mark(`Karte gerendert: ${cardMonths.length} Monatsrows`);
     // Wertzellen: page-Scope — die YYYY-MM-Rowheaders sind unique der
     // History-Liste (Opportunities/Contacts tragen keine), also keine
     // Kontamination; historyRowValues findet den Monat per Text und liest
@@ -512,7 +519,9 @@ test.describe('[SCRUM-417] Offener Chancen-Verlauf je Kunde', () => {
     // .../related/OpenOpportunityHistoryRecords__r/view (Relationship-Name,
     // NICHT der Objekt-Name — die rendert keine Liste).
     await openRecordPage(page, `/lightning/r/Account/${acc}/related/OpenOpportunityHistoryRecords__r/view`);
+    mark('View-All goto fertig');
     const vaMonths = await historyMonths(page, 120000, months.length);
+    mark(`View-All gerendert: ${vaMonths.length}/${months.length} Monate`);
     for (const m of months) {
       expect(vaMonths, `View-All: Monat ${m} fehlt (gefunden: ${vaMonths.join(', ')})`).toContain(m);
     }
