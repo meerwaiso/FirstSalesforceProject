@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-420 Phase 4: FLS-Testklasse (negativ/positiv gegen SCRUM420_EskalationKunde). -->
+    <types>
+        <name>ApexClass</name>
+        <members>SCRUM420EscalationKundeFlsTest</members>
+    </types>
+    <version>62.0</version>
+</Package>
