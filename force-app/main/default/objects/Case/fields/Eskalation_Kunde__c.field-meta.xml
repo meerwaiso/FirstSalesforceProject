@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Eskalation_Kunde__c</fullName>
+    <description>Eskalationsstufe (Kunde), SCRUM-420: H = offene High-Cases des Kunden; H&gt;=2 Kritisch, H=1 Beobachten, H=0 Keine. Ausschliesslich systemgepflegt (CaseEscalationKunde); read-only, kein Write-FLS.</description>
+    <externalId>false</externalId>
+    <label>Eskalationsstufe (Kunde)</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Keine</fullName>
+                <default>true</default>
+                <label>Keine</label>
+            </value>
+            <value>
+                <fullName>Beobachten</fullName>
+                <default>false</default>
+                <label>Beobachten</label>
+            </value>
+            <value>
+                <fullName>Kritisch</fullName>
+                <default>false</default>
+                <label>Kritisch</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

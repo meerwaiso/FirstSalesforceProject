@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Eskalationszeitpunkt__c</fullName>
+    <description>Zeitpunkt (pro Case), zu dem dieser Case erstmals Eskalationsstufe (Kunde) = Kritisch erreichte (SCRUM-420). Bei Herabstufung bleibt der Wert, wird nie ueberschrieben/geresettet. Leer = noch nie kritisch.</description>
+    <externalId>false</externalId>
+    <label>Eskalationszeitpunkt (Kunde)</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>
