@@ -22,18 +22,18 @@ Spec: `docs/SCRUM-420-design.md` (Commit 06bfb6e, Architect).
 - Manifest: Version 67.0 (388-Muster). Phase1 = nur CustomField; Phase2 = Referenzierer.
 - Test-Muster FLS: `SCRUM418CaseReactionFlsTest.cls` (runAs + getDescribe().isAccessible/isUpdateable, Standard-User-Profil).
 
-## PO-Offen-Punkte (Architect-Defaults gelten, da keine PO-Antwort bis Handoff)
-1. Rebuilder: JA, vor Test-Start 1× laufen lassen.
-2. Geschlossene Cases: letzter Wert bleibt (kein Reset).
-3. Zeitstempel bei erneuter Kritisch-Phase: alter Wert bleibt (nur null→set).
-→ Im Handoff-Kommentar dokumentieren.
+## Stand (19.09.2026, ~19:15) — ALLES DEPLOYED + VERIFIZIERT
+- Phase 1 (Commit 36d9d32): 4 Felder + PS deployed. PS SCRUM420_EskalationKunde (0PSWU00000WJ3Cf4AL) zu GEWIDMET an devops-agent@cline.test und mehrwais.osmani@resourceful-bear-6f1u4j.com — Assignment-Rücklesung OK.
+- Phase 2 (Commit fc2d9d7): Trigger/Handler/Rebuilder + Haupttests. Deploy-Job 0AfWU00000bZDoH0AW Succeeded, 16/16. Rebuilder-Coverage: run(accId) + run(null) beide abgedeckt.
+- Phase 3 (Commit 076e67b): Layout-Items unter Is_Overdue__c. Deploy Succeeded, UI-API record-ui: alle 4 Felder sichtbar.
+- Phase 4 (Commit b7ae2b6): FLS-Test 1/1, Deploy 0AfWU00000bZEZ30AO Succeeded.
+- Backfill: 5 offene Fälle mit Account ohne Stufe → 0 nach Rebuilder.run(null). 569 offene Fälle OHNE Account = Design-Mannigfaltigkeit (Kundenstufe existiert nur pro Account), wird ausgelassen, im PR-Body erwähnt.
+- Werte-Readback: 500WU00002VPZPjYAP → Keine/2/0 (Matrix korrekt, H=0 in der Org).
 
-## Build-Reihenfolge
-1. Phase 1 XML: 4 Felder + PS → validate → deploy (Test-Org) → PS zuweisen (CLI-User + meerwais.osmani@resourceful-bear-6f1u4j.com) → Read-Back per SOQL als PS-User. Commit.
-2. Phase 2: Trigger + CaseEscalationKunde.cls + SCRUM420EscalationKundeRebuilder.cls + 2 Test-Klassen + Layout-Sektion → validate → deploy mit RunSpecifiedTests. Commit.
-3. Rebuilder 1× via Apex (executeBatch) → SOQL-Nachweis Bestandsdaten.
-4. Regression: SCRUM418CaseReactionTest, SCRUM418CaseReactionFlsTest, SCRUM419ReentryRegressionTest, SCRUM365OpenCasesCountTest (365/370 heißt es im design: SCRUM365OpenCasesCountTest — NENNNÜTIG VOREM LAUFEN PRÜFEN).
-5. PR auf origin/master, Jira-Handoff T31 → architect-agent.
-
-## Befunde während der Arbeit
-- (leer)
+## Bewährungs-Befunde (wenn sie nicht an der Hand sind)
+- `SUM(CASE WHEN …)` in SOQL wird in dieser Org vom Compiler abgelehht → In-Apex-Zählung aus der bereits geholten Liste (bulk, identisch korrekt).
+- `Limits.getNumQueries()` existiert nicht → `Limits.getQueries()` (House Pattern 384/386).
+- Case.RecordTypeId wird zum Inserten in dieser Org abgelehht (kein RecordType für Case konfiguriert) → weglassen.
+- Rebuilder-Deploy scheitert an <75% Coverage, wenn der Rebuilder in der Phasen-2-Manifest, aber nicht in der Test-Manifest der --tests-Liste ist.
+- `Trigger` ist reserviert in SOQL → `ApexTrigger` Tooling-Objekt oder Backticks/REST.
+- `sf org assign permset` Flag für den Benutzer: `-b`/`--on-behalf-of` (nicht `-u`), sonst leert der Aufruf.
