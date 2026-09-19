@@ -37,3 +37,9 @@ Spec: `docs/SCRUM-420-design.md` (Commit 06bfb6e, Architect).
 - Rebuilder-Deploy scheitert an <75% Coverage, wenn der Rebuilder in der Phasen-2-Manifest, aber nicht in der Test-Manifest der --tests-Liste ist.
 - `Trigger` ist reserviert in SOQL → `ApexTrigger` Tooling-Objekt oder Backticks/REST.
 - `sf org assign permset` Flag für den Benutzer: `-b`/`--on-behalf-of` (nicht `-u`), sonst leert der Aufruf.
+
+## Review-Fix (Ablehnung Comment 19645, 2026-09-19)
+- **Layout:** 420-Felder lagen in §überwachung (neben 398/419). Fix: eigene Section «Eskalation (Kunde)», OneColumn, NACH dem 398-Block. Validate 0AfWU00000bZNXV0A4 OK → Deploy 0AfWU00000bZNu50AG Succeeded. UI-API record-ui (Full/View) bestätigt Section live.
+- **AK7 (TC7): «gemischt, je Account 0/1/2+ High»** = 10 Accounts × 25 = 250 Cases, gemischt 0/1/2 High (Stufen Keine/Beobachten/Kritisch im einen Bulk). Query-Assert < 10 bleibt (Handler macht 1 SOQL WHERE AccountId IN :accountIds).
+- **Pfund:** `%` ist in APEX ein ungültiger Operator (Compiler: "Found punctuation symbol or operator % that isn't valid in Apex"). Verwende `Math.mod(a, n)`. House-Pattern: SCRUM410CustomerTransferTest. (Zweite Compile-Fix-Runde, 1 self-correction — hatte % als Ternary-Condition geschrieben.)
+- **Pfund (Jira):** `jira_update_issue` fields als JSON-STRING. `jira_transition_issue` braucht transition_id. Comment `jira_add_comment`.
