@@ -139,23 +139,47 @@ private class SCRUM420EscalationKundeTest {
         assertEquals(CaseEscalationKunde.STUFE_KRITISCH, readCaseById(c1.Id).Eskalation_Kunde__c);
     }
 
-    private static testmethod void ak7_bulk_insert_250_cases_blaeuft_kein_budget() {
-        Id accId = SCRUM420TestDataFactory.createAccount('420-AK7');
+    private static testmethod void ak7_bulk_insert_250_cases_mixed_accounts_blaeuft_kein_budget() {
+        // AK7: >= 200 Cases, GEMISCHT JE ACCOUNT — der governor-sensible Pfad ist
+        // die Multi-Account IN-Liste + per-Account-Zaehlung, nicht nur ein Account.
+        // 10 Accounts x 25 Cases, Prioritaeten gemischt (Low/High).
+        final Integer accountsN = 10;
+        final Integer casesPerAccount = 25;
+        List<Id> accIds = new List<Id>();
+        for (Integer a = 0; a < accountsN; a++) {
+            accIds.add(SCRUM420TestDataFactory.createAccount('420-AK7-' + a));
+        }
         Integer baseQueries = Limits.getQueries();
         List<Case> batch = new List<Case>();
-        for (Integer i = 0; i < 250; i++) {
-            batch.add(new Case(AccountId = accId, Priority = 'Low', Status = 'New'));
+        // Design TC7: gemischt, je Account 0/1/2+ High offen -> alle drei Stufen
+        // im Bulk:  a%3==0 -> 0 High  (Keine)
+        //           a%3==1 -> 1 High  (Beobachten)
+        //           a%3==2 -> 2 High  (Kritisch)
+        for (Integer a = 0; a < accountsN; a++) {
+            Id accId = accIds[a];
+            Integer highFor = (a % 3 == 0) ? 0 : ((a % 3 == 1) ? 1 : 2);
+            for (Integer j = 0; j < casesPerAccount; j++) {
+                batch.add(new Case(AccountId = accId, Priority = (j < highFor) ? 'High' : 'Low', Status = 'New'));
+            }
         }
         insert batch;
         Integer usedInBatch = Limits.getQueries() - baseQueries;
-        // Trigger (1 SOQL for openCases + 1 SOQL for aggregation + 1 trigger SOQL) = max 4
-        // — 250 Records in einem Batch duerfen deutlich mehr als 4 Queries nicht erzeugen
+        // Ein Batch mit 250 Records auf 10 Accounts darf deutlich mehr als
+        // ~10 Queries nicht erzeugen (Handler: eine SOQL fuer alle offenen Cases
+        // mit IN(:accountIds); je-eine-Query-je-Case wuerde >250).
         assertTrue(usedInBatch < 10, 'Batch-Queries ueber Budget: ' + usedInBatch);
-        // Spot check: alle 250 offen, Stufe 'Keine'
-        List<Case> check = readCase(accId);
-        assertEquals(250, check.size());
-        assertEquals(250, (Integer) check[0].Offene_Cases_Kunde__c);
-        assertEquals(CaseEscalationKunde.STUFE_KEINE, check[0].Eskalation_Kunde__c);
+        // Spot check: alle Accounts korrekt, Werte matchen je Account
+        for (Integer a = 0; a < accountsN; a++) {
+            Id accId = accIds[a];
+            Integer highFor = (a % 3 == 0) ? 0 : ((a % 3 == 1) ? 1 : 2);
+            String expectedStufe = (highFor >= 2) ? CaseEscalationKunde.STUFE_KRITISCH
+                    : ((highFor == 1) ? CaseEscalationKunde.STUFE_BEOBACHTEN : CaseEscalationKunde.STUFE_KEINE);
+            List<Case> check = readCase(accId);
+            assertEquals(casesPerAccount, check.size());
+            assertEquals(highFor, (Integer) check[0].Offene_High_Cases_Kunde__c);
+            assertEquals(casesPerAccount, (Integer) check[0].Offene_Cases_Kunde__c);
+            assertEquals(expectedStufe, check[0].Eskalation_Kunde__c);
+        }
     }
 
     private static testmethod void reentry_guard_verhindert_unendliche_rekursivitaet() {

@@ -237,6 +237,16 @@ wie 398. **Kein Aktivations-Picklist (kein `hasActivationRequired=true`)** wie 3
   (408/403-Lektion: nie die committete Datei blind deployen, wenn sich Live in der
   Zwischenzeit geändert hat).
 
+- **Implementierungs-Status (Developer, 2026-09-19, Review-Fix 1):** `Eskalation (Kunde)`
+  ist eine **eigene** `layoutSection` (Style `OneColumn`, `detailHeading=true`), platziert
+  **nach** dem bestehenden «Überwachung»-Block — die 4 Felder liegen NICHT mehr in
+  «Überwachung». Der 398/419-Block ist unangetastet (additive Änderung, 4 Sektionen
+  bleiben 4). Review-Abnahme (PR #120, Comment 19645) verlangt genau diese Eigen-Sektion.
+- **Trigger-Timing (ADR-Hinweis, non-blocking):** gebaut als **`after` insert/update**
+  (nicht `BEFORE` wie in der Ursprungs-Spec). Begründung: die Recomputation liest den
+  DB-Zustand, der den aktualisierten `Status` des aktuellen Records erst ab `afterUpdate`
+  trägt — BEFORE sähe den alten Status. User-Effekt identisch zur BEFORE-Variante.
+
 ---
 
 ## Komponenten-Übersicht (was gebautes wird)

@@ -194,7 +194,17 @@
                 <behavior>Readonly</behavior>
                 <field>Is_Overdue__c</field>
             </layoutItems>
-            <!-- SCRUM-420: Eskalation nach Kundendringlichkeit -->
+        </layoutColumns>
+        <style>TwoColumnsLeftToRight</style>
+    </layoutSections>
+    <!-- SCRUM-420: Eskalation nach Kundendringlichkeit — eigene Sektion (ADR-4),
+         bewusst nach dem 398-Eskalationsstufe__c-/419-Block (Abgrenzung). -->
+    <layoutSections>
+        <customLabel>true</customLabel>
+        <detailHeading>true</detailHeading>
+        <editHeading>true</editHeading>
+        <label>Eskalation (Kunde)</label>
+        <layoutColumns>
             <layoutItems>
                 <behavior>Readonly</behavior>
                 <field>Eskalation_Kunde__c</field>
@@ -212,7 +222,7 @@
                 <field>Eskalationszeitpunkt__c</field>
             </layoutItems>
         </layoutColumns>
-        <style>TwoColumnsLeftToRight</style>
+        <style>OneColumn</style>
     </layoutSections>
     <layoutSections>
         <customLabel>false</customLabel>
