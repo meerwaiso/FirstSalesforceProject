@@ -157,7 +157,7 @@ private class SCRUM420EscalationKundeTest {
         //           a%3==2 -> 2 High  (Kritisch)
         for (Integer a = 0; a < accountsN; a++) {
             Id accId = accIds[a];
-            Integer highFor = (a % 3 == 0) ? 0 : ((a % 3 == 1) ? 1 : 2);
+            Integer highFor = highCasesForAccount(a);
             for (Integer j = 0; j < casesPerAccount; j++) {
                 batch.add(new Case(AccountId = accId, Priority = (j < highFor) ? 'High' : 'Low', Status = 'New'));
             }
@@ -171,9 +171,15 @@ private class SCRUM420EscalationKundeTest {
         // Spot check: alle Accounts korrekt, Werte matchen je Account
         for (Integer a = 0; a < accountsN; a++) {
             Id accId = accIds[a];
-            Integer highFor = (a % 3 == 0) ? 0 : ((a % 3 == 1) ? 1 : 2);
-            String expectedStufe = (highFor >= 2) ? CaseEscalationKunde.STUFE_KRITISCH
-                    : ((highFor == 1) ? CaseEscalationKunde.STUFE_BEOBACHTEN : CaseEscalationKunde.STUFE_KEINE);
+            Integer highFor = highCasesForAccount(a);
+            String expectedStufe;
+            if (highFor >= 2) {
+                expectedStufe = CaseEscalationKunde.STUFE_KRITISCH;
+            } else if (highFor == 1) {
+                expectedStufe = CaseEscalationKunde.STUFE_BEOBACHTEN;
+            } else {
+                expectedStufe = CaseEscalationKunde.STUFE_KEINE;
+            }
             List<Case> check = readCase(accId);
             assertEquals(casesPerAccount, check.size());
             assertEquals(highFor, (Integer) check[0].Offene_High_Cases_Kunde__c);
@@ -275,6 +281,21 @@ private class SCRUM420EscalationKundeTest {
         Case c = new Case(AccountId = accId, Priority = priority, Status = status);
         insert c;
         return c;
+    }
+
+    /**
+     * Design TC7: gemischt je Account 0/1/2+ High offen -> drei Stufen im Bulk.
+     * a%3==0 -> 0 (Keine), a%3==1 -> 1 (Beobachten), a%3==2 -> 2 (Kritisch).
+     * Eigenes Helper, damit die Ternary-Parsing-Heiligkeit nicht zweimal im Loop dupliziert wird.
+     */
+    private static Integer highCasesForAccount(Integer a) {
+        if (Math.mod(a, 3) == 0) {
+            return 0;
+        }
+        if (Math.mod(a, 3) == 1) {
+            return 1;
+        }
+        return 2;
     }
 
     private static Case readCaseById(Id caseId) {
