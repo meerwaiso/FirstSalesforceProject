@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns><field>CASE_NUMBER</field></columns>
+    <columns><field>SUBJECT</field></columns>
+    <!-- Kunde: Org-ReportType-Metadaten (detailColumnInfo) nennen den Standard-
+         Spalten-Key ACCOUNT.NAME (nicht ACCOUNT); CONTACT ist im Base-ReportType
+         CaseList nicht verfuegbar (nur in CaseContactRole-ReportType).
+         Design: "Kunde = primär ACCOUNT; Kontakt nur wenn PO wörtlich beide will"
+         -> hier ACCOUNT.NAME. -->
+    <columns><field>ACCOUNT.NAME</field></columns>
+    <columns><field>Case.Last_Reactivation__c</field></columns>
+    <!-- AK2-Fenster 3 Monate (ADR-5, verifiziert gegen @salesforce/types +
+         Org-ReportType-Metadata + Dry-Run): relatives Fenster in Report-Metadaten
+         = timeFrameFilter (Element standardDateFilter existiert im Report-Typ NICHT;
+         der FilterOperation-Enum kennt fuer Date/DateTime nur 6 Vergleichsoperatoren,
+         keine relativen "exqlast*"-Werte). timeFrameFilter traegt genau EINEN
+         dateColumn; das Design-OR (Erstellt ODER Reaktiviert in 3 M) ist NICHT
+         darstellbar -> Fenster auf Last_Reactivation__c, da der Report die
+         Wiedereeroffnungen DER LETZTEN 3 MONATE listet: ein Eintrag hat genau dann
+         ein Reaktivierungsdatum im 90-Tage-Fenster, wenn er in der Zeit
+         wiederaufgemacht wurde. Neu erstellte, nie eroeffnete Faelle haben NULL und
+         fallen korrekt raus. Gap zur Review s. Jira-Kommentar. -->
+    <timeFrameFilter>
+        <dateColumn>Case.Last_Reactivation__c</dateColumn>
+        <interval>INTERVAL_LAST90</interval>
+    </timeFrameFilter>
+    <format>Summary</format>
+    <!-- Sortierung: absteigend nach Reaktivierungszahl (AK2). Das Custom-Feld muss
+         als Gruppierung getragen werden, um sortierbar zu sein. -->
+    <groupingsDown>
+        <field>Case.Reactivation_Count__c</field>
+        <sortOrder>Desc</sortOrder>
+    </groupingsDown>
+    <description>Wiederaufgemachte Cases der letzten 3 Monate (Reaktivierung in 90 Tagen), absteigend nach Reaktivierungszahl (SCRUM-418, AK2). Fenster = timeFrameFilter INTERVAL_LAST90 auf Last_Reactivation__c. Zeigt: Fallnr., Betreff, Kunde, Reaktivierungsdatum.</description>
+    <name>Wiedereroeffnungen_3Monate</name>
+    <reportType>CaseList</reportType>
+    <scope>organization</scope>
+</Report>

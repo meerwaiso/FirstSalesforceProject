@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-418 Report: 3-Monats-Liste Wiedereröffnungen auf caseList, sortiert
+         Desc nach Case.Reactivation_Count__c. Separates Manifest, weil OR-Filter
+         + Custom-Feld-Sortierung per dry-run validiert werden (ADR-5).
+         Shape: scr417-reports.xml (Report-Typ, folder-präfixierter Member). -->
+    <types>
+        <members>Service/Wiedereroeffnungen_3Monate</members>
+        <name>Report</name>
+    </types>
+    <apiVersion>61.0</apiVersion>
+</Package>
