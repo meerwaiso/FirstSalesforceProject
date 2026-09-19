@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-420 Phase 3: Case-Layout — die vier neuen Felder in der
+         Layout-Sektion «Überwachung» (direkt neben dem 397-Block).
+         Gelingt NACH Phase 2 (Felder + Trigger live). -->
+    <types>
+        <members>Case-Case Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>62.0</version>
+</Package>

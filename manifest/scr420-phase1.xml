@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-420 Phase 1: die vier neuen Case-Felder + Read-FLS Permission Set. Gelangen ZUERST; Trigger/Apex/Layout referenzieren sie. -->
+    <types>
+        <members>Case.Eskalation_Kunde__c</members>
+        <members>Case.Offene_Cases_Kunde__c</members>
+        <members>Case.Offene_High_Cases_Kunde__c</members>
+        <members>Case.Eskalationszeitpunkt__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>SCRUM420_EskalationKunde</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>
