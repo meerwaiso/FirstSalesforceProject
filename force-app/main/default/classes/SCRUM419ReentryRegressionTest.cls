@@ -92,8 +92,11 @@ private class SCRUM419ReentryRegressionTest {
     }
 
     /**
-     * Kein dauerhafter Lockout: Nach dem recompute (Flag zurückgesetzt) zählt
-     * ein separater Folge-Reopen in derselben Transaktion korrekt weiter.
+     * Kein dauerhafter Lockout: Nach dem recompute (Flag zurückgesetzt,
+     * Grace-Fenster abgelaufen) zählt ein separater Folge-Reopen korrekt
+     * weiter. Apex-Tests können nicht schlafen → Last_Reactivation__c wird
+     * zurückdatiert, um den Zeitabstand einer echten (Menschen-Tempo)
+     * Zweitreaktivierung zu simulieren.
      */
     @isTest
     static void flagFalse_afterRecompute_subsequentReopensStillCount() {
@@ -111,12 +114,46 @@ private class SCRUM419ReentryRegressionTest {
         update c;
         System.assertEquals(1, read(id).Reactivation_Count__c, 'Schließen → bleibt 1');
 
-        // 2. Reopen (separater DML nach dem 1. recompute — Flag muss false sein).
+        // Grace-Fenster ablaufen lassen (Apex kann nicht schlafen).
+        c = read(id);
+        c.Last_Reactivation__c = System.now()
+            - (CaseReactionHandler.REACTIVATION_GRACE_SECONDS + 1) * 1000;
+        update c;
+
+        // 2. Reopen (separater DML — Flag false, Fenster abgelaufen).
         c = read(id);
         c.Status = 'New';
         update c;
         Case r = read(id);
         System.assertEquals(2, r.Reactivation_Count__c,
-            '2. Reopen nach zurückgesetztem Flag → 2 (kein Lockout)');
+            '2. Reopen nach abgelaufenem Fenster → 2 (kein Lockout)');
+    }
+
+    /**
+     * SCRUM-419 Fix-Attempt 2: sequentielle Doppel-Feuerung innerhalb des
+     * Grace-Fensters desselben Reopens wird nicht gezählt. Simuliert den
+     * externen REST/CLI-Pfad, bei dem der Handler in mehreren
+     * EXECUTION_CONTEXTS fires: der 2. Aufruf liest den vom 1. Aufruf
+     * gesetzten Last_Reactivation__c und wird übersprungen.
+     */
+    @isTest
+    static void graceWindow_suppressesSequentialDoubleFire() {
+        Id id = newClosed('grace');
+        System.assertEquals(0, read(id).Reactivation_Count__c, 'Start: 0');
+
+        // 1. Feuerung: Closed → New (zählt).
+        Case c = read(id);
+        c.Status = 'New';
+        update c;
+        System.assertEquals(1, read(id).Reactivation_Count__c, '1. Feuerung → 1');
+
+        // 2. Feuerung desselben Reopens (sequentiell, <5 s): der Handler
+        // liest Last_Reactivation__c aus dem 1. Lauf → Grace-Fenster →
+        // wird NICHT erneut gezählt. Direkter recompute-Aufruf simuliert
+        // den 2. ExecutionContext.
+        Case reopen = read(id);
+        CaseReactionHandler.recompute(new List<Case>{reopen});
+        System.assertEquals(1, read(id).Reactivation_Count__c,
+            '2. Feuerung innerhalb des Fensters → bleibt 1');
     }
 }

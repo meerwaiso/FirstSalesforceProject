@@ -2,6 +2,7 @@
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
     <types>
         <members>CaseReactionHandler</members>
+        <members>SCRUM418CaseReactionTest</members>
         <members>SCRUM419ReentryRegressionTest</members>
         <name>ApexClass</name>
     </types>

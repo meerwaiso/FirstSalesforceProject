@@ -130,6 +130,18 @@ private class SCRUM418CaseReactionTest {
             'Zwischenschließen → Zahl bleibt 1');
 
         // 2. Wiederaufmachen: Closed → Escalated.
+        //
+        // SCRUM-419: das Grace-Fenster (REACTIVATION_GRACE_SECONDS, s.
+        // Handler) unterdrückt eine Reopen, wenn Last_Reactivation__c
+        // kürzlich (<5 s) gesetzt wurde — die zweite Feuerung *desselben*
+        // Reopens im externen Pfad. Eine echte Zweitreaktivierung (mit
+        // Closed-Phase dazwischen) liegt im Menschen-Zeitabstand. Apex
+        // kann nicht schlafen → Fenster per Backdaten ablaufen lassen.
+        Case c = read(id);
+        c.Last_Reactivation__c = System.now()
+            - (CaseReactionHandler.REACTIVATION_GRACE_SECONDS + 1) * 1000;
+        update c;
+
         setStatus(id, 'Escalated');
         Case r = read(id);
         System.assertEquals(2, r.Reactivation_Count__c,

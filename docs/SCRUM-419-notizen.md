@@ -36,17 +36,39 @@ nicht trennen — es ist in beiden Kontexten false, weil jeder Kontext für sich
 - Folglich: kein Weg über CLI, REST oder Browser, den Log-Body in dieser
   CLI-Build zu lesen.
 
-## Offene Frage für den nächsten Fix (Fix-Attempt 2)
-Ob die 2 EXECUTION_CONTEXTS aus
-(a) einer **doppelten REST-Antwort** (Plattform sendet den Update zweimal),
-oder
-(b) einer **doppelten Trigger-Feuerung** in einer einzigen Antwort
-kommen. Das ist der Unterschied, der entscheidet, welcher Fix passt:
+## Fix-Attempt 2 — umgesetzt & live-verifiziert (09:03–09:12 UTC)
 
-- Fall (a): Idempotenter Handler nötig (Voll-Recompute statt Delta+1).
-- Fall (b): Zeitstempel-Guard (`Last_Reactivation_Attempt__c`, 500ms-Fenster).
+| Pfad | Count nach 1 Reopen (Closed→New) |
+|------|----------------------------------|
+| Inline-Apex-`update` (/tmp/419_ab.py, A) | **1** ✅ |
+| Externer CLI `sf data update record` (B) | **1** ✅ (vorher 2) |
+| Externe Bestätigung Case `500WU00002rcDxbYAE` | **1** ✅ |
 
-Beide Varianten sind ohne Log-Body nicht eindeutig belegbar.
+**Mechanik:** Zeifenster-Guard im Handler (Fix-Attempt 1 Flag bleibt!).
+`recompute()` liest jetzt auch `Last_Reactivation__c`; liegt der DB-Wert
+weniger als `REACTIVATION_GRACE_SECONDS = 5` s zurück, wird der „Reopen"
+übersprungen (`continue`). Begründung: der 2. ExecutionContext desselben
+Reopens liest den Stand, den der 1. Lauf gerade geschrieben hat (Tester-Log:
+„2. Lauf liest ZÄHLER=1") — und damit auch das mitschreibende
+`Last_Reactivation__c`. Echte Zweitreaktivierung braucht eine Closed-Phase
+und liegt im Menschen-Zeitabstand (>> 5 s).
+
+**Tests (12/12):** `SCRUM419ReentryRegressionTest` 4/4 (neu:
+`graceWindow_suppressesSequentialDoubleFire`), `SCRUM418CaseReactionTest`
+7/7, `SCRUM418CaseReactionFlsTest` 1/1. WICHTIG: 418- und 419-Tests mit
+schneller Zweitreaktivierung (ms-Abstand) brauchen jetzt einen Backdate-Schritt
+(`Last_Reactivation__c -= GRACE+1 s`) — sonst unterdrückt das Fenster die
+legitime 2. Reopen. Apex kann nicht schlafen, Backdaten ist der Weg.
+
+**Falle:** 418-Testklasse stand NICHT in `manifest/scr419-418-fix.xml` →
+Deploy meldete „Succeeded", Org behielt alten Test-Body (Tooling-Readback
+bewies es). Manifest-Extension + Readback von `ApexClass.Body` = Pflicht
+nach jedem Test-Deploy.
+
+**Risiko/Akzeptanz:** ein externer 2. Reopen innerhalb echter 5 s
+(Extremfall, menschlich praktisch unmöglich) wäre unterzählt. Fenster ist
+konstant im Handler (`CaseReactionHandler.REACTIVATION_GRACE_SECONDS`),
+veränderbar ohne Org-Change.
 
 ## IDs / Artefakte
 - Repro-Cases: `500WU00002ray69YAA` (VOR-FIX), `500WU00002rbQaIYAU` (REST),
@@ -60,7 +82,8 @@ Beide Varianten sind ohne Log-Body nicht eindeutig belegbar.
 - Tests: `SCRUM419ReentryRegressionTest.cls` (neu), 11/11 grün, Coverage 88%
 - Clean-Kopien: `/tmp/419_clean_handler.cls`, `/tmp/419_clean_trigger.trigger`
 
-## Nicht umgesetzt (bewusst zurückgehalten)
-- Kein PR, kein Review-Handoff (T31 → architect-agent)
-- Keine Commit-Akku­mulation jenseits des Fix-Attempt-1-Stands
-- Keine 3. Runden-Iteration ohne Log-Body-Beweis oder Review-Entscheidung
+## Handoff-Bereitschaft (2026-09-19, nach Fix-Attempt 2)
+- Externer Pfad verifiziert: Count=1 (zweimal gemessen)
+- 12/12 Tests grün (419-Reentry 4/4, 418-Reaction 7/7, 418-FLS 1/1)
+- Deploy `Succeeded` + Org-Readback (ApexClass.Body) für jede Komponente
+- PR + Review-Handoff (T31 → architect-agent) folgt in diesem Zug
