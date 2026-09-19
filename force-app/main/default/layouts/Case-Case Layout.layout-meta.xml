@@ -194,6 +194,23 @@
                 <behavior>Readonly</behavior>
                 <field>Is_Overdue__c</field>
             </layoutItems>
+            <!-- SCRUM-420: Eskalation nach Kundendringlichkeit -->
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Eskalation_Kunde__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Offene_Cases_Kunde__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Offene_High_Cases_Kunde__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Eskalationszeitpunkt__c</field>
+            </layoutItems>
         </layoutColumns>
         <style>TwoColumnsLeftToRight</style>
     </layoutSections>
