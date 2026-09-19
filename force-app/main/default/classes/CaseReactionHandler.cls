@@ -21,12 +21,18 @@
  * System-Modus und umgehen FLS → „manuell nicht änderbar", kein Update-FLS
  * für irgendwen nötig.
  *
- * Re-Entry (ADR-1): der nach-Trigger `update Trigger.new` feuert einen neuen
- * after-update-Lauf; dort ist old.Status bereits offen ⇒ Guard=false ⇒ kein
- * zweites Inkrement, keine Rekursion, kein Governor-Loop.
+ * Re-Entry (ADR-1, ergänzt SCRUM-419): der nach-Trigger `update Trigger.new`
+ * feuert einen neuen after-update-Lauf. Früher unterdrückte das allein die
+ * Status-Guard (n.Status == o.Status ⇒ kein Doppler). Beim externen
+ * Single-Field-REST-/CLI-Update blieb genau dieser 2. Lauf aktiv → Doppler
+ * (Reopen = 2). Es gibt daher jetzt zusätzlich ein explizites Re-Entry-Flag
+ * (isRecomputing), das der Trigger um den recompute-Aufruf setzt: der
+ * handler-verursachte Re-Entry wird in ALLEN Pfaden übersprungen.
  *
  * @author developer-agent
  * @date 2026-09-18
+ * @date 2026-09-19 SCRUM-419: Re-Entry-Flag (isRecomputing) gegen Doppler im
+ *        externen REST/CLI-Pfad
  */
 public without sharing class CaseReactionHandler {
 
@@ -36,6 +42,24 @@ public without sharing class CaseReactionHandler {
      * New / Working / Escalated / Closed. (1:1 SCRUM-365 CLOSED_STATUS.)
      */
     public static final String CLOSED_STATUS = 'Closed';
+
+    /**
+     * SCRUM-419: Re-Entry-Flag für den Trigger. Der Trigger setzt es um den
+     * recompute-Aufruf (true → finally false), damit der VON RECOMPUTE SELBST
+     * ausgelöste re-entrant after-update-Lauf (der nur die Custom-Felder
+     * schreibt) nicht noch einmal zählt.
+     *
+     * Warum nötig (SCRUM-418-Bug): Der alte Re-Entry-Schutz hing ausschließlich
+     * am Status-Guard (n.Status != o.Status). Der greift im in-Org-Apex- und
+     * in-app-UI-Pfad korrekt, aber beim EXTERNEN Single-Field-REST-/CLI-Update
+     * bleibt der re-entrant 2. Lauf aktiv und erhöht den Zähler ein zweites Mal
+     * (Reopen = 2 statt 1, deterministisch reproduziert). Das Flag unterdrückt
+     * den handler-verursachten Re-Entry für ALLE Pfade, unabhängig davon, wie
+     * Trigger.old/new beim externen Update geladen werden. Transaction-scope:
+     * das Flag wird pro recompute-Aufruf gesetzt und zurückgesetzt, daher
+     * blockt es keine legitimen, separaten Reopens in derselben Transaktion.
+     */
+    public static Boolean isRecomputing = false;
 
     /**
      * Erhöht für alle übergebenen (bereits wiederaufgemachten) Cases die
