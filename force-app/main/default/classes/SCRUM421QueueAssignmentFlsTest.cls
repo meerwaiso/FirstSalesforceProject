@@ -144,11 +144,12 @@ private class SCRUM421QueueAssignmentFlsTest {
     // ---- AK11: die 4 Queues müssen existieren (Read-Back nach Deploy) ----
     @isTest
     static void testQueuesExist() {
-        Integer n = [
-            SELECT COUNT(Id) FROM Group
+        AggregateResult r = [
+            SELECT COUNT(Id) q FROM Group
             WHERE Type = 'Queue'
               AND Name IN ('Technischer Support','Vertragsservice','Billing','First Level Support')
-        ].size();
+        ];
+        Integer n = (Integer) r.get('q');
         System.assertEquals(4, n, 'AK11: exakt 4 Queues müssen in der Org existieren');
     }
 }
