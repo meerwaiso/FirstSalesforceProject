@@ -130,7 +130,7 @@ private class SCRUM421QueueAssignmentTest {
         insert c; // wird automatisch zu Technischer Support
         c.OwnerId = user.Id; // Mensch uebernimmnt
         update c;
-        Id tsAfterManual = read(c.Id).Zuordnungszeitpunkt__c;
+        DateTime tsAfterManual = read(c.Id).Zuordnungszeitpunkt__c;
 
         c.Servicebereich__c = 'Rechnung'; // danach ändern
         update c;
@@ -174,9 +174,9 @@ private class SCRUM421QueueAssignmentTest {
         Integer qBefore = Limits.getQueries();
         List<Case> batch = new List<Case>();
         for (Integer i = 0; i < 300; i++) {
-            Boolean premium = (i % 2 == 0);
-            String sb = sbCycleL[i % 4];
-            Boolean manual = (i % 10 == 9);
+            Boolean premium = (mod(i, 2) == 0);
+            String sb = sbCycleL[mod(i, 4)];
+            Boolean manual = (mod(i, 10) == 9);
             Case c = mkCase(sb, premium ? 'Premium' : 'Standard', manual ? manualOwner.Id : null);
             batch.add(c);
         }
@@ -200,6 +200,10 @@ private class SCRUM421QueueAssignmentTest {
     }
 
     // ---------- helpers ----------
+    /** Modulo ohne '%' (Org-Parser akzeptiert '%' hier nicht). */
+    private static Integer mod(Integer a, Integer b) {
+        return a - (a / b) * b;
+    }
     private static void assertEquals(Object expected, Object actual) {
         System.assertEquals(expected, actual, 'unexpected value');
     }
