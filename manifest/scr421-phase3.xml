@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-421 Phase 3: Case-Layout — die 4 neuen Felder in der
+         Layout-Sektion «Zuordnung» (nach der 420-Sektion «Eskalation (Kunde)»).
+         Gelingt NACH Phase 2 (Felder + Trigger live). -->
+    <types>
+        <members>Case-Case Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>62.0</version>
+</Package>

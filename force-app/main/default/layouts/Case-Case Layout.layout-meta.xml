@@ -224,6 +224,33 @@
         </layoutColumns>
         <style>OneColumn</style>
     </layoutSections>
+    <!-- SCRUM-421: automatische Queue-Zuordnung — eigene Sektion, bewusst NACH
+         der 420-Sektion «Eskalation (Kunde)» (Abgrenzung), vor «System Information». -->
+    <layoutSections>
+        <customLabel>true</customLabel>
+        <detailHeading>true</detailHeading>
+        <editHeading>true</editHeading>
+        <label>Zuordnung</label>
+        <layoutColumns>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>Servicebereich__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>Kundenstatus__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Automatische_Zuordnung__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Zuordnungszeitpunkt__c</field>
+            </layoutItems>
+        </layoutColumns>
+        <style>OneColumn</style>
+    </layoutSections>
     <layoutSections>
         <customLabel>false</customLabel>
         <detailHeading>false</detailHeading>

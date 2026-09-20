@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Automatische_Zuordnung__c</fullName>
+    <label>Automatische Zuordnung</label>
+    <description>Ja/Nein, ob die automatische Queue-Zuordnung (SCRUM-421) auf diesem Case gegriffen hat. Ausschliesslich systemgepflegt (CaseQueueAssignment); read-only, kein Write-FLS.</description>
+    <type>Checkbox</type>
+    <defaultValue>false</defaultValue>
+</CustomField>
