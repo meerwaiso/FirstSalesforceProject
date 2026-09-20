@@ -231,6 +231,45 @@ Shape (pro Queue, `masterLabel`/`description`/`queueType`):
   echter Session **vor** Handoff. (SCRUM-382/386/388/390/394/398 alle schon an dieser Stelle
   gescheitert.)
 
+## Profil-FLS-Lock (Standard User) — manuell, keine Metadaten-Syntax
+
+> **Befund (2026-09-20, Review-Zyklus 2):** Ein per `sf project deploy` ausgeliefertes
+> Custom Field startet im Profil **«Standard User»** (DeveloperName `Standard`) **unrestricted**
+> — das Profil gewährt **Read UND Write** auf die 4 421-Felder. Die Field-Grants des PS
+> (`SCRUM421_Zuordnung`) **erteilen nur** und können Profil-FLS **nicht widerrufen**
+> (`editierbare Effektive-FLS = Profil OR PS`). Dadurch schlagen die AK10-Negativtests
+> (ohne-PS-SELECT + read-only-Write-Split auf Checkbox/Zeitstempel) rot.
+>
+> **Warum nicht via Metadaten/CLI (bewusst):** (a) Die Data-API speichert FLS auf **standard**
+> Profilen nicht als adressierbare `FieldPermissions`-Zeilen (`sf data create record -s
+> FieldPermissions` → „Parent ID: id value of incorrect type"); (b) der `Profile:Standard`-
+> **Retrieve** in dieser Org liefert ein **teilweises** Profil (nur `userLicense`+
+> `userPermissions`, **0** `objectPermissions`/`fieldPermissions`) — ein Source-Deploy würde
+> sämtliche übrigen Profile-Rechte löschen (destruktiv). → **Kein** Profile-File gehört in den
+> Repo; der Lock ist ein **manuelles Setup-Schritt**. Präzedenz **SCRUM-420** (dort org-seitig
+> verriegelt, 420-FLS-Test grün im selben Profil).
+
+**Schritt (manuell, Setup › Profiles):**
+1. Setup → **Profiles** → Profil **«Standard User»** (DeveloperName `Standard`) öffnen.
+2. Reitschen **Object Settings** → Objekt **Case** → **Field Permissions**.
+3. Für **alle vier** Felder **Read und Edit entziehen** (beide Haken entfernen):
+   - `Servicebereich__c`
+   - `Kundenstatus__c`
+   - `Automatische_Zuordnung__c`
+   - `Zuordnungszeitpunkt__c`
+4. Speichern. Sichtbarkeit/Write-Split bleibt danach **ausschließlich** über das PS
+   `SCRUM421_Zuordnung` steuern (read/edit- bzw. read-only-Grants oben).
+5. Bestätigen: `sf apex run test -o <Org> -n SCRUM421QueueAssignmentFlsTest` → **grün**
+   (negat. SELECT-Exception + posit. Control + read-only-Write-Split).
+
+> ⚠️ **Release-Hinweis für die PROD-ORG (@devops-agent / @po-agent):** Der Lock ist **nicht**
+> source-deployt und damit **keine** Teil der 3-Phasen-Deploy. Nach dem Prod-Deploy gelten
+> dieselben Felder im Prod-«Standard User»-Profil **ebenfalls unrestricted** → **gleicher
+> manueller Setup-Schritt obengenannt muss in der PROD-ORG wiederholt werden, bevor AK10
+> (negat. FLS) dort validiert/abgenommen wird**. AK10 schlägt in Prod sonst ebenso fehl, wie er
+> ungelocked in Test-Org fehlte. Bei Release/Deployment-Handoff als expliziter Org-Schritt
+> mitführen (analog Queue-Membership oben, das ebenfalls Org-seitig bleibt).
+
 ---
 
 ## Page Layout (Case)
