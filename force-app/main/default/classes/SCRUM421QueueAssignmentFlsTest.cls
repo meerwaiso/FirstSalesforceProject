@@ -44,10 +44,13 @@ private class SCRUM421QueueAssignmentFlsTest {
             'Vorbedingung gefeilscht: Standard-User hat keinen Case-Zugriff.');
 
         // NEGATIV: ohne PS → SELECT auf Servicebereich__c → Exception
+        // WITH USER_MODE ist zwingend: System.runAs() schaltet FLS-Prüfung für
+        // SOQL/DML NICHT ein. Ohne USER_MODE würde der SELECT im System-Modus
+        // durchgehen und das Assert unten könnte nie feuern.
         Boolean threw = false;
         System.runAs(u) {
             try {
-                List<Case> rows = [SELECT Servicebereich__c FROM Case LIMIT 1];
+                List<Case> rows = [SELECT Servicebereich__c FROM Case WITH USER_MODE LIMIT 1];
                 // Auch wenn rows leer: die Spalte wurde aufgelöst → FLS vorhanden
                 // → Test MUSS fehlschlagen.
                 System.assert(false,
@@ -118,7 +121,7 @@ private class SCRUM421QueueAssignmentFlsTest {
             Case c = [SELECT Id FROM Case WHERE Id = :caseId LIMIT 1];
             try {
                 c.Automatische_Zuordnung__c = true;
-                update c;
+                Database.update(c, AccessLevel.USER_MODE);
                 System.assert(false, 'Mit PS: Automatische_Zuordnung__c darf NICHT geschrieben werden.');
             } catch (Exception e) {
                 threwCb = true;
@@ -132,7 +135,7 @@ private class SCRUM421QueueAssignmentFlsTest {
             Case c = [SELECT Id FROM Case WHERE Id = :caseId LIMIT 1];
             try {
                 c.Zuordnungszeitpunkt__c = DateTime.now();
-                update c;
+                Database.update(c, AccessLevel.USER_MODE);
                 System.assert(false, 'Mit PS: Zuordnungszeitpunkt__c darf NICHT geschrieben werden.');
             } catch (Exception e) {
                 threwTs = true;
