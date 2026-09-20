@@ -50,8 +50,10 @@ restate a rule in full here.
 
 **Permissions**
 - No new or changed CRUD/FLS without an explicit Permission Set — never Profile edits → *Architect Agent SOUL*
-- Deploying a Permission Set is half the work: assign it, to the CLI's target-org user and to the human test account, and re-read one field through a real session before handing off. SCRUM-382, 386, 388 and 390 each shipped a Permission Set assigned to nobody → *Developer Agent SOUL*
-- Absence of FLS metadata is never proof of inherited access; verify against a real session → *Tester Agent SOUL*
+- Every FLS question is answered by the three-query chain in skill `salesforce-describe-first` §4 — existence, then grant, then assignment. That section overrides any FLS note in a SOUL or memory → *Skill: salesforce-describe-first*
+- Deploying a Permission Set is half the work: assign it, to the CLI's target-org user and to the human test account, and re-read one field through a real session before handing off. SCRUM-382, 386, 388, 390 and 421 each shipped a Permission Set assigned to nobody, and SCRUM-398 repeated it in Prod — six times, with this rule on file → *Developer Agent SOUL*
+- Absence of FLS metadata is never proof of inherited access, and `No such column` is never proof of absence; a field's existence and its visibility are two separate queries → *Skill: salesforce-describe-first* §4
+- Before any "the field is missing" theory: `scripts/fls-check.sh <Object> <Field>` — twenty seconds, and it ends the question. CI enforces the same from the other side: `scripts/fls-gate.py` reddens the org job when a changed field names no Permission Set, or names one assigned to nobody → *Skill: salesforce-describe-first* §4
 - No ticket marked Done without a negative-access test against a restricted user → *Tester Agent SOUL*
 
 **Tests**
