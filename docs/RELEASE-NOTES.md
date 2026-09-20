@@ -16,6 +16,47 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 20.09.2026 — Servicefälle automatisch nach Kundendringlichkeit priorisieren (SCRUM-420)
+
+**Was sich aendert**
+- Auf jedem Servicefall siehst du jetzt sofort, wie dringend die Lage bei diesem
+  Kunden ist: eine neue **Eskalationsstufe** mit den drei Werten **Keine**,
+  **Beobachten** oder **Kritisch**.
+- Daneben stehen die beiden Zahlen, die dahinterstecken: wie viele Fälle dieses
+  Kunden gerade **offen** sind und wie viele davon die **hohe Dringlichkeit**
+  haben.
+- Sobald der Kunde zwei oder mehr offene Fälle mit hoher Dringlichkeit hat,
+  springt die Stufe auf **Kritisch** — und es wird der **Eskalationszeitpunkt**
+  festgehalten. Bleibt der Kunde später wieder unter der Schwelle, geht die Stufe
+  wieder runter (ab 1 hohem Fall auf „Beobachten“, darunter auf „Keine“), der
+  einmal festgehaltene Eskalationszeitpunkt bleibt aber stehen.
+- Das System rechnet das von allein nach — wenn ein Fall neu angelegt wird, seine
+  Dringlichkeit sich aendert, er geschlossen oder wieder geöffnet wird oder einem
+  anderen Kunden zugeordnet wird. Du musst nichts pflegen und nichts zählen.
+
+**Wo man es sieht**
+Servicefall → Detailseite → Sektion **„Eskalation (Kunde)“** ganz unten:
+Eskalationsstufe, Anzahl offene Fälle, Anzahl offene Fälle mit hoher
+Dringlichkeit, Eskalationszeitpunkt.
+
+**Was bewusst nicht drin ist**
+- Das bisherige Feld „Eskalationsstufe“ (SCRUM-398, kritisch/erhöht/normal)
+  bleibt, wie es ist — dieses Feature arbeitet nebenher mit eigenen Feldern.
+  Ein eventuelles Aufräumen des alten Feldes wäre eigener Aufwand.
+- Die Stufe ist eine Kennzahl pro Kunde, die auf dessen Fällen angezeigt wird —
+  sie ist keine neue Priorität und aendert nichts an den bestehenden
+  Bearbeitungs- oder Eskalationsregeln des Falls selbst.
+- Die Werte pflegt das System selbst — es gibt nichts einzustellen. Die bereits
+  offenen Fälle wurden einmalig beim Go-Live nachgerechnet.
+
+**Deploy-ID**
+`0Afg500000F0qZ4CAJ` (11 Komponenten, 0 Fehler; Validierung
+`0Afg500000F0uCrCAJ`, 197/197 Tests, 19.09.2026).
+
+**Live-Beleg (PO-Read-back in Prod, 20.09):** vier neue Felder im Case sichtbar,
+Automatik aktiv, Berechtigungen an die berechtigten Nutzer verteilt (2/2), altes
+SCRUM-398-Feld unverändert.
+
 ## 15.09.2026 — Offene Chancen je Kunde auf einen Blick (SCRUM-416)
 
 **Was sich aendert**
