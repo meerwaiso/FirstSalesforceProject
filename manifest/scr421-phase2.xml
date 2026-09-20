@@ -6,10 +6,10 @@
          SCRUM421QueueAssignmentTest,SCRUM421QueueAssignmentFlsTest
          (keine volle Org-Testlauf — Core-Prinzip). -->
     <types>
-        <members>Technischer Support</members>
+        <members>Technischer_Support</members>
         <members>Vertragsservice</members>
         <members>Billing</members>
-        <members>First Level Support</members>
+        <members>First_Level_Support</members>
         <name>Queue</name>
     </types>
     <types>
