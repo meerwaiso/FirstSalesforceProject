@@ -16,12 +16,28 @@ public with sharing class OpportunityOverdueService {
      * @return List of Ids of newly marked overdue opportunities
      */
     public static List<Id> findAndMarkOverdueOpportunities() {
-        // Use Date.today().addDays(-threshold + 1) with < comparison to correctly handle
-        // DateTime vs Date boundary: LastModifiedDate includes time component,
-        // so "today 14:00 <= today 00:00" is false. Adding 1 day offset fixes this.
-        // For threshold=0: Date.today()+1 means "changed before tomorrow midnight" = all existing records.
-        // For threshold=14: Date.today()-13 means "changed before 13 days ago midnight" = 14+ days old.
-        Date thresholdDate = Date.today().addDays(-OVERDUE_DAYS_THRESHOLD + 1);
+        // DateTime gegen DateTime vergleichen, nicht Date gegen DateTime.
+        //
+        // Die frühere Fassung rechnete Date.today().addDays(-threshold + 1) und
+        // verglich das mit LastModifiedDate. Date.today() liefert das Datum in der
+        // Zeitzone des laufenden Benutzers, ein Date im Vergleich mit einem
+        // DateTime-Feld verankert aber an GMT-Mitternacht. Damit hing das Ergebnis
+        // davon ab, in welcher Zeitzone der Benutzer steht und zu welcher Stunde
+        // gelaufen wurde: in einer Org mit America/Los_Angeles (GMT-7) fiel der
+        // Stichtag zwischen 00:00 und 07:00 UTC in die Vergangenheit, und gerade
+        // angelegte Datensätze fielen aus dem Filter. Der Prod-Org Drift Gate war
+        // dadurch in diesem Fenster rot und danach grün, bei identischem Code.
+        //
+        // now() - threshold ist zeitzonenunabhängig und sagt genau, was gemeint ist:
+        // seit N Tagen nicht mehr angefasst. Das +1 entfällt, weil es nur die
+        // Date/DateTime-Grenze umgehen sollte.
+        //
+        // <= statt <: Salesforce stempelt DML-Zeitstempel mit der Transaktionszeit,
+        // und System.now() liefert innerhalb derselben Transaktion genau diesen Wert.
+        // Ein im Test gerade angelegter Datensatz liegt damit nicht VOR dem Stichtag,
+        // sondern exakt AUF ihm. Fachlich identisch ("seit N Tagen nicht angefasst"),
+        // für threshold=0 aber der Unterschied zwischen prüfbar und nicht prüfbar.
+        DateTime thresholdTime = DateTime.now().addDays(-OVERDUE_DAYS_THRESHOLD);
 
         // Find open opportunities that are older than the threshold and not already marked
         List<Opportunity> overdueOpportunities = [
@@ -29,7 +45,7 @@ public with sharing class OpportunityOverdueService {
             FROM Opportunity
             WHERE StageName != 'Closed Won'
               AND StageName != 'Closed Lost'
-              AND LastModifiedDate < :thresholdDate
+              AND LastModifiedDate <= :thresholdTime
               AND Is_Overdue__c = false
         ];
 
