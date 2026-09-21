@@ -41,6 +41,10 @@ Org: Test-Org (dev-ed host resourceful-bear-6f1u4j-dev-ed). Parse-ENV: FORCE_COL
 - 12 neuste Cases: Mix aus meerwais(005..) und Queue(00GW..), auto=meist true.
 
 ## Handoff
+- Korrigiert (Addendum 19820): (1) Layout-Sektion Zuordnung IST live in Test-Org
+  (retrieve Case-Case Layout: Sektion direkt nach Eskalation, exakt 4 Felder).
+  Dev-Notiz "Phase 3 nie deployed" ist UEBERHOLT. (2) E2E lief FULL-Suite:
+  79 passed / 0 failed, nicht nur Smoke 2/2.
 - Kein Code-Defekt in 421. Deliverable korrekt + getestet.
 - Live-Anomalie = Org-Config, fuer Tester nicht loesbar (kein Org-Config-Change by Tester).
 - Bug-Ticket angelegt + an 421 verlinkt. Urteil in Raum. Entscheidung = team-seitig.
