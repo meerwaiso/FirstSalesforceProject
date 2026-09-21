@@ -46,6 +46,18 @@ jobs:
         run: npm run prettier:verify
 
   # ------------------------------------------------------------- merge gate
+  readme:
+    name: README aus Release Notes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Blockierend, im Gegensatz zum advisory static-Job. README.md ist die
+    # Startseite und wird aus docs/RELEASE-NOTES.md erzeugt; laufen die zwei
+    # auseinander, zeigt GitHub veraltete Release Notes, ohne dass es auffaellt.
+    steps:
+      - uses: actions/checkout@v4
+      - name: README ist aktuell?
+        run: scripts/build-readme.sh --check
+
   org:
     name: Metadata, Apex & Session Smoke
     runs-on: ubuntu-latest
