@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Queue xmlns="http://soap.sforce.com/2006/04/metadata">
+    <doesSendEmailToMembers>false</doesSendEmailToMembers>
+    <description>SCRUM-421: automatische Queue-Zuordnung — Fallback-/Standard-Queue (Standard-Kunden, Allgemein, fehlendes Ziel-Queue).</description>
+    <name>First Level Support</name>
+    <queueSobject>
+        <sobjectType>Case</sobjectType>
+    </queueSobject>
+</Queue>

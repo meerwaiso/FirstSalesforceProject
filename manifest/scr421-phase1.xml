@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-421 Phase 1: die vier neuen Case-Felder + FLS Permission Set.
+         Gelangen ZUERST; Queues/Trigger/Apex/Layout referenzieren sie. -->
+    <types>
+        <members>Case.Servicebereich__c</members>
+        <members>Case.Kundenstatus__c</members>
+        <members>Case.Automatische_Zuordnung__c</members>
+        <members>Case.Zuordnungszeitpunkt__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>SCRUM421_Zuordnung</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>

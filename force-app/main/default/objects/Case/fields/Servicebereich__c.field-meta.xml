@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Servicebereich__c</fullName>
+    <description>Servicebereich des Anliegens (SCRUM-421): Technik / Vertrag / Rechnung / Allgemein. Vom Ersteller pro Case angegeben; nullable (leer = AK7, nie automatisch zuordnen).</description>
+    <externalId>false</externalId>
+    <label>Servicebereich</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Technik</fullName>
+                <default>false</default>
+                <label>Technik</label>
+            </value>
+            <value>
+                <fullName>Vertrag</fullName>
+                <default>false</default>
+                <label>Vertrag</label>
+            </value>
+            <value>
+                <fullName>Rechnung</fullName>
+                <default>false</default>
+                <label>Rechnung</label>
+            </value>
+            <value>
+                <fullName>Allgemein</fullName>
+                <default>false</default>
+                <label>Allgemein</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

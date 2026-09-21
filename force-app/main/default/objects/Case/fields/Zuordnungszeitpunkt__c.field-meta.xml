@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Zuordnungszeitpunkt__c</fullName>
+    <label>Zuordnungszeitpunkt</label>
+    <description>Zeitpunkt, zu dem die automatische Queue-Zuordnung (SCRUM-421) auf diesem Case erfolgreich gegriffen hat. Ausschliesslich systemgepflegt (CaseQueueAssignment); read-only. Leer = noch nie automatisch zugeordnet (AK7).</description>
+    <externalId>false</externalId>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>

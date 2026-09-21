@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-421 Phase 2: 4 Queues + Trigger + Handler + 2 Testklassen.
+         NACH Phase 1 (Felder + PS müssen live sein).
+         Deploy mit --test-level RunSpecifiedTests --tests
+         SCRUM421QueueAssignmentTest,SCRUM421QueueAssignmentFlsTest
+         (keine volle Org-Testlauf — Core-Prinzip). -->
+    <types>
+        <members>Technischer_Support</members>
+        <members>Vertragsservice</members>
+        <members>Billing</members>
+        <members>First_Level_Support</members>
+        <name>Queue</name>
+    </types>
+    <types>
+        <name>ApexClass</name>
+        <members>CaseQueueAssignment</members>
+        <members>CaseQueueAssignmentTrigger</members>
+        <members>SCRUM421QueueAssignmentTest</members>
+        <members>SCRUM421QueueAssignmentFlsTest</members>
+    </types>
+    <types>
+        <name>ApexTrigger</name>
+        <members>CaseQueueAssignmentTrigger</members>
+    </types>
+    <version>62.0</version>
+</Package>
