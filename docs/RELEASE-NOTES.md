@@ -16,6 +16,51 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 21.09.2026 — Servicefälle automatisch dem richtigen Team zuordnen (SCRUM-421)
+
+**Was sich aendert**
+- Ein neuer Servicefall landet jetzt automatisch im richtigen Bearbeitungsteam
+  (Queue) — du musst ihn nicht mehr beim vermeintlich falschen Team ablegen und
+  von dort weiterreichen. Die Wartezeit bis zur ersten Bearbeitung sinkt.
+- Dafuer gibst du beim Fall zwei Angaben an: um was es geht (**Servicebereich**:
+  Technik, Vertrag, Rechnung oder Allgemein) und wer der Kunde ist
+  (**Kundenstatus**: Standard oder Premium).
+- Premium-Kunden kommen je nach Anliegen zum spezialisierten Team: Technik zu
+  **Technischer Support**, Vertrag zu **Vertragsservice**, Rechnung zu **Billing**,
+  Allgemein zu **First Level Support**.
+- Standard-Kunden kommen immer direkt zu **First Level Support** — gleich, um was
+  es geht.
+- Hat jemand den Fall schon manuell zugewiesen, ruehrt die Automatik ihn nicht
+  mehr an: Menschenentscheidungen werden nie ueberschrieben. Dass die Automatik
+  nicht gegriffen hat, siehst du an der Checkbox (Nein).
+- Greift die Zuordnung, merkt sie sich das System: Die Checkbox
+  **„Automatische Zuordnung“** ist gesetzt und der **Zuordnungszeitpunkt** wird
+  festgehalten.
+
+**Wo man es sieht**
+Servicefall → Detailseite → Sektion **„Zuordnung“** (unten, nach der Sektion
+„Eskalation (Kunde)“): Servicebereich, Kundenstatus, Automatische Zuordnung,
+Zuordnungszeitpunkt. Zugesorgte Fälle tragen den Namen des Teams als Bearbeiter.
+
+**Was bewusst nicht drin ist**
+- Die vier Teams existieren jetzt, sind aber noch leer besetzt: wer in welchem
+  Team arbeitet, muss im Org-Setup (Queue-Membership) festgelegt werden — das ist
+  Organisationsarbeit und bewusst nicht Teil dieses Features.
+- Die zwei neuen Eingabefelder sind nur fuer berechtigtes Personal befuellbar;
+  die Zuordnung selbst macht das System — es gibt da nichts einzustellen.
+- Bleibt der Servicebereich leer, wird bewusst nichts zugewiesen (der Fall bleibt
+  beim bisherigen Bearbeiter, Checkbox = Nein) — das ist eine Regel, kein Fehler.
+
+**Deploy-ID**
+Felder & Berechtigungen `0Afg500000F327uCAB` (5/5, 0 Fehler); Queues &
+Zuordnung `0Afg500000F35H3CAJ` (10/10, 12/12 Tests gruen in Prod); Detailseite
+`0Afg500000F34jCCAR` (1/1). Release-Tag `release/2026-09-21-SCRUM-421` auf
+Commit `5406969`, 21.09.2026.
+
+**Live-Beleg (DevOps-Read-back in Prod, 21.09):** alle vier neuen Felder und die
+Berechtigungsgruppe vorhanden, die vier Queues als Gruppen vorhanden, die
+Zuordnung aktiv, Berechtigungen an die berechtigten Nutzer verteilt (2/2).
+
 ## 20.09.2026 — Servicefälle automatisch nach Kundendringlichkeit priorisieren (SCRUM-420)
 
 **Was sich aendert**
