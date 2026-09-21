@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Case.First_Response_Time__c</members>
+        <members>Case.First_Response_Working_Mins__c</members>
+        <members>Case.First_Response_Target_Missed__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>SCRUM424_FirstResponse_Read</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>62.0</version>
+</Package>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>First_Response_Target_Missed__c</fullName>
+    <label>Erste Reaktionszeit (Ziel verfehlt)</label>
+    <description>SCRUM-424: true, wenn Arbeitsminuten über dem Zielwert liegen (Premium 60 min, sonst 240 min — PO-Werte, in CaseCommentFirstResponse einstellbar). Systemgepflegt (CaseCommentFirstResponse); read-only. Bei 24/7-Profil (S2 offen) auf Kalenderminuten bezogen.</description>
+    <type>Checkbox</type>
+    <defaultValue>false</defaultValue>
+</CustomField>
