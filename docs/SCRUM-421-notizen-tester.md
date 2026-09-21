@@ -43,8 +43,9 @@ Org: Test-Org (dev-ed host resourceful-bear-6f1u4j-dev-ed). Parse-ENV: FORCE_COL
 ## Handoff
 - Korrigiert (Addendum 19820): (1) Layout-Sektion Zuordnung IST live in Test-Org
   (retrieve Case-Case Layout: Sektion direkt nach Eskalation, exakt 4 Felder).
-  Dev-Notiz "Phase 3 nie deployed" ist UEBERHOLT. (2) E2E lief FULL-Suite:
-  79 passed / 0 failed, nicht nur Smoke 2/2.
+  Dev-Notiz "Phase 3 nie deployed" ist UEBERHOLT. (2) E2E lief FULL-Suite: 79 passed / 10 failed (NICHT 0). Alle 10 in Specs
+  anderer Tickets (378:2, 396:5, 398:1, 403:1, 410:1) = Seeding-/Zustands-Luecken,
+  kein 421-Komponenten-Fehler. Korrigiert in Jira Comment 19821.
 - Kein Code-Defekt in 421. Deliverable korrekt + getestet.
 - Live-Anomalie = Org-Config, fuer Tester nicht loesbar (kein Org-Config-Change by Tester).
 - Bug-Ticket angelegt + an 421 verlinkt. Urteil in Raum. Entscheidung = team-seitig.
