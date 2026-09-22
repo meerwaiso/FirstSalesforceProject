@@ -125,13 +125,45 @@ Konsequenzen:
 - PS-Zuweisungs-Read-back: `PermissionSetAssignment`-COUNT + 1 Feld-Read durch eine
   Session mit PS (Developer-Handoff-Pflicht).
 
+### ADR-7 (Final 2. Runde, 2026-09-22): AC11 ist KEIN deploy-gated Apex-Assert
+AC11 (BusinessHours „Default“ TZ = `Europe/Berlin`) ist **Org-Konfiguration**, kein
+Quell-Artefakt — und sie darf **nicht** als harter Assert in der deploy-gated Apex-Testklasse
+stehen.
+
+**Warum (CI-Messung, Run 35781577030 auf Head 949fd37):**
+Die CI „Prod-Org Drift Gate“ führt die durch die PR-Touched-Files selektierten Testklassen
+**gegen die Prod-Org** im check-only-Deploy (vor dem Release) aus. Die Testmethode
+`ac11_tz_berlin` assertete `TimeZoneSidKey == 'Europe/Berlin'`. Prod ist vorab
+`America/Los_Angeles`, weil S1 dort erst **vom DevOps im Release** gesetzt wird.
+→ Das Gate kann vor dem Release **systematisch** nicht grün werden (FailedValidationError,
+einziger Fail `ac11_tz_berlin`). Ein Assert auf eine Vorbedingung der Zielsystem-Konfiguration
+in demselben Gate, dessen Grüne-Status diese Vorbedingung voraussetzt, ist ein Deadlock.
+
+**Konsequenz (normativ):**
+1. `SCRUM424FirstResponseTest.ac11_tz_berlin` wird **entfernt** (komplett, inkl. Methodenkopf).
+2. `SCRUM424BusinessHoursTest` bleibt unverändert — sie prüft nur Umgebung-unabhängig
+   (Default-BH existiert, `0 <= diff <= Kalender`); die TZ ist dort bewusst via
+   `System.debug` + „verification done by DevOps S1, not in Apex“. Das ist korrekt: die
+   *Verhaltens*-Seite von AC11 ist damit abgedeckt, die *Konfigurations*-Seite via S1-Read-back.
+3. AC11 wird durch **S1-Read-back** verifiziert: `SELECT TimeZoneSidKey FROM BusinessHours
+   WHERE IsDefault = true` = `Europe/Berlin`, dokumentiert im Developer-Handoff (Test-Org)
+   und im DevOps-Release-Kommentar (Prod-Org). Beleg-Stelle: Handoff-Kommentar, nicht CI.
+4. Grundsatz für alle künftigen Ticket-Designs (House-Regel): **Org-Setup-ACs (BusinessHours,
+   Profile, OWD, Report-Aggregation) werden nie als Apex-Test-Assert in eine CI-gated Klasse
+   gelegt.** Sie sind Vorbedingungen — deren Read-back gehört in den Handoff, nicht in die
+   Testsuite, die gegen eine Ziel-ORG validiert, deren Konfiguration erst mit dem Release folgt.
+
+**Kein Scope-Creep:** ADR-7 betrifft ausschliesslich den AC11-Test. Handler, Felder, PS,
+Layout, Report und alle übrigen AC-Tests bleiben exakt wie implementiert (die CI-Smoke
+Test-Org lief 15/15 grün auf Head 949fd37; FLS-Kette grün; FLS-Gate Total: 0).
+
 ---
 
 ## Org-Setup-Schritte (Source-unabhängig, Read-back obligatorisch)
 
 | # | Schritt | Org | Read-back | Blockiert |
 |---|---|---|---|---|
-| S1 | BusinessHours „Default“ → TZ `Europe/Berlin` (AC11) | Test **und** Prod (DevOps) | SOQL `SELECT TimeZoneSidKey FROM BusinessHours WHERE IsDefault` | AC11, AC7 (eigentliches Semantik) |
+| S1 | BusinessHours „Default“ → TZ `Europe/Berlin` (AC11) | Test **und** Prod (DevOps) | SOQL `SELECT TimeZoneSidKey FROM BusinessHours WHERE IsDefault` = `Europe/Berlin` — **der** AC11-Beleg; steht im Developer-Handoff (Test-Org) und im DevOps-Release-Kommentar (Prod-Org) | AC11, AC7 (eigentliches Semantik) |
 | S2 | BusinessHours „Default“ → echte Tageswerte (PO-Werte, z. B. Mo–Fr 08–17) | Test **und** Prod | SOQL der 7 Tagesfelder | AC7 |
 | S3 | Profil `Standard` → 3 neue Felder auf Read-only | Test **und** Prod (DevOps) | FLS-Negativ-Test (AC10) | AC10 |
 | S4 | Report-Spalte `First_Response_Working_Mins__c` → Aggregation „Average“ | Test **und** Prod | AC9-Auslesung | AC9 (Durchschnitt) |
@@ -212,7 +244,7 @@ API-Version für sämtliche Metadaten 62.0.
 | AC8 Bulk 200 Comments on 20 cases | Apex | `test_AC8_Bulk_200` (assert Limits im Testlog) |
 | AC9 Report gruppiert nach Servicebereich, Average + Miss-Rate | E2E | `SCRUM-424.spec.ts` (Report aufrufen, Gruppen auslesen); Vorbedingung S4 |
 | AC10 FLS: ohne PS kein Read, mit PS Read, kein Write | Apex, USER-Modus | `test_AC10_FLS_NoReadWithoutPS_ReadOnlyWithPS`; Vorbedingung S3 |
-| AC11 TZ = Europe/Berlin | Org-Read-back | SOQL in Testklasse (assert `TimeZoneSidKey == 'Europe/Berlin'`); Vorbedingung S1; DevOps wiederholt in Prod |
+| AC11 TZ = Europe/Berlin | Org-Read-back (S1) | **KEIN Apex-Test-Assert.** S1-Read-back: SOQL `SELECT TimeZoneSidKey FROM BusinessHours WHERE IsDefault` = `Europe/Berlin`, dokumentiert im Handoff (Test) bzw. Release-Kommentar (Prod). Begründung s. ADR-7. |
 
 ---
 
