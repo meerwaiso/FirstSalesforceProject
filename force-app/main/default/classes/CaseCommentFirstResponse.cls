@@ -21,6 +21,11 @@ public without sharing class CaseCommentFirstResponse {
      * Identifies first staff response per case and computes SLA fields.
      */
     public static void afterInsert(List<CaseComment> newComments) {
+        processFirstResponses(newComments);
+    }
+
+    /** Wrapper for trigger — old name kept for compatibility. */
+    public static void processFirstResponses(List<CaseComment> newComments) {
         if (newComments == null || newComments.isEmpty()) return;
 
         // Gather parent Case IDs

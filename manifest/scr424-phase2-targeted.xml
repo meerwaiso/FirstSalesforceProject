@@ -3,6 +3,15 @@
     <types>
         <members>CaseCommentFirstResponse</members>
         <members>SCRUM424FirstResponseTest</members>
+        <members>CaseCommentFirstResponseTrigger</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>SCRUM424BusinessHoursTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>SCRUM424FirstResponseFlsTest</members>
         <name>ApexClass</name>
     </types>
     <types>
