@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security Audit — Prod-Org (read-only)</title>
+<style>
+  :root {
+    --ink: #1a2332;
+    --ink-soft: #46536a;
+    --line: #e3e8f0;
+    --bg: #f4f6fa;
+    --card: #ffffff;
+    --accent: #2f5f8a;
+    --high: #c0392b;    --high-bg: #fdecea;
+    --mid:  #b07d1a;    --mid-bg:  #fdf6e3;
+    --low:  #2e7d4f;    --low-bg:  #e8f5ee;
+    --code-bg: #f0f3f7;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+  /* Header */
+  header.banner {
+    background: linear-gradient(135deg, #1f3a5f 0%, #2f5f8a 100%);
+    color: #fff;
+    border-radius: 14px;
+    padding: 34px 36px;
+    margin-bottom: 28px;
+    box-shadow: 0 4px 18px rgba(31, 58, 95, 0.22);
+  }
+  header.banner .tag {
+    display: inline-block;
+    background: rgba(255,255,255,.16);
+    border: 1px solid rgba(255,255,255,.35);
+    border-radius: 999px;
+    padding: 3px 14px;
+    font-size: 13px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  header.banner h1 {
+    margin: 0 0 12px;
+    font-size: 30px;
+    line-height: 1.25;
+    font-weight: 700;
+  }
+  header.banner .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 26px;
+    font-size: 14px;
+    opacity: .92;
+  }
+  header.banner .meta div span { opacity: .75; margin-right: 6px; }
+  /* Summary chip row */
+  .chips { margin: 10px 0 0; display: flex; gap: 10px; flex-wrap: wrap; }
+  .chip {
+    border-radius: 999px;
+    padding: 4px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+  }
+  .chip.c-high { background: var(--high); }
+  .chip.c-mid  { background: var(--mid); }
+  .chip.c-low  { background: var(--low); }
+  /* Content */
+  section.card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 30px 34px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 4px rgba(26, 35, 50, 0.05);
+  }
+  h1, h2, h3 { line-height: 1.3; }
+  h2 {
+    font-size: 22px;
+    margin: 0 0 18px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--line);
+    color: var(--accent);
+  }
+  section.card h2:first-child { margin-top: 0; }
+  h3 {
+    font-size: 17px;
+    margin: 28px 0 10px;
+  }
+  h3:first-of-type { margin-top: 6px; }
+  p { margin: 10px 0; }
+  /* Table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 6px;
+    font-size: 14.5px;
+  }
+  th, td {
+    border: 1px solid var(--line);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  thead th {
+    background: #eef2f7;
+    font-weight: 650;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: var(--ink-soft);
+  }
+  tbody tr:nth-child(odd) { background: #fafbfd; }
+  .sev-cell { text-align: center; white-space: nowrap; }
+  .badge {
+    display: inline-block;
+    padding: 2px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .b-high { background: var(--high); }
+  .b-mid  { background: var(--mid); }
+  .b-low  { background: var(--low); }
+  /* Lists */
+  ol, ul { margin: 8px 0 14px; padding-left: 26px; }
+  li { margin: 5px 0; }
+  li::marker { color: var(--accent); font-weight: 700; }
+  /* Quote */
+  blockquote {
+    margin: 16px 0;
+    padding: 12px 18px;
+    background: var(--mid-bg);
+    border-left: 4px solid var(--mid);
+    border-radius: 0 8px 8px 0;
+    font-size: 15px;
+  }
+  blockquote p { margin: 4px 0; }
+  /* Code */
+  code {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 1px 6px;
+    font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13.5px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  strong { font-weight: 650; }
+  em { font-style: normal; background: linear-gradient(transparent 62%, #fff3bf 62%); padding: 0 1px; }
+  hr { border: none; border-top: 1px solid var(--line); margin: 34px 0; }
+  /* Footer */
+  footer {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 13px;
+    margin-top: 36px;
+  }
+  /* Print */
+  @media print {
+    body { background: #fff; font-size: 12px; }
+    main { padding: 0; max-width: none; }
+    header.banner { box-shadow: none; border-radius: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    section.card { box-shadow: none; border: none; padding: 18px 0; break-inside: avoid-page; }
+    table, blockquote { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="banner">
+    <div class="tag">Sicherheits-Audit &middot; Read-only</div>
+    <h1>Security Audit — Prod-Org (read-only)</h1>
+    <div class="chips">
+      <span class="chip c-high">2 &times; Hoch</span>
+      <span class="chip c-mid">2 &times; Mittel</span>
+      <span class="chip c-low">3 &times; Niedrig</span>
+    </div>
+  </header>
+<section class="card">
+<p><strong>Ticket:</strong> SCRUM-427
+<strong>Datum:</strong> 2026-09-23
+<strong>Org:</strong> Prod-Org (<code>00Dg500000DkTtzEAF</code>, <code>orgfarm-0effda4ab9-dev-ed.develop.my.salesforce.com</code>)
+<strong>Login (Audit-Executor):</strong> <code>devops-agent@cline.de</code> (Alias <code>Prod-Org</code>)
+<strong>Ablauf:</strong> <strong>ausschließlich read-only</strong> — nur <code>sf data query</code> (SELECT), <code>sf sobject describe</code>, <code>sf org display</code> und <code>sf project retrieve start</code> (Metadata lesen). Keine DML, kein Modify, kein Deploy, keine Änderung an Daten, Metadaten, Einstellungen, Benutzern oder Berechtigungen.</p>
+<hr />
+</section>
+<section class="card">
+<h2>1. Zusammenfassung (für die Betreiberperson, ohne Jargon)</h2>
+<p>Die Org ist <strong>klein, intern und relativ dicht</strong> — das ist gut. Es gibt nur 9 angemeldete Nutzer, von denen 4 volle Admin-Rechte haben. Es gibt <strong>keine externen oder Gästekonten</strong> (alle Community-/Portal-Lizenzen sind komplett ungenutzt) und <strong>keine aktiven Sharing-Regeln</strong>, die Daten über Team-Grenzen hinweg freigeben würden. Das Code-Umfang (76 Apex-Klassen, 10 Trigger) ist überschaubar und enthält <strong>keine</strong> typischen Injections-Schwachstellen.</p>
+<p><strong>Wo es trotzdem Aufmerksamkeit braucht — die zwei wichtigsten Punkte:</strong></p>
+<ol>
+<li><strong>Zweistufen-Überprüfung (MFA/2FA) ist org-weit NICHT verpflichtend.</strong> Keines der 44 Nutzerprofile erzwingt MFA forciert das Einloggen. Das heißt: Wenn jemand das Passwort eines dieser Nutzer hat, muss er nicht einmal ein zweites Gerät zeigen. Für 4 Volladmins ist das ein reales Risiko.</li>
+<li><strong>Vier Nutzer haben volle Admin-Rechte</strong>, und einer davon (ein Integration-/Agent-Konto) hat sie über ein Profil, das sie nicht unbedingt braucht. Volladmin sollte man auf das Minimum halten.</li>
+</ol>
+<p>Alles andere (Passwortrichtlinie, keine IP-Restriktionen, kein Code-Risiko) steht im Detail unten.</p>
+<blockquote>
+<p><strong>Hinweis:</strong> Der Salesforce Health-Check-Score selbst ist nicht per read-only-CLI oder Metadata abrufbar — er steht nur in der Setup-Oberfläche (Setup → „Health Check&rdquo;). Er ist daher in diesem Report bewusst <strong>nicht</strong> erfunden, sondern als „manuell in Setup prüfen&rdquo; gekennzeichnet.</p>
+</blockquote>
+<hr />
+</section>
+<section class="card">
+<h2>2. Dringendste Probleme (nach Dringlichkeit)</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Dringlichkeit</th>
+<th>Bereich</th>
+<th>Befund</th>
+<th>Risiko</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td class="sev-cell"><span class="badge b-high">Hoch</span></td>
+<td>Benutzerrechte / MFA</td>
+<td>Keines der 44 Profile erzwingt Zweistufen-Überprüfung (<code>PermissionsForceTwoFactor</code> = <code>false</code> überall). Org-weit gibt es keinen 2FA-Zwang.</td>
+<td>Ohne 2FA reicht ein gestohlenes/geratetes Passwort zum Vollzugriff. Bei den 4 Volladmin-Nutzern ist das Schadenspotenzial maximal (ganze Org).</td>
+</tr>
+<tr>
+<td>2</td>
+<td class="sev-cell"><span class="badge b-high">Hoch</span></td>
+<td>Benutzerrechte</td>
+<td>4 von 9 Nutzern haben volle Admin-Rechte (<code>ModifyAllData</code>/<code>ViewAllData</code>): 2× via Profil <em>System Administrator</em>, 1× via Profil <em>System Administrator</em>, 1× via Profil <em>Analytics Cloud Integration User</em> (hier nur <code>ViewAllData</code>).</td>
+<td>Jedes Admin-Konto ist ein Einfallstor. Integration-/Agent-Konten mit <code>ViewAllData</code> können alle Kundendaten lesen.</td>
+</tr>
+<tr>
+<td>3</td>
+<td class="sev-cell"><span class="badge b-mid">Mittel</span></td>
+<td>Code</td>
+<td><code>CustomerTransferController</code> (LWC-Backend) ist <code>without sharing</code> und stellt 4 <code>@AuraEnabled</code>-Methoden bereit <strong>ohne</strong> Permission-/<code>hasAccess</code>-Gate; <code>launch()</code> startet einen DML-Job.</td>
+<td>Jeder Nutzer mit Sicht auf die Quick-Action <code>betreuungsuebergabe</code> kann die Aktion auslösen; die Vorschau-Logik sieht zudem über Sharing-Grenzen. Bewusst so gebaut (SCRUM-365-Präzedenz), aber es fehlt ein explizites Berechtigungs-CHECK im Endpunkt.</td>
+</tr>
+<tr>
+<td>4</td>
+<td class="sev-cell"><span class="badge b-mid">Mittel</span></td>
+<td>Einstellungen</td>
+<td>Es gibt <strong>keine</strong> Login-Zeitfenster (<code>UserListView</code> = 0) und keine IP-Beschränkung (<code>LoginIp</code> = 4 Einträge = bekannte IP-Adressen, keine LoginRange-Restriktion).</td>
+<td>Ein kompromittiertes Passwort kann zu jeder Uhrzeit und aus jedem Netzwerk verwendet werden.</td>
+</tr>
+<tr>
+<td>5</td>
+<td class="sev-cell"><span class="badge b-low">Niedrig</span></td>
+<td>Einstellungen</td>
+<td>Passwortrichtlinie ist eher locker: Mindestlänge 8, Komplexitätsstufe 1/4, 90 Tage Ablauf, 3 Historie, 10 Versuchsgrenze, 15 Min Sperre.</td>
+<td>Erleichtert Brute-Force/Passwort-Recycling gegenüber strengerer Richtlinien (12+ Zeichen, Stufe 3+).</td>
+</tr>
+<tr>
+<td>6</td>
+<td class="sev-cell"><span class="badge b-low">Niedrig</span></td>
+<td>Code</td>
+<td>26 der 76 Apex-Klassen sind ohne <code>with sharing</code> (Trigger-Handler, Rebuilder, Batch-Klassen).</td>
+<td>Meist beabsichtigt (Rollup/Rebuilder müssen Bestand sehen), aber ohne <code>with sharing</code> gilt die Sharing-Logik nicht automatisch — bei nachgerückten Funktionen leicht vergessen. Kein aktiver Befund, aber ein Muster zu beobachten.</td>
+</tr>
+<tr>
+<td>7</td>
+<td class="sev-cell"><span class="badge b-low">Niedrig</span></td>
+<td>Datenschutz / OWD</td>
+<td>Die Default-Teilungsstufe (OWD) ist <strong>nicht</strong> per read-only-CLI verifizierbar (steht weder in Profile-Metadaten noch in abrufbaren SharingRules; 230 SharingRules-Dateien, <strong>0</strong> mit Regeln).</td>
+<td>Nicht verifizierbar, <strong>nicht</strong> „problemlos&rdquo; — muss manuell in Setup bestätigt werden (siehe Abschnitt 3).</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>„Kein Befund ist ein Befund&rdquo;: Bereiche ohne Fund sind in Abschnitt 3 entsprechend als „kein Befund&rdquo; abgedeckt.</p>
+</blockquote>
+<hr />
+</section>
+<section class="card">
+<h2>3. Was konkret zu tun ist — Schritt für Schritt je Befund</h2>
+<h3>Befund #1 — Zweistufen-Überprüfung (MFA) org-weit verpflichtend machen <span class="badge b-high">Hoch</span></h3>
+<ol>
+<li>In Prod-Org: <strong>Setup → Security → „Two-Factor Authentication&rdquo;</strong>.</li>
+<li>Dort <strong>„Enforce Two-Factor Authentication for all users&rdquo;</strong> aktivieren (oder auf die Rolle/Profile einschränken, die es brauchen — mind. alle Admins).</li>
+<li>Alternativ/ergänzend: <strong>Setup → „Multi-Factor Authentication Policies&rdquo;</strong> → Richtlinie mit „MFA required for login&rdquo; wählen und den Profilen/Permission Sets zuordnen.</li>
+<li>Nach dem Change: 1–2 Wochen Übergangsfrist geben, in der Nutzer ihre MFA-Methoden einrichten dürfen, bevor der Zwang greift.</li>
+<li><strong>Kontrollieren:</strong> Ein nicht-MFA-fähiges Passwort sollte beim Anmelden mit 2FA-Zwang an der Schwelle scheitern.</li>
+</ol>
+<h3>Befund #2 — Volladmin-Nutzer reduzieren <span class="badge b-high">Hoch</span></h3>
+<ol>
+<li>Prüfen, welche der 4 Admin-Nutzer die Rechte <strong>tatsächlich</strong> für den Alltag brauchen.</li>
+<li>Das <em>Analytics Cloud Integration User</em>-Profil: dort <code>ViewAllData</code> prüfen — wenn die Integration nur ihre eigenen Tabellen braucht, <code>ViewAllData</code> entfernen und stattdessen gezielte Object-Rechte geben.</li>
+<li>Integration-/Agent-Konten (z. B. <code>epic.b2c…@orgfarm…</code>, <code>integration@…</code>) möglichst auf <strong>dedizierte Permission Sets</strong> umstellen statt auf „System Administrator&rdquo;.</li>
+<li>Nach jedem Schritt die verbleibenden <code>ModifyAllData</code>/<code>ViewAllData</code>-Nutzer neu zählen und dokumentieren; Ziel: nur die Personen, die morgen wirklich Admin sein müssen.</li>
+</ol>
+<h3>Befund #3 — <code>CustomerTransferController</code>-Endpunkt absichern <span class="badge b-mid">Mittel</span></h3>
+<ol>
+<li>In jedem <code>@AuraEnabled</code>-Endpunkt einen expliziten Permission-Check ergänzen, z. B. vor <code>launch()</code>:
+   - <code>Security.HasPermission</code> gegen ein dediziertes Custom Permission, <strong>oder</strong>
+   - <code>System.HasPermission('PermissionSetName')</code>.</li>
+<li>Den <code>without sharing</code>-Zweck (Vorschau über Sharing-Grenzen) mit einem Kommentar begründen und sicherstellen, dass die Endpunktdaten danach nur an Nutzer rausgeben, die das Feature ausführen dürfen.</li>
+<li><strong>Kontrollieren:</strong> Nutzer ohne die Berechtigung sehen keine Möglichkeit, <code>launch</code> auszulösen (kein Toast-/Job-Start).</li>
+</ol>
+<h3>Befund #4 — Login-Zeitfenster / IP-Restriktion <span class="badge b-mid">Mittel</span></h3>
+<ol>
+<li>Falls das Team nicht rund um die Uhr arbeitet: <strong>Setup → Security → „Login Hours&rdquo;</strong> → Zeitfenster pro Rolle/Profil einrichten.</li>
+<li>Falls feste Ausgangs-IPs (Headquarter, Büro) existieren: <strong>Setup → Security → „Network Access&rdquo;</strong> → erlaubte IP-Bereiche anlegen.</li>
+<li>Für reine Integrationen: <strong>Setup → „Remote Site Settings&rdquo;</strong> + ggf. <strong>IP-Restriction auf das API-Konto</strong> engziehen.</li>
+</ol>
+<h3>Befund #5 — Passwortrichtlinie anziehen <span class="badge b-low">Niedrig</span></h3>
+<ol>
+<li><strong>Setup → Security → „Password Policies&rdquo;</strong>.</li>
+<li>Mindestlänge auf <strong>12</strong> erhöhen, Komplexität auf <strong>Stufe 3</strong> (Groß-/Kleinbuchstaben + Zahl + Sonderzeichen), Historie auf <strong>5</strong> anheben.</li>
+<li>Ablauf (90 Tage) kann bleiben; die Sperre (10/15 Min) ist ok.</li>
+</ol>
+<h3>Befund #6 — <code>with sharing</code>-Muster beobachten <span class="badge b-low">Niedrig</span></h3>
+<ol>
+<li>Keine Sofortmaßnahme nötig.</li>
+<li>In Code-Reviews als Checkliste einpflegen: „Neue Klasse, die DML/SOQL auf Kundendaten macht → braucht <code>with sharing</code>, außer mit dokumentiertem Grund&rdquo;.</li>
+<li>Bestandsklassen bei nächster Änderung mit <code>with sharing</code> nachziehen, wo es fachlich passt.</li>
+</ol>
+<h3>Befund #7 — OWD manuell bestätigen <em>(Niedrig, aber wichtig einzuordnen)</em></h3>
+<ol>
+<li><strong>Setup → Security → „Sharing Settings&rdquo;</strong> → für die geschäftskritischen Objekte (Account, Contact, Case, Lead, Opportunity) die Default-Teilstufe ablesen.</li>
+<li>Ziel: Standard = <strong>„Private&rdquo;</strong> (außer für den Admin/Manager-Hierarchie).</li>
+<li>Falls ein Objekt auf „Read&rdquo; steht, prüfen, ob das gewollt ist — sonst auf „Private&rdquo; stellen.</li>
+<li>Ergebnis hier in ein Folgeticket aufnehmen, falls etwas nicht „Private&rdquo; ist.</li>
+</ol>
+<hr />
+</section>
+<section class="card">
+<h2>4. Prüfbereiche im Detail („kein Befund&rdquo; ist ein Befund)</h2>
+<h3>4.1 Allgemeine Einstellungen</h3>
+<ul>
+<li><strong>Passwortrichtlinie</strong> (read-only abgerufen): min. Länge 8, Komplexität 1, Ablauf 90 Tage, Historie 3, max. 10 Versuche, Sperre 15 min, Passwort-Frage aktiv. → <strong>Befund #5.</strong></li>
+<li><strong>MFA-Zwang:</strong> 0/44 Profile erzwingen <code>ForceTwoFactor</code>. → <strong>Befund #1.</strong></li>
+<li><strong>Health-Check-Score:</strong> nicht per read-only CLI/Metadaten abrufbar — <strong>manuell in Setup → Health Check prüfen</strong> (siehe Hinweis oben).</li>
+<li><strong>Login-/IP-Restriktionen:</strong> <code>LoginIp</code> = 4 (bekannte IP-Adressen, keine LoginRange-Restriktion), <code>UserListView</code> = 0 (keine Login-Zeitfenster), <code>LoginHistory</code> = 406. → <strong>Befund #4.</strong></li>
+</ul>
+<h3>4.2 Benutzerrechte</h3>
+<ul>
+<li><strong>Gesamtnutzer:</strong> 9.</li>
+<li><strong>Volladmin (<code>ModifyAllData</code>/<code>ViewAllData</code>):</strong> 4 Nutzer (2× System Administrator, 1× System Administrator, 1× Analytics Cloud Integration User/<code>ViewAllData</code>). → <strong>Befund #2.</strong></li>
+<li><strong>Permission Sets, die Admin-Rechte gewähren:</strong> 3 (<code>PermissionsModifyAllData</code> oder <code>PermissionsViewAllData</code> = true).</li>
+<li><strong>Inaktive Nutzer mit kritischen Rechten:</strong> 0. → <strong>kein Befund.</strong></li>
+<li><strong>Profile Gesamt:</strong> 44 (viele Standard/Inaktive).</li>
+</ul>
+<h3>4.3 Datenfreigabe &amp; Datenschutz</h3>
+<ul>
+<li><strong>OWD:</strong> nicht per read-only verifizierbar; 230 SharingRules-Metadaten-Dateien, <strong>0 davon mit aktiven Regeln</strong> (keine expliziten Freigaben). → <strong>Befund #7</strong> (manuell bestätigen).</li>
+<li><strong>Externe Gäste / Experience Cloud:</strong> 19 externe/Geschäfts-Lizenzen existieren, <strong>alle mit 0 genutzten Lizenzen</strong> (kein aktiver Gast, kein aktiver Portal-User). Eine Experience existiert (<code>sfdcEnablement_EnablementWorkspace</code> — interne Enablement-Site, nicht öffentlich). → <strong>kein Befund</strong> für aktive externe Zugänge.</li>
+<li><strong>PII / Field-Level-Security:</strong> verschlüsselte/PII-Felder sind an die OWD/FLS-Analyse gebunden; mit Befund #7 (OWD) abzudecken. Dediziertes PII-Masking wurde nicht als separater Befund gefunden.</li>
+</ul>
+<h3>4.4 Code &amp; Anpassungen</h3>
+<ul>
+<li><strong>Apex:</strong> 76 Klassen in der Org, 10 Trigger. Repo-Analyse (Autor des Reports, eigener Code-Durchlauf):</li>
+<li><strong>SOQL-Injection:</strong> keine dynamische String-Konkatenation in SOQL/DMQL gefunden (alle Queries sind statische Literale oder parametrisiert, z. B. <code>WHERE Id IN :ids</code>). → <strong>kein Befund.</strong></li>
+<li><strong>Callouts / <code>@RestResource</code>:</strong> keine gefunden. → <strong>kein Befund.</strong></li>
+<li><strong><code>with sharing</code>:</strong> 3 Klassen <code>with sharing</code>, 26 ohne (s. Befund #6).</li>
+<li><strong>Unschutzte Endpunkte:</strong> <code>CustomerTransferController</code> (4× <code>@AuraEnabled</code>, ohne Permission-Check, <code>without sharing</code>). → <strong>Befund #3.</strong></li>
+</ul>
+<hr />
+</section>
+<section class="card">
+<h2>5. Bestätigung — read-only-Ablauf</h2>
+<p>Der Audit hat <strong>ausschließlich read-only</strong> stattgefunden. Durchgeführte Operationen:
+- <code>sf data query</code> (nur <code>SELECT</code> / <code>Count</code>),
+- <code>sf sobject describe</code> (Schema lesen),
+- <code>sf org display</code> (Org-Info),
+- <code>sf project retrieve start</code> (Metadaten <strong>lesen</strong> nach lokal).</p>
+<p>Es wurden <strong>keine</strong> Änderungen an Daten, Einstellungen, Metadaten, Benutzern oder Berechtigungen in der Prod-Org vorgenommen. Keiner der abgewiesenen/verworfenen Read-Versuche war ein Write-Versuch.</p>
+</section>
+  <footer>
+    SCRUM-427 &middot; Security Audit Prod-Org &middot; 2026-09-23 &middot; Versionierte Quelle: <code>docs/SCRUM-427-audit.md</code>
+  </footer>
+</main>
+</body>
+</html>
