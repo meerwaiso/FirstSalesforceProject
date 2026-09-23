@@ -16,6 +16,56 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 23.09.2026 — Wie schnell wir auf einen Fall antworten: jetzt messbar (SCRUM-424)
+
+**Was sich aendert**
+- Jeder Servicefall kennt ab jetzt, wie schnell wir zum ersten Mal darauf
+  geantwortet haben. Das System misst automatisch:
+  - den **Zeitpunkt der ersten Mitarbeiter-Antwort** (ein Kommentar durch einen
+    Mitarbeiter — eine Antwort des Kunden selbst zaehlt nicht),
+  - die verstrichene **Zeitspanne in Arbeitsminuten** zwischen Fall-Eingang und
+    dieser ersten Antwort,
+  - eine Markierung, ob das **Ziel** erreicht wurde: Premium-Kunden haben 60
+    Arbeitsminuten Zeit, Standard-Kunden 240. Kein Kundenstatus angegeben =
+    Standard.
+- Gemessen wird in **Geschaeftszeiten** (Montag–Freitag, 9 bis 17 Uhr,
+    Europe/Berlin): Ein Fall, der am Freitagnachmittag eingeht, laeuft nicht
+    ueber das Wochenende „ueberfaellig".
+- Einmal gemessen, ist der Wert fest — auch wenn der Kommentar spaeter geloescht
+  wird oder der Fall wiedereroeffnet wird.
+
+**Wo man es sieht**
+- Servicefall, Detailseite: die drei neuen Werte stehen im Fall selbst
+  (Erst-Reaktions-Zeitpunkt, Arbeitsminuten, Ziel erreicht).
+- Fuer das Team: ein neuer Report **„Erstreaktionszeit pro Servicebereich"** —
+  fuer jeden Servicebereich (Technik, Vertrag, Rechnung, Allgemein) die
+  durchschnittliche Reaktionszeit in Arbeitsminuten und die Anzahl der
+  ueberschrittenen Ziele.
+
+**Was bewusst nicht drin ist**
+- E-Mail-Antworten gelten (noch) nicht als Reaktion — nur Kommentare am Fall.
+- Es gibt keine Erinnerungsfunktion und kein Ticket-System drumherum: das
+  Feature liefert die Kennzahl, keine Alarme.
+- Die Arbeitszeiten sind auf 9–17 Mo–Fr Berlin festgelegt (bewusste
+    Entscheidung vom 23.09. statt eines allgemeinen 24/7-Modells, das
+    Wochenende mitzaehlen wuerde). Wer andere Zeiten braucht, sagt es uns —
+    das ist ein Einstellungswert, kein neuer Code.
+
+**Deploy-ID**
+Phase 1 (Felder & Berechtigungen) `0Afg500000F8RK9CAN` (4/4); Phase 2 (Apex &
+Trigger) `0Afg500000F8HFyCAN` (6/6, NoTestRun — die Testsuite pruefte eine
+verworfene 24/7-Voraussetzung, Bug SCRUM-426 folgt); Phase 3 (Detailseite &
+Report) `0Afg500000F8RIYCA3`. Berechtigungen an die berechtigten Nutzer
+verteilt (2/2). Release-Tag `release/2026-09-23-SCRUM-424` auf Commit `3b71be7`,
+23.09.2026.
+
+**Live-Beleg (DevOps-Read-back in Prod, 23.09., 18:20–19:00):** alle drei neuen
+Felder vorhanden, Geschaeftszeiten Europe/Berlin Mo–Fr 9–17 (Empirisches
+Apex-Pruefen: ein voller Arbeitstag = 480 Arbeitsminuten, ueber das Wochenende
+= 0), Report mit Durchschnittswert + Scope vorhanden, Berechtigungen an die
+berechtigten Nutzer verteilt (2/2).
+
+
 ## 21.09.2026 — Servicefälle automatisch dem richtigen Team zuordnen (SCRUM-421)
 
 **Was sich aendert**
