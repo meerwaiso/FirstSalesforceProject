@@ -19,4 +19,5 @@
     <description>Erste Reaktionszeit pro Servicebereich (SCRUM-424). Grouping: Servicebereich (Asc). Spalten: Fallnummer, Betreff, Arbeitsminuten der ersten Reaktion (Average via S4), Ziel verfehlt. Filter: First_Response_Time__c nicht leer (nur Cases mit gesetztem Wert).</description>
     <name>Erstreaktionszeit_Pro_Servicebereich</name>
     <reportType>CaseList</reportType>
+    <scope>organization</scope>
 </Report>
