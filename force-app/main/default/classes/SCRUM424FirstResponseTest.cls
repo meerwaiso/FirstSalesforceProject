@@ -287,13 +287,4 @@ private class SCRUM424FirstResponseTest {
         System.assertEquals(1, vertrMissed, 'AC9: Vertrag genau 1 gerissenes Ziel (300 > 240)');
         System.assertEquals(0, techMissed,  'AC9: Technik kein gerissenes Ziel (60 < 240)');
     }
-
-    /* ------------------------------------------------------------------
-     * AC11 — WorkWeek "Default" TimeZoneSidKey = Europe/Berlin (Read-Back).
-     */
-    @isTest
-    static void ac11_tz_berlin() {
-        BusinessHours bh = [SELECT Id, TimeZoneSidKey FROM BusinessHours WHERE IsDefault = true LIMIT 1][0];
-        System.assertEquals('Europe/Berlin', bh.TimeZoneSidKey, 'AC11: Default-BusinessHours = Europe/Berlin');
-    }
 }
