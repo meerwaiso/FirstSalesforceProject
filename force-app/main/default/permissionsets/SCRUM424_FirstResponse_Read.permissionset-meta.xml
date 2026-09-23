@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-424: FLS auf 3 Case-Felder der Ersten Reaktionszeit. Alle 3 read-only (System-Ergebnisfelder, kein Edit). Kein Objekt-CRUD — House-Form SCRUM421_Zuordnung (ohne objectPermissions-Block).</description>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.First_Response_Target_Missed__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.First_Response_Time__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.First_Response_Working_Mins__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM424_FirstResponse_Read</label>
+</PermissionSet>
