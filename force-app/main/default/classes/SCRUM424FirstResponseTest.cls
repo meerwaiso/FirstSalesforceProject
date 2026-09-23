@@ -75,10 +75,57 @@ private class SCRUM424FirstResponseTest {
     }
 
     private static Case refresh(Id caseId) {
-        return [SELECT Id, First_Response_Time__c, First_Response_Working_Mins__c,
+        return [SELECT Id, CreatedDate, First_Response_Time__c, First_Response_Working_Mins__c,
                     First_Response_Target_Missed__c, Kundenstatus__c, Servicebereich__c
                 FROM Case WHERE Id = :caseId LIMIT 1][0];
     }
+
+    /** Standard-BusinessHours der Org (dieselbe, die der Handler benutzt). */
+    private static Id bhId() {
+        List<BusinessHours> bhs = [SELECT Id FROM BusinessHours WHERE IsDefault = true LIMIT 1];
+        return bhs.isEmpty() ? null : bhs[0].Id;
+    }
+
+    /**
+     * Erwartete Arbeitsminuten — UNABHAENGIG von BusinessHours.diff berechnet:
+     * minutenweise mit BusinessHours.isWithin aufsummiert.
+     *
+     * Kein Test haengt damit an einer hartkodierten Minutenzahl, die nur auf einer
+     * 24/7-Org stimmt. Der Test laeuft auf jeder Konfiguration und prueft die
+     * Implementierung gegen ein ZWEITES Verfahren statt gegen sich selbst.
+     */
+    private static Integer expectedMins(Datetime von, Datetime bis) {
+        Id bh = bhId();
+        if (bh == null) return (Integer)((bis.getTime() - von.getTime()) / 60000);
+        Integer mins = 0;
+        Datetime t = von;
+        while (t < bis) {
+            if (BusinessHours.isWithin(bh, t)) mins++;
+            t = t.addMinutes(1);
+        }
+        return mins;
+    }
+
+
+    /**
+     * Vergleich mit 1 Minute Toleranz. BusinessHours.diff rechnet in Millisekunden,
+     * expectedMins zaehlt Minutenproben — an den Intervallgrenzen ergibt das bis zu
+     * eine Minute Unterschied (gemessen 2026-09-23: 1675 vs 1674). Der Rahmen ist
+     * eng genug, um echte Abweichungen zu fangen (0 statt 45, 131 statt 300).
+     */
+    private static void assertMins(Integer erwartet, Decimal tatsaechlich, String was) {
+        System.assertNotEquals(null, tatsaechlich, was + ': Wert ist gesetzt');
+        Decimal abw = Math.abs(tatsaechlich - erwartet);
+        System.assert(abw <= 1,
+            was + ': erwartet ~' + erwartet + ', tatsaechlich ' + tatsaechlich + ' (Abweichung ' + abw + ')');
+    }
+
+    /** Zeitstempel des ersten Kommentars (Intervall-Ende; nicht setzbar). */
+    private static Datetime firstCommentTime(Id caseId) {
+        return [SELECT CreatedDate FROM CaseComment
+                WHERE ParentId = :caseId ORDER BY CreatedDate ASC LIMIT 1].CreatedDate;
+    }
+
 
     /* ------------------------------------------------------------------
      * AC1 — Premium im Ziel: 45 Arbeitsminuten < 60 -> Zeit gesetzt, Dauer 45, nicht verfehlt.
@@ -92,7 +139,9 @@ private class SCRUM424FirstResponseTest {
 
         Case c = refresh(cid);
         System.assertNotEquals(null, c.First_Response_Time__c, 'AC1: Zeit gesetzt');
-        System.assertEquals(Decimal.valueOf(45), c.First_Response_Working_Mins__c, 'AC1: Dauer 45');
+        Integer erwartet1 = expectedMins(c.CreatedDate, firstCommentTime(cid));
+        assertMins(erwartet1, c.First_Response_Working_Mins__c,
+            'AC1: Arbeitsminuten = unabhaengig berechnet (' + erwartet1 + ')');
         System.assertEquals(false, c.First_Response_Target_Missed__c, 'AC1: Premium-Ziel (60) erreicht');
     }
 
@@ -103,11 +152,15 @@ private class SCRUM424FirstResponseTest {
     static void ac2_standard_target_missed() {
         User svc = svc(), cust = cust();
         Id cid = newCaseAsCustomer(cust, 'Allgemein', 'Standard');
-        backdate(cid, 300);
+        backdate(cid, 3 * 24 * 60);   // 3 Tage -> mind. 1 voller Arbeitstag (480 min) > 240,
+                                      // gilt auf 24/7 wie auf Mo-Fr 09-17
         staffComment(cid, svc, 'Standard-1. Reaktion (spaet)');
 
         Case c = refresh(cid);
-        System.assertEquals(Decimal.valueOf(300), c.First_Response_Working_Mins__c, 'AC2: Dauer 300');
+        Integer erwartet2 = expectedMins(c.CreatedDate, firstCommentTime(cid));
+        assertMins(erwartet2, c.First_Response_Working_Mins__c,
+            'AC2: Arbeitsminuten = unabhaengig berechnet (' + erwartet2 + ')');
+        System.assert(erwartet2 > 240, 'AC2: Aufbau muss das Standard-Ziel sicher reissen');
         System.assertEquals(true, c.First_Response_Target_Missed__c, 'AC2: Standard-Ziel (240) gerissen');
     }
 
@@ -118,11 +171,14 @@ private class SCRUM424FirstResponseTest {
     static void ac3_blank_treated_as_standard() {
         User svc = svc(), cust = cust();
         Id cid = newCaseAsCustomer(cust, 'Rechnung', null);
-        backdate(cid, 300);
+        backdate(cid, 3 * 24 * 60);   // s. AC2
         staffComment(cid, svc, 'Leerer Status');
 
         Case c = refresh(cid);
-        System.assertEquals(Decimal.valueOf(300), c.First_Response_Working_Mins__c, 'AC3: Dauer 300');
+        Integer erwartet3 = expectedMins(c.CreatedDate, firstCommentTime(cid));
+        assertMins(erwartet3, c.First_Response_Working_Mins__c,
+            'AC3: Arbeitsminuten = unabhaengig berechnet (' + erwartet3 + ')');
+        System.assert(erwartet3 > 240, 'AC3: Aufbau muss das Standard-Ziel sicher reissen');
         System.assertEquals(true, c.First_Response_Target_Missed__c, 'AC3: Leer = Standard 240 -> gerissen');
     }
 
@@ -159,7 +215,9 @@ private class SCRUM424FirstResponseTest {
         Case afterFirst = refresh(cid);
         Datetime firstTime = afterFirst.First_Response_Time__c;
         Decimal  firstMins = afterFirst.First_Response_Working_Mins__c;
-        System.assertEquals(Decimal.valueOf(45), firstMins, 'AC5: erste Dauer 45');
+        Integer erwartet5 = expectedMins(afterFirst.CreatedDate, firstCommentTime(cid));
+        assertMins(erwartet5, firstMins,
+            'AC5: erste Dauer = unabhaengig berechnet (' + erwartet5 + ')');
 
         staffComment(cid, svc, 'zweite Reaktion (muss ignoriert werden)');
         Case afterSecond = refresh(cid);
@@ -198,19 +256,25 @@ private class SCRUM424FirstResponseTest {
 
     /* ------------------------------------------------------------------
      * AC7 — Wochenende (aktuelle 24/7-Org): Freitag 18:00 -> Montag 09:00
-     *        = 42 h = 2520 Kalenderminuten; auf 24/7 == BusinessHours-Minuten.
-     *   Nach S2 (echte WorkWeek-Werte) berechnet der Tester den Wert aus Org-Konfig.
+     *        Erwartungswert wird aus der Org-Konfiguration berechnet, nicht geraten:
+     *        auf 24/7 == Kalenderminuten, mit Wochenarbeitszeit entsprechend weniger.
      */
     @isTest
-    static void ac7_weekend_calendar_minutes_under_247() {
+    static void ac7_wochenende_arbeitsminuten() {
         User svc = svc(), cust = cust();
         Id cid = newCaseAsCustomer(cust, 'Technik', 'Standard');
         backdate(cid, 42 * 60);            // 42 h = 2520 min zurueck
         staffComment(cid, svc, 'Antwort am Montag');
 
         Case c = refresh(cid);
-        System.assertEquals(Decimal.valueOf(2520), c.First_Response_Working_Mins__c,
-            'AC7: 2520 Minuten auf 24/7-Org (Fri18 -> Mon09)');
+        Datetime bis = firstCommentTime(cid);
+        Integer erwartet7  = expectedMins(c.CreatedDate, bis);
+        Integer kalender7  = (Integer)((bis.getTime() - c.CreatedDate.getTime()) / 60000);
+
+        assertMins(erwartet7, c.First_Response_Working_Mins__c,
+            'AC7: Arbeitsminuten = unabhaengig berechnet (' + erwartet7 + ' von ' + kalender7 + ' Kalenderminuten)');
+        System.assert(erwartet7 <= kalender7,
+            'AC7: Arbeitsminuten duerfen Kalenderminuten nie uebersteigen');
     }
 
     /* ------------------------------------------------------------------
@@ -250,7 +314,9 @@ private class SCRUM424FirstResponseTest {
             Case r = refresh(c.Id);
             if (r.First_Response_Time__c != null && r.First_Response_Working_Mins__c != null) {
                 counted++;
-                System.assertEquals(Decimal.valueOf(30), r.First_Response_Working_Mins__c, 'AC8: je Case 30 min');
+                Integer erw8 = expectedMins(r.CreatedDate, firstCommentTime(c.Id));
+                assertMins(erw8, r.First_Response_Working_Mins__c,
+                    'AC8: je Case unabhaengig berechnet (' + erw8 + ')');
             }
         }
         System.assertEquals(20, counted, 'AC8: alle 20 Cases haben genau die erste Reaktion gesetzt');
@@ -276,15 +342,27 @@ private class SCRUM424FirstResponseTest {
         // Apex-Proxy (HAUS-Formen: Record-Read + skalares COUNT). Der Average wird in der
         // Report-KOMponente (E2E/S4, Tester) berechnet; hier wird der exakte Datenbestand
         // (Working-Mins pro Fall + gerissene Ziele pro Bereich) validiert.
-        System.assertEquals(Decimal.valueOf(60),  refresh(t1).First_Response_Working_Mins__c, 'AC9: Technik-Fall 60');
-        System.assertEquals(Decimal.valueOf(180), refresh(v1).First_Response_Working_Mins__c, 'AC9: Vertrag-Fall 180');
-        System.assertEquals(Decimal.valueOf(300), refresh(v2).First_Response_Working_Mins__c, 'AC9: Vertrag-Fall 300');
+        Map<Id, String> bereich = new Map<Id, String>{ t1 => 'Technik', v1 => 'Vertrag', v2 => 'Vertrag' };
+        Integer erwTechMissed = 0, erwVertrMissed = 0;
+        for (Id caseId : new List<Id>{ t1, v1, v2 }) {
+            Case r = refresh(caseId);
+            Integer erw9 = expectedMins(r.CreatedDate, firstCommentTime(caseId));
+            assertMins(erw9, r.First_Response_Working_Mins__c,
+                'AC9: Fall ' + caseId + ' unabhaengig berechnet (' + erw9 + ')');
+            if (erw9 > 240) {
+                if (bereich.get(caseId) == 'Technik') erwTechMissed++; else erwVertrMissed++;
+            }
+        }
 
         Integer techMissed  = [SELECT COUNT() FROM Case
             WHERE Servicebereich__c = 'Technik' AND First_Response_Target_Missed__c = true];
         Integer vertrMissed = [SELECT COUNT() FROM Case
             WHERE Servicebereich__c = 'Vertrag' AND First_Response_Target_Missed__c = true];
-        System.assertEquals(1, vertrMissed, 'AC9: Vertrag genau 1 gerissenes Ziel (300 > 240)');
-        System.assertEquals(0, techMissed,  'AC9: Technik kein gerissenes Ziel (60 < 240)');
+        // Erwartete Zahl gerissener Ziele aus den berechneten Minuten ableiten,
+        // nicht aus den frueher hartkodierten 60/180/300 (die galten nur auf 24/7).
+        System.assertEquals(erwVertrMissed, vertrMissed,
+            'AC9: Vertrag — gerissene Ziele wie aus den Arbeitsminuten berechnet');
+        System.assertEquals(erwTechMissed, techMissed,
+            'AC9: Technik — gerissene Ziele wie aus den Arbeitsminuten berechnet');
     }
 }
