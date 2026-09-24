@@ -55,6 +55,18 @@ Beide Quellen landen im selben `after insert`-Trigger auf Case → ein Handler f
    - Trigger-Reihenfolge bei gleichem DML-Batch: alphabetisch → `CaseQueueAssignmentTrigger` (421) vor `SCRUM428CaseIngestTrigger`. 421 routet neuere Cases bereits auf die Queue (wenn `Servicebereich__c` gesetzt) bzw. nicht (wenn null → AK7-Regel 421).
    - Phase A ändert `Servicebereich__c` (Schritt 2) → löst 421-`after update` aus → 421 sieht: `Owner` noch `CreatedById` → eligible → routet exakt auf die jetzt korrekte Queue. **Gewollt.**
    - Phase B (Queueable, s. u.) setzt `OwnerId` Queue→Person → löst 421-`after update` aus → 421-Änderungs-Filter (nur SB/KS-Wechsel) → `continue`. **Kein Überschreiben. 421-Code bleibt unverändert.**
+
+   Klarstellung (Review, 24.09.): Das „unverändert" in 5a/5b gilt für die bereits hier benannten Pfade. Der
+   **421-Insert-Pfad** (`afterInsert` — in demselben DML-Batch alphabetisch vor SCRUM428CaseIngestTrigger)
+   prüft `Dedupliziert__c` **nicht**, und kann es auch nicht: zum Zeitpunkt des 421-Triggers hat 428 den
+   Case noch nicht als Dup markiert (das Flag setzt 428-Phase A, die in diesem Batch danach läuft). Der
+   Schaden bleibt begrenzt: ein als Dup markierter Case erhält einen Queue-Owner statt
+   User-Owner; `Dedupliziert__c` und `Status='Closed'` werden von 421 nicht angefasst, die Bestätigung
+   (Schritt 8) wird korrekt unterlassen. Konsequenzen: (a) AC12-Zählung „unverteilt" ist für solche Dupes
+   korrekt (Queue-Owner zählt als unverteilt), (b) der Dup-Case liegt sichtbar in der Queue. Wenn die
+   Teamleitung das nicht will, ist ein 421-Fix (einfacher Filter: `Dedupliziert__c != true -> continue` im
+   Insert-Pfad) die saubere Lösung — **ausdrücklich nicht Teil dieses Pull-Requests**, eigene Entscheidung
+   durch PO. Kein Blocker für das Review dieses PRs.
    - Dup-Schließung (`Status`, `Subject`) und Bestätigung ändern kein 421-relevantes Feld → keine Re-Aktion.
    - 428-Trigger ist `after insert` only → eigene Updates feuern ihn nicht erneut.
 6. **Queueable einreihen** für Schritt 7/8 (läuft in derselben Transaktion, NACH allen After-Triggern → 421 hat final die Queue gesetzt, die 428 dann in Phase B zu einer Person macht).
