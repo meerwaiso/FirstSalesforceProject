@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <Report xmlns="http://soap.sforce.com/2006/04/metadata">
     <columns><field>CASE_NUMBER</field></columns>
     <columns><field>SUBJECT</field></columns>
@@ -14,12 +14,14 @@
         <criteriaItems>
             <column>OWNER</column>
             <operator>includes</operator>
-            <value>First Level Support, Technischer Support, Vertragsservice, Billing</value>
+            <value
+      >First Level Support, Technischer Support, Vertragsservice, Billing</value>
         </criteriaItems>
     </filter>
     <format>Summary</format>
     <scope>org</scope>
-    <description>Unverteite Fälle = offene Cases, deren Inhaber eine der 4 Support-Queues ist (SCRUM-428, AC12). Sortiert nach Erstellungsdatum aufsteigend: oberste Zeile = ältester wartender Fall. Der Record Count (Summary-Footer) zeigt die Anzahl unverteilter Fälle — ohne eigene Aggregation.</description>
+    <description
+  >Offene Cases, deren Inhaber eine der 4 Support-Queues ist (SCRUM-428). Ältester wartender Fall oben; Record Count = Anzahl unverteilter Fälle.</description>
     <name>Unverteite_Faelle</name>
     <reportType>CaseList</reportType>
     <sortColumn>CREATED_DATE</sortColumn>
