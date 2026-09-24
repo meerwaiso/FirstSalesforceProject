@@ -33,3 +33,15 @@ Harterkämpfte Befunde + Org-Abfragen — überleben die Kontext-Kompression.
 - ADR-5: Limit + Keywords per MDT (`SCRUM428_CaseLimitConfig__mdt`, `SCRUM428_KategorierRegel__mdt`).
 - ADR-8: 2 PS (`SCRUM428_ServiceTeam`, `SCRUM428_Teamleitung`), System=without sharing (kein PS dafür).
 - ADR-9: Sharing kein Impact.
+
+## Harte Befunde vom Developer (24.09.2026) — Org-Verifikation, bevor Code steht
+- AC9-API: `BusinessHours.isWithin(Id, Datetime)` — NICHT `getBusinessHoursWindowForDateTime` (existiert nicht, Compile-Fehler). Verifiziert per `scripts/apex-probe.sh`.
+- CaseComment Felder in DIESER Org: `ParentId` (Lookup→Case) + `CommentBody` (Text Area) + `IsPublished` (Check). `CaseId` und `Comment` sind KEINE gültigen SOQL-/Constructor-Namen hier (Compile-Fehler "No such column 'CaseId'"). Verifiziert per Probe + Describe.
+- BusinessHours "Default": Mon–Thu `09:00–17:00 Berlin` (480 bh-min/24h), **Friday 840**, **Saturday 1440 (24/7!)**, **Sunday 1080 (~18h)** — verifiziert per `BusinessHours.diff`-Probe + FieldDefinition-Read der Time-Spalten. **⚠️ WICHTIG:** Das Ticket sagt "Mo–Fr 9–17 gemäß bestehenden Business Hours", aber die ORG hat Samstag 24/7 und Sonntag ~18h. **Design-Folge:** Implementierung nutzt `BusinessHours.isWithin` (der richtige Mechanismus gemäss ADR), aber die PO muss die Org-Konfig klären ODER das Ticket korrigieren. In der Handoff-Kommentar deklariert.
+- CaseList (Report) Scope-Wert ist `organization`, NICHT `org` (ADR-7 sagt "org" — das ist die Lektion aus SCRUM-394). Verifiziert per `sf api request rest` → `reportMetadata.scope='organization'`.
+- CaseComment `CommentBody` + Insert-Test mit `ParentId` + `IsPublished=true` + `CommentBody` OK (Probe 24.09. 08:39).
+- Case-Spalten verifiziert: `Servicebereich__c`, `Kundenstatus__c`, `Automatische_Zuordnung__c`, `Zuordnungszeitpunkt__c`, `Origin`, `Status`, `CaseNumber`, `SuppliedEmail`, `ContactId` alle existieren mit erwartetem DataType.
+- User: `IsActive` (Checkbox) ist das Feld — kein `IsInactive`. Kein Custom Field auf User in der Org → `SCRUM428_Verfuigung__c` existiert noch nicht (deploybar).
+- MDT Registry: `custommetadata` dir=`customMetadata` suffix=`.md`. `customsetting` ist im Registry ABSENT (also MDT, nicht Custom Setting — bestätigt ADR-5).
+- LWC-Manifest: `LightningComponentBundle` (dir=`lwc`).
+- Apex-Quirks diese Session: `Datetime.valueOfGmt()` ist die ISO-Parser; `%` und `System.mod` sind beide KEINE Operators — nur `Math.mod(a, b)`; `Datetime.dayOfWeek()` gibt es NICHT (weder auf Date noch Datetime); `Datetime.clone()` existiert NICHT im Apex 62.0.
