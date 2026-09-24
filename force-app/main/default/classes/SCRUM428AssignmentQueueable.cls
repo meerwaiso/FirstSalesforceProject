@@ -18,7 +18,6 @@
  */
 public without sharing class SCRUM428AssignmentQueueable implements Queueable {
 
-    @Invocable
     private final List<Id> caseIds;
 
     public SCRUM428AssignmentQueueable(List<Id> ids) {

@@ -29,13 +29,13 @@ public with sharing class SCRUM428ContactFormController {
     @AuraEnabled(cacheable=false)
     public static String submitForm(String name, String email,
                                     String bereich, String nachricht) {
-        if (name == null || name.trim().isEmpty()) {
+        if (name == null || name.trim().length() == 0) {
             throw new AuraHandledException('Name ist erforderlich.');
         }
-        if (email == null || email.trim().isEmpty()) {
+        if (email == null || email.trim().length() == 0) {
             throw new AuraHandledException('E-Mail-Adresse ist erforderlich.');
         }
-        if (nachricht == null || nachricht.trim().isEmpty()) {
+        if (nachricht == null || nachricht.trim().length() == 0) {
             throw new AuraHandledException('Nachricht ist erforderlich.');
         }
         if (nachricht.trim().length() < 10) {

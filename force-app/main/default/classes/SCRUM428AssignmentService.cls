@@ -27,13 +27,13 @@ public without sharing class SCRUM428AssignmentService {
      *
      * @param availableUserIds  verfügbare Queue-Mitglieder (aktiv + Verfuigung=true) — AC10
      * @param openCounts        offene Fälle je User (Status != 'Closed') — AC8
-     * @param limit             max. offene Fälle, Kandidat nur bei count < limit — AC8
+     * @param maxOpen             max. offene Fälle, Kandidat nur bei count < maxOpen — AC8
      * @param withinBusinessHours AC9 — false => kein Owner-Wechsel
      * @return UserId des Gewinners oder null (AC6: niemand qualifiziert / AC9: außerhalb)
      */
     public static Id selectAssignee(Set<Id> availableUserIds,
                                     Map<Id, Integer> openCounts,
-                                    Integer limit,
+                                    Integer maxOpen,
                                     Boolean withinBusinessHours) {
         if (!withinBusinessHours) {
             return null; // AC9: außerhalb der Geschäftszeiten -> kein Owner-Wechsel
@@ -41,15 +41,15 @@ public without sharing class SCRUM428AssignmentService {
         if (availableUserIds == null || availableUserIds.isEmpty()) {
             return null; // AC6: niemand verfügbar -> verbleibt in der Queue
         }
-        if (limit == null) {
-            limit = DEFAULT_LIMIT;
+        if (maxOpen == null) {
+            maxOpen = DEFAULT_LIMIT;
         }
         Id best = null;
         Integer bestCount = null;
         for (Id uid : availableUserIds) {
             Integer c = (openCounts != null && openCounts.containsKey(uid)) ? openCounts.get(uid) : 0;
-            if (c >= limit) {
-                continue; // AC8: limit erreicht -> überspringen
+            if (c >= maxOpen) {
+                continue; // AC8: maxOpen erreicht -> überspringen
             }
             if (best == null || c < bestCount || (c == bestCount && uid < best)) {
                 // wenigste gewinnt; Tie-Break: kleinstes User.Id (deterministisch)
@@ -102,7 +102,7 @@ public without sharing class SCRUM428AssignmentService {
             return 0; // kein Case in einer Queue -> nichts zu tun
         }
 
-        Integer limit = loadLimit();
+        Integer maxOpen = loadLimit();
 
         // 1 SOQL: verfügbare Mitglieder aller relevanten Queues, als je-Queue-Map
         // (kein SOQL-in-Loop — ein Durchlauf baut queueId -> memberIds).
@@ -147,7 +147,7 @@ public without sharing class SCRUM428AssignmentService {
             if (queueMembers == null) {
                 queueMembers = new Set<Id>(); // leere Queue -> AC6
             }
-            Id winner = selectAssignee(queueMembers, openCounts, limit, withinBusinessHours);
+            Id winner = selectAssignee(queueMembers, openCounts, maxOpen, withinBusinessHours);
             if (winner == null) {
                 continue; // AC6/AC9: kein Owner-Wechsel
             }

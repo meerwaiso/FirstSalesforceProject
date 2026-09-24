@@ -62,3 +62,24 @@ Harterkämpfte Befunde + Org-Abfragen — überleben die Kontext-Kompression.
 - LWC-Pfad: force-app/main/default/lwc/scr428ContactForm/ (Design-XML-Pfad "standard" war falsch — Registry sagt lwc/).
 - House-Pattern LWC: betreuungsuebergabe (import from @salesforce/apex, @wire, toast via ShowToastEvent).
 - AC5 Dedup-Ziel = kleinste bestehende offene Case-Id pro (Contact,Bereich)-Paar (deterministisch).
+
+## 24.09. GroupMember-Testprobe: OK
+- GroupMember-Insert im Testkontext GEHT: Felder GroupId + UserOrGroupId (kein MemberType, kein ParentId — describe GroupMember).
+- Queue-Select WHERE Type='Queue' im Testkontext geht (Phase-1-Source-Queues sind sichtbar).
+- TC2-Setup in Apex-Test daher moeglich.
+- Probe-Klasse SCRUM428ProbeProbe bleibt als inert @isTest in der Test-Org (org-delete-Command verweigert) — in Jira-Handoff notiert.
+- 421-FlsTest lief gerade 3/3 GRUEN: org Profil hat 421-Felder gelockt (420-Praezedenz). 428-Felder: OHNE Profil-Lock → TC3-Negativpraemisse konstruktiv ungueltig → kein FLS-Negativ-Test, an Architect weitergeben.
+
+## 24.09. Deploy-Fixes Phase 2 (Compiler als Autoritaet, Report als Orakel)
+- **Root-Cause 39 Compile-Fehler in EINEM Deploy-Report:** `String.isEmpty()` existiert in Apex NICHT (String has only `.length()` — nur List/Map/Set haeben isEmpty). War in IngestHandler(1x), CaseConfirmation(3x), Controller(3x). -> alle auf `.length()>0`/`==0`.
+- **`limit`/`map` als Parameter-Namen** vom Org-Parser als "reserved"/unexpected gemeldet -> `maxOpen` (Service+Test), `m` (addIfSmaller).
+- **LWC-Meta-Root** ist `LightningComponentBundle`, NICHT `AuraDefinitionBundle` (Haus-LWC `betreuungsuebergabe` bestaetigt) — und das schliessende Tag muss zum eroeffnenden passen (mismatch = XML-Parse-Fehler).
+- **`lightning/showToastEvent` ist als Modul in der Test-Org NICHT importierbar** -> eigene `statusVariant`/`statusMessage`-State + Status-`<p>` (data-testid="status"). Jest-Test bleibt kompatibel (mockt Apex submitForm).
+- **KOP-FIX (der eigentliche 89-Test-Killer):** `update newCases` wo newCases = Trigger.new → `SObjectException: DML statement cannot operate on trigger.new or trigger.old`. Jede Case-Insert in der Org stirbt im Trigger. -> **Copy-Predicate**: frische sObjects mit nur den 5 mutierten Feldern bauen, die updaten. Trigger.new behaelt Full-Fidelity.
+- **Gefaerte Id-Literale scheitern an der Id-Pruefung (Checksum)** — `Id.valueOf('005000000000000001')` -> Invalid id, sogar 18-Char. Test braucht ECHTE User-Records (valid + sortierbare .Id fuer den `<`-Tie-Break in selectAssignee). Probe 24.09.
+- **MIXED_DML:** User+Case-DML in einer Test-Tx GEHT (421-Test praetig), aber **GroupMember (Setup-Objekt) + Case (non-setup) in derselben Tx NICHT** -> GroupMember-DML in GETRENNTEM Queueable (GM428), vor dem Case-Insert (C428), beide in Test.startTest/stopTest gefluetet. End-to-End ueber echten Pfad Trigger->Queueable->assign.
+- **async-job-Limit in Test:** in einer Queueable-Tx darf hoechstens 1 WEITERES async Job eingeren werden -> C428 macht genau 1 Case-Insert (je 428-Trigger-Enqueue). 2 Inserts -> LimitException "Too many queueable jobs added: 2".
+- **`static` nur auf Top-Level-Fields** — nicht in inner Queueable-Klassen (queuedCaseId in Aussenklasse).
+- **`sf apex run test` gibt "Invalid id" im MESSAGE-Feld aus, Exit-Code 100 = "Failed" (nicht 0).** `--class-names` (Plural) korrekt.
+- **3/7 -> 7/7 GRUEN** nach diesen Fixes. Copy-Predicate ist der Load-Bearing-Fix fuer die ganze Org-Suite.
+- **Verwaesende inert Probe-Klassen in Test-Org (unloeschbar via CLI, @isTest):** SCRUM428ProbeProbe, SCRUM428ProbeQueue, SCRUM428ProbeAsync. In Jira-Handoff notiert.

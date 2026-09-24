@@ -24,13 +24,13 @@ public without sharing class SCRUM428CaseConfirmation {
      */
     public static Messaging.SingleEmailMessage buildMessage(
             String caseNumber, String recipient, String recipientName) {
-        if (recipient == null || recipient.trim().isEmpty()) {
+        if (recipient == null || recipient.trim().length() == 0) {
             return null;
         }
-        if (caseNumber == null || caseNumber.trim().isEmpty()) {
+        if (caseNumber == null || caseNumber.trim().length() == 0) {
             return null;
         }
-        String name = (recipientName != null && !recipientName.trim().isEmpty())
+        String name = (recipientName != null && recipientName.trim().length() > 0)
                 ? recipientName.trim() : 'Kunde';
 
         Messaging.SingleEmailMessage message = new Messaging.SingleEmailMessage();
@@ -86,10 +86,16 @@ public without sharing class SCRUM428CaseConfirmation {
         if (emailRest <= 0) {
             return 0;
         }
-        if (toSend.size() > emailRest) {
-            toSend = toSend.sublist(0, emailRest);
+        // sublist() meiden: Unterliste manuell aufbauen (keine API-Annahme).
+        List<Messaging.SingleEmailMessage> capped = new List<Messaging.SingleEmailMessage>();
+        Integer upper = toSend.size();
+        if (emailRest < upper) {
+            upper = emailRest;
         }
-        Messaging.SendEmailResult[] res = Messaging.sendEmail(toSend);
+        for (Integer i = 0; i < upper; i++) {
+            capped.add(toSend.get(i));
+        }
+        Messaging.SendEmailResult[] res = Messaging.sendEmail(capped);
         Integer ok = 0;
         for (Messaging.SendEmailResult r : res) {
             if (r != null && r.isSuccess()) {

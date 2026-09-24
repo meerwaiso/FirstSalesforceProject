@@ -1,5 +1,4 @@
 import { LightningElement, api } from 'lwc';
-import { ShowToastEvent } from 'lightning/showToastEvent';
 import submitForm from '@salesforce/apex/SCRUM428ContactFormController.submitForm';
 
 const BEREICHE = [
@@ -17,6 +16,8 @@ export default class Scr428ContactForm extends LightningElement {
     nachricht = '';
     submitting = false;
     bereiche = BEREICHE;
+    statusVariant = '';
+    statusMessage = '';
 
     @api init() {
         // no-op, für Lightning-Record-Page-Kompatibilität
@@ -34,18 +35,31 @@ export default class Scr428ContactForm extends LightningElement {
             : '';
     }
 
+    get statusClass() {
+        if (this.statusVariant === 'success') {
+            return 'slds-m-top_small slds-text-color_success';
+        }
+        if (this.statusVariant === 'error') {
+            return 'slds-m-top_small slds-text-color_error';
+        }
+        return 'slds-m-top_small';
+    }
+
     async handleSubmit(e) {
         e.preventDefault();
+        if (this.submitting) { return; }
         const missing = !this.name.trim() || !this.email.trim() || !this.nachricht.trim();
         if (missing) {
-            this.showToast('Fehler', 'Bitte alle Pflichtfelder (*) ausfüllen.', 'error');
+            this.setStatus('error', 'Bitte alle Pflichtfelder (*) ausfüllen.');
             return;
         }
         if (this.nachricht.trim().length < 10) {
-            this.showToast('Fehler', 'Die Nachricht muss mindestens 10 Zeichen haben.', 'error');
+            this.setStatus('error', 'Die Nachricht muss mindestens 10 Zeichen haben.');
             return;
         }
         this.submitting = true;
+        this.statusVariant = '';
+        this.statusMessage = 'Wird übermittelt …';
         try {
             const caseNumber = await submitForm({
                 name: this.name,
@@ -53,19 +67,20 @@ export default class Scr428ContactForm extends LightningElement {
                 bereich: this.bereich || null,
                 nachricht: this.nachricht
             });
-            this.showToast('Erfolg', 'Ihre Anfrage wurde erfasst. Fallnummer: ' + caseNumber, 'success');
+            this.setStatus('success', 'Ihre Anfrage wurde erfasst. Fallnummer: ' + caseNumber);
             this.resetForm();
         } catch (error) {
             const message = error && error.body && error.body.message
                 ? error.body.message : 'Bitte versuchen Sie es später erneut.';
-            this.showToast('Fehler', message, 'error');
+            this.setStatus('error', message);
         } finally {
             this.submitting = false;
         }
     }
 
-    showToast(title, message, variant) {
-        this.dispatchEvent(new ShowToastEvent({ title, message, variant }));
+    setStatus(variant, message) {
+        this.statusVariant = variant;
+        this.statusMessage = message;
     }
 
     resetForm() {

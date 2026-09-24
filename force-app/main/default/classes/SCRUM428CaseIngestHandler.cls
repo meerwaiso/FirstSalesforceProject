@@ -56,7 +56,18 @@ public without sharing class SCRUM428CaseIngestHandler {
         List<CaseComment> newComments = applyDup(newCases, dupTargetByNewCase);
 
         // 1 DML: alle mutierten Cases (Quelle/Kategorie/Dup) in einem update.
-        update newCases;
+        // Copy-Predicate: update auf trigger.new ist unerklaerbar (SObjectException).
+        List<Case> toUpdate = new List<Case>();
+        for (Case c : newCases) {
+            Case copy = new Case(Id = c.Id);
+            copy.Erfassungsquelle__c = c.Erfassungsquelle__c;
+            copy.Servicebereich__c = c.Servicebereich__c;
+            copy.Status = c.Status;
+            copy.Subject = c.Subject;
+            copy.Dedupliziert__c = c.Dedupliziert__c;
+            toUpdate.add(copy);
+        }
+        update toUpdate;
 
         // 1 DML: CaseComments auf die Ziel-Cases.
         if (!newComments.isEmpty()) {
@@ -103,7 +114,7 @@ public without sharing class SCRUM428CaseIngestHandler {
                 continue;
             }
             for (String kw : keywords) {
-                if (kw != null && !kw.isEmpty() && haystack.contains(kw.toLowerCase())) {
+                if (kw != null && kw.length() > 0 && haystack.contains(kw.toLowerCase())) {
                     return bereich;
                 }
             }
@@ -207,10 +218,10 @@ public without sharing class SCRUM428CaseIngestHandler {
     }
 
     /** Setzt key->id, wenn der neue Id kleiner ist (deterministisch kleinste Id). */
-    private static Boolean addIfSmaller(Map<String, Id> map, String key, Id id) {
-        Id cur = map.get(key);
+    private static Boolean addIfSmaller(Map<String, Id> m, String key, Id id) {
+        Id cur = m.get(key);
         if (cur == null || id < cur) {
-            map.put(key, id);
+            m.put(key, id);
             return true;
         }
         return false;
