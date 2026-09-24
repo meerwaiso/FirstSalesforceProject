@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AuraDefinitionBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>62.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>SCRUM428 Kontaktformular</masterLabel>
+    <description>Dient zur Erfassung von Service-Anfragen über ein Kontaktformular (SCRUM-428). Legt ein Case mit Erfassungsquelle=Kontaktformular an — Dedup, Zuteilung und Bestätigung laufen per after-insert-Trigger.</description>
+    <targets>
+        <target>lightning__AppPage</target>
+        <target>lightning__Tab</target>
+    </targets>
+</AuraDefinitionBundle>

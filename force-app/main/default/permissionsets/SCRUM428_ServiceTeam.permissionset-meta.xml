@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-428: FLS für das Service-Team auf die 3 neuen Felder. Case.Erfassungsquelle = read+edit; Case.Dedupliziert = read-only (System-only); User.SCRUM428_Verfuigung = read+edit (sich selbst toggeln, ADR-8). Kein Objekt-CRUD.</description>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Erfassungsquelle__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.Dedupliziert__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>User.SCRUM428_Verfuigung__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM428_ServiceTeam</label>
+</PermissionSet>

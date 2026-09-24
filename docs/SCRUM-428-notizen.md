@@ -48,3 +48,17 @@ Harterkämpfte Befunde + Org-Abfragen — überleben die Kontext-Kompression.
 - **CustomMetadata-Record `.md` Wert-Shape (verifiziert per Deploy + Web-Dokumentation, 24.09.):** Die korrekte Source-Form erfordert `xmlns:xsd` auf dem Root-Element und `xsi:type` auf dem Value. Number(scale 0) = `<value xsi:type="xsd:int">5</value>`; Number(scale >0) = `<value xsi:type="xsd:double">5.0</value>`; String = `<value xsi:type="xsd:string">TEXT</value>`. **Keine `xsi:nil`**, keine Nested-Form `<xsdType>/<numberValue>` (fuehrt zu Parse-Fehler `Only the following configurations are supported`). Quelle: Salesforce Metadata API Developer Guide (meta_custommetadata.htm), nicht SDR/CLI.
 - **Diagnose-Lektion (24.09.):** Mehrere MDT-Records in EINEM Deploy → bei Fehlern nur `UNKNOWN_EXCEPTION` + fester ErrorID-Suffix (-315522575), 0 components processed, keine componentFailures. BIS per Einzel-Record-Deploy → echte Parse-Error-Meldung (z.B. `Error parsing file: …`). Das Gleiche für das `--no-prompt`-Flag: existiert NICHT (help hat es nicht). `sf project deploy validate` ohne lokale Tests läuft trotzdem durch den "Running Tests"-Phase und fällt dort bei `UNKNOWN_EXCEPTION` aus — `sf project deploy start` (echtes Deploy) zeigt dagegen die componentFailure. **Regel: bei `UNKNOWN_EXCEPTION` ohne componentFailures → Einzel-Komponente deployen, die echte Error-Meldung kommt raus.**
 - Phase-1-Felder + MDT-Objecte deployed in Test-Org am 24.09.2026 vor 07:00 UTC (Fields 3/3 OK, MDT-Obj+Fields 5/5 OK). **MDT-Records deployed 24.09. 09:35 UTC: Standard (MaxOffene__c=5) + 10 Keyword-Records (Technik 3 / Rechnung 3 / Vertrag 4) — alle via SOQL gelesen (10/10 + Standard).** Phase 1 vollständig, Read-back OK.
+
+## Stand 2026-09-24 (Phase B/C/D/E/F geschrieben)
+- AC9 BusinessHours: DML auf BusinessHours NICHT erlaubt (Insert not allowed), kein Schema.setMockBusinessHours -> 24/7-BH in Test-Org NICHT mocken. isWithin-Check trotzdem produktiv, AC9-Test = "not verifiable in 24/7-org" (wie SCRUM-424 AC7).
+- CaseComment: ParentId (nicht CaseId!) + CommentBody (nicht Comment). describe-verified.
+- CaseNumber in Org = 8-stellig 0000xxxx (z.B. 00002837). Regex \b000\d{4,7}\b.
+- Status picklist: New, Working, Escalated, Closed.
+- Origin picklist: Phone, Email, Web.
+- Servicebereich__c picklist: Technik, Vertrag, Rechnung, Allgemein.
+- SuppliedName (string, create+update), SuppliedEmail (email, create+update) — beide createable.
+- Case->Contact: to-one lookup, dot-notation `c.Contact.Email` (kein Subquery).
+- MDT Felder: SCRUM428_CaseLimitConfig__mdt.MaxOffene__c; SCRUM428_KategorierRegel__mdt.{Bereich__c, Keyword__c, Prioritaet__c}.
+- LWC-Pfad: force-app/main/default/lwc/scr428ContactForm/ (Design-XML-Pfad "standard" war falsch — Registry sagt lwc/).
+- House-Pattern LWC: betreuungsuebergabe (import from @salesforce/apex, @wire, toast via ShowToastEvent).
+- AC5 Dedup-Ziel = kleinste bestehende offene Case-Id pro (Contact,Bereich)-Paar (deterministisch).

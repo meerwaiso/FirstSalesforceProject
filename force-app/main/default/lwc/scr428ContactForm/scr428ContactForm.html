@@ -1,0 +1,60 @@
+<template>
+    <lightning-card title="Service-Anfrage – Kontaktformular">
+        <p class="slds-m-bottom_small">
+            Alle mit <strong>*</strong> markierten Felder sind Pflichtfelder.
+        </p>
+        <form onsubmit={handleSubmit}>
+            <div class="slds-m-bottom_small">
+                <lightning-input
+                    label="Ihr Name *"
+                    type="text"
+                    required
+                    value={name}
+                    onchange={handleName}
+                    variant="base"
+                ></lightning-input>
+            </div>
+            <div class="slds-m-bottom_small">
+                <lightning-input
+                    label="Ihre E-Mail-Adresse *"
+                    type="email"
+                    required
+                    value={email}
+                    onchange={handleEmail}
+                    variant="base"
+                ></lightning-input>
+            </div>
+            <div class="slds-m-bottom_small">
+                <lightning-combobox
+                    label="Themenbereich"
+                    value={bereich}
+                    options={bereiche}
+                    placeholder="Bitte wählen —"
+                    onchange={handleBereich}
+                    variant="base"
+                ></lightning-combobox>
+            </div>
+            <div class="slds-m-bottom_small">
+                <lightning-textarea
+                    label="Ihre Nachricht * (min. 10 Zeichen)"
+                    required
+                    value={nachricht}
+                    onchange={handleNachricht}
+                    variant="base"
+                    max-length="2000"
+                ></lightning-textarea>
+                <p if={beschreibungHint} class="slds-m-top_x-small slds-text-color_error">
+                    {beschreibungHint}
+                </p>
+            </div>
+            <div class="slds-m-top_small">
+                <lightning-button
+                    type="submit"
+                    label="Absenden"
+                    variant="brand"
+                    disabled={submitting}
+                ></lightning-button>
+            </div>
+        </form>
+    </lightning-card>
+</template>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-428: FLS für die Teamleitung auf die 2 Case-Felder, die der AC12-Report Unverteite_Faelle braucht (Erfassungsquelle, Dedupliziert) — beide read-only. Kein Objekt-CRUD, keine Verfuigung (ADR-8). Report-Tab-Zugriff bleibt org-seitig (O5).</description>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.Erfassungsquelle__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.Dedupliziert__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM428_Teamleitung</label>
+</PermissionSet>
