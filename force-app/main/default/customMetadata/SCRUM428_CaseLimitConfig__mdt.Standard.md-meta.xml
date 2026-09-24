@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        entity="SCRUM428_CaseLimitConfig__mdt">
+    <label>Standard</label>
+    <protected>false</protected>
+    <values>
+        <field>MaxOffene__c</field>
+        <value xsi:nil="false">
+            <xsdType>xsd:double</xsdType>
+            <numberValue>5</numberValue>
+        </value>
+    </values>
+</CustomMetadata>

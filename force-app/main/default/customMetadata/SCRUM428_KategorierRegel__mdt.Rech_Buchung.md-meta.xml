@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        entity="SCRUM428_KategorierRegel__mdt">
+    <label>Rech_Buchung</label>
+    <protected>false</protected>
+    <values>
+        <field>Bereich__c</field>
+        <value xsi:nil="false" xsi:type="string">Rechnung</value>
+    </values>
+    <values>
+        <field>Keyword__c</field>
+        <value xsi:nil="false" xsi:type="string">Buchung</value>
+    </values>
+</CustomMetadata>

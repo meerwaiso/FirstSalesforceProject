@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Bereich__c</fullName>
+    <label>Bereich</label>
+    <type>Picklist</type>
+    <required>false</required>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Technik</fullName>
+                <default>false</default>
+                <label>Technik</label>
+            </value>
+            <value>
+                <fullName>Vertrag</fullName>
+                <default>false</default>
+                <label>Vertrag</label>
+            </value>
+            <value>
+                <fullName>Rechnung</fullName>
+                <default>false</default>
+                <label>Rechnung</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

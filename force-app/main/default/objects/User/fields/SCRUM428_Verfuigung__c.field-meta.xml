@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SCRUM428_Verfuigung__c</fullName>
+    <description>Vorhanden fuer die automatische Fall-Zuordnung (SCRUM-428, AC10): true = erhaelt NEUE Faelle, false = abgemeldet / Feierabend, bekommt keine NEUEN Faelle, behaelt aber bereits zugewiesene. Der User toggelt das Feld ueber das Service-Team-PS (eigene Zeile).</description>
+    <label>Verfuegung</label>
+    <type>Checkbox</type>
+    <defaultValue>true</defaultValue>
+</CustomField>
