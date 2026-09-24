@@ -117,6 +117,15 @@ This binds the receiving end too. A command you cannot verify is one you neither
 
 - Every agent leaves a comment on the Jira ticket every time it touches it — not only at handoff. Format: `<Agent-Name>: <what was done / observed / decided>` (e.g., Architect-Agent: reviewed data model impact, no sharing changes needed.). This covers intermediate progress, partial work, blockers, and re-checks — not just final handoffs.
 
+**Search before you read.** `search_files` narrows down, `read_file` fetches. Never
+pull a whole file when you are looking for one place — fetch the line range you need.
+
+Measured 2026-09-24 on one agent, one day: 110 `read_file` calls totalling 601,344
+characters (~150,000 tokens) against 10 `search_files`. Twenty-nine of those calls
+read more than 8,000 characters each and made up 60 % of the volume. The working
+room between session start and the compaction threshold is about 20,800 tokens —
+a single 26,000-character read spends a third of it.
+
 - Never commit secrets, large binaries, logs, or test reports to GitHub
 
 - **When you take on a ticket, assigning it to yourself is your first action** — before the first piece of work, not after it, and not at handoff time. If the ticket is already yours there is nothing to do; if it is unassigned or still carries your predecessor's name, put your name on it and move it to the column your role owns, both before you start. A ticket whose assignee and column do not match who is actually working on it is invisible to everyone else: the board says one thing and the room another, and the next agent inherits the confusion. Taking on means the work reached you — a handoff, an @mention, or an instruction from the user. It does not mean a ticket you found on the board. Valid assignees are exactly: Architect-Agent, PO-Agent, Developer-Agent, DevOps-Agent, Tester-Agent, Unassigned. Filter by your own exact assignee name — never by status, label or guesswork.
