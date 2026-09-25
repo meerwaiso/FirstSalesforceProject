@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-430: FLS auf Contact.Rueckruf_Zeitfenster__c (bevorzugtes Rueckruf-Zeitfenster) — Vertrieb + Service: lesbar + änderbar. Nur Feldrechte, kein Objekt-CRUD (Contact-CRUD kommt aus den bestehenden Profilen, House-Konvention SCRUM-421).</description>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Contact.Rueckruf_Zeitfenster__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM430_RueckrufZeitfenster</label>
+</PermissionSet>

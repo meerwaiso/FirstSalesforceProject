@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Rueckruf_Zeitfenster__c</fullName>
+    <description>Bevorzugtes Rueckruf-Zeitfenster des Kontakts (SCRUM-430): Vormittags / Nachmittags / Abends. Optional — bei den meisten Kontakten unbekannt (leer). Reine Praeferenz, keine PII.</description>
+    <externalId>false</externalId>
+    <label>Rückruf-Zeitfenster</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Vormittags</fullName>
+                <default>false</default>
+                <label>Vormittags</label>
+            </value>
+            <value>
+                <fullName>Nachmittags</fullName>
+                <default>false</default>
+                <label>Nachmittags</label>
+            </value>
+            <value>
+                <fullName>Abends</fullName>
+                <default>false</default>
+                <label>Abends</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>
