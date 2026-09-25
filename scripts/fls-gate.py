@@ -46,6 +46,25 @@ def changed_field_files(base):
     return [l for l in out.splitlines() if FIELD_RE.search(l)]
 
 
+def is_fls_relevant(obj):
+    """Custom-Metadata-Felder kennen keine FLS — die Prüfung schützt dort nichts.
+
+    Gemessen am 25.09.2026 in Test-Org: `SELECT Bereich__c, Keyword__c FROM
+    SCRUM428_KategorierRegel__mdt` liefert Zeilen, obwohl kein einziges
+    fieldPermissions in force-app diese Felder gewährt. Die Falle, gegen die
+    dieses Gate existiert — Feld unsichtbar, SOQL meldet 'No such column' —
+    kann es bei __mdt also nicht geben.
+
+    Die Metadata API nimmt einen fieldPermissions-Eintrag für ein __mdt-Feld
+    durchaus an (Prüf-Deployment erfolgreich; ein erfundener Feldname wird mit
+    "no CustomField named ..." abgelehnt, die Referenz wird also wirklich
+    aufgelöst). Der Eintrag wäre demnach möglich, aber reine Form: er gewährt
+    Zugriff, der ohnehin besteht. Ein Gate, das Form verlangt, bringt den
+    Agenten bei, Gates mit Form zu bedienen.
+    """
+    return not obj.endswith("__mdt")
+
+
 def is_fls_settable(path):
     """Pflichtfelder sind nicht FLS-steuerbar — Salesforce erzwingt Lesezugriff."""
     try:
@@ -97,6 +116,10 @@ def main():
             continue
         obj, fld = m.group(1), m.group(2)
         label = f"{obj}.{fld}"
+
+        if not is_fls_relevant(obj):
+            print(f"  {label:<44} übersprungen (Custom Metadata, FLS wird nicht erzwungen)")
+            continue
 
         if not is_fls_settable(path):
             print(f"  {label:<44} übersprungen (required=true, FLS nicht steuerbar)")

@@ -252,7 +252,12 @@ jobs:
       - name: FLS gate (fields need a granting AND assigned Permission Set)
         if: steps.guard.outputs.has_auth == 'true'
         env:
-          BASIS: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
+          # Drei Ereignisse, drei richtige Basen. workflow_dispatch lief bisher
+          # gegen HEAD~1: auf einem Feature-Branch ist der Feldverlauf dann leer,
+          # das Gate meldet "nichts zu prüfen" und der Lauf wird grün, ohne
+          # geprüft zu haben. Gemessen am 24.09.2026, Commit 0046ee5: Lauf
+          # 36055535706 (pull_request) rot, Lauf 36055570102 (dispatch) grün.
+          BASIS: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || (github.event_name == 'workflow_dispatch' && 'origin/master' || 'HEAD~1') }}
         run: python3 scripts/fls-gate.py --base "$BASIS" --org Test-Org
 
       # Gate 3 — proves the Playwright auth layer still works against this org
