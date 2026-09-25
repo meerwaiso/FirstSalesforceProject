@@ -36,6 +36,32 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 25.09.2026 — Kundenanfragen automatisch anlegen, zuordnen und verteilen (SCRUM-428)
+
+**Was sich aendert**
+- Eingehende Kundenanfragen landen jetzt von selbst als Servicefall an — ohne manuelles Sortieren. Das gilt fuer das **Website-Kontaktformular** (live) und die **Service-E-Mail-Adresse** (gebaut; geht erst los, wenn die Adresse eingerichtet ist — siehe „nicht drin“).
+- Jeder neue Fall wird automatisch eingeordnet und dem richtigen Team zugeordnet: **Technik** → Technischer Support, **Vertrag** → Vertragsservice, **Rechnung** → Billing, **Allgemein** → First Level Support.
+- Innerhalb des Teams bekommt den Fall das Mitglied mit den **wenigsten offenen Fällen** — aber maximal **5 offene** pro Person und nur innerhalb der Geschäftszeiten (Mo–Fr, 9–17 Uhr). Die 5 sind ein Startwert und können später ohne Programmänderung angepasst werden.
+- **Doppelarbeit entfällt:** Schickt ein Kunde bei einem offenen Fall eine weitere Nachricht — mit der bekannten Fallnummer im Text oder derselbe Absender im selben Bereich — wird sie an den bestehenden Fall angehängt, anstatt einen zweiten anzulegen.
+- Die **Eingangsbestätigung mit der Fallnummer** geht beim neuen Fall sofort raus. Bei angehängten Nachrichten (Fall schon offen) gibt es keine.
+- Als Teamleitung siehst du, **wie viele Fälle unverteilt warten** und wie alt der älteste ist — wo also gerade Stau entsteht.
+- Meldet sich ein Mitglied ab oder hat Feierabend, erhält es keine neuen Fälle mehr; die Bestehenden behält es.
+
+**Wo man es sieht**
+- Servicefall → Detailseite: neue Angaben zur **Erfassungsquelle** (E-Mail / Kontaktformular) und ob der Fall **dedupliziert** wurde.
+- Teamleitung: Report **„Unverteite Fälle“** — Anzahl der unverteilt wartenden Fälle und das Alter des ältesten.
+
+**Was bewusst nicht drin ist**
+- Die **Service-E-Mail-Adresse ist noch nicht eingerichtet** — erst wenn sie konfiguriert ist (entscheidet vor Go-Live), läuft auch der E-Mail-Eingang. Der Kontaktformular-Weg ist live.
+- Die vier Teams sind aktuell **ohne Mitglieder**; wer in welchem Team arbeitet, wird im Org-Setup festgelegt (Organisationsarbeit, bewusst nicht Teil dieses Features).
+- Die konkrete **Stichwortliste** zur Auto-Kategorisierung der E-Mails (Technik / Vertrag / Rechnung, sonst „Allgemein“) ist einstellbar; das Prinzip steht, die exakten Begriffe legt die Anforderung fest.
+- Keine Auto-Antworten über die Eingangsbestätigung hinaus, keine Eskalation, keine Zufriedenheitsbefragung, kein Chat oder Telefon — bewusst aus dem Scope.
+
+**Deploy-ID**
+Deploy `0Afg500000FCcs7CAD` (32/32 Komponenten, 0 Fehler); Validierung `0Afg500000FCi4fCAD` (19/19 Tests gruen in Prod). Release-Tag `release/2026-09-25-SCRUM-428` auf Commit `b76b157`, 25.09.2026.
+
+**Live-Beleg (Read-back in Prod, 25.09):** die drei neuen Felder, beide Regelwerke (max. 5 offene Fälle; 10 Zuordnungswörter) und die Berechtigungsgruppen sind in der Prod-Org vorhanden; die Berechtigungen sind an die berechtigten Nutzer verteilt (4/4) und die neuen Felder sind in einer echten Sitzung lesbar.
+
 ## 23.09.2026 — Wie schnell wir auf einen Fall antworten: jetzt messbar (SCRUM-424)
 
 **Was sich aendert**
