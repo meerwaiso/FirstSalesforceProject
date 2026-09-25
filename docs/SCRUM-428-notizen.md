@@ -151,6 +151,43 @@ Harterkämpfte Befunde + Org-Abfragen — überleben die Kontext-Kompression.
   Microtask-Flush, e2e-Suite-Abgrenzung) stehen ab jetzt im Skill
   lwc-jest-testing - Test-File bleibt im Stand von edb3ae6.
 
+## 25.09 Tester
+
+### Testergebnisse
+
+- **Apex 31/31** (2026-09-25T06:03Z, RunId 707WU00001KSe0X):
+  - SCRUM428IngestTest 9/9 (AC1–AC5, AC11)
+  - SCRUM428AssignmentTest 7/7 (AC6–AC10)
+  - SCRUM428IngestFlsTest 3/3 (FLS neg/pos, AC-FLS)
+  - SCRUM421QueueAssignmentTest 9/9 + FlsTest 3/3 (Regression)
+- **AC12 Playwright** (2026-09-25, lokal, commit 2325df6): PASS
+  - Report `Unverteite_Faelle` (00OWU00000QXsyj2AD) in lightnigReportApp-Frame
+  - Total Records=3 = SOQL 3 offene Queue-Cases (IsClosed=false, OwnerId in 4 Queues)
+  - Erste Zeile Case=00002802 = SOQL-ältester; Age-Spalte gefüllt (6.189h)
+
+### AC12 DOM-Fakt
+
+Report-Frame-Zeilen haben 5 `<td>`s, kein Zeilennummern-`<td>` im data table:
+
+```
+[CaseNumber, Subject, CaseOwner, DateTimeOpened, Age]
+```
+
+Die `#`-Spalte (1.) ist kein `<td>` in den Datenzeilen — CaseNumber ist Index 0, nicht 1.
+"Total Records N" steht im `frame.locator('body').innerText()` des lightningReportApp-Frames.
+
+### Gap B (offen, 25.09)
+
+PermissionSetAssignment für beide PS (SCRUM428_ServiceTeam, SCRUM428_Teamleitung): 0 Zuweisungen.
+Developer muss vor Merge schließen (Architect-Kommentar 20727). Tester darf nicht selbst zuweisen.
+
+### Jira-Entscheidung
+
+Alle 12 ACs grün, aber Gap B offen. Rückgang an Developer (Implementierung, id=21):
+Developer schließt Gap B (PS an devops-agent@cline.test + Testaccount zuweisen,
+WITH USER_MODE-Read-back, Kommentar in Jira) und reicht erneut ein.
+Kein Bug-Ticket erforderlich — bekannte offene Bedingung, kein Defekt.
+
 ## 24.09 spaet (Abend-Abschluss)
 
 - Report Unverteite_Faelle FINAL: Open-Filter `OPEN equals 1` + `OWNER equals <4 Queues, Komma in EINEM value>`. `includes` und `in` sind KEINE gueltigen FilterOperationen im Report-Metadata-Format (per Deploy verifiziert). Datei = Retrieve-Readback. Deployt, committed dd4886e.
