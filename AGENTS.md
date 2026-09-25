@@ -39,6 +39,7 @@ restate a rule in full here.
 
 **Orgs and deployment**
 - Exactly two orgs exist. Developer → Test-Org, Tester → Test-Org (test artifacts only), DevOps → Prod-Org only, PO and Architect deploy nowhere → *Core Principles*
+- A Permission Set is assigned to BOTH users of that org — the CLI user `devops-agent` and the human account Meerwais Osmani. Whoever deployed it assigns it: Developer in Test-Org, DevOps in Prod-Org. The usernames differ per org, the two people do not → *FLS gate, gap B*
 - DevOps deploys to Prod-Org only when the ticket is in "Release" AND assigned to DevOps-Agent — both at once → *DevOps Agent SOUL*
 - No Prod-Org deployment without Tester "Done" plus PO confirmation → *DevOps Agent SOUL*
 - Only DevOps merges into main/master; Developer never self-merges → *DevOps Agent SOUL*
@@ -191,6 +192,8 @@ Developer: creates feature/fix branch → implements → tests → deploys to Te
 
 Standing on `master` is the same violation and the easier one to miss, because nothing looks wrong. → Beleg [B11](docs/AGENTS-BELEGE.md#b11) → Beleg [B12](docs/AGENTS-BELEGE.md#b12)
 
+Deploying a field is not delivering it either. A field whose Permission Set reaches only the CLI user is invisible to the person who accepts the ticket, and the acceptance fails on something you already built. Assign the granting Permission Set to `devops-agent` AND to Meerwais Osmani in Test-Org, then read the assignment back. The gate checks both names; one of them is not a pass.
+
 Deploying to Test-Org is not delivering. Everything downstream — CI, the drift gate, the review, the test — reads the commit, never the org. Before you hand off, the branch and the org must show the same thing. Measured SCRUM-394: the corrected report ran in Test-Org for two hours while the branch still carried the guess it replaced.
 
 **No merge before the ticket reaches you.** Architecture approval is not the last gate: it answers whether the design is right, never whether the thing works. In this pipeline the Tester sits between the approval and the merge, so the ticket's assignee and column are part of the gate — if it is not yours, someone else is still working on it and the merge takes their decision away from them. Two further things belong to the same check: the test verdict must exist somewhere other than the Tester's own head, and the green CI run must belong to the commit you are actually merging, not to whatever the head was when you looked. → Beleg [B13](docs/AGENTS-BELEGE.md#b13)
@@ -228,6 +231,8 @@ DevOps: on reaching "Deployment" — and not before — merges the approved PR i
 PO: reviews against acceptance criteria → closes/accepts the story and, once ready for production, assigns to DevOps-Agent, column "Release" (comment: "PO-Agent: Feature ready for release.") — OR returns it with feedback if not acceptable
 
 ↓
+
+The same applies in Prod-Org, and there it is yours: every Permission Set you deploy is assigned to `devops-agent@cline.de` and to Meerwais Osmani before you tag the release.
 
 DevOps: deploys to Prod-Org — ONLY because the ticket is now in "Release" AND assigned to DevOps-Agent — then tags the release as `release/YYYY-MM-DD-SCRUM-NNN` — never under `archiv/`, which marks deleted branches → Beleg [B19](docs/AGENTS-BELEGE.md#b19)
 Escalation rule: Any agent failing after 2 self-correction attempts posts a structured status comment in the Jira ticket AND notifies the user via Telegram.
