@@ -5,12 +5,16 @@
  *   negativer + positiver Block, WITH USER_MODE bei SOQL,
  *   eigenständige System.runAs-Blöcke (kein nested runAs).
  *
- * PRÄMISSE AC4 (kritisch): Der Negativ-Test `withoutPS_fieldInvisible` läuft
- * NACH dem Org-Setup-Schritt S1 (Feld im Standard-User-Profil auf „nicht
- * sichtbar“ gesperrt). Ohne S1 hat das Standard-User-Profil auf neue Custom
- * Fields automatisch Read+Edit (SCRUM-421-Lesson) und der Negativ-Test
- * scheitert KORREKT — der FLS-Negativzustand wäre in der Org dann tatsächlich
- * nicht erfüllt. Ein PS kann Profil-FLS nicht widerrufen.
+ * FLS-STATEMENT AC4 (gemessen Test-Org 2026-09-25, NICHT vorausgesetzt):
+ * `SELECT … FieldPermissions WHERE Field='Contact.Rueckruf_Zeitfenster__c'`
+ * listet NUR die PermissionSet-Zeile — Zeilen für das Standard-User-Profil: 0.
+ * Das Standard-User-Profil erhält hier ALSO keine Read+Edit auf das neue Feld,
+ * und der Negativ-Test `withoutPS_fieldInvisible` (frischer Standard-User ohne
+ * PS) PASST daher OHNE jeden Org-Schritt S1. Die Design-Prämisse „neu deployte
+ * Custom Fields = automatisch Read+Edit im Standard-Profil (SCRUM-421-Lesson)“
+ * hat sich in dieser Test-Org NICHT reproduziert (Architect-Entscheidung 16:46,
+ * DevOps-Kommentar 21194). Ein PS kann Profil-FLS nie widerrufen — bleibt die
+ * generelle Regel; hier ist sie schlicht nicht der aktive Zweig.
  */
 @isTest
 private class SCRUM430RueckrufZeitfensterFlsTest {
@@ -57,11 +61,11 @@ private class SCRUM430RueckrufZeitfensterFlsTest {
             contactReadable = Contact.SObjectType.getDescribe().isAccessible();
         }
         System.assert(contactReadable,
-            'Vorbedingung gefeilscht: Standard-User hat keinen Contact-Zugriff.');
+            'Vorbedingung gefehlt: Standard-User hat keinen Contact-Zugriff.');
 
-        // NEGATIV: ohne PS (nach S1) → SELECT Rueckruf_Zeitfenster__c → Exception.
-        // WITH USER_MODE ist zwingend: runAs() schaltet FLS-Prüfung für SOQL/DML
-        // nicht ein; ohne USER_MODE würde der SELECT im System-Modus durchgehen.
+        // NEGATIV: ohne PS → SELECT Rueckruf_Zeitfenster__c → Exception (AC4).
+        // Gemessen Test-Org: kein Standard-User-Profil-FLS auf dem Feld,
+        // daher wirft die Spalte ohne PS (kein S1-Schritt nötig).
         Boolean threw = false;
         System.runAs(u) {
             try {

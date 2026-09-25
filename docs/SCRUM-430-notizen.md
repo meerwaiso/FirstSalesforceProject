@@ -89,3 +89,34 @@ WHERE PermissionSet.Name='SCRUM430_RueckrufZeitfenster'` →
   - Options werden als `role=option` im Overlay gerendert; `getByRole('option', {name, exact:true})` funktioniert.
 - **Festlegung**: S1 (Profile-Sperre) ist in der Test-Org nicht erforderlich — FeldPermissions zeigt 1 Zeile (nur das PermissionSet), 0 Zeilen für Standard User.
 - **Feld-Label in der Org**: `Rückruf-Zeitfenster` (Umlaut), API-Name `Rueckruf_Zeitfenster__c`.
+
+## Rework 2026-09-25 (CI-Lücke C + Prod-Drift, DevOps 21194/21195)
+
+**Zwei CI-Gates rot, EIN gemeinsamer Ursprung** (NICHT „Neufeld fehlt in Prod“ — diese
+Annahme von Architect 16:46 / Tester 17:23 ist für diesen PR korrigiert):
+
+- **Smoke-Gate Lücke C** (fls-gate.py, `runas_luecke`): `SCRUM430RueckrufZeitfensterTest.cls`
+  fasste `Contact.Rueckruf_Zeitfenster__c` **ohne** `System.runAs` an. Die Schwesterklasse
+  (FlsTest) wies die PS im Test zu und lief unter runAs → grün. Lücke C greift nur bei
+  NEUEN Feldern: eine Testklasse mit `@isTest`, Referenz auf das neue Feld und ohne
+  `System.runAs(` im Quelltext (post comment-strip) schlägt an.
+- **Prod-Drift-Gate (RunLocalTests check-only)**: dieselben 4 DML/SELECT-Methoden
+  werfen `No such column` / `fields being inaccessible`. Der Feld+PS wandern als
+  Metadatum im check-only-Validate mit; die PermissionSetAssignment ist ein DATENSATZ,
+  wandert NICHT mit → ausführender Testuser hat kein FLS → Fehler.
+
+**Fix** (Hausform SCRUM424FirstResponseFlsTest, 31/51 Klassen):
+- `SCRUM430RueckrufZeitfensterTest.cls` komplett rewritten: `mkTestUser` + `assignPS`
+  als Setup, dann JEDE fachliche DML/SELECT in einem eigenen `System.runAs(u)`-Block.
+  `picklistHasExactlyThreeValues` (Schema-API, kein Feld-DML) bleibt System-Mode.
+  MIXED_DML-Operation vermieden: Setup-DML ZUERST, fachliche DML NUR INNERHALB runAs.
+- `SCRUM430RueckrufZeitfensterFlsTest.cls`: Header-Kommentar „PRÄMISSE kritisch / S1
+  nötig“ durch gemessene FLS-Statement ersetzt (0 Zeilen Standard-User-Profil, S1 NICHT
+  nötig, Negativ-Test PASST ohne S1). Kein Verhaltenswandel, nur Doc-Korrektur.
+
+**Verifikation (2026-09-25):**
+- `sf apex run test` Run `707WU00001KXNxv`: **9/9, 100 % Pass** (6 funk + 3 FLS),
+  inkl. `withoutPS_fieldInvisible` (AC4) und aller runAs-Funktions-Methoden.
+- Deploy `0AfWU00000bhvXB0AY` (beide Klassen, RunSpecifiedTests): Succeeded.
+- Lücke C: `System.runAs(` in der Klasse (grep count 7) → gate überspringt die Klasse.
+- Prod-Drift: PSA im Test-Scope → ausführender runAs-User besitzt FLS → 4 Methoden grün.
