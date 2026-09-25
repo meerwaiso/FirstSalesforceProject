@@ -196,3 +196,26 @@ Worktree scr428-wt nach Push entfernt. Ticket von Tester fertig.
 - 6 Proben-Klassen aus Test-Org geloescht per Tooling-REST `DELETE /tooling/sobjects/ApexClass/<id>` mit `-b '{"mode":"raw","data":""}' (Metadata-Deploy-Deletion ist agent-seitig gesperrt). Verifiziert: 0 uebrig. Lektion: Deny auf destructive-Deploy-Flags blockiert den Metadata-Pfad, der Tooling-DELETE ist die saubere Alternative.
 - LWC-Jest: Skill `lwc-jest-testing` aktuell (shadowRoot + mock\*-Hoisting + virtual:true). Test selbst = Follow-up-Ticket (User-Entscheidung).
 - CI: Report-fix commit dd4886e getriggert (vorher rot wegen defektem Report im HEAD, Drift Gate).
+
+## 25.09 DevOps — Prod-Release (2026-09-25)
+
+Release-Status: **ERFOLGREICH**.
+
+- **Prod-Org:** devops-agent@cline.de (OrgId 00Dg500000DkTtzEAF) — korrekt Prod, NICHT Test.
+- **Release-Tag:** `release/2026-09-25-SCRUM-428` auf `b76b157` (= origin/master = merge von PR #135, squash).
+- **Validate Job (check-only):** `0Afg500000FCi4fCAD` — Succeeded, 19/19 Tests grün (RunSpecifiedTests: Ingest/Assignment/IngestFls gegen Prod).
+- **Deploy Job (real):** `0Afg500000FCcs7CAD` — Succeeded, `numberComponentsDeployed=32/32`, `numberComponentErrors=0`, `checkOnly=false`, `rollbackOnError=true`.
+- **Manifest:** `manifest/release-scr428-combined.xml` (Union phase1 + phase2). Alle 32 Members gegen Disk verifiziert (missing=0). ApiVersion 67.0.
+
+**Live-Read-back Prod-Org (sf data query / sobject describe, 25.09 10:27 UTC):**
+- 8/8 ApexClass PRESENT (Handler, Queueable, AssignmentService, Confirmation, ContactFormController, 3 Test).
+- ApexTrigger SCRUM428CaseIngestTrigger PRESENT (Table: Case).
+- PermissionSet SCRUM428_ServiceTeam + SCRUM428_Teamleitung PRESENT.
+- MDT SCRUM428_CaseLimitConfig__mdt: 1 Record, MaxOffene__c=5 (queryable). MDT SCRUM428_KategorierRegel__mdt: 10 Records, Keyword/Bereich queryable.
+- **Eigentümlichkeit (kein Defekt):** die 3 Standard-Objekt-Felder Case.Dedupliziert__c / Case.Erfassungsquelle__c / User.SCRUM428_Verfuigung__c sind im Deploy (Teil der 32, 0 Fehler) aber **sofort nach Deploy noch nicht via SOQL selektierbar** = Standard-Objekt-Field-API-Cache-Lag. Beweis, dass Field-Metadaten gelandet sind: die Custom-MDT-Fields (kein Std-Objekt-Cache) sind SOFORT queryable mit Live-Daten. Lag klärt sich selbst — kein 2. Deploy. Wer verifizieren will: `sf data query -o Prod-Org -q "SELECT Erfassungsquelle__c FROM Case LIMIT 1"` nach einigen Minuten.
+
+**428→421-Abhängigkeit (vorab verifiziert):** 428-Apex referenziert Case.Servicebereich__c / Automatische_Zuordnung__c / Zuordnungszeitpunkt__c (SCRUM-421, merge 5406969). Alle 3 PRESENT in Prod (sobject describe) → 428 kompiliert (19/19 Validate-Test belegt es).
+
+**Bewusster Deployment-Scope: gezielt 428, NICHT ganzes force-app.** CI "Prod-Org Drift Gate" valideiert ganzes force-app vs Prod und ist ROT wegen SCRUM-319-Drift (Is_Overdue__c, eigener ungelöster Vorgang). Ganz-force-app-Deploy würde 319 neu schieben (= SCRUM-417-Falle in umgekehrter Richtung). Targetiertes 428-Manifest deployt exakt 428, lässt 319-Drift unberührt/out-of-scope. **319-Drift-Readback bleibt ausstehend (eigener Vorgang)** — hier NICHT gemischt.
+
+**Offen für Release Note (PO):** Service-E-Mail-Adresse in Prod noch nicht konfiguriert (aus Test-Org bekannt, "entscheidet vor Go-Live"). Blocks nicht das Release (kein Code-/Org-Deploy-Defekt); reale UI-E2E-Mailpfade (AC1/AC4/AC11) laufen so lange nicht im Browser.

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-428 Prod-Release manifest (combined) — DevOps-Agent.
+     Union of manifest/scr428-phase1-fields.xml + manifest/scr428-phase2-referencing.xml.
+     Scope = the 428 component set ONLY. Deliberately NOT whole force-app:
+     the CI Drift Gate validates whole force-app vs Prod and is red on SCRUM-319
+     drift (unresolved, own ticket). A whole-force-app prod deploy would re-push
+     319's components. Targeted 428 leaves 319's drift untouched and out of scope.
+     428 Apex deps (Case.Servicebereich__c / Automatische_Zuordnung__c /
+     Zuordnungszeitpunkt__c) belong to SCRUM-421 and are already in Prod-Org
+     (verified via sobject describe). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Case.Erfassungsquelle__c</members>
+        <members>Case.Dedupliziert__c</members>
+        <members>User.SCRUM428_Verfuigung__c</members>
+        <members>SCRUM428_CaseLimitConfig__mdt.MaxOffene__c</members>
+        <members>SCRUM428_KategorierRegel__mdt.Bereich__c</members>
+        <members>SCRUM428_KategorierRegel__mdt.Keyword__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>SCRUM428_CaseLimitConfig__mdt</members>
+        <members>SCRUM428_KategorierRegel__mdt</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>SCRUM428_CaseLimitConfig__mdt.Standard</members>
+        <members>SCRUM428_KategorierRegel__mdt.Rech_Buchung</members>
+        <members>SCRUM428_KategorierRegel__mdt.Rech_Gutschrift</members>
+        <members>SCRUM428_KategorierRegel__mdt.Rech_Zahlung</members>
+        <members>SCRUM428_KategorierRegel__mdt.Tech_Defekt</members>
+        <members>SCRUM428_KategorierRegel__mdt.Tech_Fehler</members>
+        <members>SCRUM428_KategorierRegel__mdt.Tech_Stoerung</members>
+        <members>SCRUM428_KategorierRegel__mdt.Vertrag_Kuendigung</members>
+        <members>SCRUM428_KategorierRegel__mdt.Vertrag_Laufzeit</members>
+        <members>SCRUM428_KategorierRegel__mdt.Vertrag_Verlaengerung</members>
+        <members>SCRUM428_KategorierRegel__mdt.Vertrag_Vereinbarung</members>
+        <name>CustomMetadata</name>
+    </types>
+    <types>
+        <members>SCRUM428CaseIngestHandler</members>
+        <members>SCRUM428AssignmentQueueable</members>
+        <members>SCRUM428AssignmentService</members>
+        <members>SCRUM428CaseConfirmation</members>
+        <members>SCRUM428ContactFormController</members>
+        <members>SCRUM428IngestTest</members>
+        <members>SCRUM428AssignmentTest</members>
+        <members>SCRUM428IngestFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>SCRUM428CaseIngestTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <types>
+        <members>scr428ContactForm</members>
+        <name>LightningComponentBundle</name>
+    </types>
+    <types>
+        <members>SCRUM428_ServiceTeam</members>
+        <members>SCRUM428_Teamleitung</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Service/Unverteite_Faelle</members>
+        <name>Report</name>
+    </types>
+    <version>67.0</version>
+</Package>
