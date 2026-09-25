@@ -14,7 +14,7 @@ Design: `docs/SCRUM-430-design.md` (Commit 40eee48, freigegeben).
 - **S2 (zuweisung) — ERLEDIGT + Read-back:**
   - `sf org assign permset -o Test-Org -n SCRUM430_RueckrufZeitfenster -b <user>`
   - Read-back `SELECT Assignee.Username, Assignee.Profile.Name FROM PermissionSetAssignment
-    WHERE PermissionSet.Name='SCRUM430_RueckrufZeitfenster'` →
+WHERE PermissionSet.Name='SCRUM430_RueckrufZeitfenster'` →
     - `devops-agent@cline.test` (System Administrator)
     - `meerwais.osmani@resourceful-bear-6f1u4j.com` (System Administrator) — PO-Test-Konto
   - Hinweis: beide Accounts sind System Administrator → haben FLS ohnehin via Profil.
@@ -22,30 +22,34 @@ Design: `docs/SCRUM-430-design.md` (Commit 40eee48, freigegeben).
     irrelevant (der nutzt einen frischen Standard-User OHNE PS, nicht diese Accounts).
 - **FLS-Default des neu deployten Felds (wichtige Messung):**
   `SELECT Parent.Name, PermissionsRead, PermissionsEdit, Parent.IsOwnedByProfile
-   FROM FieldPermissions WHERE Field='Contact.Rueckruf_Zeitfenster__c'` → **1 Zeile**
+ FROM FieldPermissions WHERE Field='Contact.Rueckruf_Zeitfenster__c'` → **1 Zeile**
   (nur das PermissionSet, read+edit, IsOwnedByProfile=false).
   `... AND Parent.Name='Standard User'` → **0 Zeilen**.
   → **Das Standard-User-Profil bekommt KEINE Read+Edit auf das neue Feld.**
   → **WICHTIG (Abweichung zum Design-§6):** Design-Prämisse "Standard-User-Profil erhält
-     automatisch Read+Edit (SCRUM-421-Lesson) ⇒ S1 Profil-Sperre nötig" hat sich NICHT
-     reproduziert. Der negativer AC4-Test (`withoutPS_fieldInvisible`, frischer Standard-User
-     OHNE PS, `SELECT ... WITH USER_MODE`) PASST OHNE jeden S1-Schritt.
-     → S1 ist in der Test-Org NICHT blockierend; AC4 hält, wie gemessen. Für Prod-Org
-     vermutlich dieselbe Default-Situation. Für den Architect dokumentiert (Review).
+  automatisch Read+Edit (SCRUM-421-Lesson) ⇒ S1 Profil-Sperre nötig" hat sich NICHT
+  reproduziert. Der negativer AC4-Test (`withoutPS_fieldInvisible`, frischer Standard-User
+  OHNE PS, `SELECT ... WITH USER_MODE`) PASST OHNE jeden S1-Schritt.
+  → S1 ist in der Test-Org NICHT blockierend; AC4 hält, wie gemessen. Für Prod-Org
+  vermutlich dieselbe Default-Situation. Für den Architect dokumentiert (Review).
 
 ## Manifeste (Reihenfolge: 1 → 1b → 2) — ALLE deployt & erfolgreich
-- `manifest/scr430-phase1-fields.xml`     (CustomField)        → Succeeded, NoTestRun
-- `manifest/scr430-phase1-ref.xml`        (Layout + PermissionSet) → Succeeded, NoTestRun
-- `manifest/scr430-phase2-apextests.xml`  (2 ApexClass)        → Succeeded, RunSpecifiedTests
+
+- `manifest/scr430-phase1-fields.xml` (CustomField) → Succeeded, NoTestRun
+- `manifest/scr430-phase1-ref.xml` (Layout + PermissionSet) → Succeeded, NoTestRun
+- `manifest/scr430-phase2-apextests.xml` (2 ApexClass) → Succeeded, RunSpecifiedTests
 
 ## Deploy-Stand — ALLES deployt & verifiziert
+
 - Phase 1 (Feld): Succeeded
 - Phase 1b (Layout+PS): Succeeded
 - Phase 2 (Tests): Succeeded
 - PS zugeordnet + Read-Back: ERLEDIGT (2 Assignees, s. oben)
 
 ## Test-Fazit (Read-back `sf apex run test`, Run Id 707WU00001KVxM3)
+
 **9/9 gesamt, 100% Pass**
+
 - SCRUM430RueckrufZeitfensterTest: defaultValue_empty, overwrite_vormittags_to_abends,
   picklistHasExactlyThreeValues, value_abends, value_nachmittags, value_vormittags — alle Pass
 - SCRUM430RueckrufZeitfensterFlsTest: precondition_contactReadable, withPS_readableAndWritable,
@@ -56,6 +60,7 @@ Design: `docs/SCRUM-430-design.md` (Commit 40eee48, freigegeben).
 - AC4: SELECT ohne PS (Standard-User) wirft → Feld unsichtbar ✓ (ohne S1)
 
 ## Offene Punkte für den Handoff / Review
+
 1. **S1 unnötig (Test-Org):** negativer FLS-Test hält ohne Profile-Sperre. Design-§6/ADR-7-Prämisse
    (SCRUM-421-Lesson "neue Felder = Read+Edit im Standard-Profil") gilt hier NICHT.
    → Architect entscheiden, ob S1 für Prod-Org dennoch gesetzt wird (Defensive).
@@ -65,7 +70,22 @@ Design: `docs/SCRUM-430-design.md` (Commit 40eee48, freigegeben).
    System-Admin-Accounts.
 
 ## Design-Ablösung (Abweichung, für Review-Dokumentation)
+
 - Design §4.4a TC `reject_invalid_value`: „update auf 'Mittags' → Expect Exception".
   **Abgelöst**: Apex-DML warnt/verwirft einen fremden Picklist-Wert nicht reliably.
   Stattdessen AC1-Constraint „exakt 3 Werte" per Schema-API-Assert (`picklistHasExactlyThreeValues`).
   In Handoff-Kommentar + hier dokumentiert.
+
+## Tester-Befunde (2026-09-25, SCRUM-430 Testphase)
+
+- **E2E neu geschrieben**: `tests/e2e/SCRUM-430-rueckruf-zeitfenster.spec.ts` (3 Tests, 37s, grün)
+  - AC2 Test 1: Feld-Label + Edit-Button auf dem Details-Tab sichtbar, kein Aufklappen
+  - AC2 Test 2: Wert „Abends" (per SOQL gesetzt) wird im read-View korrekt gerendert
+  - AC3 Test 3: Picklist „Nachmittags" via Inline-Edit ausgewählt, gespeichert, SOQL bestätigt
+- **Picklist-DOM** (empirisch verifiziert, 2026-09-25):
+  - Im edit mode: `BUTTON[role=combobox][aria-label="Rückruf-Zeitfenster"]` +
+    `DIV[role=listbox][aria-label="Rückruf-Zeitfenster"]` → `getByLabel(...).count() = 2`
+  - Der House-Helper `startInlineEdit` (erwartet count=1, Textinput) ist hier NICHT anwendbar.
+  - Options werden als `role=option` im Overlay gerendert; `getByRole('option', {name, exact:true})` funktioniert.
+- **Festlegung**: S1 (Profile-Sperre) ist in der Test-Org nicht erforderlich — FeldPermissions zeigt 1 Zeile (nur das PermissionSet), 0 Zeilen für Standard User.
+- **Feld-Label in der Org**: `Rückruf-Zeitfenster` (Umlaut), API-Name `Rueckruf_Zeitfenster__c`.
