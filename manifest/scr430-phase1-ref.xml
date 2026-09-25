@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-430 Phase 1b: layout + permission set (both reference Contact.Rueckruf_Zeitfenster__c) -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Contact-Contact Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>SCRUM430_RueckrufZeitfenster</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>
