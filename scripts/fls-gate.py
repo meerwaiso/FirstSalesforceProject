@@ -28,6 +28,21 @@ REQUIRED_ASSIGNEES = ("Meerwais Osmani", "devops-agent")
 
 _assignee_cache: dict = {}
 
+TEST_CLASS_RE = re.compile(r"force-app/.*/classes/([^/]+)\.cls$")
+COMMENT_RE = re.compile(r"/\*.*?\*/|//[^\n]*", re.S)
+
+
+def ohne_kommentare(src):
+    """Kommentare raus, bevor irgendetwas im Quelltext gesucht wird.
+
+    Erster Entwurf dieser Prüfung schlug an SCRUM430RueckrufZeitfensterTest
+    vorbei: im Kopfkommentar steht "No System.runAs — pure DML+SELECT", und die
+    Suche fand genau diese Zeichenkette und hielt die Klasse für abgesichert.
+    Ein Kommentar, der die Abwesenheit einer Sache beschreibt, darf nicht als
+    ihre Anwesenheit zählen.
+    """
+    return COMMENT_RE.sub(" ", src)
+
 
 class GateBroken(Exception):
     """Das Gate konnte seine Frage nicht stellen — nicht dasselbe wie eine Antwort."""
@@ -55,6 +70,58 @@ def changed_field_files(base):
     sh("git", "rev-parse", "--verify", "--quiet", f"{base}^{{commit}}")
     out = sh("git", "diff", "--name-only", "--diff-filter=AM", f"{base}...HEAD")
     return [l for l in out.splitlines() if FIELD_RE.search(l)]
+
+
+def neue_felder(base):
+    """Nur NEU angelegte Felder (--diff-filter=A), nicht geänderte.
+
+    Der Unterschied trägt die ganze Prüfung unten: ein bestehendes Feld liegt in
+    Prod und der CI-Benutzer ist darauf berechtigt. Ein neues Feld entsteht erst
+    in der checkOnly-Validierung, und dort kann ihm niemand ein Permission Set
+    zuweisen — eine Zuweisung ist ein Datensatz, kein Metadatum.
+    """
+    out = sh("git", "diff", "--name-only", "--diff-filter=A", f"{base}...HEAD")
+    treffer = {}
+    for l in out.splitlines():
+        m = FIELD_RE.search(l)
+        if m and not m.group(1).endswith("__mdt"):
+            treffer[m.group(2)] = f"{m.group(1)}.{m.group(2)}"
+    return treffer
+
+
+def runas_luecke(base):
+    """Neues Feld, das eine Testklasse ohne System.runAs liest oder schreibt.
+
+    Gemessen an CI #367 (Lauf 36144475357, SCRUM-430): 274/274 Komponenten
+    validiert, null Komponentenfehler, und trotzdem rot — fünf Tests scheiterten
+    in Prod mit "No such column" und "fields being inaccessible", weil die
+    Klasse das frische Feld als ausführender Benutzer anfasste. Die
+    Schwesterklasse im selben Branch wies das Permission Set im Test zu und lief
+    unter System.runAs; sie war grün.
+
+    Die Prüfung greift bewusst nur bei NEUEN Feldern. Von den 51 Testklassen im
+    Repo haben 20 kein System.runAs — keine davon schlägt an, weil ihre Felder
+    längst in Prod liegen.
+    """
+    felder = neue_felder(base)
+    if not felder:
+        return []
+    out = sh("git", "diff", "--name-only", "--diff-filter=AM", f"{base}...HEAD")
+    befunde = []
+    for l in out.splitlines():
+        if not TEST_CLASS_RE.search(l):
+            continue
+        try:
+            src = pathlib.Path(l).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        code = ohne_kommentare(src)
+        if "@isTest" not in code or "System.runAs(" in code:
+            continue
+        beruehrt = sorted({label for fld, label in felder.items() if fld in code})
+        if beruehrt:
+            befunde.append((pathlib.Path(l).name, beruehrt))
+    return befunde
 
 
 def is_fls_relevant(obj):
@@ -174,11 +241,17 @@ def main():
         else:
             print(f"  {label:<44} ok ({', '.join(ps_list)})")
 
+    if not a.files:
+        for cls, felder in runas_luecke(a.base or "origin/master"):
+            print(f"  {cls:<44} C: fasst {', '.join(felder)} ohne System.runAs an")
+            failures.append((cls, "C",
+                             f"neues Feld {', '.join(felder)} ohne System.runAs"))
+
     if not failures:
         print("\nFLS-Gate grün.")
         return 0
 
-    print(f"\nFLS-Gate ROT — {len(failures)} Feld(er):\n")
+    print(f"\nFLS-Gate ROT — {len(failures)} Befund(e):\n")
     for label, kind, why in failures:
         print(f"  {label}: {why}")
     print("""
@@ -187,6 +260,18 @@ SOQL sowie Apex melden darauf 'No such column' — nicht unterscheidbar von eine
 fehlenden Feld. Das hat in diesem Projekt sechs Tickets Zeit gekostet.
 
   Lücke A  fieldPermissions-Eintrag in ein Permission Set aufnehmen
+  Lücke C  Ein NEUES Feld existiert in Prod noch nicht. Die checkOnly-
+           Validierung legt Feld und Permission Set an, aber nicht die
+           Zuweisung — die ist ein Datensatz, kein Metadatum. Ein Test, der
+           das Feld als ausführender Benutzer liest oder schreibt, scheitert
+           dort mit 'No such column' oder 'fields being inaccessible', und
+           der Prod-Org Drift Gate wird rot. Hausmuster: Benutzer anlegen,
+           PermissionSetAssignment im Test einfügen, DML und SOQL in
+           System.runAs(u). 31 der 51 Testklassen machen es so; ein Vorbild
+           ist SCRUM424FirstResponseFlsTest. Reihenfolge beachten: erst die
+           Setup-Inserts, dann das fachliche DML INNERHALB von runAs, sonst
+           MIXED_DML_OPERATION.
+
   Lücke B  sf org assign permset -n <PS> -b <Benutzer> -o <org>
            An BEIDE: den CLI-Benutzer devops-agent und den menschlichen
            Account Meerwais Osmani. Eine Zuweisung allein genügt nicht —
