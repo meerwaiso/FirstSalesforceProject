@@ -1,27 +1,71 @@
 # SCRUM-430 — Developer-Notizen
 
-Stand: 2026-09-25. Branch `feature/SCRUM-430-rueckruf-zeitfenster`, Worktree `scr430-wt`.
+Stand: 2026-09-25. Worktree `scr430-wt`.
 Design: `docs/SCRUM-430-design.md` (Commit 40eee48, freigegeben).
 
-## Werte aus der Org (hier reinschreiben, sobald vorhanden)
-- FieldPermissions für Contact.Rueckruf_Zeitfenster__c (welches Profil hat Read/Edit?): _noch offen_
-- Wer sind die Test-Accounts für S2 (CLI-User + menschlicher Test-Account): _noch offen_
-- FLS-Default des neu deployten Felds im Standard-User-Profil: _zu messen nach Phase-1-Deploy_
+## Werte aus der Org (gemessen, Test-Org, 2026-09-25)
+
+- **Feld deployt:** `Contact.Rueckruf_Zeitfenster__c` live (Phase 1, NoTestRun, Succeeded).
+  Read-back FieldDefinition: Label "Rückruf-Zeitfenster".
+- **Layout deployt:** `Contact-Contact Layout` (Phase 1b, Succeeded). Org-Retrieve bestätigt:
+  Feld steht direkt hinter `ConsentDate__c` in Sektion **"Contact Information"** (2. Spalte),
+  `<behavior>Edit</behavior>`. AC2 erfüllt.
+- **PermissionSet deployt:** `SCRUM430_RueckrufZeitfenster` (Phase 1b, Succeeded), nur FLS read+edit.
+- **S2 (zuweisung) — ERLEDIGT + Read-back:**
+  - `sf org assign permset -o Test-Org -n SCRUM430_RueckrufZeitfenster -b <user>`
+  - Read-back `SELECT Assignee.Username, Assignee.Profile.Name FROM PermissionSetAssignment
+    WHERE PermissionSet.Name='SCRUM430_RueckrufZeitfenster'` →
+    - `devops-agent@cline.test` (System Administrator)
+    - `meerwais.osmani@resourceful-bear-6f1u4j.com` (System Administrator) — PO-Test-Konto
+  - Hinweis: beide Accounts sind System Administrator → haben FLS ohnehin via Profil.
+    Die Zuweisung ist korrekt (Deploy≠Assign-Hausregel) und für den negativen AC4-Test
+    irrelevant (der nutzt einen frischen Standard-User OHNE PS, nicht diese Accounts).
+- **FLS-Default des neu deployten Felds (wichtige Messung):**
+  `SELECT Parent.Name, PermissionsRead, PermissionsEdit, Parent.IsOwnedByProfile
+   FROM FieldPermissions WHERE Field='Contact.Rueckruf_Zeitfenster__c'` → **1 Zeile**
+  (nur das PermissionSet, read+edit, IsOwnedByProfile=false).
+  `... AND Parent.Name='Standard User'` → **0 Zeilen**.
+  → **Das Standard-User-Profil bekommt KEINE Read+Edit auf das neue Feld.**
+  → **WICHTIG (Abweichung zum Design-§6):** Design-Prämisse "Standard-User-Profil erhält
+     automatisch Read+Edit (SCRUM-421-Lesson) ⇒ S1 Profil-Sperre nötig" hat sich NICHT
+     reproduziert. Der negativer AC4-Test (`withoutPS_fieldInvisible`, frischer Standard-User
+     OHNE PS, `SELECT ... WITH USER_MODE`) PASST OHNE jeden S1-Schritt.
+     → S1 ist in der Test-Org NICHT blockierend; AC4 hält, wie gemessen. Für Prod-Org
+     vermutlich dieselbe Default-Situation. Für den Architect dokumentiert (Review).
+
+## Manifeste (Reihenfolge: 1 → 1b → 2) — ALLE deployt & erfolgreich
+- `manifest/scr430-phase1-fields.xml`     (CustomField)        → Succeeded, NoTestRun
+- `manifest/scr430-phase1-ref.xml`        (Layout + PermissionSet) → Succeeded, NoTestRun
+- `manifest/scr430-phase2-apextests.xml`  (2 ApexClass)        → Succeeded, RunSpecifiedTests
+
+## Deploy-Stand — ALLES deployt & verifiziert
+- Phase 1 (Feld): Succeeded
+- Phase 1b (Layout+PS): Succeeded
+- Phase 2 (Tests): Succeeded
+- PS zugeordnet + Read-Back: ERLEDIGT (2 Assignees, s. oben)
+
+## Test-Fazit (Read-back `sf apex run test`, Run Id 707WU00001KVxM3)
+**9/9 gesamt, 100% Pass**
+- SCRUM430RueckrufZeitfensterTest: defaultValue_empty, overwrite_vormittags_to_abends,
+  picklistHasExactlyThreeValues, value_abends, value_nachmittags, value_vormittags — alle Pass
+- SCRUM430RueckrufZeitfensterFlsTest: precondition_contactReadable, withPS_readableAndWritable,
+  withoutPS_fieldInvisible — alle Pass
+- AC1: Wertematrix + leer + exakt 3 Werte ✓
+- AC2: Feld sichtbar in "Contact Information" (Layout, read-back Org) ✓
+- AC3: lesbar + editierbar mit PS (insert/update/select durch) ✓
+- AC4: SELECT ohne PS (Standard-User) wirft → Feld unsichtbar ✓ (ohne S1)
+
+## Offene Punkte für den Handoff / Review
+1. **S1 unnötig (Test-Org):** negativer FLS-Test hält ohne Profile-Sperre. Design-§6/ADR-7-Prämisse
+   (SCRUM-421-Lesson "neue Felder = Read+Edit im Standard-Profil") gilt hier NICHT.
+   → Architect entscheiden, ob S1 für Prod-Org dennoch gesetzt wird (Defensive).
+2. **Beide Test-Accounts sind System Administrator** → FLS-Positiv (AC3) für sie trivial grün.
+   Der FLS-Test erzeugt eigene Standard-User (korrekte Methode). Kein Problem, aber für Tester
+   dokumentieren: AC3/AC4 werden über die erzeugten Standard-User geprüft, nicht über die
+   System-Admin-Accounts.
 
 ## Design-Ablösung (Abweichung, für Review-Dokumentation)
 - Design §4.4a TC `reject_invalid_value`: „update auf 'Mittags' → Expect Exception".
-  **Abgelöst**: Apex-DML auf ein Picklist-Feld warnt/verwirft einen fremden Wert NICHT (kein
-  Exception). Statt AC1-Constraint „exakt 3 Werte" per Schema-API-Assert prüfen:
-  `Contact.Rueckruf_Zeitfenster__c.getDescribe().getPicklistValues()` == {Vormittags,
-  Nachmittags, Abends}. In Handoff-Kommentar + hier dokumentiert, Reviewer-Entscheidung.
-
-## Manifeste (Reihenfolge: 1 → 1b → 2)
-- `manifest/scr430-phase1-fields.xml`  (CustomField)
-- `manifest/scr430-phase1-ref.xml`     (Layout + PermissionSet)
-- `manifest/scr430-phase2-apextests.xml`(2 ApexClass)
-
-## Deploy-Stand
-- Phase 1 (Feld): _noch offen_
-- Phase 1b (Layout+PS): _noch offen_
-- Phase 2 (Tests): _noch offen_
-- PS zugeordnet + Read-Back (Assignee-Liste + WITH USER_MODE Feldlesung): _noch offen_
+  **Abgelöst**: Apex-DML warnt/verwirft einen fremden Picklist-Wert nicht reliably.
+  Stattdessen AC1-Constraint „exakt 3 Werte" per Schema-API-Assert (`picklistHasExactlyThreeValues`).
+  In Handoff-Kommentar + hier dokumentiert.
