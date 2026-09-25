@@ -36,6 +36,26 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 25.09.2026 — Bevorzugtes Rückruf-Zeitfenster am Kontakt (SCRUM-430)
+
+**Was sich aendert**
+- Auf jedem Kontakt kannst du jetzt eintragen, wann die Person am liebsten angerufen werden soll: **Vormittags**, **Nachmittags** oder **Abends**.
+- Beim Oeffnen der Kontaktseite steht der Wert sofort dabei — du musst nichts aufklappen oder in Notizen suchen.
+- Das Feld bleibt leer, wenn du es nicht weisst — das ist der Regelzustand, kein Fehler.
+- Vertrieb und Service koennen den Wert sehen und aendern; fuer alle anderen ist das Feld nicht sichtbar.
+
+**Wo man es sieht**
+Kontaktseite, in der Standard-Detailansicht (neben „Consent-Datum“) — direkt dabei, kein zusatzlicher Klick.
+
+**Was bewusst nicht drin ist**
+- Keine Uhrzeiten — nur die drei Zeitfenster, wie gefordert.
+- Keine Erinnerungen, Berichte oder Automatisierungen — das Feld wird nur gepflegt und gelesen.
+
+**Deploy-ID**
+Job `0Afg500000FDQKECA5` (2026-09-25, Prod-Org `00Dg500000DkTtzEAF`), 5 Komponenten, 0 Fehler; vorherige Validierung `0Afg500000FDUR4CAP` (9/9 Tests). Release-Tag `release/2026-09-25-SCRUM-430` auf Commit `260b786`.
+
+**Live-Beleg (PO-Read-back in Prod, 25.09):** Feld `Rueckruf_Zeitfenster__c` im Contact vorhanden (Tooling-API), Berechtigungsgruppe `SCRUM430_RueckrufZeitfenster` vorhanden und an zwei Nutzern zugewiesen (CLI + Admin-Enduser, 2/2).
+
 ## 25.09.2026 — Kundenanfragen automatisch anlegen, zuordnen und verteilen (SCRUM-428)
 
 **Was sich aendert**
