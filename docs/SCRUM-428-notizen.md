@@ -176,17 +176,19 @@ Report-Frame-Zeilen haben 5 `<td>`s, kein Zeilennummern-`<td>` im data table:
 Die `#`-Spalte (1.) ist kein `<td>` in den Datenzeilen — CaseNumber ist Index 0, nicht 1.
 "Total Records N" steht im `frame.locator('body').innerText()` des lightningReportApp-Frames.
 
-### Gap B (offen, 25.09)
+### Gap B — GESCHLOSSEN (25.09 09:35, unabhängig verifiziert)
+SOQL PermissionSetAssignment: 4/4 Zeilen (vorher 0). ServiceTeam + Teamleitung
+je an devops-agent@cline.test + meerwais.osmani@resourceful-bear-6f1u4j.com.
+Reiner Org-State-Fix durch Developer, kein Code-Defekt, kein Bug-Ticket.
 
-PermissionSetAssignment für beide PS (SCRUM428_ServiceTeam, SCRUM428_Teamleitung): 0 Zuweisungen.
-Developer muss vor Merge schließen (Architect-Kommentar 20727). Tester darf nicht selbst zuweisen.
+### Positives Real-Session-FLS-Read (25.09, Session = Test-Org = devops-agent@cline.test, hält SCRUM428_Teamleitung)
+SELECT CaseNumber, Erfassungsquelle__c, Dedupliziert__c FROM Case WHERE CaseNumber='00001000' → lesbar
+SELECT Username, SCRUM428_Verfuigung__c FROM User → lesbar
+→ FLS vollständig verifiziert (neg. + in-transaction + Real-Session).
 
-### Jira-Entscheidung
-
-Alle 12 ACs grün, aber Gap B offen. Rückgang an Developer (Implementierung, id=21):
-Developer schließt Gap B (PS an devops-agent@cline.test + Testaccount zuweisen,
-WITH USER_MODE-Read-back, Kommentar in Jira) und reicht erneut ein.
-Kein Bug-Ticket erforderlich — bekannte offene Bedingung, kein Defekt.
+### Handoff: DevOps-Agent, Spalte Deployment (Comment 20826)
+Assignee=devops-agent, Status=Deployment (read-back verifiziert).
+Worktree scr428-wt nach Push entfernt. Ticket von Tester fertig.
 
 ## 24.09 spaet (Abend-Abschluss)
 
