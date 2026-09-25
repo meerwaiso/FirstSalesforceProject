@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Dedupliziert__c</fullName>
+    <label>Dedupliziert</label>
+    <description>Ja/Nein, ob dieser Case als Duplikat einer bestehenden Anfrage erkannt und geschlossen wurde (SCRUM-428, AC4/AC5). Steuert AC11 (Dup bekommt KEINE Eingangsbestätigung) und den AC12-Report-Ausschluss. Ausschliesslich systemgepflegt (SCRUM428CaseIngestHandler); kein Write-FLS.</description>
+    <type>Checkbox</type>
+    <defaultValue>false</defaultValue>
+</CustomField>

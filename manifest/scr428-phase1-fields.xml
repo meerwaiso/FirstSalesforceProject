@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-428 Phase 1: 3 neue Custom Fields (Case.Erfassungsquelle__c,
+     Case.Dedupliziert__c, User.SCRUM428_Verfuigung__c) + 2 Custom Metadata
+     Types mit ihren Feldern und den Startrecords. Zuerst allein (house-Regel:
+     erst Felder/MDT, dann das sie Referenzierende: Apex, Trigger, LWC, PS, Report). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Case.Erfassungsquelle__c</members>
+        <members>Case.Dedupliziert__c</members>
+        <members>User.SCRUM428_Verfuigung__c</members>
+        <members>SCRUM428_CaseLimitConfig__mdt.MaxOffene__c</members>
+        <members>SCRUM428_KategorierRegel__mdt.Bereich__c</members>
+        <members>SCRUM428_KategorierRegel__mdt.Keyword__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>SCRUM428_CaseLimitConfig__mdt</members>
+        <members>SCRUM428_KategorierRegel__mdt</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>SCRUM428_CaseLimitConfig__mdt.Standard</members>
+        <members>SCRUM428_KategorierRegel__mdt.Tech_Fehler</members>
+        <members>SCRUM428_KategorierRegel__mdt.Tech_Stoerung</members>
+        <members>SCRUM428_KategorierRegel__mdt.Tech_Defekt</members>
+        <members>SCRUM428_KategorierRegel__mdt.Rech_Zahlung</members>
+        <members>SCRUM428_KategorierRegel__mdt.Rech_Gutschrift</members>
+        <members>SCRUM428_KategorierRegel__mdt.Rech_Buchung</members>
+        <members>SCRUM428_KategorierRegel__mdt.Vertrag_Kuendigung</members>
+        <members>SCRUM428_KategorierRegel__mdt.Vertrag_Laufzeit</members>
+        <members>SCRUM428_KategorierRegel__mdt.Vertrag_Verlaengerung</members>
+        <members>SCRUM428_KategorierRegel__mdt.Vertrag_Vereinbarung</members>
+        <name>CustomMetadata</name>
+    </types>
+    <version>67.0</version>
+</Package>

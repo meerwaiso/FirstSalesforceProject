@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-428 Phase 2: Referenten auf Phase-1-Felder/MDT.
+     Apex (5 Klassen + 3 Testklassen), Trigger, LWC, 2 Permission Sets, Report.
+     Erst DEPLOYEN nach scr428-phase1-fields.xml (house-Regel Felder-First). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM428CaseIngestHandler</members>
+        <members>SCRUM428AssignmentQueueable</members>
+        <members>SCRUM428AssignmentService</members>
+        <members>SCRUM428CaseConfirmation</members>
+        <members>SCRUM428ContactFormController</members>
+        <members>SCRUM428IngestTest</members>
+        <members>SCRUM428AssignmentTest</members>
+        <members>SCRUM428IngestFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>SCRUM428CaseIngestTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <types>
+        <members>scr428ContactForm</members>
+        <name>LightningComponentBundle</name>
+    </types>
+    <types>
+        <members>SCRUM428_ServiceTeam</members>
+        <members>SCRUM428_Teamleitung</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Service/Unverteite_Faelle</members>
+        <name>Report</name>
+    </types>
+    <version>67.0</version>
+</Package>
