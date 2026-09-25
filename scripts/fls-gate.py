@@ -18,11 +18,30 @@ import argparse, pathlib, re, subprocess, sys
 FIELD_RE = re.compile(r"force-app/.*/objects/([^/]+)/fields/([^/]+)\.field-meta\.xml$")
 
 
+class GateBroken(Exception):
+    """Das Gate konnte seine Frage nicht stellen — nicht dasselbe wie eine Antwort."""
+
+
 def sh(*cmd):
-    return subprocess.run(cmd, capture_output=True, text=True).stdout
+    """Gibt stdout zurück und wirft, wenn der Befehl scheitert.
+
+    Wichtig: ein fehlgeschlagener Befehl liefert leeres stdout, und eine leere
+    Antwort ist hier nie harmlos. Bei `git diff` würde sie "keine Felder
+    geändert" bedeuten und das Gate still abschalten (falsch-grün); bei der
+    PermissionSetAssignment-Abfrage "niemandem zugewiesen" und einen korrekten
+    PR blockieren (falsch-rot). Beides muss laut scheitern.
+    """
+    p = subprocess.run(cmd, capture_output=True, text=True)
+    if p.returncode != 0:
+        raise GateBroken(f"{' '.join(cmd[:3])}… endete mit {p.returncode}: "
+                         f"{(p.stderr or p.stdout).strip()[:300]}")
+    return p.stdout
 
 
 def changed_field_files(base):
+    # Existenz der Basis zuerst prüfen: ein unbekannter Ref ist der Weg, auf dem
+    # ein Gate unbemerkt aufhört zu prüfen.
+    sh("git", "rev-parse", "--verify", "--quiet", f"{base}^{{commit}}")
     out = sh("git", "diff", "--name-only", "--diff-filter=AM", f"{base}...HEAD")
     return [l for l in out.splitlines() if FIELD_RE.search(l)]
 
@@ -49,8 +68,13 @@ def assignment_count(ps, org):
     q = ("SELECT Assignee.Username FROM PermissionSetAssignment "
          f"WHERE PermissionSet.Name='{ps}'")
     out = sh("sf", "data", "query", "-o", org, "-q", q, "-r", "csv")
-    rows = [l for l in out.splitlines()[1:] if l.strip() and not l.startswith("Querying")]
-    return len(rows)
+    lines = [l for l in out.splitlines() if l.strip() and not l.startswith("Querying")]
+    if not lines:
+        # Auch bei Rückgabecode 0: ohne Kopfzeile hat die CLI nicht geantwortet,
+        # und "null Zuweisungen" wäre hier eine erfundene Antwort.
+        raise GateBroken(f"PermissionSetAssignment-Abfrage für '{ps}' lieferte "
+                         f"keine Kopfzeile — Org '{org}' nicht erreichbar?")
+    return len(lines) - 1
 
 
 def main():
@@ -117,4 +141,10 @@ Hintergrund: Skill 'salesforce-describe-first' §4""")
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except GateBroken as e:
+        print(f"\nFLS-Gate KONNTE NICHT PRUEFEN: {e}", file=sys.stderr)
+        print("Das ist kein Befund, sondern ein kaputtes Gate. Exit 2 — weder "
+              "grün noch rot.", file=sys.stderr)
+        sys.exit(2)
