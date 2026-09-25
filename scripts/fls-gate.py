@@ -13,9 +13,20 @@ Regel bereits in AGENTS.md. Deshalb ein Gate und kein Satz.
   scripts/fls-gate.py --base origin/master [--org Test-Org]
   scripts/fls-gate.py --files a.field-meta.xml ... [--org Test-Org]
 """
-import argparse, pathlib, re, subprocess, sys
+import argparse, csv, io, pathlib, re, subprocess, sys
 
 FIELD_RE = re.compile(r"force-app/.*/objects/([^/]+)/fields/([^/]+)\.field-meta\.xml$")
+
+# Beide Benutzer müssen ein Feld sehen können: der CLI-Benutzer, mit dem die
+# Agenten und die CI arbeiten, UND der menschliche Account, der das Ergebnis
+# abnimmt. Geprüft wird der Name, nicht der Benutzername — die Adressen
+# unterscheiden sich je Org (Test-Org devops-agent@cline.test /
+# meerwais.osmani@resourceful-bear-6f1u4j.com, Prod-Org devops-agent@cline.de /
+# meerwais.osmani.3ecaf61ebe28@agentforce.com). Ein Benutzername im Skript wäre
+# in der anderen Org still falsch.
+REQUIRED_ASSIGNEES = ("Meerwais Osmani", "devops-agent")
+
+_assignee_cache: dict = {}
 
 
 class GateBroken(Exception):
@@ -83,8 +94,19 @@ def granting_permsets(obj, fld):
     return hits
 
 
-def assignment_count(ps, org):
-    q = ("SELECT Assignee.Username FROM PermissionSetAssignment "
+def assignee_names(ps, org):
+    """Namen der Benutzer, die dieses Permission Set zugewiesen haben.
+
+    Vorher zählte diese Funktion nur Zeilen, und main() schlug erst an, wenn
+    KEIN gewährendes Permission Set irgendeine Zuweisung hatte. Damit genügte
+    eine Zuweisung an den CLI-Benutzer: das Gate wurde grün, im Setup sah der
+    Mensch das Feld nicht, und der PO lehnte das Ticket ab. Bei zwei
+    gewährenden Sets reichte sogar eines von beiden.
+    """
+    key = (ps, org)
+    if key in _assignee_cache:
+        return _assignee_cache[key]
+    q = ("SELECT Assignee.Name FROM PermissionSetAssignment "
          f"WHERE PermissionSet.Name='{ps}'")
     out = sh("sf", "data", "query", "-o", org, "-q", q, "-r", "csv")
     lines = [l for l in out.splitlines() if l.strip() and not l.startswith("Querying")]
@@ -93,7 +115,10 @@ def assignment_count(ps, org):
         # und "null Zuweisungen" wäre hier eine erfundene Antwort.
         raise GateBroken(f"PermissionSetAssignment-Abfrage für '{ps}' lieferte "
                          f"keine Kopfzeile — Org '{org}' nicht erreichbar?")
-    return len(lines) - 1
+    rows = list(csv.reader(io.StringIO("\n".join(lines))))
+    names = {c.strip() for row in rows[1:] for c in row[:1] if c.strip()}
+    _assignee_cache[key] = names
+    return names
 
 
 def main():
@@ -135,10 +160,17 @@ def main():
             print(f"  {label:<44} A: ok ({', '.join(ps_list)}) — B ungeprüft, keine Org")
             continue
 
-        unassigned = [ps for ps in ps_list if assignment_count(ps, a.org) == 0]
-        if unassigned and len(unassigned) == len(ps_list):
-            print(f"  {label:<44} B: PS ohne Zuweisung: {', '.join(unassigned)}")
-            failures.append((label, "B", f"{', '.join(unassigned)} niemandem zugewiesen"))
+        # Vereinigung über alle gewährenden Sets: gefragt ist, ob das FELD für
+        # beide sichtbar ist, nicht ob jedes einzelne Set beide trägt. Ein
+        # Leitungs-Set darf weiterhin nur an die Leitung gehen.
+        erreicht = set()
+        for ps in ps_list:
+            erreicht |= assignee_names(ps, a.org)
+        fehlt = [n for n in REQUIRED_ASSIGNEES if n not in erreicht]
+        if fehlt:
+            print(f"  {label:<44} B: erreicht {', '.join(fehlt)} nicht")
+            failures.append((label, "B", f"{', '.join(ps_list)} erreicht "
+                                         f"{', '.join(fehlt)} nicht"))
         else:
             print(f"  {label:<44} ok ({', '.join(ps_list)})")
 
@@ -155,8 +187,10 @@ SOQL sowie Apex melden darauf 'No such column' — nicht unterscheidbar von eine
 fehlenden Feld. Das hat in diesem Projekt sechs Tickets Zeit gekostet.
 
   Lücke A  fieldPermissions-Eintrag in ein Permission Set aufnehmen
-  Lücke B  sf org assign permset -n <PS> -b <CLI-Benutzer> -o <org>
-           und an den menschlichen Testaccount
+  Lücke B  sf org assign permset -n <PS> -b <Benutzer> -o <org>
+           An BEIDE: den CLI-Benutzer devops-agent und den menschlichen
+           Account Meerwais Osmani. Eine Zuweisung allein genügt nicht —
+           genau daran sind die Abnahmen gescheitert.
 
 Diagnose eines einzelnen Feldes: scripts/fls-check.sh <Objekt> <Feld>
 Hintergrund: Skill 'salesforce-describe-first' §4""")
