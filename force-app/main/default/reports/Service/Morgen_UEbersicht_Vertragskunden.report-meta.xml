@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Report xmlns="http://soap.sforce.com/2006/04/metadata">
-    <booleanFilter>AND</booleanFilter>
     <columns><field>CASE_NUMBER</field></columns>
     <columns><field>ACCOUNT.NAME</field></columns>
     <columns><field>SUBJECT</field></columns>
@@ -8,13 +7,17 @@
     <filter>
         <criteriaItems>
             <column>Account.Wartungsvertrag__c</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>false</isUnlocked>
             <operator>equals</operator>
             <value>1</value>
         </criteriaItems>
         <criteriaItems>
-            <column>IsClosed</column>
+            <column>OPEN</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>false</isUnlocked>
             <operator>equals</operator>
-            <value>0</value>
+            <value>1</value>
         </criteriaItems>
     </filter>
     <format>Tabular</format>
@@ -22,7 +25,7 @@
         <field>CREATED_DATE</field>
         <sortOrder>Asc</sortOrder>
     </groupingsDown>
-    <description>Morgen-ubersicht (SCRUM-431): Offene Faelle von Kunden mit Wartungsvertrag = Ja. Offen = nicht abgeschlossen (IsClosed=False, status-agnostisch). Spalten: Fallnummer, Kunde, Betreff, offen seit; sortiert aufsteigend nach Erfassungsdatum (aelteste zuerst). Sichtbarkeit nur, keine Eskalation.</description>
+    <description>(SCRUM-431) Offene Faelle von Kunden mit Wartungsvertrag = Ja, aelteste zuerst (Tabular, sortiert asc nach Erfassungsdatum).</description>
     <name>Morgen_UEbersicht_Vertragskunden</name>
     <reportType>CaseList</reportType>
     <scope>organization</scope>
