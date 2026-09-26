@@ -36,6 +36,34 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 26.09.2026 — Wartungsvertrag: im Fall auf einen Blick und als Morgenliste (SCRUM-431)
+
+**Was sich aendert**
+- Du kannst jetzt beim Kunden (Kundendatensatz) eintragen, ob er einen **Wartungsvertrag** hat. Das ist eine Eigenschaft des gesamten Kunden und gilt damit fuer alle seine Faelle — nicht fuer einen einzelnen Fall.
+- Beim **Oeffnen eines Falls siehst du direkt**, ob der dazugehoerige Kunde einen Wartungsvertrag hat: **Ja** oder **Nein**. Du musst nicht mehr zum Kundenwechsel — das ist der Kern dieses Features, damit du im Fall sofort erkennst, wo ein schnelleres Reaktionsversprechen zusteht.
+- Morgens oeffnest du die **Morgenliste offener Falle der Vertragskunden** und siehst auf einen Blick, ob bei Kunden mit Vertrag etwas liegen geblieben ist: jeweils **Fallnummer, Kunde, Betreff und wie lange der Fall schon offen** ist — die aeltesten stehen oben.
+- Bis du den Wartungsvertrag bei einem Kunden auf „Ja“ setzt, ist die Liste leer. Das ist der Normalzustand zu Beginn und kein Fehler.
+
+**Wo man es sieht**
+- Kundendatensatz: ein neues Feld **„Wartungsvertrag“** (An/Kreuz).
+- Fallsicht: das Markierungsfeld **„Wartungsvertrag (Kunde)“** steht direkt auf der Fallseite, ohne dass du zum Kunden wechseln musst.
+- Die **Morgenliste** „Offene Falle von Vertragskunden“ findest du unter Berichten (Case-Uebersicht als Tabelle).
+
+**Wer darf was**
+- Das Service-Team kann das Feld **lesen** (am Kunden und am Fall) — es kann es aber **nicht aendern**.
+- Nur die **Teamleitung** darf den Wartungsvertrag am Kunden auf Ja/Nein setzen.
+- Wer das Feld sehen darf, wird ueber eine Berechtigungsgruppe geregelt, die der Admin zuweist.
+
+**Was bewusst nicht drin ist**
+- Keine automatische Eskalation, keine E-Mails oder Benachrichtigungen und keine automatische Umverteilung von Faellen.
+- Kein Zeitfenster und keine Prioritaetsanhebung fuer Vertragskunden.
+- Das ist jetzt reine Sichtbarkeit: Erst wenn man ein Gefuehl fuer die Stueckzahlen hat, wird ueberlegt, was als Naechstes damit geschieht.
+
+**Deploy-ID**
+Real-Deploy `0Afg500000FFOHVCA5` (2026-09-26, Prod-Org): 11/11 Komponenten, 0 Fehler, 6/6 Tests bestanden. Release-Tag `release/2026-09-26-SCRUM-431` auf Commit `040a47a`.
+
+**Live-Beleg (PO-Read-back in Prod, 26.09):** beide neuen Felder vorhanden (Kunde-Checkbox bearbeitbar, Fall-Formel read-only); beide Berechtigungsgruppen `SCRUM431_Wartungsvertrag_ServiceTeam` und `SCRUM431_Wartungsvertrag_Teamleitung` vorhanden und an zwei Nutzer zugewiesen (CLI-Testuser + Enduser, 4/4); Report `Morgen_UEbersicht_Vertragskunden` in der Prod-Org live.
+
 ## 25.09.2026 — Bevorzugtes Rückruf-Zeitfenster am Kontakt (SCRUM-430)
 
 **Was sich aendert**
