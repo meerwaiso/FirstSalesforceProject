@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-431: Teamleitung. Read+Edit Account.Wartungsvertrag__c, Read Case.Wartungsvertrag_Anzeige__c (read-only).</description>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Account.Wartungsvertrag__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.Wartungsvertrag_Anzeige__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM431_Wartungsvertrag_Teamleitung</label>
+</PermissionSet>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Wartungsvertrag__c</fullName>
+    <label>Wartungsvertrag</label>
+    <description>Kunden-Attribut (SCRUM-431): Ja = Kunde hat einen Wartungsvertrag und dementsprechend ein schnelleres Reaktionsversprechen. Gilt fuer ALLE Faelle dieses Kunden. Default Nein. Nur Teamleitung editiert (FLS via PS); Service-Team Read-only.</description>
+    <defaultValue>false</defaultValue>
+    <type>Checkbox</type>
+</CustomField>
