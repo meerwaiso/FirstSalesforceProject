@@ -22,6 +22,34 @@
 @isTest
 private class SCRUM431WartungsvertragTest {
 
+    // FLS-Gate (Lücke C): the two fields are NEW; in the validating org the
+    // executing test user would hit "No such column" on them (SCRUM-430
+    // failure). All business DML/SOQL runs under a Standard-User setup
+    // account carrying the SCRUM431 permission set; the account + its PS
+    // assignment are built OUTSIDE System.runAs (no MIXED_DML_OPERATION).
+
+    private static final String SCRUM431_PS = 'SCRUM431_Wartungsvertrag_Teamleitung';
+
+    private static User featureUser() {
+        Profile p = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
+        String sfx = String.valueOf(DateTime.now().getTime());
+        User u = new User(
+            ProfileId = p.Id,
+            LastName = 'Scr431',
+            Alias = 'flt431',
+            Email = 'flt431-' + sfx + '@example.invalid',
+            Username = 'flt431-' + sfx + '@example.invalid',
+            EmailEncodingKey = 'UTF-8',
+            LanguageLocaleKey = 'en_US',
+            LocaleSidKey = 'en_US',
+            TimeZoneSidKey = 'America/Los_Angeles'
+        );
+        insert u;
+        PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = :SCRUM431_PS LIMIT 1];
+        insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);
+        return u;
+    }
+
     private static Account makeAccount(Boolean wartungsvertrag) {
         Account a = new Account(
             Name = 'TEST-SCRUM-431-' + (wartungsvertrag ? 'JA' : 'NEIN') + '-' + DateTime.now().getTime(),
@@ -58,28 +86,33 @@ private class SCRUM431WartungsvertragTest {
     // ---- AC1: Account Ja -> Case "Ja" ------------------------------------
     @isTest
     static void accountJa_openCaseShowsJa() {
+        System.runAs(featureUser()) {
         Account a = makeAccount(true);
         Case c = makeCase(a);
         System.assertEquals(
             'Ja', readAnzeige(c.Id),
             'AC1: Account mit Wartungsvertrag=Ja -> Case zeigt "Ja" ohne zum Account zu wechseln'
         );
-    }
+    
+        }}
 
     // ---- AC2: Account Nein -> Case "Nein" --------------------------------
     @isTest
     static void accountNein_openCaseShowsNein() {
+        System.runAs(featureUser()) {
         Account a = makeAccount(false);
         Case c = makeCase(a);
         System.assertEquals(
             'Nein', readAnzeige(c.Id),
             'AC2: Account mit Wartungsvertrag=Nein -> Case zeigt "Nein"'
         );
-    }
+    
+        }}
 
     // ---- ADR-1: value is live, not stored --------------------------------
     @isTest
     static void flipAccountFlag_caseValueFollowsLive() {
+        System.runAs(featureUser()) {
         Account a = makeAccount(false);
         Case c = makeCase(a);
         System.assertEquals('Nein', readAnzeige(c.Id), 'Precondition: Account Nein -> "Nein"');
@@ -97,31 +130,37 @@ private class SCRUM431WartungsvertragTest {
             'Nein', readAnzeige(c.Id),
             'ADR-1: zurueck auf Nein am Account -> Case-Wert wird live zurueckgesetzt'
         );
-    }
+    
+        }}
 
     // ---- Edge: Case ohne Account -----------------------------------------
     @isTest
     static void orphanCase_showsNein() {
+        System.runAs(featureUser()) {
         Case c = makeOrphanCase();
         System.assertEquals(
             'Nein', readAnzeige(c.Id),
             'Case ohne Account -> leerer boolean wird als false behandelt -> "Nein"'
         );
-    }
+    
+        }}
 
     // ---- Schema: the Case field is a read-only string formula ------------
     @isTest
     static void caseAnzeigeFieldIsReadOnlyTextFormula() {
+        System.runAs(featureUser()) {
         Schema.DescribeFieldResult f = Case.Wartungsvertrag_Anzeige__c.getDescribe();
         System.assertEquals(true, f.isCalculated(), 'AC-Anzeige: calculated (Formul) Feld (ADR-1)');
         System.assertEquals(false, f.isUpdateable(), 'AC-Anzeige: read-only (Formul, kein User-Write)');
         System.assert(f.getType() == Schema.DisplayType.STRING, 'AC-Anzeige: Text-Feld (Wortwerte Ja/Nein)');
         System.assertEquals(0, f.getPicklistValues().size(), 'AC-Anzeige: KEIN Picklist-Vocabulary (Werte liegen in der Formel)');
-    }
+    
+        }}
 
     // ---- Schema: the Account field is a checkbox default false -----------
     @isTest
     static void accountFieldIsCheckbox() {
+        System.runAs(featureUser()) {
         Schema.DescribeFieldResult f = Account.Wartungsvertrag__c.getDescribe();
         System.assert(!f.isCalculated(), 'Account-Feld: kein calculated, sondern editierbares Checkbox-Feld');
         System.assert(f.getType() == Schema.DisplayType.BOOLEAN, 'Account-Feld: BOOLEAN (Checkbox)');
@@ -129,5 +168,6 @@ private class SCRUM431WartungsvertragTest {
         insert a;
         Boolean d = [SELECT Wartungsvertrag__c FROM Account WHERE Id = :a.Id].Wartungsvertrag__c;
         System.assertEquals(false, d, 'Account-Feld: Default = Nein (false)');
-    }
+    
+        }}
 }
