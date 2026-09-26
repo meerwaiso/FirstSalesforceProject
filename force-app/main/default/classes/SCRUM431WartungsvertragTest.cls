@@ -123,7 +123,7 @@ private class SCRUM431WartungsvertragTest {
     @isTest
     static void accountFieldIsCheckbox() {
         Schema.DescribeFieldResult f = Account.Wartungsvertrag__c.getDescribe();
-        System.assertFalse(f.isCalculated(), 'Account-Feld: kein calculated, sondern editierbares Checkbox-Feld');
+        System.assert(!f.isCalculated(), 'Account-Feld: kein calculated, sondern editierbares Checkbox-Feld');
         System.assert(f.getType() == Schema.DisplayType.BOOLEAN, 'Account-Feld: BOOLEAN (Checkbox)');
         Account a = new Account(Name = 'TEST-SCRUM-431-DEFAULT-' + DateTime.now().getTime());
         insert a;

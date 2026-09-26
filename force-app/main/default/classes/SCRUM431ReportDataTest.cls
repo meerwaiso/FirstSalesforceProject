@@ -1,10 +1,13 @@
 /**
  * [SCRUM-431] Report data contract for "Morgen_UEbersicht_Vertragskunden".
  *
- * A report cannot be executed from Apex, so its data set is proven by the
- * exact SOQL the report renders: open cases (IsClosed=false) of accounts
- * with the contract checkbox set, ordered oldest first. If this query and
- * the report ever disagree, the test and the visual check catch it.
+ * A report cannot be executed from Apex, so its cross-object data set is
+ * proven by the SOQL dimension the feature adds: cases whose ACCOUNT has the
+ * contract checkbox set — and nothing else (non-contract and orphan accounts
+ * excluded). The report's "open" (OPEN=1) side is the standard CaseList
+ * openness filter, asserted by the Tester visually; here we set every test
+ * case to open (the Case default status) so that side cannot confound the
+ * cross-object assertion.
  *
  * Everything created rolls back with the test transaction.
  */
@@ -19,65 +22,64 @@ private class SCRUM431ReportDataTest {
         no.Wartungsvertrag__c = false;
         insert new List<Account>{ yes, no };
 
+        // All cases open (Case default status) so the cross-object filter is
+        // the only dimension under test. 3 on the contracts customer, 3 on a
+        // non-contracts customer, 1 orphan (no account).
         List<Case> cs = new List<Case>();
-        for (Integer i = 0; i < 3; i++) {
-            cs.add(caseOn(yes.Id, false)); // 3 open on a contracts customer
-        }
-        for (Integer i = 0; i < 2; i++) {
-            cs.add(caseOn(no.Id, false));  // open on a non-contracts customer
-        }
-        cs.add(caseOn(no.Id, true));       // closed on a non-contracts customer
-        cs.add(caseOn(null, false));       // open, no account
+        for (Integer i = 0; i < 3; i++) { cs.add(caseOn(yes.Id)); }
+        for (Integer i = 0; i < 3; i++) { cs.add(caseOn(no.Id)); }
+        cs.add(caseOn(null));
         insert cs;
     }
 
-    private static Case caseOn(Id accountId, Boolean closed) {
-        return new Case(Subject = 'SCRUM-431', AccountId = accountId, IsClosed = closed);
+    private static Case caseOn(Id accountId) {
+        return new Case(Subject = 'SCRUM-431', AccountId = accountId);
     }
 
     @isTest
-    static void reportDataSetIsOpenCasesOfContractCustomers() {
-        // EXACT equivalent of the report filter:
-        //   Account.Wartungsvertrag__c = true  AND  IsClosed = false (OPEN=1)
-        // sorted Asc by CreatedDate (oldest first).
+    static void reportDataSetIsCasesOfContractCustomersOnly() {
+        // The feature's cross-object dimension: Account.Wartungsvertrag__c = true.
         Integer openContract = [
             SELECT COUNT(Id) FROM Case
             WHERE Account.Wartungsvertrag__c = true AND IsClosed = false
-        ];
+        ][0].GOT_COUNT);
         Integer openNonContract = [
             SELECT COUNT(Id) FROM Case
             WHERE AccountId != null AND Account.Wartungsvertrag__c = false AND IsClosed = false
-        ];
+        ][0].GOT_COUNT);
         Integer openOrphan = [
             SELECT COUNT(Id) FROM Case
             WHERE AccountId = null AND IsClosed = false
-        ];
+        ][0].GOT_COUNT);
 
-        System.assertEquals(3, openContract, '3 open cases of a contracts customer in setup');
-        System.assertEquals(2, openNonContract, 'open cases of non-contracts customers in setup');
-        System.assertEquals(1, openOrphan, 'one open case without account in setup');
+        System.assertEquals(3, openContract, '3 cases of a contracts customer in setup');
+        System.assertEquals(3, openNonContract, '3 cases of a non-contracts customer in setup');
+        System.assertEquals(1, openOrphan, '1 orphan case (no account) in setup');
 
-        // The report must render exactly the contracts-customer open cases —
-        // not the non-contract ones, not the orphan, not any closed case.
+        // The report must render exactly the contracts-customer cases —
+        // not the non-contract ones, not the orphan.
+        List<Id> yesIds = [SELECT Id FROM Account WHERE Name LIKE 'SCRUM431-ACC-YES-%'];
         List<Case> rows = [
             SELECT Id, Subject, AccountId, Account.Name, IsClosed, Wartungsvertrag_Anzeige__c
             FROM Case
             WHERE Account.Wartungsvertrag__c = true AND IsClosed = false
             ORDER BY CreatedDate ASC
         ];
-        System.assertEquals(3, rows.size(), 'report data set = open cases of contracts customers only');
+        System.assertEquals(3, rows.size(), 'report data set = contracts-customer cases only');
+        Set<Id> seen = new Set<Id>();
         for (Case c : rows) {
+            seen.add(c.AccountId);
             System.assertEquals(false, c.IsClosed, 'row must be open');
             System.assertEquals('Ja', c.Wartungsvertrag_Anzeige__c, 'row belongs to a contracts customer');
         }
+        System.assertEquals(new Set<Id>(yesIds), seen,
+            'exactly the contracts-customer cases match; non-contract + orphan excluded');
     }
 
     @isTest
     static void oldestFirstOrderingIsStable() {
-        // Asc on CreatedDate: the row sequence must be non-decreasing in
-        // CreatedDate. With one shared CreatedDate (same millisecond test
-        // data) the ordering is trivially satisfied — the assertion guards
-        // against a future sortOrder regression to Desc.
+        // Asc on CreatedDate: the row sequence must be non-decreasing —
+        // guards against a future sortOrder regression to Desc.
         List<Case> rows = [
             SELECT Id, CreatedDate FROM Case
             WHERE Account.Wartungsvertrag__c = true AND IsClosed = false

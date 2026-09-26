@@ -41,18 +41,18 @@ private class SCRUM431FlsTest {
         System.runAs(u) {
             // Preconditions: object CRUD present — a negative FLS result
             // proves FLS, not a missing object.
-            System.assertTrue(
+            System.assert(
                 Account.SObjectType.getDescribe().isAccessible(),
                 'Precondition: Standard User needs Account object access');
-            System.assertTrue(
+            System.assert(
                 Case.SObjectType.getDescribe().isAccessible(),
                 'Precondition: Standard User needs Case object access');
             // Negative: neither field is readable without the SCRUM431 PS.
             System.assertEquals(
-                false, Wartungsvertrag__c.getDescribe().isAccessible(),
+                false, Account.Wartungsvertrag__c.getDescribe().isAccessible(),
                 'Account field must NOT be readable without the SCRUM431 PS');
             System.assertEquals(
-                false, Wartungsvertrag_Anzeige__c.getDescribe().isAccessible(),
+                false, Case.Wartungsvertrag_Anzeige__c.getDescribe().isAccessible(),
                 'Case field must NOT be readable without the SCRUM431 PS');
         }
     }
@@ -62,13 +62,13 @@ private class SCRUM431FlsTest {
         User u = newStandardUser('svc');
         assignPS('SCRUM431_Wartungsvertrag_ServiceTeam', u.Id);
         System.runAs(u) {
-            System.assertEquals(true, Wartungsvertrag__c.getDescribe().isAccessible(),
+            System.assertEquals(true, Account.Wartungsvertrag__c.getDescribe().isAccessible(),
                 'ServiceTeam must READ the Account field');
-            System.assertEquals(false, Wartungsvertrag__c.getDescribe().isUpdateable(),
+            System.assertEquals(false, Account.Wartungsvertrag__c.getDescribe().isUpdateable(),
                 'ServiceTeam must NOT EDIT the Account field');
-            System.assertEquals(true, Wartungsvertrag_Anzeige__c.getDescribe().isAccessible(),
+            System.assertEquals(true, Case.Wartungsvertrag_Anzeige__c.getDescribe().isAccessible(),
                 'ServiceTeam must READ the Case field');
-            System.assertEquals(false, Wartungsvertrag_Anzeige__c.getDescribe().isUpdateable(),
+            System.assertEquals(false, Case.Wartungsvertrag_Anzeige__c.getDescribe().isUpdateable(),
                 'The Case field is a formula field — never updatable');
         }
     }
@@ -78,13 +78,13 @@ private class SCRUM431FlsTest {
         User u = newStandardUser('team');
         assignPS('SCRUM431_Wartungsvertrag_Teamleitung', u.Id);
         System.runAs(u) {
-            System.assertEquals(true, Wartungsvertrag__c.getDescribe().isAccessible(),
+            System.assertEquals(true, Account.Wartungsvertrag__c.getDescribe().isAccessible(),
                 'Teamleitung must READ the Account field');
-            System.assertEquals(true, Wartungsvertrag__c.getDescribe().isUpdateable(),
+            System.assertEquals(true, Account.Wartungsvertrag__c.getDescribe().isUpdateable(),
                 'Teamleitung must EDIT the Account field');
-            System.assertEquals(true, Wartungsvertrag_Anzeige__c.getDescribe().isAccessible(),
+            System.assertEquals(true, Case.Wartungsvertrag_Anzeige__c.getDescribe().isAccessible(),
                 'Teamleitung must READ the Case field');
-            System.assertEquals(false, Wartungsvertrag_Anzeige__c.getDescribe().isUpdateable(),
+            System.assertEquals(false, Case.Wartungsvertrag_Anzeige__c.getDescribe().isUpdateable(),
                 'The Case field is a formula field — never updatable');
         }
     }
