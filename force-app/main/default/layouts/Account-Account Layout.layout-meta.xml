@@ -55,6 +55,11 @@
                 <behavior>Readonly</behavior>
                 <field>Open_Value_Drop_Last_Month__c</field>
             </layoutItems>
+            <!-- SCRUM-431: Wartungsvertrag (Kunden-Attribut; Bearbeitbarkeit via FLS/Permission Set) -->
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>Wartungsvertrag__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM431_Wartungsvertrag_ServiceTeam</members>
+        <members>SCRUM431_Wartungsvertrag_Teamleitung</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Service/Morgen_UEbersicht_Vertragskunden</members>
+        <name>Report</name>
+    </types>
+    <types>
+        <members>Account-Account Layout</members>
+        <members>Account-Account %28Support%29 Layout</members>
+        <members>Case-Case Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>

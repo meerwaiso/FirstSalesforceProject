@@ -79,6 +79,11 @@
                 <behavior>Edit</behavior>
                 <field>Type</field>
             </layoutItems>
+            <!-- SCRUM-431: Wartungsvertrag (Kunden-Attribut; Bearbeitbarkeit via FLS/Permission Set) -->
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>Wartungsvertrag__c</field>
+            </layoutItems>
         </layoutColumns>
         <style>TwoColumnsTopToBottom</style>
     </layoutSections>
