@@ -45,7 +45,7 @@ private class SCRUM431ReportDataTest {
         ][0].cnt;
         Integer openNonContract = [
             SELECT COUNT(Id) cnt FROM Case
-            WHERE AccountId != null AND Account.Wartvertrag__c = false AND IsClosed = false
+            WHERE AccountId != null AND Account.Wartungsvertrag__c = false AND IsClosed = false
         ][0].cnt;
         Integer openOrphan = [
             SELECT COUNT(Id) cnt FROM Case
