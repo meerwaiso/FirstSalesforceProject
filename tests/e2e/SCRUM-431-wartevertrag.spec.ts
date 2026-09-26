@@ -92,16 +92,24 @@ async function reportHeaderCells(frame: Frame): Promise<string[]> {
   // [role="columnheader"] cells, each carrying a button whose label is the
   // clean column name ("Case Number", "Account Name", ...). The leading
   // resize-only columnheader has no button -> filtered out.
-  const out: string[] = [];
-  const chs = frame.locator('[role="columnheader"]');
-  const n = await chs.count();
-  for (let i = 0; i < n; i++) {
-    const btn = chs.nth(i).locator('button').first();
-    const t = await btn.innerText().catch(() => '');
-    const clean = t.trim();
-    if (clean) out.push(clean);
+  // The header buttons hydrate slightly after the body rows on a fresh
+  // report load, so poll until we see 4 named columns or the budget runs out.
+  const budget = 20000;
+  const deadline = Date.now() + budget;
+  for (;;) {
+    const chs = frame.locator('[role="columnheader"]');
+    const n = await chs.count();
+    const out: string[] = [];
+    for (let i = 0; i < n; i++) {
+      const btn = chs.nth(i).locator('button').first();
+      const t = await btn.innerText().catch(() => '');
+      const clean = t.trim();
+      if (clean) out.push(clean);
+    }
+    if (out.length >= 4) return out;
+    if (Date.now() > deadline) return out;
+    await frame.waitForTimeout(500).catch(() => {});
   }
-  return out;
 }
 
 /**
