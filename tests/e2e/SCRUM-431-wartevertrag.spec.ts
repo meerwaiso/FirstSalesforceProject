@@ -88,16 +88,21 @@ async function reportDataRows(frame: Frame): Promise<string[][]> {
 }
 
 async function reportHeaderCells(frame: Frame): Promise<string[]> {
-  // The Lightning report grid is an ARIA <table>: the header row is
-  // [role="columnheader"] cells, each carrying a button whose label is the
-  // clean column name ("Case Number", "Account Name", ...). The leading
-  // resize-only columnheader has no button -> filtered out.
+  // The Lightning report header uses <th> elements — an IMPLICIT ARIA
+  // "columnheader" role. The CSS attribute selector [role="columnheader"]
+  // matches only EXPLICIT role attributes and therefore finds nothing;
+  // getByRole('columnheader') matches the implicit role and is the correct
+  // approach (verified 2026-09-26: the failure snapshot shows all 4 named
+  // columnheaders while [role=columnheader] returned []).
+  // Each header carries an inner button with the clean column name
+  // ("Case Number", "Account Name", ...). Read those button labels; the
+  // leading resize-only header has no such button and is skipped.
   // The header buttons hydrate slightly after the body rows on a fresh
   // report load, so poll until we see 4 named columns or the budget runs out.
   const budget = 20000;
   const deadline = Date.now() + budget;
   for (;;) {
-    const chs = frame.locator('[role="columnheader"]');
+    const chs = frame.getByRole('columnheader');
     const n = await chs.count();
     const out: string[] = [];
     for (let i = 0; i < n; i++) {
@@ -107,7 +112,15 @@ async function reportHeaderCells(frame: Frame): Promise<string[]> {
       if (clean) out.push(clean);
     }
     if (out.length >= 4) return out;
-    if (Date.now() > deadline) return out;
+    if (Date.now() > deadline) {
+      // Fallback: the columnheader accessible names also carry the labels.
+      const names: string[] = [];
+      for (let i = 0; i < n; i++) {
+        const name = await chs.nth(i).getAttribute('aria-label').catch(() => null) ?? (await chs.nth(i).innerText().catch(() => ''));
+        if (name.trim()) names.push(name.trim());
+      }
+      return names;
+    }
     await frame.waitForTimeout(500).catch(() => {});
   }
 }
