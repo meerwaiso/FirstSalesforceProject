@@ -14,37 +14,8 @@
 @isTest
 private class SCRUM431ReportDataTest {
 
-    // FLS-Gate: the two fields are NEW; in the validating org the executing
-    // test user would hit "No such column" on them (SCRUM-430 failure). All
-    // test DML/SOQL runs under a Standard-User setup account carrying the
-    // SCRUM431 permission set; that account + its PS assignment are created
-    // OUTSIDE System.runAs (no MIXED_DML_OPERATION).
-
-    private static final String SCRUM431_PS = 'SCRUM431_Wartungsvertrag_Teamleitung';
-
-    private static User featureUser() {
-        Profile p = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
-        String sfx = String.valueOf(DateTime.now().getTime());
-        User u = new User(
-            ProfileId = p.Id,
-            LastName = 'Scr431',
-            Alias = 'flt431',
-            Email = 'flt431-' + sfx + '@example.invalid',
-            Username = 'flt431-' + sfx + '@example.invalid',
-            EmailEncodingKey = 'UTF-8',
-            LanguageLocaleKey = 'en_US',
-            LocaleSidKey = 'en_US',
-            TimeZoneSidKey = 'America/Los_Angeles'
-        );
-        insert u;
-        PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = :SCRUM431_PS LIMIT 1];
-        insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);
-        return u;
-    }
-
     @TestSetup
     static void setup() {
-        System.runAs(featureUser()) {
         Account yes = new Account(Name = 'SCRUM431-ACC-YES-' + System.currentTimeMillis());
         yes.Wartungsvertrag__c = true;
         Account no = new Account(Name = 'SCRUM431-ACC-NO-' + System.currentTimeMillis());
@@ -59,8 +30,7 @@ private class SCRUM431ReportDataTest {
         for (Integer i = 0; i < 3; i++) { cs.add(caseOn(no.Id)); }
         cs.add(caseOn(null));
         insert cs;
-    
-        }}
+    }
 
     private static Case caseOn(Id accountId) {
         return new Case(Subject = 'SCRUM-431', AccountId = accountId);
@@ -68,7 +38,6 @@ private class SCRUM431ReportDataTest {
 
     @isTest
     static void reportDataSetIsCasesOfContractCustomersOnly() {
-        System.runAs(featureUser()) {
         // The feature's cross-object dimension: Account.Wartungsvertrag__c = true.
         Integer openContract = [
             SELECT Id FROM Case
@@ -107,12 +76,10 @@ private class SCRUM431ReportDataTest {
         }
         System.assertEquals(new Set<Id>(yesIds), seen,
             'exactly the contracts-customer cases match; non-contract + orphan excluded');
-    
-        }}
+    }
 
     @isTest
     static void oldestFirstOrderingIsStable() {
-        System.runAs(featureUser()) {
         // Asc on CreatedDate: the row sequence must be non-decreasing —
         // guards against a future sortOrder regression to Desc.
         List<Case> rows = [
@@ -125,6 +92,35 @@ private class SCRUM431ReportDataTest {
                 rows[i].CreatedDate >= rows[i - 1].CreatedDate,
                 'Oldest-first: row ' + i + ' must not be older than row ' + (i - 1));
         }
-    
-        }}
+    }
+
+    // FLS-Gate (Lücke C / SCRUM-430): the two fields are NEW. Prove from the
+    // executing-user side that they are guarded — under System.runAs a user
+    // WITHOUT the SCRUM431 permission set must NOT be able to read either
+    // field. Pure reflection (getDescribe): no object CRUD, no sharing, no
+    // DML inside runAs (no MIXED_DML). House pattern: SCRUM431FlsTest /
+    // SCRUM424FirstResponseFlsTest.
+    @isTest
+    static void flsGuard_newFieldsNotReadableWithoutPS() {
+        Profile p = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
+        String sfx = String.valueOf(DateTime.now().getTime());
+        User u = new User(
+            ProfileId = p.Id,
+            LastName = 'Scr431',
+            Alias = 'flt431',
+            Email = 'flt431-' + sfx + '@example.invalid',
+            Username = 'flt431-' + sfx + '@example.invalid',
+            EmailEncodingKey = 'UTF-8',
+            LanguageLocaleKey = 'en_US',
+            LocaleSidKey = 'en_US',
+            TimeZoneSidKey = 'America/Los_Angeles'
+        );
+        insert u;
+        System.runAs(u) {
+            System.assertEquals(false, Account.Wartungsvertrag__c.getDescribe().isAccessible(),
+                'FLS: Account field must NOT be readable without the SCRUM431 PS');
+            System.assertEquals(false, Case.Wartungsvertrag_Anzeige__c.getDescribe().isAccessible(),
+                'FLS: Case field must NOT be readable without the SCRUM431 PS');
+        }
+    }
 }
