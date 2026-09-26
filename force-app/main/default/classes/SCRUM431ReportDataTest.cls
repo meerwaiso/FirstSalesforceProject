@@ -40,17 +40,17 @@ private class SCRUM431ReportDataTest {
     static void reportDataSetIsCasesOfContractCustomersOnly() {
         // The feature's cross-object dimension: Account.Wartungsvertrag__c = true.
         Integer openContract = [
-            SELECT COUNT(Id) cnt FROM Case
+            SELECT Id FROM Case
             WHERE Account.Wartungsvertrag__c = true AND IsClosed = false
-        ][0].cnt;
+        ].size();
         Integer openNonContract = [
-            SELECT COUNT(Id) cnt FROM Case
+            SELECT Id FROM Case
             WHERE AccountId != null AND Account.Wartungsvertrag__c = false AND IsClosed = false
-        ][0].cnt;
+        ].size();
         Integer openOrphan = [
-            SELECT COUNT(Id) cnt FROM Case
+            SELECT Id FROM Case
             WHERE AccountId = null AND IsClosed = false
-        ][0].cnt;
+        ].size();
 
         System.assertEquals(3, openContract, '3 cases of a contracts customer in setup');
         System.assertEquals(3, openNonContract, '3 cases of a non-contracts customer in setup');
