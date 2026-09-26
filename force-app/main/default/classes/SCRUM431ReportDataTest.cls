@@ -42,15 +42,15 @@ private class SCRUM431ReportDataTest {
         Integer openContract = [
             SELECT COUNT(Id) FROM Case
             WHERE Account.Wartungsvertrag__c = true AND IsClosed = false
-        ][0].GOT_COUNT);
+        ][0].GOT_COUNT;
         Integer openNonContract = [
             SELECT COUNT(Id) FROM Case
             WHERE AccountId != null AND Account.Wartungsvertrag__c = false AND IsClosed = false
-        ][0].GOT_COUNT);
+        ][0].GOT_COUNT;
         Integer openOrphan = [
             SELECT COUNT(Id) FROM Case
             WHERE AccountId = null AND IsClosed = false
-        ][0].GOT_COUNT);
+        ][0].GOT_COUNT;
 
         System.assertEquals(3, openContract, '3 cases of a contracts customer in setup');
         System.assertEquals(3, openNonContract, '3 cases of a non-contracts customer in setup');
@@ -58,7 +58,9 @@ private class SCRUM431ReportDataTest {
 
         // The report must render exactly the contracts-customer cases —
         // not the non-contract ones, not the orphan.
-        List<Id> yesIds = [SELECT Id FROM Account WHERE Name LIKE 'SCRUM431-ACC-YES-%'];
+        List<Account> yesAccs = [SELECT Id FROM Account WHERE Name LIKE 'SCRUM431-ACC-YES-%'];
+        List<Id> yesIds = new List<Id>();
+        for (Account a : yesAccs) { yesIds.add(a.Id); }
         List<Case> rows = [
             SELECT Id, Subject, AccountId, Account.Name, IsClosed, Wartungsvertrag_Anzeige__c
             FROM Case
