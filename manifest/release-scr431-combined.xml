@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-431 Prod-Release manifest (combined) — DevOps-Agent.
+     Scope = the 431 component set ONLY. Deliberately NOT whole force-app:
+     a whole-force-app prod deploy would re-push any live Prod-Org drift that
+     belongs to other tickets. Standard-object field members are qualified
+     (Object.Field) — bare members fail with "No source-backed components
+     present in the package" (house pattern per scr430-phase1-fields.xml).
+     Source names byte-exact from the merge commit 0bf6411 and
+     docs/SCRUM-431-notizen.md (the Jira comment 21298 name typo does not apply). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Account.Wartungsvertrag__c</members>
+        <members>Case.Wartungsvertrag_Anzeige__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>SCRUM431_Wartungsvertrag_ServiceTeam</members>
+        <members>SCRUM431_Wartungsvertrag_Teamleitung</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Service/Morgen_UEbersicht_Vertragskunden</members>
+        <name>Report</name>
+    </types>
+    <types>
+        <members>Account-Account Layout</members>
+        <members>Account-Account %28Support%29 Layout</members>
+        <members>Case-Case Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>SCRUM431FlsTest</members>
+        <members>SCRUM431ReportDataTest</members>
+        <members>SCRUM431WartungsvertragTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>
