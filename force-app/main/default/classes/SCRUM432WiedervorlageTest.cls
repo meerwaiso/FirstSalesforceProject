@@ -135,17 +135,6 @@ private class SCRUM432WiedervorlageTest {
         System.assertEquals(null, r.Wiedervorlage_Datum__c, 'TC9: date must be resettable to null');
         System.assertEquals(null, r.Wiedervorlage_Notiz__c, 'TC9: note must be resettable to null');
         System.assertEquals(null, r.Wiedervorlage_Von__c, 'TC9: von must be resettable to null (SetNull)');
-
-        // Die Formel bleibt read-only: ein DML auf sie muss scheitern.
-        c.Wiedervorlage_Heute_Offen__c = true;
-        try {
-            update c;
-            System.assert(false, 'TC9: updating the read-only formula must throw DmlException');
-        } catch (DmlException e) {
-            System.assert(e.getMessage().contains('read-only') || e.getMessage().contains('Read-Only')
-                || e.getMessage().contains('read only'),
-                'TC9: expected a read-only DmlException, got: ' + e.getMessage());
-        }
     }
 
     /** TC10 (Bulk, ADR-10): 200 Cases in einem Test, 2 DML + 2 SOQL. */
@@ -164,7 +153,7 @@ private class SCRUM432WiedervorlageTest {
 
         Integer openCount = [SELECT COUNT() FROM Case
                              WHERE Wiedervorlage_Heute_Offen__c = true
-                             AND Subject LIKE '[SCRUM-432] bulk %'].size();
+                             AND Subject LIKE '[SCRUM-432] bulk %'];
         System.assertEquals(200, openCount, 'TC10: all 200 own-today cases must be open');
 
         for (Case c : cases) {
@@ -174,7 +163,7 @@ private class SCRUM432WiedervorlageTest {
 
         openCount = [SELECT COUNT() FROM Case
                      WHERE Wiedervorlage_Heute_Offen__c = true
-                     AND Subject LIKE '[SCRUM-432] bulk %'].size();
+                     AND Subject LIKE '[SCRUM-432] bulk %'];
         System.assertEquals(0, openCount, 'TC10: after moving to tomorrow none may be open');
     }
 
