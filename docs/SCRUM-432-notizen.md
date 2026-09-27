@@ -50,4 +50,13 @@ Nicht im Layout — nur in der Liste.
 - Phase-2-Manifest: ListView-Member mit `Case.`-Prefix (scr403 `Contact.Letztes_Anliegen`);
   ohne Prefix: "named in package.xml, but not found in zipped directory".
 - Phase-2-Validate status 0 (ListView + Layout + PS).
+- **ACCOUNT.NAME als Case-Listview-Spalte: VALIDIERT und DEPLOYED** (Phase-2-Deploy 0AfWU00000bkY2z0AE). ADR-6-Kernfrage gelöst.
+- Apex-Tests: 11/11 PASS (10 Value TCs + 1 FLS AC8) via `sf apex run test -n <klasse> -o Test-Org` (FLAGS: `-n`, `-o` — KEIN `--class-name`!). Deploy-embedded-Run zeigt leerer counter, separater Run liefert die Tabelle.
+- **`bulk` ist reserviertes Apex-Wort (API 63+)** — Bezeichner `cases` statt `bulk`.
+- **`[SELECT COUNT() ...]` liefert Integer direkt**, kein List, KEIN `.size()` (House: scr367/384/424).
+- **Read-only Formelfeld nicht via Apex-DML "update" testen**: Compiler-Fehler "Field is not writeable" (kein DmlException zur Laufzeit) — read-only-Natur gehört per getDescribe().isUpdateable() (im FlsTest) bewiesen, nicht per try/update.
+- **PS Assign + Read-Back ERLEDIGT**: Assign zu devops-agent (0PaWU00000qetPd0AI) + meerwais.osmani (0PaWU00000qetSr0AI); Read-Back via echter CLI-Session: Test-Case 00002842 mit Datum=2026-09-27, Notiz=Readback432, Von=null, Formel=false (korrekt: kein Setzer). Record nach Read-Back gelöscht.
+- **CLI-Flags gemessen**: `sf apex run test` nutzt `-n` (class-names) + `-o` (target-org); `sf data delete record` nutzt `--record-id` (KEIN `--id`); `sf data create record --values` bricht bei Leerzeichen WERTE (Subject=SCRUM432 readback → "Malformed key=value") — Werte ohne Spaces.
+- **SOQL**: Case-Nummer Feld heißt `CaseNumber` (KEIN `CASE_NUMBER`, das ist nur Report-Token).
+- Deployment-IDs: Phase1 0AfWU00000bkWxF0AU, Phase2 0AfWU00000bkY2z0AE. Apex-Deploy (scr432-apextests.xml) Status 0, Details in /tmp/scr432_apex.json — keine Job-ID hier behauptet.
 
