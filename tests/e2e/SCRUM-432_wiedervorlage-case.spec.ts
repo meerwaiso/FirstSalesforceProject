@@ -75,33 +75,32 @@ const TODAY = new Date();
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const isoYesterday = iso(new Date(TODAY.getTime() - 86400000));
 
-function sfOk(args: string[]): boolean {
+function sfRun(cmd: string): { ok: boolean; stdout: string; stderr: string } {
   try {
-    execSync(`sf ${args.join(' ')}`, {
+    const out = execSync(cmd, {
       stdio: ['pipe', 'pipe', 'pipe'],
+      encoding: 'utf-8',
       env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
     });
-    return true;
-  } catch {
-    return false;
+    return { ok: true, stdout: String(out), stderr: '' };
+  } catch (e: any) {
+    // Full command string (not an args array): the CLI needs the
+    // multi-word `-v "Field=... Field=..."` values to arrive as ONE
+    // argument — args.join(' ') would split them and the CLI answers
+    // "Unexpected arguments" (verified 2026-09-27, SCRUM-432).
+    return { ok: false, stdout: String(e.stdout ?? ''), stderr: String(e.stderr ?? '') };
   }
 }
 
 /** Create one fixture Case via the CLI (admin owns it; UI session edits it). */
 function makeFixture(tag: string, von: string | null, datum: string | null): void {
-  const v: string[] = [
-    `Subject=${TAG}${tag}`,
-    'Origin=Phone',
-    'Status=New',
-    `Wiedervorlage_Notiz__c=E2E-${tag}`,
-  ];
-  if (von)   v.push(`Wiedervorlage_Von__c=${von}`);
-  if (datum) v.push(`Wiedervorlage_Datum__c=${datum}`);
-  const ok = sfOk([
-    'data', 'create', 'record', '-s', 'Case', '-o', 'Test-Org',
-    '-v', v.join(' '),
-  ]);
-  if (!ok) throw new Error(`fixture ${tag} not created via sf CLI`);
+  const v =
+    `Subject=${TAG}${tag} Origin=Phone Status=New Wiedervorlage_Notiz__c=E2E-${tag}` +
+    (von ? ` Wiedervorlage_Von__c=${von}` : '') +
+    (datum ? ` Wiedervorlage_Datum__c=${datum}` : '');
+  const r = sfRun(`sf data create record -s Case -o Test-Org -v "${v}" --json`);
+  if (!r.ok) throw new Error(`fixture ${tag} not created: ${r.stderr.slice(0, 300)}`);
+  if (!/"id"/.test(r.stdout)) throw new Error(`fixture ${tag} no id: ${r.stdout.slice(0, 200)}`);
 }
 
 async function openList(page: Page) {
@@ -125,14 +124,11 @@ test.describe('[SCRUM-432] Wiedervorlage auf Case', () => {
   test.beforeAll(() => {
     // Idempotent re-seed: delete any leftovers from a previous run, then
     // recreate the six fixtures with today-relative dates.
-    const leftover = execSync(
-      `sf data query -o Test-Org -q "SELECT Id FROM Case WHERE Subject LIKE '${TAG}%'" --json`,
-      { encoding: 'utf-8', env: { ...process.env, FORCE_COLOR: '0' } }
-    );
-    const ids = (JSON.parse(leftover.match(/\{[\s\S]*\}/)?.[0] ?? '{}')?.result?.records ?? [])
+    const q = sfRun(`sf data query -o Test-Org -q "SELECT Id FROM Case WHERE Subject LIKE '${TAG}%'" --json`);
+    const ids = (JSON.parse(q.stdout.match(/\{[\s\S]*\}/)?.[0] ?? '{}')?.result?.records ?? [])
       .map((r: { Id: string }) => r.Id);
-    if (ids.length) {
-      sfOk(['data', 'delete', 'record', '-s', 'Case', '-o', 'Test-Org', '-i', ids.join(',')]);
+    for (const id of ids) {
+      sfRun(`sf data delete record -s Case -o Test-Org -i ${id}`);
     }
     makeFixture('OWNTODAY', SESSION_USER_ID, iso(TODAY));
     makeFixture('OWNYEST',  SESSION_USER_ID, isoYesterday);
