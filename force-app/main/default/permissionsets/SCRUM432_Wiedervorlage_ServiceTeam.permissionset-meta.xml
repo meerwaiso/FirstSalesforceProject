@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Wiedervorlage_Datum__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Wiedervorlage_Notiz__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Wiedervorlage_Von__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.Wiedervorlage_Heute_Offen__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM432_Wiedervorlage_ServiceTeam</label>
+    <description>SCRUM-432: Read+Edit auf die drei Wiedervorlage-Speicher-Felder (Datum, Notiz, Gesetzt von) auf Case; Read-only auf dem Formelfeld Wiedervorlage_Heute_Offen__c. Kein Objekt-CRUD, kein Profil-Edit.</description>
+</PermissionSet>

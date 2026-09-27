@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Wiedervorlage_Heute_Offen__c</fullName>
+    <label>Wiedervorlage heute offen</label>
+    <description>Read-only Formel (SCRUM-432), treibt die gespeicherte Liste „Wiedervorlagen – heute offen“: wahr, wenn die Wiedervorlage von der aktuellen Person gesetzt wurde UND das Wiedervorlage-Datum heute oder in der Vergangenheit liegt. Sessionabhängig über $User.Id — keine Sharing-Änderung, nur Listview-Filter. Kommt nicht ins Page Layout.</description>
+    <type>Checkbox</type>
+    <formula>AND(Wiedervorlage_Von__r.Id = $User.Id, NOT(ISBLANK(Wiedervorlage_Datum__c)), Wiedervorlage_Datum__c &lt;= TODAY())</formula>
+</CustomField>

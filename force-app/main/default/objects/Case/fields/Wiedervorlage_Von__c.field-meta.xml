@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Wiedervorlage_Von__c</fullName>
+    <label>Gesetzt von</label>
+    <description>Service-Nutzer:in, die/der diese Wiedervorlage auf dem Case gesetzt hat (SCRUM-432). Personalitäts-Anker: die „heute offen“-Liste filtert über Wiedervorlage_Heute_Offen__c auf Wiedervorlage_Von__r.Id = $User.Id. Optional (SetNull).</description>
+    <referenceTo>User</referenceTo>
+    <relationshipLabel>Wiedervorlagen (Case, gesetzt von)</relationshipLabel>
+    <relationshipName>CaseWiedervorlageVon</relationshipName>
+    <required>false</required>
+    <type>Lookup</type>
+</CustomField>
