@@ -150,27 +150,27 @@ private class SCRUM432WiedervorlageTest {
 
     /** TC10 (Bulk, ADR-10): 200 Cases in einem Test, 2 DML + 2 SOQL. */
     @isTest
-    static void bulk_twoHundredCases_openTodayClosedTomorrow() {
-        List<Case> bulk = new List<Case>();
+    static void twoHundredCases_openTodayClosedTomorrow() {
+        List<Case> cases = new List<Case>();
         for (Integer i = 0; i < 200; i++) {
-            bulk.add(new Case(
+            cases.add(new Case(
                 Subject = '[SCRUM-432] bulk ' + i,
                 Status = 'New',
                 Wiedervorlage_Von__c = UserInfo.getUserId(),
                 Wiedervorlage_Datum__c = Date.today()
             ));
         }
-        insert bulk;
+        insert cases;
 
         Integer openCount = [SELECT COUNT() FROM Case
                              WHERE Wiedervorlage_Heute_Offen__c = true
                              AND Subject LIKE '[SCRUM-432] bulk %'].size();
         System.assertEquals(200, openCount, 'TC10: all 200 own-today cases must be open');
 
-        for (Case c : bulk) {
+        for (Case c : cases) {
             c.Wiedervorlage_Datum__c = Date.today().addDays(1);
         }
-        update bulk;
+        update cases;
 
         openCount = [SELECT COUNT() FROM Case
                      WHERE Wiedervorlage_Heute_Offen__c = true
