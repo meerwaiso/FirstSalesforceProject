@@ -136,7 +136,10 @@ async function getRecordId(page: Page, tag: string): Promise<string> {
   const row = page.locator('[role=row]', { hasText: `TEST-SCRUM-432-${tag}` });
   await row.first().waitFor({ state: 'visible', timeout: 30000 });
   const id = await row.first().getAttribute('data-row-key-value');
-  expect(id, `record id of ${tag} must be a 15-char id`).toMatch(/^.{15}$/);
+  // Record Id is 15 or 18 chars (the 18-char is just the same id with the
+  // CRC suffix). The human Case Number (e.g. 00002868) would be far shorter
+  // and cannot address the record URL.
+  expect(id, `record id of ${tag} must be a 15/18-char RecordId`).toMatch(/^[0-9A-Za-z]{15,18}$/);
   return id!;
 }
 
