@@ -60,3 +60,35 @@ Nicht im Layout — nur in der Liste.
 - **SOQL**: Case-Nummer Feld heißt `CaseNumber` (KEIN `CASE_NUMBER`, das ist nur Report-Token).
 - Deployment-IDs: Phase1 0AfWU00000bkWxF0AU, Phase2 0AfWU00000bkY2z0AE. Apex-Deploy (scr432-apextests.xml) Status 0, Details in /tmp/scr432_apex.json — keine Job-ID hier behauptet.
 
+## Lücke C Fix (2026-09-27, nach Architect-Rejection PR #146)
+
+- **Lücke C erkannt**: `fls-gate.py` auf origin/master ist die neuere 292-Zeilen-Version
+  (Zweig-`fls-gate.py` hat nur Lücke A+B). Regel C: Testklasse, die neue Felder berührt,
+  muss `System.runAs(` in der comment-gestreiften Quelle enthalten; sonst rot.
+  CI deployt den mergenden Stand -> die master-Version zählt (CI-Run 36315786493:
+  Step 9 Apex SUCCESS, Step 11 FLS-Gate FAILED).
+- **Probe-first (SCRUM432Probe, Throwaway, nachher aus Branch entfernt)**:
+  Standard-User OHNE PSA: `insert Case` mit den 4 Feldern ->
+  `DmlException "fields being inaccessible"` (= genau das Lücke-C-Symptom).
+  MIT PSA (`SCRUM432_Wiedervorlage_ServiceTeam`): insert=ok, update=ok, read=ok,
+  Formel=true. DELETE=TypeException (Standard User löst Cases nicht -> design-konform,
+  Tests rollen Txn zurück, DELETE bewusst nicht geprüft).
+  => Fix-Form bestätigt, BEVOR Umbau: Business-DML im runAs, Setup (User + PSA) DRAUSSEN
+  (Standard User kann sich selbst keine PSA geben).
+- **SCRUM431-Memory-Konflikt aufgelöst**: "Full-DML-in-runAs bricht 6/14" galt dort,
+  weil der Reader die DML-Rechte NICHT hatte. Hier: Standard-User-Grund-CRUD + PSA für
+  Feld-FLS -> 11/11 green im runAs. Regel: Vor runAs-Migration Probe an der Org messen.
+- **Ergebnis**: SCRUM432WiedervorlageTest umstrukturiert (alle 10TCs im
+  `System.runAs(Standard-User + PS)`; TC10 Bulk 200 cases ebenfalls). 11/11 PASS
+  (Run `707WU00001KrlhC`, 17,3 s). FLS-Test (AC8) lief bereits mit runAs, untouched.
+- **FLS-Gate lokal simuliert (master-Logik, `--base origin/master --org Test-Org`):
+  GATE_EXIT=0** — 4 Felder "ok (SCRUM432_Wiedervorlage_ServiceTeam)", "FLS-Gate grün."
+  (Temporäre Kopie `scripts/.__fls-gate-master-tmp.py` danach gelöscht, nicht committet.)
+- **CLI-Befunde (CLI 2.150.6)**:
+  a) Manifest AUSSERHALB Repo -> "No source-backed components" (Manifest muss im Repo stehen).
+  b) `.cls` ohne `.cls-meta.xml` wird nicht als source-backed erkannt.
+  c) `-v <alias>` existiert nicht -> `--target-org <alias>`.
+  d) Apex-Testmethode braucht EIGENES `@isTest` (Klassen-Level reicht nicht), sonst
+     `Tests Ran: 0 / outcome Skipped` ohne Fehlermeldung.
+  e) `sf apex get test -i <RunId> -o <username>` zeigt abgeschlossene Runs (kein `--wait`-Flag).
+
