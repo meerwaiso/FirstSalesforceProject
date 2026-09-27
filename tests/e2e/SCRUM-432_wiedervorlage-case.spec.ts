@@ -197,6 +197,9 @@ test.describe('[SCRUM-432] Wiedervorlage auf Case', () => {
     const page2 = await (await page.context()).newPage();
     try {
       await openRecordPage(page2, `/lightning/r/Case/${caseNo}/view`);
+      // The Wiedervorlage section renders with the field block; wait for it
+      // structurally (the 2.5 s helper wait ends before this on a cold render).
+      await page2.getByText('Wiedervorlage Datum').first().waitFor({ state: 'visible', timeout: 30000 });
       const dInp = await startInlineEdit(page2, 'Wiedervorlage Datum');
       await dInp.fill('27.09.2026');
       const nInp = await startInlineEdit(page2, 'Wiedervorlage Notiz');
@@ -220,6 +223,7 @@ test.describe('[SCRUM-432] Wiedervorlage auf Case', () => {
     const p = await (await page.context()).newPage();
     try {
       await openRecordPage(p, `/lightning/r/Case/${caseNo}/view`);
+      await p.getByText('Wiedervorlage Datum').first().waitFor({ state: 'visible', timeout: 30000 });
       // AC1 save: fresh values in both fields, then Save.
       const dInp = await startInlineEdit(p, 'Wiedervorlage Datum');
       await dInp.fill('26.09.2026'); // yesterday: still open after save, in list
