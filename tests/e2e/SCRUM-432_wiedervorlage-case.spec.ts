@@ -124,6 +124,22 @@ async function openList(page: Page) {
   ).filter((r) => !/Sort by:/.test(r));
 }
 
+/**
+ * Record Id (15 chars) of the data row whose text contains the tag.
+ *
+ * The row's data-row-key-value attribute IS the record Id — the number shown
+ * in the grid (00002868) is the human Case Number and cannot address the
+ * record page (/lightning/r/Case/<RecordId>/view). Verified 2026-09-27.
+ */
+async function getRecordId(page: Page, tag: string): Promise<string> {
+  await openList(page);
+  const row = page.locator('[role=row]', { hasText: `TEST-SCRUM-432-${tag}` });
+  await row.first().waitFor({ state: 'visible', timeout: 30000 });
+  const id = await row.first().getAttribute('data-row-key-value');
+  expect(id, `record id of ${tag} must be a 15-char id`).toMatch(/^.{15}$/);
+  return id!;
+}
+
 test.describe('[SCRUM-432] Wiedervorlage auf Case', () => {
   // All tests edit/inspect the same records, so they run sequentially.
   // (workers:1 in playwright.config.ts already serialises the file; this
@@ -186,17 +202,10 @@ test.describe('[SCRUM-432] Wiedervorlage auf Case', () => {
   });
 
   test('3. AC7: Service-User kann die Felder im UI setzen (inline edit)', async ({ page }) => {
-    // Find the OWNTODAY record id from its case number shown as a link.
-    const rows = await openList(page);
-    const ownToday = rows.find((r) => r.includes('TEST-SCRUM-432-OWNTODAY'));
-    expect(ownToday, 'OWNTODAY row must exist (already proven by test 1)').toBeTruthy();
-    const rowText = ownToday!;
-    const caseNo = rowText.match(/\d{7,}/)?.[0];
-    expect(caseNo, `case number not found in: ${ownToday}`).toBeTruthy();
-
+    const recId = await getRecordId(page, 'OWNTODAY');
     const page2 = await (await page.context()).newPage();
     try {
-      await openRecordPage(page2, `/lightning/r/Case/${caseNo}/view`);
+      await openRecordPage(page2, `/lightning/r/Case/${recId}/view`);
       // The Wiedervorlage section renders with the field block; wait for it
       // structurally (the 2.5 s helper wait ends before this on a cold render).
       await page2.getByText('Wiedervorlage Datum').first().waitFor({ state: 'visible', timeout: 30000 });
@@ -215,11 +224,7 @@ test.describe('[SCRUM-432] Wiedervorlage auf Case', () => {
   });
 
   test('4. AC1: Datum + Notiz per UI speichern, Nachladen zeigt Persistenz', async ({ page }) => {
-    const rows = await openList(page);
-    const ownToday = rows.find((r) => r.includes('TEST-SCRUM-432-OWNTODAY'))!;
-    const caseNo = ownToday.match(/\d{7,}/)?.[0];
-    expect(caseNo, 'OWNTODAY case number').toBeTruthy();
-
+    const recId = await getRecordId(page, 'OWNTODAY');
     const p = await (await page.context()).newPage();
     try {
       await openRecordPage(p, `/lightning/r/Case/${caseNo}/view`);
@@ -241,7 +246,7 @@ test.describe('[SCRUM-432] Wiedervorlage auf Case', () => {
         .locator('div.slds-global-header, one-appnav')
         .first()
         .waitFor({ state: 'visible', timeout: 60000 });
-      await openRecordPage(p, `/lightning/r/Case/${caseNo}/view`);
+      await p.getByText('Wiedervorlage Datum').first().waitFor({ state: 'visible', timeout: 30000 });
       const text = await p.locator('body').innerText();
       expect(text, 'datum not persisted after reload').toMatch(/26\.09\.2026/);
       expect(text, 'notiz not persisted after reload').toContain('AC1 persistiert');
