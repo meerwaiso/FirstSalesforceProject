@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-432 Prod-Release manifest (combined) — DevOps-Agent.
+     Scope = the 432 component set ONLY. Deliberately NOT whole force-app:
+     a whole-force-app prod deploy would re-push any live Prod-Org drift that
+     belongs to other tickets. Standard-object field members are qualified
+     (Case.Field) — bare members fail with "No source-backed components present
+     in the package" (house pattern per release-scr431-combined.xml).
+     Source names byte-exact from merge commit 28b892d
+     (docs/SCRUM-432-design.md ADR-5/ADR-6/ADR-8/ADR-9). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Case.Wiedervorlage_Datum__c</members>
+        <members>Case.Wiedervorlage_Notiz__c</members>
+        <members>Case.Wiedervorlage_Von__c</members>
+        <members>Case.Wiedervorlage_Heute_Offen__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>SCRUM432_Wiedervorlage_ServiceTeam</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Case.Wiedervorlagen_heute_offen</members>
+        <name>ListView</name>
+    </types>
+    <types>
+        <members>Case-Case Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>SCRUM432WiedervorlageTest</members>
+        <members>SCRUM432WiedervorlageFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>
