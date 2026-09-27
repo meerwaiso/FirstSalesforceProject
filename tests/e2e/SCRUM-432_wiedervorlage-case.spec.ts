@@ -126,7 +126,7 @@ test.describe('[SCRUM-432] Wiedervorlage auf Case', () => {
     // Idempotent re-seed: delete any leftovers from a previous run, then
     // recreate the six fixtures with today-relative dates.
     const leftover = execSync(
-      `sf data query -o Test-Org -q "SELECT Id FROM Case WHERE Subject LIKE '${TAG}%' --json`,
+      `sf data query -o Test-Org -q "SELECT Id FROM Case WHERE Subject LIKE '${TAG}%'" --json`,
       { encoding: 'utf-8', env: { ...process.env, FORCE_COLOR: '0' } }
     );
     const ids = (JSON.parse(leftover.match(/\{[\s\S]*\}/)?.[0] ?? '{}')?.result?.records ?? [])
