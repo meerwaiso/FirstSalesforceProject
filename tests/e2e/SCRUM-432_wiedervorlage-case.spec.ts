@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { execSync } from 'child_process';
 import {
-  openRecordDetails,
+  openRecordPage,
   startInlineEdit,
   saveInlineEdit,
 } from './record-page';
@@ -196,7 +196,7 @@ test.describe('[SCRUM-432] Wiedervorlage auf Case', () => {
 
     const page2 = await (await page.context()).newPage();
     try {
-      await openRecordDetails(page2, `/lightning/r/Case/${caseNo}/view`);
+      await openRecordPage(page2, `/lightning/r/Case/${caseNo}/view`);
       const dInp = await startInlineEdit(page2, 'Wiedervorlage Datum');
       await dInp.fill('27.09.2026');
       const nInp = await startInlineEdit(page2, 'Wiedervorlage Notiz');
@@ -219,7 +219,7 @@ test.describe('[SCRUM-432] Wiedervorlage auf Case', () => {
 
     const p = await (await page.context()).newPage();
     try {
-      await openRecordDetails(p, `/lightning/r/Case/${caseNo}/view`);
+      await openRecordPage(p, `/lightning/r/Case/${caseNo}/view`);
       // AC1 save: fresh values in both fields, then Save.
       const dInp = await startInlineEdit(p, 'Wiedervorlage Datum');
       await dInp.fill('26.09.2026'); // yesterday: still open after save, in list
@@ -237,7 +237,7 @@ test.describe('[SCRUM-432] Wiedervorlage auf Case', () => {
         .locator('div.slds-global-header, one-appnav')
         .first()
         .waitFor({ state: 'visible', timeout: 60000 });
-      await openRecordDetails(p, `/lightning/r/Case/${caseNo}/view`);
+      await openRecordPage(p, `/lightning/r/Case/${caseNo}/view`);
       const text = await p.locator('body').innerText();
       expect(text, 'datum not persisted after reload').toMatch(/26\.09\.2026/);
       expect(text, 'notiz not persisted after reload').toContain('AC1 persistiert');
