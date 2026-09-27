@@ -233,7 +233,7 @@ test.describe('[SCRUM-432] Wiedervorlage auf Case', () => {
     const recId = await getRecordId(page, 'OWNTODAY');
     const p = await (await page.context()).newPage();
     try {
-      await openRecordPage(p, `/lightning/r/Case/${caseNo}/view`);
+      await openRecordPage(p, `/lightning/r/Case/${recId}/view`);
       await p.getByText('Wiedervorlage Datum').first().waitFor({ state: 'visible', timeout: 30000 });
       // AC1 save: fresh values in both fields, then Save.
       const dInp = await startInlineEdit(p, 'Wiedervorlage Datum');
