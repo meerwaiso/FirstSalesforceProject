@@ -214,7 +214,10 @@ test.describe('[SCRUM-432] Wiedervorlage auf Case', () => {
       await page2.getByText('Wiedervorlage Datum').first().waitFor({ state: 'visible', timeout: 30000 });
       const dInp = await startInlineEdit(page2, 'Wiedervorlage Datum');
       await dInp.fill('27.09.2026');
-      const nInp = await startInlineEdit(page2, 'Wiedervorlage Notiz');
+      // One "Edit <field>" click puts the WHOLE section into edit mode —
+      // no second Edit button exists, take the input directly (record-page.ts).
+      const nInp = page2.getByLabel('Wiedervorlage Notiz', { exact: true });
+      await expect(nInp).toHaveCount(1);
       await nInp.fill('AC7 inline edit geprüft');
       await saveInlineEdit(page2);
       await page2
@@ -235,7 +238,8 @@ test.describe('[SCRUM-432] Wiedervorlage auf Case', () => {
       // AC1 save: fresh values in both fields, then Save.
       const dInp = await startInlineEdit(p, 'Wiedervorlage Datum');
       await dInp.fill('26.09.2026'); // yesterday: still open after save, in list
-      const nInp = await startInlineEdit(p, 'Wiedervorlage Notiz');
+      const nInp = p.getByLabel('Wiedervorlage Notiz', { exact: true });
+      await expect(nInp).toHaveCount(1);
       await nInp.fill('AC1 persistiert');
       await saveInlineEdit(p);
       await p
