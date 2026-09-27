@@ -19,7 +19,7 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 ## 27.09.2026 — Fälle auf Wiedervorlage legen: Daten und Notizen, die nicht untergehen (SCRUM-432)
 
 **Was sich aendert**
-- Ein Servicefall kann jetzt auf **Wiedervorlage** gelegt werden: In der neuen Sektion **„Wiedervorlage“** auf der Falldetailseite trägst du ein, an welchem **Datum** du den Fall wieder gebrauchst, und eine **kurze Notiz** (ein Satz genügt — z. B. „Kunde sucht Rechnungsnummer“). Danach geht das Thema nicht mehr in der Liste unter.
+- Ein Servicefall kann jetzt auf **Wiedervorlage** gelegt werden: In der neuen Sektion **„Wiedervorlage“** auf der Falldetailseite trägst du ein, an welchem **Datum** du den Fall wieder auf dem Tisch haben willst, und eine **kurze Notiz** (ein Satz genügt — z. B. „Kunde sucht Rechnungsnummer“). Danach geht das Thema nicht mehr in der Liste unter.
 - Die neue Fallliste **„Wiedervorlagen – heute offen“** zeigt auf einen Blick, was ansteht: alle Fälle, deren Wiedervorlage-Datum **heute liegt oder schon vergangen ist** (überfällig). Spalten: Fallnummer, Kunde, Betreff, deine Notiz, Datum.
 - Die Liste ist **persönlich**: Du siehst nur Wiedervorlagen, bei denen **du selbst** als „Gesetzt von“ eingetragen bist — dein Kollege sieht seine, nicht umgekehrt, auch wenn ihr denselben Fall bearbeiten dürft.
 
@@ -28,7 +28,7 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 - Falllisten: neue Liste **„Wiedervorlagen – heute offen“**.
 
 **Was bewusst nicht drin ist**
-- **Keine Automatik:** Es gibt keine Erinnerungsmail, keinen Task und keine Statusänderung, wenn das Datum fällig wird — die Liste schaust du dir selbst an. Wenn es sich bewährt, entscheiden wir später, ob mehr sinnvoll ist.
+- **Keine Automatik:** Es gibt keine Erinnerungsmail, keinen Task und keine Statusänderung, wenn das Datum erreicht ist — die Liste schaust du dir selbst an. Wenn es sich bewährt, entscheiden wir später, ob mehr sinnvoll ist.
 - **Keine automatische Standardsortierung:** Eine dauerhafte Sortierung „Älteste zuerst“ schafft die Plattform für Standard-Listen nicht — klicke auf die Datums-Spalte, und die ältesten stehen oben. Wenn das automatisch gewünscht wird, behandeln wir es als eigene Anforderung.
 - **„Gesetzt von“ wird nicht automatisch gepflegt:** du trägst dich ein — bewusst, weil es deine persönliche Merkhilfe ist.
 - Eine Lightning-Detailseite für Fälle existiert aktuell nicht; die neue Sektion ist im Classic-Layout.
@@ -36,7 +36,7 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 **Deploy-ID**
 Job `0Afg500000FHRETCA5` (2026-09-27, Prod-Org `00Dg500000DkTtzEAF`), 9 Komponenten, 0 Fehler, 11/11 Tests grün in Prod; Release-Tag `release/2026-09-27-SCRUM-432` auf Commit `ce448b0`.
 
-**Live-Beleg (PO-Read-back in Prod, 27.09):** die vier Wiedervorlage-Felder (Datum, Notiz, Gesetzt von, Anzeige) sind in der Prod-Org vorhanden; die Berechtigungsgruppe für Wiedervorlage ist vorhanden und an **2 Service-Nutzer zugewiesen (2/2)** — ohne diese Zuweisung würden außer Administratoren niemand die Felder sehen.
+**Live-Beleg (PO-Read-back in Prod, 27.09):** die vier Wiedervorlage-Felder (Datum, Notiz, Gesetzt von, Anzeige) sind in der Prod-Org vorhanden; die Berechtigungsgruppe für Wiedervorlage ist vorhanden und an **2 Service-Nutzer zugewiesen (2/2)** — ohne diese Zuweisung sehen außer Administratoren niemand die Felder.
 
 ## 26.09.2026 — Wartungsvertrag: im Fall auf einen Blick und als Morgenliste (SCRUM-431)
 
