@@ -109,10 +109,19 @@ async function openList(page: Page) {
     .locator('div.slds-global-header, one-appnav')
     .first()
     .waitFor({ state: 'visible', timeout: 60000 });
-  // Grid rows render after the shell — wait for them explicitly.
-  await page.locator('[role=row]').first().waitFor({ timeout: 30000 });
-  await page.waitForTimeout(2000);
-  return page.locator('[role=row]').allInnerTexts();
+  // Grid rows render after the shell. The HEADER row may resolve first and
+  // still be hidden — wait for the first DATA row (any key other than
+  // HEADER; verified 2026-09-27: data rows carry the record Id as
+  // data-row-key-value in this Lightning Datatable build).
+  await page
+    .locator('[role=row]:not([data-row-key-value="HEADER"])')
+    .first()
+    .waitFor({ state: 'visible', timeout: 30000 });
+  await page.waitForTimeout(1500);
+  // Drop the header row from the result set.
+  return (
+    await page.locator('[role=row]').allInnerTexts()
+  ).filter((r) => !/Sort by:/.test(r));
 }
 
 test.describe('[SCRUM-432] Wiedervorlage auf Case', () => {
