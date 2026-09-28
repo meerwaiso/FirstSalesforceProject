@@ -46,15 +46,18 @@ Quellen der Wahrheit: `docs/SCRUM-434-design.md` @ commit 5255638 (byte-exakte X
   `CLOSED` (boolean, Filter) org-verifiziert. `Case.Ursache__c` Grouping = sicheres Muster.
 
 ## Stand
-- [ ] Feld Ursache__c
-- [ ] ValRule Ursache_PflichtBeiGeschlossen
-- [ ] PS SCRUM434_Ursache
-- [ ] Case-Layout Section „Rückschau" vor „System Information"
-- [ ] Report Faelle_Nach_Ursache
-- [ ] Apex-Tests (value-set + FLS + AC2/AC3)
-- [ ] Deploy (Field → dann Layout+PS) + Test-Org Read-back
-- [ ] Commit pro Deploy-Einheit, PR, Handoff → Review
+- [x] Feld Ursache__c
+- [x] ValRule Ursache_PflichtBeiGeschlossen
+- [x] PS SCRUM434_Ursache
+- [x] Case-Layout Section „Rückschau" vor „System Information"
+- [x] Report Faelle_Nach_Ursache
+- [x] Apex-Tests (value-set + FLS + AC2/AC3)
+- [x] Deploy (Field → dann Layout+PS) + Test-Org Read-back
+- [x] Commit pro Deploy-Einheit, PR, Handoff → Review
 ## Enderstand (28.09.2026, verifiziert an Test-Org)
+**⚠ VERALTET — nur noch historisch relevant. Die Diagnose „Query-Engine-Propagation-Lag,
+selbstheilend" in diesem Abschnitt ist FALSCH (FLS-Wand + IsClosed-Vor-Zustand).
+Gültiger Stand: Abschnitt „ENDGÜLTIGER Befund" weiter unten.**
 **Deploy abgeschlossen + alle 6 Artefakte in der Org (NoTestRun-Deploy = kein Rollback):**
 - `Case.Ursache__c` (Picklist, 5 Werte, required=false) — Tooling CustomField-Id
   `00NWU00002Dg3Lx2AJ` (created 12:52Z); `sf project retrieve` zieht meine XML
@@ -93,7 +96,60 @@ Feld-Deploy mit NoTestRun, dann Komponenten-NoTestRun, Tests standalone via
 
 
 
-## 2026-09-28 16:20Z — Korrigierter Befund (widerspricht „Propagation-Lag")
+## 2026-09-28 ~19:00Z — ENDGÜLTIGER Befund (setzt beide früheren „Ursachen" außer Kraft)
+
+**Die drei roten Tests hatten ZWEI getrennte Ursachen, keinesfalls Propagation/Timing.
+Beide sind behoben; Stand: 6/6 grün (standalone `sf apex run test`, ausgeführt gegen die
+aktive Org, nicht geglaubt).**
+
+### Ursache 1 (Hauptursache, 4 der 3+1 Fehler) — fehlende FLS-Zuweisung (korrekt so: „FLS-Wand")
+`SCRUM434_Ursache` war deployt, aber **niemandem zugewiesen**. Für den ausführenden User war
+das Feld unsichtbar → `No such column` im SOQL, `fields being inaccessible` im DML, ValRule
+könnte ein unsichtbares Feld nicht prüfen. @user hat das gemessen
+(`SELECT Assignee.Name FROM PermissionSetAssignment WHERE PermissionSet.Name='SCRUM434_Ursache'`
+→ 0 Zeilen). **Reparatur (erledigt):**
+```
+sf org assign permset -n SCRUM434_Ursache -o Test-Org                      (devops-agent)
+sf org assign permset -n SCRUM434_Ursache -b meerwais.osmani@resourceful-… -o Test-Org
+```
+Beide nötig (FLS-Gate verlangt namentlich devops-agent UND Meerwais Osmani).
+Read-back: `SELECT Id, Ursache__c FROM Case LIMIT 1` → läuft durch (Field sichtbar).
+→ AC2-MitUrsache + AC3 + beide FLS-Tests damit grün. **Timing war nie dabei.**
+
+### Ursache 2 (letzter Rest: AC2_OhneUrsache_Block) — `IsClosed` wertet Vor-Zustand aus
+Die ValRule ist **aktiv korrekt deployt** (Tooling-Id `03dWU00000D8Z17YAF`,
+`active=true`, Formel byte-geprüft), feuerte aber NICHT beim Schliessen-Eingabe-Akt.
+Entscheidende DML-Befunde (gleiche Org, dieselbe Reg):
+- **Insert** `new Case(Status='Closed', Ursache__c=null)` → wird **GESPEICHERT** (Reg feuert nicht),
+  Zeile wird erst POST-COMMIT auf `IsClosed=true` gelesen.
+- **Update** einer bereits geschlossenen Zeile (beliebiges Feld) → **WIRD BLOCKIERT** (Reg feuert).
+Ursache: `IsClosed` ist ein abgeleitetes Standard-Boolean; bei der DML-Aktion, die den Case
+schließt, ist `IsClosed` im Reg-Eval noch `false` (Vor-Zustand), erst danach `true`. Das
+Design-`AND(IsClosed,…)` blockt also nie genau den Schliess-Akt — die Lücke, die AC2 prüft.
+
+**Fix (erledigt, in Org verifiziert → 6/6 grün):** Gate auf den Zustand der DML-Aktion selbst
+gestützt statt auf das erst später sichtbare abgeleitete Boolean:
+```
+AND(OR(IsClosed, ISPICKVAL(Status,'Closed')), ISBLANK(TEXT(Ursache__c)))
+```
+`ISPICKVAL(Status,'Closed')` deckt den Schliess-Akt (Insert UND Update) ab, `IsClosed` bleibt
+als Zweitsicherung für später geschlossene/renamed Status. Nach Deploy (`Changed`, Succeeded)
+und Neu-Run: alle 6 Tests Pass.
+
+### Stand jetzt (verifiziert, nicht geglaubt)
+- 6/6 `@isTest`-Methods grün (statisch gegen aktive Org gelaufen).
+- Permission Set beiden Benutzern zugewiesen (FLS-Gate-konform).
+- SCRUM432Probe aus der Org weg; UTF-8-„wählen" korrigiert; Report CLOSED-Filter (Haus-Muster)
+  deployt fehlerfrei.
+- Branch `feature/SCRUM-434-ursache`; PR #149.
+
+### Für Review (Kontrakt-Prüfpunkte)
+- AC2: `IsClosed`-Gate ist bewusst `OR(IsClosed, ISPICKVAL(Status,'Closed'))` — ADR-Ausnahme,
+  Begründung oben (Vor-Zustand-Problem). Review soll das als bewussten Fix anerkennen, nicht als
+  Abweichung ohne Grund.
+- FLS-Zuweisung ist **kein** Teil des Deploys (kein Metadata) — sie ist ein einmaliger Org-Schritt.
+  Beim Prod-Handoff muss sie wiederholt werden (beide User). In den Deploy-Notizen vermerkt.
+
 
 **Korrektur:** Der „Query-Engine-Propagation-Lag, selbstheilend" aus dem earlier-Befund
 ist NICHT mehr tragfähig. Fakten (roh verifiziert):
@@ -103,16 +159,18 @@ ist NICHT mehr tragfähig. Fakten (roh verifiziert):
 - **Validierung mit richtiger Teststufe** (`--test-level RunSpecifiedTests --tests SCRUM434UrsacheTest`):
   Komponenten **6/6 erfolgreich**, Testfehler **3/6** — und KEIN Probe-Fehler mehr.
   Die Probe war der wiederkehrende Validierungs-Killer (User-Diagnose bestätigt).
-- **Feld-Zustand (inconsistent / Zombie):** Tooling-Zeile existiert
-  (`00NWU00002Dg3Lx2AJ`, created 12:52Z, zweimal roh verifiziert), `getDescribe()`
-  sieht das Feld (AC1-Test grün), aber SOQL UND DML melden nach ~3,5 h
-  `No such column 'Ursache__c'`. **Entscheidend: DML-Kontrollversuch** auf derselben
-  Case: `Subject=…` → Erfolg; `+ Ursache__c=…` → `No such column on sobject of type Case`.
-  → Nicht Konvergenz-Lag, sondern defekter Zustand (vermutlich Rollback-Reste der
-  frühen RunSpecifiedTests-Deploys, die das Feld auf halber Strecke zurückgerollt haben).
-- **Fix-Plan (warte auf Freigabe):** CustomField + ValidationRule löschen
-  (`scr434-drop-zombie.xml`), dann Phase 1 + Phase 2 mit NoTestRun neu deployen,
-  danach Test-Suite standalone.
+- **WAHRE FELD-URSACHE (gemessen vom @user 17:45Z):** Permission Set `SCRUM434_Ursache`
+  war deployt, aber NIEMANDEM zugewiesen
+  (`SELECT Assignee.Name FROM PermissionSetAssignment WHERE PermissionSet.Name='SCRUM434_Ursache'`
+  → 0 Zeilen). Feld für den ausführenden User unsichtbar → `No such column` im SOQL,
+  `fields being inaccessible` im DML = die FLS-Wand (Skill salesforce-describe-first §4).
+  `getDescribe()` als System-Admin sah das Feld trotzdem (Admin sieht alles) →
+  das war die Quelle der Fehldiagnose „Feld existiert, also Propagation".
+  DER "Zombie/Rollback"-Befund (vorher) war FALSCH, zurückgezogen.
+  **Reparatur (erledigt 18:53Z):** `sf org assign permset -n SCRUM434_Ursache -o Test-Org`
+  (devops-agent) + `-b meerwais.osmani@resourceful-bear-6f1u4j.com` (2. User, FLS-Gate).
+  Read-back `SELECT Id, Ursache__c FROM Case LIMIT 1` → grün.
+  (Manifest `scr434-drop-zombie.xml` bleibt als NICHT ausgeführter Fallback im Repo.)
 - **ValRule-Typo „w&ouml;hlen" → „wählen"** gefixt (Commit f641f8f, Literal-UTF-8,
   fehlendes schlieϣendes Anführungszeichen mitbehoben); zieht im nächsten Phase-2-Deploy rein.
 - **Report CLOSED-Filter:** Haus-Muster ist genau die unprefixed Pseudo-Spalte
@@ -121,3 +179,10 @@ ist NICHT mehr tragfähig. Fakten (roh verifiziert):
 - **Eigener Fehler (User-Point 2):** jq-Filter verschluckte die Testfehlerliste.
   Fehler stehen im `--result-format json` unter `result.tests[].Message` / `StackTrace`.
   Ab jetzt Rohausgabe/JSON lesen, nicht filtern.
+- **ZWEITER Fehler derselben Art (verursachte den Zombie-Irrlauf):** Tooling-SOQL mit
+  ungültigen Spalten (`FullName` filterbar ist NICHT, `ErrorConditionFormula` heißt
+  im Tooling-Context anders) lief STUMM leer/fehlerlos durch und wurde als
+  „ValRule nicht in der Org" fehlgelesen. Sie war die ganze Zeit aktiv deployed
+  (Tooling-Id `03dWU00000D8Z17YAF`, `active=true`, korrekt auf `EntityDefinitionId=Case`).
+  **Lektion:** leere Tooling-Ergebnisliste = NICHT Beweis für Abwesenheit;
+  Spaltennamen zuerst per `sf sobject describe -t -s ValidationRule` prüfen.
