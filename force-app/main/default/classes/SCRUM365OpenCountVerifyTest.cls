@@ -41,16 +41,17 @@ private class SCRUM365OpenCountVerifyTest {
         Id a = mkContact('Life');
 
         // Create offen +1
-        Case x = new Case(ContactId = a, Status = 'New', Subject = 'L1');
+        Case x = new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'L1');
         insert x;
         System.assertEquals(1, countOf(a), 'Neuer offener Fall => 1');
 
         // Geschlossener Fall z\u00e4hlt NICHT (AC2)
-        Case y = new Case(ContactId = a, Status = 'Closed', Subject = 'L2');
+        Case y = new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'Closed', Subject = 'L2');
         insert y;
         System.assertEquals(1, countOf(a), 'Geschlossener Fall soll die Zahl nicht erh\u00f6hen');
 
         // Close senkt (AC2)
+        x.Ursache__c = 'HowToAnfrage';
         x.Status = 'Closed';
         update x;
         System.assertEquals(0, countOf(a), 'Beide geschlossen => 0');
@@ -76,7 +77,7 @@ private class SCRUM365OpenCountVerifyTest {
         Id b = mkContact('ReB');
 
         List<Case> cs = new List<Case>();
-        for (Integer i = 0; i < 3; i++) cs.add(new Case(ContactId = a, Status = 'New', Subject = 'r' + i));
+        for (Integer i = 0; i < 3; i++) cs.add(new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'r' + i));
         insert cs;
         System.assertEquals(3, countOf(a), 'A: 3 offen');
         System.assertEquals(0, countOf(b), 'B: 0');
@@ -95,9 +96,9 @@ private class SCRUM365OpenCountVerifyTest {
     static void deleteOpenCase_decrements() {
         Id a = mkContact('Del');
         List<Case> cs = new List<Case>();
-        cs.add(new Case(ContactId = a, Status = 'New', Subject = 'd1'));
-        cs.add(new Case(ContactId = a, Status = 'New', Subject = 'd2'));
-        cs.add(new Case(ContactId = a, Status = 'Closed', Subject = 'd3'));
+        cs.add(new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'd1'));
+        cs.add(new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'd2'));
+        cs.add(new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'Closed', Subject = 'd3'));
         insert cs;
         System.assertEquals(2, countOf(a), '2 offen vor Delete');
 
@@ -124,7 +125,7 @@ private class SCRUM365OpenCountVerifyTest {
         for (Integer k = 0; k < 10; k++) {
             for (Integer r = 0; r < 20; r++) {
                 // 12 offen + 8 geschlossen je Kontakt
-                batch.add(new Case(
+                batch.add(new Case(Ursache__c = 'HowToAnfrage', 
                     ContactId = cids.get(k),
                     Status = (r < 12) ? 'New' : 'Closed',
                     Subject = 'bulk-' + k + '-' + r

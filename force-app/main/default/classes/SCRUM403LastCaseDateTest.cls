@@ -54,7 +54,7 @@ private class SCRUM403LastCaseDateTest {
     static void existingCase_showsDateAndHumanDuration() {
         // Open Case.
         Id a = newContact('Open');
-        insert new Case(ContactId = a, Status = 'New', Subject = 'a-open');
+        insert new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'a-open');
         System.assertEquals(Date.today(), lastDateOf(a),
             'AC1: Kontakt mit offenem Fall → Last_Case_Date__c = heute (CreatedDate = heute)');
         System.assertEquals('heute', sinceOf(a),
@@ -62,7 +62,7 @@ private class SCRUM403LastCaseDateTest {
 
         // Closed Case (zweiter Kontakt) — Status spielt für das Datum keine Rolle.
         Id b = newContact('Closed');
-        insert new Case(ContactId = b, Status = 'Closed', Subject = 'b-closed');
+        insert new Case(Ursache__c = 'HowToAnfrage', ContactId = b, Status = 'Closed', Subject = 'b-closed');
         System.assertEquals(Date.today(), lastDateOf(b),
             'AC1: erledigter Fall zählt ebenso → Last_Case_Date__c = heute');
     }
@@ -90,12 +90,12 @@ private class SCRUM403LastCaseDateTest {
     @isTest
     static void newCase_setsDateToNewestCreatedDate() {
         Id a = newContact('Update');
-        insert new Case(ContactId = a, Status = 'New', Subject = 'old');
+        insert new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'old');
         System.assertEquals(Date.today(), lastDateOf(a),
             'AC4: nach erstem Fall → Feld = heute (CreatedDate)');
 
         // Zweiter (neuerer) Fall anlegen — MAX(CreatedDate) bleibt heute → Feld bleibt heute.
-        insert new Case(ContactId = a, Status = 'Working', Subject = 'newer');
+        insert new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'Working', Subject = 'newer');
         System.assertEquals(Date.today(), lastDateOf(a),
             'AC4: zweiter Fall → Feld = MAX(CreatedDate) = heute (stabil); Reihenfolge-Abstand ist live verifiziert');
     }
@@ -109,7 +109,7 @@ private class SCRUM403LastCaseDateTest {
     @isTest
     static void lastCaseDeleted_fallsBackToNull() {
         Id a = newContact('Delete');
-        Case c = new Case(ContactId = a, Status = 'New', Subject = 'only');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'only');
         insert c;
         System.assertEquals(Date.today(), lastDateOf(a), 'vor Delete: Feld = heute');
 
@@ -129,7 +129,7 @@ private class SCRUM403LastCaseDateTest {
     static void reassign_movesDateNewGetsOldFallsBack() {
         Id a = newContact('ReassignOld');
         Id b = newContact('ReassignNew');
-        Case c = new Case(ContactId = a, Status = 'New', Subject = 'move');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'move');
         insert c;
         System.assertEquals(Date.today(), lastDateOf(a), 'vor Umhänge: A = heute');
         System.assertEquals(null, lastDateOf(b), 'vor Umhänge: B = NULL');
@@ -150,10 +150,11 @@ private class SCRUM403LastCaseDateTest {
     @isTest
     static void statusChange_isInertForLastDate() {
         Id a = newContact('Inert');
-        Case c = new Case(ContactId = a, Status = 'New', Subject = 's');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 's');
         insert c;
         Date before = lastDateOf(a);
 
+        c.Ursache__c = 'HowToAnfrage';
         c.Status = 'Closed';
         update c;
         System.assertEquals(before, lastDateOf(a),
@@ -183,7 +184,7 @@ private class SCRUM403LastCaseDateTest {
         List<Case> bigBatch = new List<Case>();
         for (Integer round = 0; round < 8; round++) {
             for (Integer k = 0; k < ids.size(); k++) {
-                bigBatch.add(new Case(ContactId = ids.get(k), Status = 'New', Subject = 'bulk403-' + round + '-' + k));
+                bigBatch.add(new Case(Ursache__c = 'HowToAnfrage', ContactId = ids.get(k), Status = 'New', Subject = 'bulk403-' + round + '-' + k));
             }
         }
         insert bigBatch; // 1 DML, 200 Zeilen → Trigger → 1 recompute (MAX)
@@ -218,8 +219,8 @@ private class SCRUM403LastCaseDateTest {
         // Stale: Case (heute), Feld danach auf NULL = „Trigger hat nie gezählt".
         Id a = newContact('StaleA');
         Id b = newContact('StaleB');
-        insert new Case(ContactId = a, Status = 'New', Subject = 'stale-a');
-        insert new Case(ContactId = b, Status = 'Closed', Subject = 'stale-b');
+        insert new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'stale-a');
+        insert new Case(Ursache__c = 'HowToAnfrage', ContactId = b, Status = 'Closed', Subject = 'stale-b');
         Contact upA = [SELECT Id, Last_Case_Date__c FROM Contact WHERE Id = :a];
         upA.Last_Case_Date__c = null;   // Bestandszustand simulieren
         update upA;

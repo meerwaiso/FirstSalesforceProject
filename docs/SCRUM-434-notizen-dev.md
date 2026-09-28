@@ -186,3 +186,39 @@ ist NICHT mehr tragfähig. Fakten (roh verifiziert):
   (Tooling-Id `03dWU00000D8Z17YAF`, `active=true`, korrekt auf `EntityDefinitionId=Case`).
   **Lektion:** leere Tooling-Ergebnisliste = NICHT Beweis für Abwesenheit;
   Spaltennamen zuerst per `sf sobject describe -t -s ValidationRule` prüfen.
+
+## 2026-09-28 ~22:30Z — REJEKTION-SPIEL: die 10 Fixtures sind nicht die ganze Erreichweite des org-weiten Gates
+
+Re-Review (Jira-Kommentar 21837) freibt ADR-2 (die `OR(IsClosed, ISPICKVAL(Status,'Closed'))`-
+Klausel im ValRule-File) und wirft das Ticket zurück, weil mein 6/6 (nur die eigene
+`SCRUM434UrsacheTest`) das orgweite Gate nicht sah: das Gate greift auf **jede** schließende
+Case — auch auf fremde Test-Fixtures, die per Code schließen.
+
+**Fix (dieser Commit):** alle 10 benannten Fixture-Klassen (`SCRUM365/367/370/390/403/410/418/419/420
+OpenCases/OpenCount/Overdue/LastCaseDate/CustomerTransfer/CaseReaction/Reentry/EscalationKunde`-
+Test) tragen jetzt `Ursache__c = 'HowToAnfrage'` an (a) jeder `new Case(...)` (49 St.; konditional
+unnötig aber uniform → auch offene Fälle, die das Gate nicht treffen, tragen den Wert; kein Test
+inspiziert das Feld) und (b) vor jedem update-auf-Closed (`<recv>.Ursache__c = 'HowToAnfrage';`
+vor `<recv>.Status='Closed';`, 10 St.) — essenziell für sObjects, die das Feld nie SELECT-ten
+(370 `closeCases` / `closeOneCase` laden nur `Id,Status`). Verifiziert: `SCRUM370OpenCasesRatingTest`
+(vorher rot im Drift-Gate) ist jetzt grün.
+
+**Aber der Voll-Lauf (RunAllTestsInOrg, Run 707WU00001L2XzB) zeigt, dass das Gate eine
+Elfte Erreichweite hat, die nicht in der 10er-Liste stand:** `SCRUM428CaseIngestHandler.applyDup`
+(Productionscode, Zeile 328, `c.Status='Closed'` beim Dedup-Abschluss, kein `Ursache__c`) wird von
+`SCRUM428IngestTest.ac4_case_number_in_text_dedupes` + `ac5_same_contact_same_bereich_dedupes`
+ausgeübt → 2 Fails (Run-Ausgang **309/311 = 99 %**). Das ist SCRUM-428-Code — NICHT in der
+10er-Fixture-Direktive, und die Erreichweite ist Produktionsrelevant (echtes Dedup-Ingest schließt
+heute ohne Ursache → wäre im Produkt blockiert). Hausregel „Checkout geteilt, Zweig nicht" →
+SCRUM-428s Handler wird hier **nicht** selbst redigiert.
+
+**Zwei legitime Optionen (bitte freigeben, sonst Re-Review rot):**
+1. 11te Fixture-Fix auf die richtige Weise: `SCRUM428IngestTest` (Testklasse) baut den
+   Dup-Source-Case mit `Ursache__c` + `SCRUM428CaseIngestHandler` bleibt angetastet (produktions-
+   neutral) — aber das ist SCRUM-428-Ticket und ich will nicht in fremdes Produktionsmetadata
+   gehen ohne Freigabe. ODER
+2. SCRUM-428 als eigenständiges Follow-up-Ticket (Handler setzt `Ursache__c` bei `applyDup`; das
+   korrigiert die Produktion, nicht nur die Tests).
+
+Bis dahin: 10er-Fix committed/greent in diesem PR; die 2 SCRUM428IngestFails bleiben bewusst offen
+und blocken den Run — der Voll-Lauf ist erst bei 311/311 grün.

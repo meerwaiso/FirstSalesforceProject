@@ -104,6 +104,7 @@ private class SCRUM420EscalationKundeTest {
         Case c1 = insertCase(accId, 'High', 'New');
         Case c2 = insertCase(accId, 'High', 'New');
         // c1 schliessen — Zaehler muss fallen, c2 bleibt 'Kritisch'
+        c1.Ursache__c = 'HowToAnfrage';
         c1.Status = 'Closed';
         update c1;
         Case c2r = readCaseById(c2.Id);
@@ -120,6 +121,7 @@ private class SCRUM420EscalationKundeTest {
         Case c1 = insertCase(accId, 'High', 'New');
         // Schliessen: c1 wird NICHT aktualisiert (geschlossene Cases bleiben unberuehrt,
         // ADR 4) -> der alte Wert (Z=1,H=1,Beobachten) bleibt stehen, kein Reset
+        c1.Ursache__c = 'HowToAnfrage';
         c1.Status = 'Closed';
         update c1;
         Case c1r = readCaseById(c1.Id);
@@ -159,7 +161,7 @@ private class SCRUM420EscalationKundeTest {
             Id accId = accIds[a];
             Integer highFor = highCasesForAccount(a);
             for (Integer j = 0; j < casesPerAccount; j++) {
-                batch.add(new Case(AccountId = accId, Priority = (j < highFor) ? 'High' : 'Low', Status = 'New'));
+                batch.add(new Case(Ursache__c = 'HowToAnfrage', AccountId = accId, Priority = (j < highFor) ? 'High' : 'Low', Status = 'New'));
             }
         }
         insert batch;
@@ -203,8 +205,8 @@ private class SCRUM420EscalationKundeTest {
         // zweiter recompute exakt 0 Records auffinden und die Felder bleiben.
         // (Idempotenz ist auch die Garantie für AK5/AK4: keine doppelte Zählung.)
         Id accId = SCRUM420TestDataFactory.createAccount('420-Handler');
-        Case c1 = new Case(AccountId = accId, Priority = 'High', Status = 'New');
-        Case c2 = new Case(AccountId = accId, Priority = 'High', Status = 'New');
+        Case c1 = new Case(Ursache__c = 'HowToAnfrage', AccountId = accId, Priority = 'High', Status = 'New');
+        Case c2 = new Case(Ursache__c = 'HowToAnfrage', AccountId = accId, Priority = 'High', Status = 'New');
         insert new List<Case> { c1, c2 };
         // Trigger hat schon konvergiert: H=2, Kritisch auf beiden
         assertEquals(CaseEscalationKunde.STUFE_KRITISCH, readCaseById(c1.Id).Eskalation_Kunde__c);
@@ -268,7 +270,7 @@ private class SCRUM420EscalationKundeTest {
     private static testmethod void geschlossener_case_wird_nicht_berechnet() {
         Id accId = SCRUM420TestDataFactory.createAccount('420-Closed');
         Case c = insertCase(accId, 'Low', 'New');
-        Case cClosed = new Case(AccountId = accId, Priority = 'Low', Status = 'Closed');
+        Case cClosed = new Case(Ursache__c = 'HowToAnfrage', AccountId = accId, Priority = 'Low', Status = 'Closed');
         insert cClosed;
         // c muss weiterhin Z=1 zeigen (closed-case wird nicht mitgezählt)
         Case cR = readCaseById(c.Id);
@@ -278,7 +280,7 @@ private class SCRUM420EscalationKundeTest {
     // ---------- helpers ----------
 
     private static Case insertCase(Id accId, String priority, String status) {
-        Case c = new Case(AccountId = accId, Priority = priority, Status = status);
+        Case c = new Case(Ursache__c = 'HowToAnfrage', AccountId = accId, Priority = priority, Status = status);
         insert c;
         return c;
     }

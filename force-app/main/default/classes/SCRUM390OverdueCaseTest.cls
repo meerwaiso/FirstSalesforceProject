@@ -34,7 +34,7 @@ private class SCRUM390OverdueCaseTest {
      */
     @isTest
     static void openFreshCase_showsZeroDuration_andNotOverdue_andFieldsAreReadOnlyFormulas() {
-        Case c = new Case(Status = 'New', Subject = '[SCRUM-390-Test] open');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', Status = 'New', Subject = '[SCRUM-390-Test] open');
         insert c;
 
         // Formula fields are NOT populated on the in-memory sObject after DML —
@@ -78,10 +78,11 @@ private class SCRUM390OverdueCaseTest {
      */
     @isTest
     static void closedCase_isNeverOverdue_evenIfItExceedsThreshold() {
-        Case c = new Case(Status = 'New', Subject = '[SCRUM-390-Test] to close', Priority = 'High');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', Status = 'New', Subject = '[SCRUM-390-Test] to close', Priority = 'High');
         insert c;
 
         // Close it. The platform sets ClosedDate; DML cannot (see note above).
+        c.Ursache__c = 'HowToAnfrage';
         c.Status = 'Closed';
         update c;
 
@@ -109,7 +110,7 @@ private class SCRUM390OverdueCaseTest {
     @isTest
     static void openCaseWithEmptyPriority_isNotOverdue() {
         // No Priority set; no Account/Contact so CasePriorityTrigger leaves it alone.
-        Case c = new Case(Status = 'New', Subject = '[SCRUM-390-Test] no priority');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', Status = 'New', Subject = '[SCRUM-390-Test] no priority');
         insert c;
 
         Case noPrio = [SELECT Priority, Processing_Duration__c, Is_Overdue__c FROM Case WHERE Id = :c.Id];

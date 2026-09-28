@@ -111,7 +111,7 @@ private class SCRUM410CustomerTransferTest {
 
         List<Case> cases = new List<Case>();
         for (Integer i = 0; i < OPEN_CASES; i++) {
-            cases.add(new Case(
+            cases.add(new Case(Ursache__c = 'HowToAnfrage', 
                 Status = 'New',
                 Subject = 'SCRUM410 offen ' + i,
                 Priority = Math.mod(i, 2) == 0 ? 'High' : 'Medium',
@@ -119,7 +119,7 @@ private class SCRUM410CustomerTransferTest {
             ));
         }
         for (Integer i = 0; i < CLOSED_CASES; i++) {
-            cases.add(new Case(
+            cases.add(new Case(Ursache__c = 'HowToAnfrage', 
                 Status = 'Closed',
                 Subject = 'SCRUM410 zu ' + i,
                 Priority = 'Low',
@@ -168,7 +168,7 @@ private class SCRUM410CustomerTransferTest {
         insert contacts;
         List<Case> cases = new List<Case>();
         for (Integer i = 0; i < 3; i++) {
-            cases.add(new Case(Status = 'New', Subject = 'small-open-' + i, OwnerId = fromUser.Id));
+            cases.add(new Case(Ursache__c = 'HowToAnfrage', Status = 'New', Subject = 'small-open-' + i, OwnerId = fromUser.Id));
         }
         insert cases;
         List<Opportunity> opps = new List<Opportunity>();
@@ -207,8 +207,8 @@ private class SCRUM410CustomerTransferTest {
         seedSmall();
         // Ergaenzen: 2 geschlossene Cases + 1 closed Won zahlen NICHT in der Vorschau.
         List<Case> closed = new List<Case>();
-        closed.add(new Case(Status = 'Closed', Subject = 'ac1-closed', OwnerId = fromUser.Id));
-        closed.add(new Case(Status = 'Closed', Subject = 'ac1-closed-2', OwnerId = fromUser.Id));
+        closed.add(new Case(Ursache__c = 'HowToAnfrage', Status = 'Closed', Subject = 'ac1-closed', OwnerId = fromUser.Id));
+        closed.add(new Case(Ursache__c = 'HowToAnfrage', Status = 'Closed', Subject = 'ac1-closed-2', OwnerId = fromUser.Id));
         insert closed;
         Opportunity won = new Opportunity(
             Name = 'ac1-won',

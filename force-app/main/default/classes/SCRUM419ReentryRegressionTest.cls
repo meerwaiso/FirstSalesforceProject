@@ -35,7 +35,7 @@ private class SCRUM419ReentryRegressionTest {
     }
 
     private static Id newClosed(String tag) {
-        Case c = new Case(Subject = 'V419 ' + tag, Status = 'Closed');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', Subject = 'V419 ' + tag, Status = 'Closed');
         insert c;
         return c.Id;
     }
@@ -110,6 +110,7 @@ private class SCRUM419ReentryRegressionTest {
 
         // Schließen (zählt nicht).
         c = read(id);
+        c.Ursache__c = 'HowToAnfrage';
         c.Status = 'Closed';
         update c;
         System.assertEquals(1, read(id).Reactivation_Count__c, 'Schließen → bleibt 1');
