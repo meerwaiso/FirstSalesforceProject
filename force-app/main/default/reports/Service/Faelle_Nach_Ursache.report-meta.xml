@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-434 AC4: Geschlossene F&auml;lle je Ursache-Kategorie &uuml;ber einen Zeitraum (Monat/Quartal), Org-weit. Grouping: Ursache__c (Anzahl je Kategorie). Filter: CLOSED=true (nur geschlossene). Zeitraum: timeFrameFilter (Default 1 Quartal = INTERVAL_LAST90; Nutzer kann auf Monat umschalten).</description>
+    <filter>
+        <criteriaItems>
+            <column>CLOSED</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>false</isUnlocked>
+            <operator>equals</operator>
+            <value>1</value>
+        </criteriaItems>
+        <language>en_US</language>
+    </filter>
+    <format>Summary</format>
+    <groupingsDown>
+        <field>Case.Ursache__c</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <name>Faelle_Nach_Ursache</name>
+    <reportType>CaseList</reportType>
+    <scope>organization</scope>
+    <showDetails>false</showDetails>
+    <showSubTotals>true</showSubTotals>
+    <timeFrameFilter>
+        <dateColumn>CLOSED_DATE</dateColumn>
+        <interval>INTERVAL_LAST90</interval>
+    </timeFrameFilter>
+</Report>

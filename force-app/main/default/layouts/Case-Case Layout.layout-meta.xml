@@ -310,6 +310,21 @@
         </layoutColumns>
         <style>TwoColumnsLeftToRight</style>
     </layoutSections>
+    <!-- SCRUM-434: R&uuml;ckschau / Ursache beim Schliessen (ADR-5/Auswertung), eigene Section,
+         bewusst vor &ldquo;System Information&rdquo; (Abgrenzung wie SCRUM-420/421/424). -->
+    <layoutSections>
+        <customLabel>true</customLabel>
+        <detailHeading>true</detailHeading>
+        <editHeading>true</editHeading>
+        <label>R&uuml;ckschau</label>
+        <layoutColumns>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>Ursache__c</field>
+            </layoutItems>
+        </layoutColumns>
+        <style>OneColumn</style>
+    </layoutSections>
     <layoutSections>
         <customLabel>false</customLabel>
         <detailHeading>false</detailHeading>
