@@ -74,29 +74,28 @@ Kommentaren — dieses File (Commit) ist die Quelle der Wahrheit, nicht der Jira
 ## 2. ValidationRule — „Pflicht nur beim Schliessen" (das Herzstück)
 Entscheidung: **ValidationRule, nicht Trigger/Flow.** Begründung (ADR unten).
 
-Gate-Formel nutzt `IsClosed`, **nicht** `ISPICKVAL(Status,'Closed')`:
-`IsClosed` ist der kanonische Standard-Boolean (in 4 Haus-Formelfeldern belegt,
-z. B. `Open_Count__c`). Vorteile gegenüber hartem Status-Zeichenkettencode:
-(1) lokalitätsunabhängig — in einer anderen Org-Sprache heißt der Closed-Status
-vllt. „Geschlossen", `IsClosed` bleibt `IsClosed`; (2) rename-sicher; (3) deckt
-**alle** geschlossenen Statuswerte ab, falls je ein zweiter dazukommt. Org
-verifiziert (28.09.26): Status-Verteilung = `New`(608) / `Working`(6) / `Closed`(38);
-nur `Closed` ist zu.
+Gate-Formel (ADR-2, **freigegeben** via Jira-Kommentar 21837 — **aktuelle Autorität ist das
+deployte ValRule-File**, nicht mehr dieser Abschnitt):
+```
+AND( OR(IsClosed, ISPICKVAL(Status, 'Closed')), ISBLANK(TEXT(Ursache__c)) )
+```
+**Warum der Zusatzklausel nötig war:** `IsClosed` wertet in einer ValRule den **VOR**-Zustand
+aus, nicht den Endstand, auf den die ursprüngliche ADR-2-Annahme („Endstand NACH dem Save")
+baute. Auf genau der DML, die den Fall schließt (Insert oder Update auf `Status='Closed'`), ist
+`IsClosed` noch `false` → die Gate blockierte dort nicht (DML-A/B bewiesen, 28.09). Der
+`ISPICKVAL(Status,'Closed')`-Zweig deckt die Schließ-Aktion selbst ab, `IsClosed` bleibt als
+zweite Stütze für spätere/renamed geschlossene Status. `ISBLANK(TEXT(Ursache__c))` statt
+`ISBLANK(Ursache__c)` (Picklist-typ, Plattform-Regel). Org verifiziert (28.09.26): Status-
+Verteilung = `New`(608) / `Working`(6) / `Closed`(38); nur `Closed` ist zu.
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>Ursache_PflichtBeiGeschlossen</fullName>
-    <active>true</active>
-    <description>SCRUM-434 AC2: Ein Case im geschlossenen Status (IsClosed=true)
-blockiert das Speichern, wenn Ursache__c leer ist — harte Blockade, keine
-Warnung. Solange offen (IsClosed=false) ist das Feld freiwillig (AC3).
-ValRule wertet auf dem Endstand NACH dem Save aus → kein Auto-clear-Problematik
-wie bei Opportunity-LossReason (hier gibt es keinen Auto-clear).</description>
-    <errorConditionFormula>AND(IsClosed, ISBLANK(Ursache__c))</errorConditionFormula>
-    <errorMessage>Bitte wählen Sie eine Ursache für den geschlossenen Fall aus (Feld „Ursache"), bevor Sie speichern. Solange der Fall offen ist, ist das Feld freiwillig.</errorMessage>
-</ValidationRule>
-```
+<!--
+  ADR-2-Autorität: das deployte ValRule-File —
+  objects/Case/validationRules/Ursache_PflichtBeiGeschlossen.validationRule-meta.xml
+  (formel: AND(OR(IsClosed, ISPICKVAL(Status,'Closed')), ISBLANK(TEXT(Ursache__c))))
+  Beschreibung/Name/ErrorMessage in der Datei; dieser Abschnitt dokumentiert nur die Begründung.
+-->
 
 **Bulk/Trigger-Proof:** eine ValRule feuert bei JEDEM DML-Pfad — UI, Trigger,
 API, Bulk, Bulk API Import. Kein Umweg. (Trigger/Flow würden nur den Pfad
@@ -205,9 +204,14 @@ Haus-Shape `SCRUM382_*Test` / `*FlsTest` + E2E. Muss mindestens prüfen:
    jeden DML-Pfad ab (UI/Trigger/API/Bulk) und umgeht die wiederholten
    Deploy/Schema-Validierungsfehler von Flow. → Default „Apex/Declarativ über
    Flow"; hier ist die **declarative ValRule** die robusteste Option.
-2. **Gate über `IsClosed`, nicht `ISPICKVAL(Status,…)`.** Lokalitäts- und
-   rename-sicher; deckt alle geschlossenen Status ab; `IsClosed` ist der kanonische
-   Standard-Feldname (4 Haus-Formeln). Org-geprüft: nur `Closed` ist zu.
+2. **Gate über `IsClosed` ODER `Status='Closed'`** (erweitert, ADR-2 freigegeben per Jira-Kommentar
+   21837). Ursprünglich reine `IsClosed`-Gate — lokalitäts-/rename-sicher, kanonischer
+   Standard-Boolean (4 Haus-Formeln), deckt alle geschlossenen Status ab. **Korrektur nach
+   DML-A/B-Beweis (28.09):** `IsClosed` wertet die Vor-Transaktion aus → auf der schließenden DML
+   selbst ist es noch `false` und blockierte nicht. Deshalb `OR(IsClosed, ISPICKVAL(Status,'Closed'))`.
+   Die **aktuelle ADR-2-Autorität ist das deployte ValRule-File** (
+   `objects/Case/validationRules/Ursache_PflichtBeiGeschlossen.validationRule-meta.xml`); dieser
+   Doc-Abschnitt ist nur noch die Begründung.
 3. **Feld `required=false`, Pflicht ausschließlich via ValRule.** Sonst blockte
    `required=true` auch offene Saves (AC3-Break). House-Konsistenz mit Loss_Reason.
 4. **FLS via Permission Set, kein Profil** (SCRUM398/321/327/329). Feld-FELS wird
