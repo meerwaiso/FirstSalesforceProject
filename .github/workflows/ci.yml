@@ -186,6 +186,26 @@ jobs:
             echo "::notice title=Apex test scope::RunAllTestsInOrg (full suite)"
           fi
 
+      # FLS-Gate — blockierend, und ZWANGSLÄUFIG vor "Run Apex tests".
+      # Ein Feld ohne wirksame FLS ist für alle unsichtbar, und SOQL wie Apex
+      # melden darauf "No such column" / "fields being inaccessible" — von
+      # einem fehlenden Feld nicht unterscheidbar. Lief das Gate NACH den
+      # Apex-Tests, starb der Lauf am rohen Symptom und der Gate-Text, der den
+      # fehlenden Permission-Set-Namen mit "niemandem zugewiesen" benennen
+      # würde, kam nie dran. SCRUM-434 (2026-09-28): 1,5 h Propagations-Lag-
+      # Verfolgung, Ursache war ein nicht zugewiesenes PS. SCRUM-382, 386,
+      # 388, 390, 398 und 421 haben das gleiche Muster schon bezahlt.
+      - name: FLS gate (fields need a granting AND assigned Permission Set)
+        if: steps.guard.outputs.has_auth == 'true'
+        env:
+          # Drei Ereignisse, drei richtige Basen. workflow_dispatch lief bisher
+          # gegen HEAD~1: auf einem Feature-Branch ist der Feldverlauf dann leer,
+          # das Gate meldet "nichts zu prüfen" und der Lauf wird grün, ohne
+          # geprüft zu haben. Gemessen am 24.09.2026, Commit 0046ee5: Lauf
+          # 36055535706 (pull_request) rot, Lauf 36055570102 (dispatch) grün.
+          BASIS: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || (github.event_name == 'workflow_dispatch' && 'origin/master' || 'HEAD~1') }}
+        run: python3 scripts/fls-gate.py --base "$BASIS" --org Test-Org
+
       # Gate 1 — Apex tests must pass. `sf apex run test` reports coverage but
       # does not enforce a threshold, which is what we want here: the suite is
       # green today (15/15) while overall coverage is still 37%.
@@ -243,22 +263,6 @@ jobs:
               --test-level RunLocalTests \
               --wait 30
           fi
-
-      # FLS-Gate — blockierend. Ein Feld ohne wirksame FLS ist für alle
-      # unsichtbar, und SOQL wie Apex melden darauf "No such column" — von
-      # einem fehlenden Feld nicht unterscheidbar. SCRUM-382, 386, 388, 390,
-      # 398 und 421 haben daran Zeit verloren, jedes Mal mit der Regel bereits
-      # in AGENTS.md. Eine siebte Formulierung hilft nicht, ein Gate schon.
-      - name: FLS gate (fields need a granting AND assigned Permission Set)
-        if: steps.guard.outputs.has_auth == 'true'
-        env:
-          # Drei Ereignisse, drei richtige Basen. workflow_dispatch lief bisher
-          # gegen HEAD~1: auf einem Feature-Branch ist der Feldverlauf dann leer,
-          # das Gate meldet "nichts zu prüfen" und der Lauf wird grün, ohne
-          # geprüft zu haben. Gemessen am 24.09.2026, Commit 0046ee5: Lauf
-          # 36055535706 (pull_request) rot, Lauf 36055570102 (dispatch) grün.
-          BASIS: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || (github.event_name == 'workflow_dispatch' && 'origin/master' || 'HEAD~1') }}
-        run: python3 scripts/fls-gate.py --base "$BASIS" --org Test-Org
 
       # Gate 3 — proves the Playwright auth layer still works against this org
       - name: Install Chromium
