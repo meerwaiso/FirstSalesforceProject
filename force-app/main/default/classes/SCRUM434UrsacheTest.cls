@@ -54,7 +54,7 @@ private class SCRUM434UrsacheTest {
     // 1. AC1 — exakt 5 Picklist-Werte (Labels = die vom PO 28.09. fixierten).
     @isTest
     static void test_AC1_Picklist_ExaktFuenfWerte() {
-        List<SObjectPicklistEntry> entries = Case.Ursache__c.getDescribe().getPicklistValues();
+        List<Schema.PicklistEntry> entries = Case.Ursache__c.getDescribe().getPicklistValues();
         Set<String> expected = new Set<String>{
             'How-to / Anfrage',
             'Rechnung / Abrechnung',
@@ -65,7 +65,7 @@ private class SCRUM434UrsacheTest {
         System.assertEquals(5, entries.size(),
             'AC1: genau 5 Picklist-Werte erwartet, gefunden: ' + entries.size());
         Set<String> actual = new Set<String>();
-        for (SObjectPicklistEntry e : entries) {
+        for (Schema.PicklistEntry e : entries) {
             actual.add(e.getLabel());
         }
         System.assertEquals(expected, actual,
@@ -95,11 +95,12 @@ private class SCRUM434UrsacheTest {
     // 3. AC2 — geschlossener Case MIT gesetztem Wert wird gespeichert.
     @isTest
     static void test_AC2_Geschlossen_MitUrsache_Speichert() {
-        Case c = insert new Case(
+        Case c = new Case(
             Subject = 'SCR434 closed mit ursache',
             Status = 'Closed',
             Ursache__c = 'TechnischerFehler'
         );
+        insert c;
         Case r = [SELECT Status, Ursache__c FROM Case WHERE Id = :c.Id];
         System.assertEquals('Closed', r.Status);
         System.assertEquals('TechnischerFehler', r.Ursache__c,
@@ -109,7 +110,8 @@ private class SCRUM434UrsacheTest {
     // 4. AC3 — offener Case (Status New) ohne Ursache ist freiwillig.
     @isTest
     static void test_AC3_Offen_OhneUrsache_Speichert() {
-        Case c = insert new Case(Subject = 'SCR434 offen ohne ursache', Status = 'New');
+        Case c = new Case(Subject = 'SCR434 offen ohne ursache', Status = 'New');
+        insert c;
         Case r = [SELECT Status, Ursache__c FROM Case WHERE Id = :c.Id];
         System.assertEquals('New', r.Status);
         System.assertEquals(null, r.Ursache__c,

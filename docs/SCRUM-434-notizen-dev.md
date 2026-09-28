@@ -20,7 +20,22 @@ Quellen der Wahrheit: `docs/SCRUM-434-design.md` @ commit 5255638 (byte-exakte X
 - Apex-Test-Flags (CLI 2.139.6): `-n/--class-names`, `-c/--code-coverage`.
   `sf project deploy start --test-level NoTestRun|RunSpecifiedTests|...` (valid).
 
-## Befunde (fortgesetzt, oben)
+## Befunde (fortgesetzt)
+- **Phase-2-Deploy rot (5 eigene File-Fehler, NICHT 432-Probe) — gemeldet im Deploy-Report:**
+  1. ValidationRule `description` > 255 Zeichen (Platform-Hard-Limit — im Design
+     nicht accounted). Kurzfassung <255.
+  2. Report/Layout/PS/ValRule: HTML-Entities `&uuml;/&auml;/&ouml;/&bdquo;/&ldquo;`
+     sind in XML KEINE g&uuml;ltigen Entities ("declared" fehler) — das Design-File
+     (5255638) nutzt LITERALE UTF-8-Zeichen (Phase-1 ß hat es bewiesen). -> auf
+     Literale umstellen.
+  3. Apex-Test: `SObjectPicklistEntry` ist KEIN Typ -> `Schema.PicklistEntry`
+     (2 Stellen). "Unexpected token insert" + fehlende `entries`/`e` kaskadierten
+     aus dem falschen Typ.
+  + Phase-2-Runde-2-Fixes: (a) ValRule ISBLANK(Picklist) wird abgelehnt ->
+     `ISBLANK(TEXT(Ursache__c))` (House LossReason-Muster, 1:1). (b) Report
+     description >255 -> gekürzt. (c) Apex `Case c = insert new Case(...)` ist
+     KEIN Ausdruck -> `new Case(...)` + `insert c;` (House SCRUM381-Muster).
+     => Phase 2 redeploy mit denselben Manifest (idempotent) + RunSpecifiedTests.
 - Worktree: `salesforce/scr434-wt` @ `feature/SCRUM-434-ursache` (base = origin/master 5c10a07).
   Geteilter Haupt-Checkout liegt auf SCRUM-424 (mod. Report + untracked Notiz) — NIX davon angefasst.
 - Test-Org = Default-Org (🍁, devops-agent@cline.test, 00DWU00000oibVJ2AY). Ziel = immer Test-Org.

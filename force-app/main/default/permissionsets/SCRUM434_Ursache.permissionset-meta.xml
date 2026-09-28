@@ -7,5 +7,5 @@
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>SCRUM434_Ursache</label>
-    <description>SCRUM-434: Read+Edit-FLS f&uuml;r Case &bdquo;Ursache&ldquo; (Service-Team). Per PS, kein Profil. Report-Zugriff ist ein Folder-Sharing-Schritt (Org/DevOps).</description>
+    <description>SCRUM-434: Read+Edit-FLS für Case „Ursache" (Service-Team). Per PS, kein Profil. Report-Zugriff ist ein Folder-Sharing-Schritt (Org/DevOps).</description>
 </PermissionSet>

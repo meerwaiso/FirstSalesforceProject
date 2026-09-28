@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Report xmlns="http://soap.sforce.com/2006/04/metadata">
-    <description>SCRUM-434 AC4: Geschlossene F&auml;lle je Ursache-Kategorie &uuml;ber einen Zeitraum (Monat/Quartal), Org-weit. Grouping: Ursache__c (Anzahl je Kategorie). Filter: CLOSED=true (nur geschlossene). Zeitraum: timeFrameFilter (Default 1 Quartal = INTERVAL_LAST90; Nutzer kann auf Monat umschalten).</description>
+    <description>SCRUM-434 AC4: Geschlossene Fälle je Ursache-Kategorie über einen Zeitraum (Monat/Quartal), org-weit. Grouping: Ursache__c (Anzahl je Kategorie). Filter: CLOSED=true. Zeitraum: timeFrameFilter.</description>
     <filter>
         <criteriaItems>
             <column>CLOSED</column>
