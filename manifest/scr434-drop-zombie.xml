@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-434: Defekte Feld-Half-Zustaende loeschen (Zombie-Field + ValRule), damit
+     Phase 1 + Phase 2 sauber neu provisioniert werden koennen.
+     DESTRUCTIVE CHANGES - darf nicht destructiveChanges.xml heissen (Genehmigungsregeln).
+     Nur Test-Org; Feld ist 3,5 h alt, nur mein eigener Datenstand, keine Prod-Daten. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Case.Ursache__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Case.Ursache_PflichtBeiGeschlossen</members>
+        <name>ValidationRule</name>
+    </types>
+    <version>67.0</version>
+</Package>

@@ -91,3 +91,33 @@ Feld zurück (passierte hier: Phase-2-Run, 3 rot → alles weg). Deshalb immer:
 Feld-Deploy mit NoTestRun, dann Komponenten-NoTestRun, Tests standalone via
 `sf apex run test`.
 
+
+
+## 2026-09-28 16:20Z — Korrigierter Befund (widerspricht „Propagation-Lag")
+
+**Korrektur:** Der „Query-Engine-Propagation-Lag, selbstheilend" aus dem earlier-Befund
+ist NICHT mehr tragfähig. Fakten (roh verifiziert):
+
+- **SCRUM432Probe ist aus der Org gelöscht** (Manifest `scr434-delete-probe.xml`,
+  NoTestRun). Check: `SELECT Name FROM ApexClass WHERE Name LIKE 'Probe%'` → 0 Zeilen.
+- **Validierung mit richtiger Teststufe** (`--test-level RunSpecifiedTests --tests SCRUM434UrsacheTest`):
+  Komponenten **6/6 erfolgreich**, Testfehler **3/6** — und KEIN Probe-Fehler mehr.
+  Die Probe war der wiederkehrende Validierungs-Killer (User-Diagnose bestätigt).
+- **Feld-Zustand (inconsistent / Zombie):** Tooling-Zeile existiert
+  (`00NWU00002Dg3Lx2AJ`, created 12:52Z, zweimal roh verifiziert), `getDescribe()`
+  sieht das Feld (AC1-Test grün), aber SOQL UND DML melden nach ~3,5 h
+  `No such column 'Ursache__c'`. **Entscheidend: DML-Kontrollversuch** auf derselben
+  Case: `Subject=…` → Erfolg; `+ Ursache__c=…` → `No such column on sobject of type Case`.
+  → Nicht Konvergenz-Lag, sondern defekter Zustand (vermutlich Rollback-Reste der
+  frühen RunSpecifiedTests-Deploys, die das Feld auf halber Strecke zurückgerollt haben).
+- **Fix-Plan (warte auf Freigabe):** CustomField + ValidationRule löschen
+  (`scr434-drop-zombie.xml`), dann Phase 1 + Phase 2 mit NoTestRun neu deployen,
+  danach Test-Suite standalone.
+- **ValRule-Typo „w&ouml;hlen" → „wählen"** gefixt (Commit f641f8f, Literal-UTF-8,
+  fehlendes schlieϣendes Anführungszeichen mitbehoben); zieht im nächsten Phase-2-Deploy rein.
+- **Report CLOSED-Filter:** Haus-Muster ist genau die unprefixed Pseudo-Spalte
+  (`Unverteite_Faelle` läuft mit `<column>OPEN</column>`, `Offene_Leads` mit `<column>CONVERTED</column>`).
+  Beibehalten; Report deployt sauber (Deploy-Tabelle: „Changed", 0 Fehler).
+- **Eigener Fehler (User-Point 2):** jq-Filter verschluckte die Testfehlerliste.
+  Fehler stehen im `--result-format json` unter `result.tests[].Message` / `StackTrace`.
+  Ab jetzt Rohausgabe/JSON lesen, nicht filtern.
