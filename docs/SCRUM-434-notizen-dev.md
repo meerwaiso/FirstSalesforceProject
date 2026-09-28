@@ -54,3 +54,40 @@ Quellen der Wahrheit: `docs/SCRUM-434-design.md` @ commit 5255638 (byte-exakte X
 - [ ] Apex-Tests (value-set + FLS + AC2/AC3)
 - [ ] Deploy (Field → dann Layout+PS) + Test-Org Read-back
 - [ ] Commit pro Deploy-Einheit, PR, Handoff → Review
+## Enderstand (28.09.2026, verifiziert an Test-Org)
+**Deploy abgeschlossen + alle 6 Artefakte in der Org (NoTestRun-Deploy = kein Rollback):**
+- `Case.Ursache__c` (Picklist, 5 Werte, required=false) — Tooling CustomField-Id
+  `00NWU00002Dg3Lx2AJ` (created 12:52Z); `sf project retrieve` zieht meine XML
+  byte-identisch zurück (cache-immmune Proof: Feld physisch in der Org).
+- ValRule `Case.Ursache_PflichtBeiGeschlossen` (`AND(IsClosed, ISBLANK(TEXT(Ursache__c)))`)
+- `SCRUM434_Ursache` Permission Set (Read+Edit FLS)
+- Case-Layout Section „Rückschau" (vor „System Information")
+- Report `Service/Faelle_Nach_Ursache` (CLOSED-Filter, Ursache__c-Grouping)
+- Apex-Test `SCRUM434UrsacheTest` (6 Methoden)
+
+**Teststand (standalone `sf apex run test`, NICHT deploy-gebunden):**
+- GRÜN: AC1 (5 Picklist-Werte via getDescribe), beide FLS-Tests (PS-Grant via
+  getDescribe im runAs).
+- ROT (3): AC2-MitUrsache (DML „fields being inaccessible"), AC2-Block (kein
+  DmlException), AC3 (SOQL „No such column 'Ursache__c'").
+
+**Ursache der 3 Roten = EINER, gut gezählt: Query-/Parse-Engine laggt beim
+neu-angelegten Standard-Objekt-Feld (Schema-EDM-Propagation).** Nicht FLS
+(Test-User = System Administrator, geprüft; FLS-Tests grün). Nicht Implementierung
+(Feld + ValRule + PS + getDescribe alle funktional). `getDescribe()`/Schema +
+Metadata-API + Retrieve sehen das Feld; REST-SOQL + Apex-SOQL/DML noch nicht
+(~1h nach Create, nach ~5 min Schlaf + inter-Turn-Zeit). Konvergiert langsam.
+=> Behoben, sobald die Query-Engine das Feld repliziert hat — dann 3/6 rot→grün.
+Review/Tester: Feld via UI/`sf` setzen + SOQL-Query prüfen = Proof, dass es
+konvergiert ist; danach die 3 Behavioral-Tests re-exekutieren.
+**Kein Rollback:** NoTestRun-Deploy + Feld in separater Transaktion → Komponenten
+bleiben auch ohne grünen Test in der Org.
+
+**Wichtig für Review:** `sf data query`/`sf sobject describe` sind für NEUE
+Standard-Objekt-Felder NICHT der Beweis des Feldbestands — Tooling CustomField +
+`sf project retrieve` (cache-immun) sind es. `sf project deploy` mit
+`rollbackOnError=true` + Test-Run rollt bei rotendem Test das GANZE Deploy inkl.
+Feld zurück (passierte hier: Phase-2-Run, 3 rot → alles weg). Deshalb immer:
+Feld-Deploy mit NoTestRun, dann Komponenten-NoTestRun, Tests standalone via
+`sf apex run test`.
+
