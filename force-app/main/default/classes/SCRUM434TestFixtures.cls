@@ -15,11 +15,22 @@
  * PSA geben, und Setup+DML in einer Transaktion vermeiden MIXED_DML), danach laeuft
  * das Ursache__c-bearing DML/SOQL in System.runAs(u).
  *
+ * BEMERKUNG (2026-09-29, Prod-Org Drift Gate, Run 36585422149): diese klasse ist
+ * bewusst KEIN @isTest. `@isTest` macht die klasse test-sichtbar, aber bei einem
+ * `sf project deploy validate --source-dir force-app` gegen Prod-Org (wo noch KEIN
+ * 434-era-File liegt) wurde sie den 7 referenzierenden Testklassen als "Type is not
+ * visible: SCRUM434TestFixtures" vorenthalten — 12 Komponentefehler, Drift-Gate rot,
+ * Apex-Smoke dagegen grün (Test-Org hatte die klasse bereits deployed, da lief das
+ * "Type is not visible" nicht auf). Als normale public class liegt sie in der
+ * immer-sichtbaren Ebene und wird von allen Testklassen referenzierbar. Sie wird
+ * ausschliesslich aus @isTest-Methoden aufgerufen, laeuft dort im Test-Kontext (Setup-
+ * DML erlaubt) und bleibt damit produktions-neutral. Sie muss DEPLOYED (Test-Org +
+ * Release/Prod) sein, damit der Drift-Gate-Kompile sie sieht.
+ *
  * @author developer-agent
  * @date 2026-09-29
  */
-@isTest
-private class SCRUM434TestFixtures {
+public without sharing class SCRUM434TestFixtures {
 
     // Unique username within one test class run (multiple methods, one tx each).
     private static Integer n = 0;
@@ -50,5 +61,23 @@ private class SCRUM434TestFixtures {
         ];
         insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);
         return u;
+    }
+
+    /**
+     * Gewaehrt einem BEREITS bestehenden User (z.B. fromUser) das SCRUM434 PS.
+     * Fuer 410: dort muss der runAs-User Case-Owner der eingetragenen
+     * Records SEIN (OwnerId = fromUser.Id) — ein fremder User stoest auf
+     * INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY. fromUser ist bereits
+     * eingetraegt und Case-Owner, daher nur das PS nachtraegtlich zuweisen;
+     * danach laeuft die Ursache__c-tragende DML in runAs(fromUser).
+     * Idempotenz: ein zweiter PSA (gleicher User+PS) waere ein Duplekat-Fehler.
+     */
+    public static void grantUrsacheToUser(User u) {
+        PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = 'SCRUM434_Ursache' LIMIT 1];
+        Integer cnt = (Integer)[SELECT COUNT(Id) cnt FROM PermissionSetAssignment
+                       WHERE AssigneeId = :u.Id AND PermissionSetId = :ps.Id][0].get('cnt');
+        if (cnt == 0) {
+            insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);
+        }
     }
 }
