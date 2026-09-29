@@ -95,16 +95,19 @@ private class SCRUM434UrsacheTest {
     // 3. AC2 — geschlossener Case MIT gesetztem Wert wird gespeichert.
     @isTest
     static void test_AC2_Geschlossen_MitUrsache_Speichert() {
-        Case c = new Case(
-            Subject = 'SCR434 closed mit ursache',
-            Status = 'Closed',
-            Ursache__c = 'TechnischerFehler'
-        );
-        insert c;
-        Case r = [SELECT Status, Ursache__c FROM Case WHERE Id = :c.Id];
-        System.assertEquals('Closed', r.Status);
-        System.assertEquals('TechnischerFehler', r.Ursache__c,
-            'AC2: Persistenter Wert muss per Query TechnischerFehler sein');
+        User u = SCRUM434TestFixtures.ursacheUser('434ac2a');
+        System.runAs(u) {
+            Case c = new Case(
+                Subject = 'SCR434 closed mit ursache',
+                Status = 'Closed',
+                Ursache__c = 'TechnischerFehler'
+            );
+            insert c;
+            Case r = [SELECT Status, Ursache__c FROM Case WHERE Id = :c.Id];
+            System.assertEquals('Closed', r.Status);
+            System.assertEquals('TechnischerFehler', r.Ursache__c,
+                'AC2: Persistenter Wert muss per Query TechnischerFehler sein');
+        }
     }
 
     // 4. AC3 — offener Case (Status New) ohne Ursache ist freiwillig.
@@ -112,7 +115,12 @@ private class SCRUM434UrsacheTest {
     static void test_AC3_Offen_OhneUrsache_Speichert() {
         Case c = new Case(Subject = 'SCR434 offen ohne ursache', Status = 'New');
         insert c;
-        Case r = [SELECT Status, Ursache__c FROM Case WHERE Id = :c.Id];
+        // SCRUM-434 Lücke C: SELECT auf das neue Feld Ursache__c unter runAs(PS-User).
+        User u434 = SCRUM434TestFixtures.ursacheUser('434ac3');
+        Case r;
+        System.runAs(u434) {
+            r = [SELECT Status, Ursache__c FROM Case WHERE Id = :c.Id];
+        }
         System.assertEquals('New', r.Status);
         System.assertEquals(null, r.Ursache__c,
             'AC3: Offener Case ohne Ursache muss das Feld null lassen');

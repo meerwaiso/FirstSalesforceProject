@@ -281,7 +281,8 @@ private class SCRUM420EscalationKundeTest {
 
     private static Case insertCase(Id accId, String priority, String status) {
         Case c = new Case(Ursache__c = 'HowToAnfrage', AccountId = accId, Priority = priority, Status = status);
-        insert c;
+        // SCRUM-434 Lücke C: Ursache__c unter runAs(PS-User).
+        System.runAs(SCRUM434TestFixtures.ursacheUser('420' + System.now().getTime())) { insert c; }
         return c;
     }
 

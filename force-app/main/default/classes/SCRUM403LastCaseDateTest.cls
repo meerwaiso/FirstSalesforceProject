@@ -54,7 +54,11 @@ private class SCRUM403LastCaseDateTest {
     static void existingCase_showsDateAndHumanDuration() {
         // Open Case.
         Id a = newContact('Open');
-        insert new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'a-open');
+        // SCRUM-434 Lücke C: Ursache__c unter runAs(PS-User), sonst FLS-Fehler.
+        User u403 = SCRUM434TestFixtures.ursacheUser('403a');
+        System.runAs(u403) {
+            insert new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'a-open');
+        }
         System.assertEquals(Date.today(), lastDateOf(a),
             'AC1: Kontakt mit offenem Fall → Last_Case_Date__c = heute (CreatedDate = heute)');
         System.assertEquals('heute', sinceOf(a),

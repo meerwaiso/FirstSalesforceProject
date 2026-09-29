@@ -126,7 +126,11 @@ private class SCRUM410CustomerTransferTest {
                 OwnerId = fromUser.Id
             ));
         }
-        insert cases;
+        // SCRUM-434 Lücke C: 600-Records-Insert auf das neue Feld Ursache__c
+        // unter runAs(PS-User), sonst "fields being inaccessible on Sobject Case"
+        // im Prod checkOnly.
+        User u410s = SCRUM434TestFixtures.ursacheUser('410seed');
+        System.runAs(u410s) { insert cases; }
 
         List<Opportunity> opps = new List<Opportunity>();
         for (Integer i = 0; i < OPEN_OPPS; i++) {
@@ -170,7 +174,9 @@ private class SCRUM410CustomerTransferTest {
         for (Integer i = 0; i < 3; i++) {
             cases.add(new Case(Ursache__c = 'HowToAnfrage', Status = 'New', Subject = 'small-open-' + i, OwnerId = fromUser.Id));
         }
-        insert cases;
+        // SCRUM-434 Lücke C (s.o.).
+        User u410ss = SCRUM434TestFixtures.ursacheUser('410seedSmall');
+        System.runAs(u410ss) { insert cases; }
         List<Opportunity> opps = new List<Opportunity>();
         for (Integer i = 0; i < 2; i++) {
             opps.add(new Opportunity(Name = 'small-opp-' + i, StageName = 'Prospecting', CloseDate = Date.today().addDays(60 + i), OwnerId = fromUser.Id));
@@ -209,7 +215,9 @@ private class SCRUM410CustomerTransferTest {
         List<Case> closed = new List<Case>();
         closed.add(new Case(Ursache__c = 'HowToAnfrage', Status = 'Closed', Subject = 'ac1-closed', OwnerId = fromUser.Id));
         closed.add(new Case(Ursache__c = 'HowToAnfrage', Status = 'Closed', Subject = 'ac1-closed-2', OwnerId = fromUser.Id));
-        insert closed;
+        // SCRUM-434 Lücke C (s.o.).
+        User u410x = SCRUM434TestFixtures.ursacheUser('410xclosed');
+        System.runAs(u410x) { insert closed; }
         Opportunity won = new Opportunity(
             Name = 'ac1-won',
             StageName = 'Closed Won',
