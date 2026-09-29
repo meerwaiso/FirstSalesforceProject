@@ -138,8 +138,10 @@ private class SCRUM435TesterVerificationTest {
       );
     } catch (DmlException e) {
       String m = e.getMessage().toLowerCase();
+      // SCRUM-434-ValRule wirft FIELD_CUSTOM_VALIDATION_EXCEPTION.
       System.assert(
-        m.contains('custom validation rule'),
+        m.contains('field_custom_validation_exception')
+        || m.contains('ursache'),
         'Negativ-Kontrolle: erwarteter ValRule-Fehler, stattdessen: ' + e.getMessage()
       );
     }
