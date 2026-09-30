@@ -52,18 +52,28 @@ private class SCRUM403LastCaseDateTest {
      */
     @isTest
     static void existingCase_showsDateAndHumanDuration() {
+        // SCRUM-434 Lücke C: PSA (setup DML) aus ursacheUser() AUSSEN,
+        // ALLE fachliche DML (beide Contacts + beide Cases) IM runAs-Block —
+        // runAs ist die Savepoint-Grenze, die sie vom PSA trennt. Top-level
+        // `insert ca`/`newContact` nach der PSA wäre MIXED_DML (Contact + PSA).
+        // Im runAs ist u403 Owner der Contacts (OwnerId-Default) → cross-ref im
+        // Prod checkOnly resolvable (kein INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY).
+        User u403 = SCRUM434TestFixtures.ursacheUser('403a');
+        Id caId;
+        Id bId;
         // Open Case.
-        Id a = newContact('Open');
-        insert new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'a-open');
-        System.assertEquals(Date.today(), lastDateOf(a),
+        System.runAs(u403) {
+            caId = newContact('Open');
+            insert new Case(Ursache__c = 'HowToAnfrage', ContactId = caId, Status = 'New', Subject = 'a-open');
+            // Closed Case (zweiter Kontakt) — Status spielt für das Datum keine Rolle.
+            bId = newContact('Closed');
+            insert new Case(Ursache__c = 'HowToAnfrage', ContactId = bId, Status = 'Closed', Subject = 'b-closed');
+        }
+        System.assertEquals(Date.today(), lastDateOf(caId),
             'AC1: Kontakt mit offenem Fall → Last_Case_Date__c = heute (CreatedDate = heute)');
-        System.assertEquals('heute', sinceOf(a),
-            'AC1: heute-datierte Case → Formel «Wie lange her» = „heute"');
-
-        // Closed Case (zweiter Kontakt) — Status spielt für das Datum keine Rolle.
-        Id b = newContact('Closed');
-        insert new Case(Ursache__c = 'HowToAnfrage', ContactId = b, Status = 'Closed', Subject = 'b-closed');
-        System.assertEquals(Date.today(), lastDateOf(b),
+        System.assertEquals('heute', sinceOf(caId),
+            'AC1: heute-datierte Case → Formel «Wie lange her» = „heute“');
+        System.assertEquals(Date.today(), lastDateOf(bId),
             'AC1: erledigter Fall zählt ebenso → Last_Case_Date__c = heute');
     }
 
