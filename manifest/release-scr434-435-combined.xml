@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-434 + SCRUM-435 Prod-Release manifest (combined) — DevOps-Agent.
+     Scope = the complete 434/435 component set as the diff since
+     release/2026-09-27-SCRUM-432, i.e. exactly what merge commit d7d8a17
+     (PR #151, superset) landed. Deliberately NOT whole force-app
+     (SCRUM-417-Lektion: kein fremdes Drift mitschleppen).
+     Standard-object members sind qualifiziert (Case.*) — bare members fail
+     mit "No source-backed components present in the package" (Hausmuster
+     release-scr432-combined.xml).
+     Report-Member: Service/<Name>, OHNE reports/-Präfix (Hausmuster
+     scr418-report.xml).
+     Die 10 älteren Fixture-Testklassen (365/367/370/390/403/410/418/419/420)
+     gehören zu diesem Release-Scope: d7d8a17 hat sie um Ursache__c ergänzt,
+     damit die SCRUM-434-ValRule sie im Org-Kontext nicht mehr blockt. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Case.Ursache__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Case.Ursache_PflichtBeiGeschlossen</members>
+        <name>ValidationRule</name>
+    </types>
+    <types>
+        <members>SCRUM434_Ursache</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Case-Case Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>Service/Faelle_Nach_Ursache</members>
+        <name>Report</name>
+    </types>
+    <types>
+        <members>SCRUM428CaseIngestHandler</members>
+        <members>SCRUM434TestFixtures</members>
+        <members>SCRUM434UrsacheTest</members>
+        <members>SCRUM435TesterVerificationTest</members>
+        <members>SCRUM365OpenCasesCountTest</members>
+        <members>SCRUM365OpenCountVerifyTest</members>
+        <members>SCRUM367OpenCasesRebuildTest</members>
+        <members>SCRUM370OpenCasesRatingTest</members>
+        <members>SCRUM390OverdueCaseTest</members>
+        <members>SCRUM403LastCaseDateTest</members>
+        <members>SCRUM410CustomerTransferTest</members>
+        <members>SCRUM418CaseReactionTest</members>
+        <members>SCRUM419ReentryRegressionTest</members>
+        <members>SCRUM420EscalationKundeTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>
