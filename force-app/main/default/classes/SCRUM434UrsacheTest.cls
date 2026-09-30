@@ -113,12 +113,18 @@ private class SCRUM434UrsacheTest {
     // 4. AC3 — offener Case (Status New) ohne Ursache ist freiwillig.
     @isTest
     static void test_AC3_Offen_OhneUrsache_Speichert() {
-        Case c = new Case(Subject = 'SCR434 offen ohne ursache', Status = 'New');
-        insert c;
-        // SCRUM-434 Lücke C: SELECT auf das neue Feld Ursache__c unter runAs(PS-User).
+        // SCRUM-434 Lücke C: PSA (setup DML) ERST, dann die non-setup DML (Case)
+        // IM runAs-Block — Hausmuster SCRUM418. Setup-Außerhalb + Non-Setup-Innen;
+        // beide im selben outer-Savepoint wäre MIXED_DML (in beide Richtungen).
         User u434 = SCRUM434TestFixtures.ursacheUser('434ac3');
         Case r;
         System.runAs(u434) {
+            Case c = new Case(
+                Subject = 'SCR434 offen ohne ursache',
+                Status = 'New',
+                OwnerId = u434.Id
+            );
+            insert c;
             r = [SELECT Status, Ursache__c FROM Case WHERE Id = :c.Id];
         }
         System.assertEquals('New', r.Status);

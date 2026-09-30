@@ -89,99 +89,106 @@ private class SCRUM410CustomerTransferTest {
      * weniger DML im Test).
      */
     private static void seed() {
-        List<Account> acctList = new List<Account>();
-        for (Integer i = 0; i < ACCOUNTS; i++) {
-            acctList.add(new Account(Name = 'SCRUM410 Akt ' + i, OwnerId = fromUser.Id));
-        }
-        insert acctList;
+        // SCRUM-434 Lücke C: PSA (setup DML) vor dem runAs-Block.
+        // Alle non-setup DML (Account/Contact/Case) IM runAs-Block —
+        // Hausmuster SCRUM418: ursacheUser() + System.runAs{insert} ohne MIXED_DML.
+        // fromUser muss Owner der Cases SEIN (cross-ref-Access im Prod checkOnly).
+        SCRUM434TestFixtures.grantUrsacheToUser(fromUser);
+        System.runAs(fromUser) {
+            List<Account> acctList = new List<Account>();
+            for (Integer i = 0; i < ACCOUNTS; i++) {
+                acctList.add(new Account(Name = 'SCRUM410 Akt ' + i, OwnerId = fromUser.Id));
+            }
+            insert acctList;
 
-        List<Contact> contacts = new List<Contact>();
-        Integer k = 0;
-        for (Account a : acctList) {
-            for (Integer j = 0; j < CONTACTS_PER_ACCOUNT; j++) {
+            List<Contact> contacts = new List<Contact>();
+            Integer k = 0;
+            for (Account a : acctList) {
+                for (Integer j = 0; j < CONTACTS_PER_ACCOUNT; j++) {
+                    contacts.add(new Contact(
+                        FirstName = 'Kontakt',
+                        LastName = 'c' + (k++),
+                        AccountId = a.Id,
+                        OwnerId = fromUser.Id
+                    ));
+                }
+            }
+            insert contacts;
+
+            List<Case> cases = new List<Case>();
+            for (Integer i = 0; i < OPEN_CASES; i++) {
+                cases.add(new Case(Ursache__c = 'HowToAnfrage',
+                    Status = 'New',
+                    Subject = 'SCRUM410 offen ' + i,
+                    Priority = Math.mod(i, 2) == 0 ? 'High' : 'Medium',
+                    OwnerId = fromUser.Id
+                ));
+            }
+            for (Integer i = 0; i < CLOSED_CASES; i++) {
+                cases.add(new Case(Ursache__c = 'HowToAnfrage',
+                    Status = 'Closed',
+                    Subject = 'SCRUM410 zu ' + i,
+                    Priority = 'Low',
+                    OwnerId = fromUser.Id
+                ));
+            }
+            insert cases;
+
+            // Opportunities: kein Ursache__c, aber non-setup DML — muss IM
+            // runAs-Block bleiben (außen wäre non-setup nach dem PSA-Setup = MIXED_DML).
+            List<Opportunity> opps = new List<Opportunity>();
+            for (Integer i = 0; i < OPEN_OPPS; i++) {
+                opps.add(new Opportunity(
+                    Name = 'SCRUM410 Chance ' + i, CloseDate = Date.today().addDays(30 + i),
+                    StageName = 'Qualification',
+                    Amount = Decimal.valueOf((1000 - Math.mod(i, 7)) * 10),
+                    OwnerId = fromUser.Id
+                ));
+            }
+            for (Integer i = 0; i < CLOSED_OPPS; i++) {
+                opps.add(new Opportunity(
+                    Name = 'SCRUM410 Won ' + i,
+                    StageName = 'Closed Won',
+                    CloseDate = Date.today().addMonths(-1),
+                    Amount = 500,
+                    OwnerId = fromUser.Id
+                ));
+            }
+            insert opps;
+        }
+    }
+
+    private static void seedSmall() {
+        SCRUM434TestFixtures.grantUrsacheToUser(fromUser); // setup DML (PSA) vor runAs
+        System.runAs(fromUser) {
+            List<Account> acctList = new List<Account>();
+            for (Integer i = 0; i < 5; i++) {
+                acctList.add(new Account(Name = 'SCRUM410 Small ' + i, OwnerId = fromUser.Id));
+            }
+            insert acctList;
+            List<Contact> contacts = new List<Contact>();
+            Integer k = 0;
+            for (Account a : acctList) {
                 contacts.add(new Contact(
-                    FirstName = 'Kontakt',
-                    LastName = 'c' + (k++),
+                    FirstName = 'Small',
+                    LastName = 'k' + (k++),
                     AccountId = a.Id,
                     OwnerId = fromUser.Id
                 ));
             }
-        }
-        insert contacts;
+            insert contacts;
+            List<Case> cases = new List<Case>();
+            for (Integer i = 0; i < 3; i++) {
+                cases.add(new Case(Ursache__c = 'HowToAnfrage', Status = 'New', Subject = 'small-open-' + i, OwnerId = fromUser.Id));
+            }
+            insert cases;
 
-        List<Case> cases = new List<Case>();
-        for (Integer i = 0; i < OPEN_CASES; i++) {
-            cases.add(new Case(Ursache__c = 'HowToAnfrage', 
-                Status = 'New',
-                Subject = 'SCRUM410 offen ' + i,
-                Priority = Math.mod(i, 2) == 0 ? 'High' : 'Medium',
-                OwnerId = fromUser.Id
-            ));
+            List<Opportunity> opps = new List<Opportunity>();
+            for (Integer i = 0; i < 2; i++) {
+                opps.add(new Opportunity(Name = 'small-opp-' + i, StageName = 'Prospecting', CloseDate = Date.today().addDays(60 + i), OwnerId = fromUser.Id));
+            }
+            insert opps;
         }
-        for (Integer i = 0; i < CLOSED_CASES; i++) {
-            cases.add(new Case(Ursache__c = 'HowToAnfrage', 
-                Status = 'Closed',
-                Subject = 'SCRUM410 zu ' + i,
-                Priority = 'Low',
-                OwnerId = fromUser.Id
-            ));
-        }
-        // SCRUM-434 Lücke C: 600-Records-Insert auf das neue Feld Ursache__c
-        // unter runAs(PS-User), sonst "fields being inaccessible on Sobject Case"
-        // im Prod checkOnly.
-        User u410s = SCRUM434TestFixtures.ursacheUser('410seed');
-        System.runAs(u410s) { insert cases; }
-
-        List<Opportunity> opps = new List<Opportunity>();
-        for (Integer i = 0; i < OPEN_OPPS; i++) {
-            opps.add(new Opportunity(
-                Name = 'SCRUM410 Chance ' + i, CloseDate = Date.today().addDays(30 + i),
-                StageName = 'Qualification',
-                Amount = Decimal.valueOf((1000 - Math.mod(i, 7)) * 10),
-                OwnerId = fromUser.Id
-            ));
-        }
-        for (Integer i = 0; i < CLOSED_OPPS; i++) {
-            opps.add(new Opportunity(
-                Name = 'SCRUM410 Won ' + i,
-                StageName = 'Closed Won',
-                CloseDate = Date.today().addMonths(-1),
-                Amount = 500,
-                OwnerId = fromUser.Id
-            ));
-        }
-        insert opps;
-    }
-
-    private static void seedSmall() {
-        List<Account> acctList = new List<Account>();
-        for (Integer i = 0; i < 5; i++) {
-            acctList.add(new Account(Name = 'SCRUM410 Small ' + i, OwnerId = fromUser.Id));
-        }
-        insert acctList;
-        List<Contact> contacts = new List<Contact>();
-        Integer k = 0;
-        for (Account a : acctList) {
-            contacts.add(new Contact(
-                FirstName = 'Small',
-                LastName = 'k' + (k++),
-                AccountId = a.Id,
-                OwnerId = fromUser.Id
-            ));
-        }
-        insert contacts;
-        List<Case> cases = new List<Case>();
-        for (Integer i = 0; i < 3; i++) {
-            cases.add(new Case(Ursache__c = 'HowToAnfrage', Status = 'New', Subject = 'small-open-' + i, OwnerId = fromUser.Id));
-        }
-        // SCRUM-434 Lücke C (s.o.).
-        User u410ss = SCRUM434TestFixtures.ursacheUser('410seedSmall');
-        System.runAs(u410ss) { insert cases; }
-        List<Opportunity> opps = new List<Opportunity>();
-        for (Integer i = 0; i < 2; i++) {
-            opps.add(new Opportunity(Name = 'small-opp-' + i, StageName = 'Prospecting', CloseDate = Date.today().addDays(60 + i), OwnerId = fromUser.Id));
-        }
-        insert opps;
     }
 
     // ──────────────────────────── AC1: Vorschau ────────────────────────────
@@ -212,19 +219,22 @@ private class SCRUM410CustomerTransferTest {
         toUser = seedUser('ac1ct');
         seedSmall();
         // Ergaenzen: 2 geschlossene Cases + 1 closed Won zahlen NICHT in der Vorschau.
+        // Alle non-setup DML (Case + Opportunity) IM runAs-Block — runAs ist die
+        // Savepoint-Grenze, die sie vom PSA-Setup-DML (seedSmall) trennt. Top-level
+        // `insert won` nach seedSmall wäre MIXED_DML (Opportunity + PermissionSetAssignment).
         List<Case> closed = new List<Case>();
         closed.add(new Case(Ursache__c = 'HowToAnfrage', Status = 'Closed', Subject = 'ac1-closed', OwnerId = fromUser.Id));
         closed.add(new Case(Ursache__c = 'HowToAnfrage', Status = 'Closed', Subject = 'ac1-closed-2', OwnerId = fromUser.Id));
-        // SCRUM-434 Lücke C (s.o.).
-        User u410x = SCRUM434TestFixtures.ursacheUser('410xclosed');
-        System.runAs(u410x) { insert closed; }
         Opportunity won = new Opportunity(
             Name = 'ac1-won',
             StageName = 'Closed Won',
             CloseDate = Date.today().addMonths(-1),
             OwnerId = fromUser.Id
         );
-        insert won;
+        System.runAs(fromUser) {
+            insert closed;
+            insert won;
+        }
 
         Map<String, Object> preview = CustomerTransferController.preview(fromUser.Id, toUser.Id);
         System.assertEquals(3, preview.get('openCases'), 'AC1: geschlossene Cases zahlen nicht');
