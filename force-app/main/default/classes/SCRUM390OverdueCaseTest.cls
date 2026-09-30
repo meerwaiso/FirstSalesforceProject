@@ -34,8 +34,10 @@ private class SCRUM390OverdueCaseTest {
      */
     @isTest
     static void openFreshCase_showsZeroDuration_andNotOverdue_andFieldsAreReadOnlyFormulas() {
-        Case c = new Case(Status = 'New', Subject = '[SCRUM-390-Test] open');
-        insert c;
+        Case c = new Case(Ursache__c = 'HowToAnfrage', Status = 'New', Subject = '[SCRUM-390-Test] open');
+        // SCRUM-434 Lücke C: Ursache__c ist ein neues Feld ohne FLS-Vergabe im
+        // Standard-Kontext → DML unter runAs(PS-User), Sonst "inaccessible".
+        System.runAs(SCRUM434TestFixtures.ursacheUser('390open')) { insert c; }
 
         // Formula fields are NOT populated on the in-memory sObject after DML —
         // query the record back so the formulas are computed.
@@ -78,12 +80,17 @@ private class SCRUM390OverdueCaseTest {
      */
     @isTest
     static void closedCase_isNeverOverdue_evenIfItExceedsThreshold() {
-        Case c = new Case(Status = 'New', Subject = '[SCRUM-390-Test] to close', Priority = 'High');
-        insert c;
-
-        // Close it. The platform sets ClosedDate; DML cannot (see note above).
-        c.Status = 'Closed';
-        update c;
+        // SCRUM-434 Lücke C: insert+update auf das neue Feld Ursache__c unter
+        // runAs(PS-User), sonst "inaccessible" in der Prod checkOnly-Validation.
+        User u390 = SCRUM434TestFixtures.ursacheUser('390closed');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', Status = 'New', Subject = '[SCRUM-390-Test] to close', Priority = 'High');
+        System.runAs(u390) {
+            insert c;
+            // Close it. The platform sets ClosedDate; DML cannot (see note above).
+            c.Ursache__c = 'HowToAnfrage';
+            c.Status = 'Closed';
+            update c;
+        }
 
         Case closed = [SELECT ClosedDate, Processing_Duration__c, Is_Overdue__c FROM Case WHERE Id = :c.Id];
 
@@ -109,8 +116,9 @@ private class SCRUM390OverdueCaseTest {
     @isTest
     static void openCaseWithEmptyPriority_isNotOverdue() {
         // No Priority set; no Account/Contact so CasePriorityTrigger leaves it alone.
-        Case c = new Case(Status = 'New', Subject = '[SCRUM-390-Test] no priority');
-        insert c;
+        Case c = new Case(Ursache__c = 'HowToAnfrage', Status = 'New', Subject = '[SCRUM-390-Test] no priority');
+        // SCRUM-434 Lücke C (s.o.).
+        System.runAs(SCRUM434TestFixtures.ursacheUser('390noprio')) { insert c; }
 
         Case noPrio = [SELECT Priority, Processing_Duration__c, Is_Overdue__c FROM Case WHERE Id = :c.Id];
         System.assertEquals(

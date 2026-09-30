@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Ursache__c</fullName>
+    <label>Ursache</label>
+    <description>Grundkategorie, warum der Fall geschlossen (SCRUM-434). Fest 5 Werte, kein Freitext. Nur beim Schliessen Pflicht (ValRule Ursache_PflichtBeiGeschlossen); solange offen freiwillig. Intern, nicht PII.</description>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value><fullName>HowToAnfrage</fullName><default>false</default><label>How-to / Anfrage</label></value>
+            <value><fullName>RechnungAbrechnung</fullName><default>false</default><label>Rechnung / Abrechnung</label></value>
+            <value><fullName>TechnischerFehler</fullName><default>false</default><label>Technischer Fehler</label></value>
+            <value><fullName>Fehlkonfiguration</fullName><default>false</default><label>Fehlkonfiguration</label></value>
+            <value><fullName>KeinFehlerKeineMassnahme</fullName><default>false</default><label>Kein Fehler / Keine Maßnahme</label></value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

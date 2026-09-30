@@ -37,7 +37,7 @@ private class SCRUM370OpenCasesRatingTest {
     private static void openCases(Id contactId, Integer n) {
         List<Case> cases = new List<Case>();
         for (Integer i = 0; i < n; i++) {
-            cases.add(new Case(ContactId = contactId, Status = 'New', Subject = 'open ' + i));
+            cases.add(new Case(Ursache__c = 'HowToAnfrage', ContactId = contactId, Status = 'New', Subject = 'open ' + i));
         }
         insert cases;
     }
@@ -49,6 +49,7 @@ private class SCRUM370OpenCasesRatingTest {
             LIMIT :n
         ];
         for (Case cc : open) {
+            cc.Ursache__c = 'HowToAnfrage';
             cc.Status = 'Closed';
         }
         update open.size() > 0 ? open : new List<Case>();
@@ -89,9 +90,10 @@ private class SCRUM370OpenCasesRatingTest {
                 // 0 offene: Contact hat das Feld-Default (0 / Unauffaellig). Ein
                 // no-op-Case-Event (Case anlegen, sofort schliessen) zwingt einen
                 // echten Recompute-Lauf ueber den Trigger, nicht nur das Default.
-                Case tmp = new Case(ContactId = cid, Status = 'New', Subject = 'zero');
+                Case tmp = new Case(Ursache__c = 'HowToAnfrage', ContactId = cid, Status = 'New', Subject = 'zero');
                 insert tmp;
                 tmp = [SELECT Id, Status FROM Case WHERE ContactId = :cid LIMIT 1];
+                tmp.Ursache__c = 'HowToAnfrage';
                 tmp.Status = 'Closed';
                 update tmp;
             }

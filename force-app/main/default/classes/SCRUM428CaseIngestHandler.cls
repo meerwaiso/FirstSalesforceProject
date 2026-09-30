@@ -115,6 +115,7 @@ public without sharing class SCRUM428CaseIngestHandler {
       copy.Status = c.Status;
       copy.Subject = c.Subject;
       copy.Dedupliziert__c = c.Dedupliziert__c;
+      copy.Ursache__c = c.Ursache__c;
       toUpdate.add(copy);
     }
     if (!toUpdate.isEmpty()) {
@@ -326,6 +327,7 @@ public without sharing class SCRUM428CaseIngestHandler {
         continue;
       }
       c.Status = 'Closed';
+      c.Ursache__c = 'KeinFehlerKeineMassnahme';
       c.Subject =
         '[Dedupliziert: ' +
         numberByTarget.get(targetId) +

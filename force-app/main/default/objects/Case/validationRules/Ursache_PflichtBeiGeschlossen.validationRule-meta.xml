@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Ursache_PflichtBeiGeschlossen</fullName>
+    <active>true</active>
+    <description>SCRUM-434 AC2: Geschlossener Case (IsClosed=true) mit leerer Ursache__c wird beim Speichern hart blockiert. Solange der Fall offen (IsClosed=false) ist, ist das Feld freiwillig (AC3). Kein Auto-Clear, keine Ableitung.</description>
+    <errorConditionFormula>AND(OR(IsClosed, ISPICKVAL(Status, 'Closed')), ISBLANK(TEXT(Ursache__c)))</errorConditionFormula>
+    <errorMessage>Bitte wählen Sie eine Ursache für den geschlossenen Fall aus, bevor Sie speichern. Solange der Fall offen ist, ist das Feld freiwillig.</errorMessage>
+</ValidationRule>

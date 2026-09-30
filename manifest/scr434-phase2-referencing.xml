@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-434 Phase 2: alles, was die Phase-1-Felder Referenz Ursache__c:
+     ValidationRule (Pflicht bei IsClosed), Permission Set (Read+Edit FLS),
+     Classic-Layout-Section "Rueckschau", Report (Case.Ursache__c Grouping,
+     CLOSED-Filter, timeFrameFilter) und die Apex-Test-Suite. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Case.Ursache_PflichtBeiGeschlossen</members>
+        <name>ValidationRule</name>
+    </types>
+    <types>
+        <members>SCRUM434_Ursache</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Case-Case Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>Service/Faelle_Nach_Ursache</members>
+        <name>Report</name>
+    </types>
+    <types>
+        <members>SCRUM434UrsacheTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-434 Phase 1: nur das neue Picklist-Feld.
+     ValRule, PS, Layout und Report referenzieren alle Ursache__c -> koennen erst
+     deployen, wenn das Feld existiert (House-Muster SCRUM-416/417: Feld zuerst). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Case.Ursache__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>

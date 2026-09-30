@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Ursache__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM434_Ursache</label>
+    <description>SCRUM-434: Read+Edit-FLS für Case „Ursache" (Service-Team). Per PS, kein Profil. Report-Zugriff ist ein Folder-Sharing-Schritt (Org/DevOps).</description>
+</PermissionSet>

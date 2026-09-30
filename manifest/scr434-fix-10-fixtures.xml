@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM365OpenCasesCountTest</members>
+        <members>SCRUM365OpenCountVerifyTest</members>
+        <members>SCRUM367OpenCasesRebuildTest</members>
+        <members>SCRUM370OpenCasesRatingTest</members>
+        <members>SCRUM390OverdueCaseTest</members>
+        <members>SCRUM403LastCaseDateTest</members>
+        <members>SCRUM410CustomerTransferTest</members>
+        <members>SCRUM418CaseReactionTest</members>
+        <members>SCRUM419ReentryRegressionTest</members>
+        <members>SCRUM420EscalationKundeTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>64.0</version>
+</Package>

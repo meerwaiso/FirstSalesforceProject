@@ -34,8 +34,9 @@ private class SCRUM418CaseReactionTest {
 
     /** Geschlossenen Fall anlegen (Status=Closed). Count startet auf 0 (defaultValue). */
     private static Id newClosed(String tag) {
-        Case c = new Case(Subject = 'V418 ' + tag, Status = 'Closed');
-        insert c;
+        Case c = new Case(Ursache__c = 'HowToAnfrage', Subject = 'V418 ' + tag, Status = 'Closed');
+        // SCRUM-434 Lücke C: Ursache__c unter runAs(PS-User).
+        System.runAs(SCRUM434TestFixtures.ursacheUser('418' + tag)) { insert c; }
         return c.Id;
     }
 
@@ -49,7 +50,7 @@ private class SCRUM418CaseReactionTest {
     /** AK3: Neuer Fall → Zahl 0, letztes Datum leer. */
     @isTest
     static void ak3_newCase_startsAtZeroAndBlankDate() {
-        Case c = new Case(Subject = 'V418 fresh', Status = 'New');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', Subject = 'V418 fresh', Status = 'New');
         insert c;
         Case r = read(c.Id);
         System.assertEquals(0, r.Reactivation_Count__c,
@@ -89,7 +90,7 @@ private class SCRUM418CaseReactionTest {
     /** ErSTes Öffnen zählt NICHT (old != Closed) — z. B. New → Working. */
     @isTest
     static void firstOpen_doesNotCount() {
-        Case c = new Case(Subject = 'V418 first-open', Status = 'New');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', Subject = 'V418 first-open', Status = 'New');
         insert c;
         c.Status = 'Working';      // offenes → offenes
         update c;
@@ -102,8 +103,9 @@ private class SCRUM418CaseReactionTest {
     /** Schließen zählt NICHT (offenes → Closed). */
     @isTest
     static void close_doesNotCount() {
-        Case c = new Case(Subject = 'V418 close', Status = 'New');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', Subject = 'V418 close', Status = 'New');
         insert c;
+        c.Ursache__c = 'HowToAnfrage';
         c.Status = 'Closed';
         update c;
         System.assertEquals(0, read(c.Id).Reactivation_Count__c,
@@ -166,7 +168,7 @@ private class SCRUM418CaseReactionTest {
     static void bulk200_reopens() {
         List<Case> closed = new List<Case>();
         for (Integer i = 0; i < 200; i++) {
-            closed.add(new Case(Subject = 'V418bulk ' + i, Status = 'Closed'));
+            closed.add(new Case(Ursache__c = 'HowToAnfrage', Subject = 'V418bulk ' + i, Status = 'Closed'));
         }
         insert closed;
 

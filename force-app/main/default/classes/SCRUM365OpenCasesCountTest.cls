@@ -45,10 +45,10 @@ private class SCRUM365OpenCasesCountTest {
         Contact a0 = [SELECT Open_Cases_Count__c FROM Contact WHERE Id = :a LIMIT 1];
         System.assertEquals(0, a0.Open_Cases_Count__c, 'Roh-Startwert muss 0 sein (Feld-Default), nicht NULL');
 
-        insert new Case(ContactId = a, Status = 'New', Subject = 'c1');
+        insert new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'c1');
         System.assertEquals(1, countOf(a), 'Ein neuer offener Fall muss die Zahl auf 1 setzen');
 
-        insert new Case(ContactId = a, Status = 'New', Subject = 'c2');
+        insert new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'c2');
         System.assertEquals(2, countOf(a), 'Zweiter offener Fall muss die Zahl auf 2 erhöhen');
     }
 
@@ -60,10 +60,11 @@ private class SCRUM365OpenCasesCountTest {
     static void closeAndReopen_movesCount() {
         Id a = newContact('CloseReopen');
 
-        Case c = new Case(ContactId = a, Status = 'New', Subject = 'cr');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'cr');
         insert c;
         System.assertEquals(1, countOf(a), 'offener Fall => 1');
 
+        c.Ursache__c = 'HowToAnfrage';
         c.Status = 'Closed';
         update c;
         System.assertEquals(0, countOf(a), 'geschlossener Fall => 0');
@@ -86,8 +87,8 @@ private class SCRUM365OpenCasesCountTest {
         Id a = newContact('ReassignA');
         Id b = newContact('ReassignB');
 
-        Case c1 = new Case(ContactId = a, Status = 'New');
-        Case c2 = new Case(ContactId = a, Status = 'New');
+        Case c1 = new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New');
+        Case c2 = new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New');
         insert new List<Case> { c1, c2 };
         System.assertEquals(2, countOf(a), 'A hat 2 offene');
         System.assertEquals(0, countOf(b), 'B hat 0');
@@ -107,8 +108,8 @@ private class SCRUM365OpenCasesCountTest {
     static void delete_caseDecrementsCount() {
         Id a = newContact('Delete');
 
-        Case c1 = new Case(ContactId = a, Status = 'New');
-        Case c2 = new Case(ContactId = a, Status = 'New');
+        Case c1 = new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New');
+        Case c2 = new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New');
         insert new List<Case> { c1, c2 };
         System.assertEquals(2, countOf(a), '2 offene');
 
@@ -124,7 +125,7 @@ private class SCRUM365OpenCasesCountTest {
     @isTest
     static void unrelatedUpdate_keepsCountStable() {
         Id a = newContact('Inert');
-        Case c = new Case(ContactId = a, Status = 'New', Subject = 'v1');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'v1');
         insert c;
         System.assertEquals(1, countOf(a), '1 offen');
 
@@ -164,7 +165,7 @@ private class SCRUM365OpenCasesCountTest {
         List<Case> bigBatch = new List<Case>();
         for (Integer round = 0; round < 8; round++) {
             for (Integer k = 0; k < ids.size(); k++) {
-                bigBatch.add(new Case(
+                bigBatch.add(new Case(Ursache__c = 'HowToAnfrage', 
                     ContactId = ids.get(k),
                     Status = round < 4 ? 'New' : 'Closed',
                     Subject = 'bulk ' + round + '-' + k
