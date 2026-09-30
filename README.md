@@ -35,6 +35,31 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 ---
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
+## 30.09.2026 — Fall Ursache beim Schliessen erfassen + Auswertung je Kategorie (SCRUM-434, SCRUM-435)
+
+**Was sich aendert**
+- Wenn ihr einen **Servicefall schliessen** wollt, muss ab jetzt die eingetragene **Ursache** angegeben werden, woran der Fall lag — als Auswahl statt Freitext, mit genau fuenf Kategorien: *How-to / Anfrage*, *Rechnung / Abrechnung*, *Technischer Fehler*, *Fehlkonfiguration*, *Kein Fehler / Keine Maassnahme*. So könnt ihr euch **quartalsweise ansehen, womit ihr eure Zeit verbringt** — z. B. ob technische Faelle zunaehmen.
+- Das Speichern wird dabei **hart blockiert**: Ohne Ursache geht ein Fall nicht zu — kein Warnhintergrund, kein „später nocheinmal denken“; ihr tragt die Ursache nach, und Speichern geht durch.
+- Solange der Fall **offen** ist, bleibt das Feld **freiwillig** — ihr könnt es nachtragen, wann immer ihr wollt.
+- Es gibt eine neue **Auswertungs-Report-Liste „Geschlossene Faelle je Ursache“** (Standard-Liste, Zeitraumfilter Monat/Quartal): je Kategorie wird die Anzahl der **geschlossenen** Faelle ausgegeben. Damit seht ihr auf einen Blick, wie eure Zeit fliesst.
+- **Automatisch erledigte Duplikate** (z. B. bei einer automatischen Fall-Zuordnung) werden jetzt automatisch als „Kein Fehler / Keine Maassnahme“ geschlossen — sie laufen also sauber in der Auswertung auf, statt ohne Ursache zu verschwinden.
+
+**Wo man es sieht**
+- Servicefall → Detailseite → Feld **„Ursache“** (im Fall-Layout, editierbares Picklist-Feld).
+- Report (Standard-Liste): **„Geschlossene Faelle je Ursache“** — Anzahl je Ursache-Kategorie, Zeitraumfilter Monat / Quartal.
+
+**Was bewusst NICHT drin ist**
+- **Keine Automatik/Flow** rund um die Ursache: kein Ausleiten von Regeln, keine Weiterleitung, keine Benachrichtigungen. Nur die Erfassung und die Auswertung.
+- **Kein Freitext / keine „Sonstige“-Kategorie** — die fuenf Kategorien sind fix (mit euch am 28.09. so fixiert). Wenn eine Kategorie fehlt, ist das eine eigene Anforderung.
+- Der **Status „Geschlossen“** in der UI ist in der aktuellen Sales-App-Picklist nicht direkt auswahlbar (API-gueltig, aber nicht in dieser App-UI) — das ist ein Vorzustand der Org, kein Fehler dieses Releases; es hat keine Auswirkung auf die neue Pflicht-Auswahl.
+
+**Deploy-ID**
+Job `0Afg500000FPJ8TCAX` (2026-09-30, Prod-Org `00Dg500000DkTtzEAF`), 19 Komponenten, 0 Fehler, 9/9 Apex-Tests gruen in Prod; Release-Tag `release/2026-09-30-SCRUM-435` auf Commit `bac65b2`. Beide Tickets (434 Feld/ValRule/PS/Report + 435 Dedup-Fix) sind in diesem einen Deploy.
+
+**Live-Beleg (PO-Read-back in Prod, 30.09):** `Ursache__c` mit exakt 5 Picklist-Werten in der Prod-Org (Read-back via `sf sobject describe -s Case -o Prod-Org`); Validierung `Ursache_PflichtBeiGeschlossen` ist **aktiv** auf Case (Read-back via Tooling `ValidationRule`); Berechtigungsgruppe `SCRUM434_Ursache` ist vorhanden und an **2 Nutzer zugewiesen (2/2)** (Read-back via Tooling `PermissionSetAssignment`) — ohne diese Zuweisung sahe niemand das Feld, auer Admin; Dedup-Fix auf Zeile 330 im Ingest-Handler ist live (Read-back aus `ApexClass`-Body in Prod).
+
+---
+
 
 ## 27.09.2026 — Fälle auf Wiedervorlage legen: Daten und Notizen, die nicht untergehen (SCRUM-432)
 
