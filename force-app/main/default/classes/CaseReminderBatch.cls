@@ -32,7 +32,12 @@
  * @date 2026-10-02
  */
 public without sharing class CaseReminderBatch
-        implements Database.Batchable<Case>, Database.Stateful {
+        implements Database.Batchable<SObject>, Database.Stateful {
+    // Batchable<SObject>, nicht <Case>: wie house AccountReactivationBatch.
+    // start liefert Database.QueryLocator (= Iterable<SObject>); mit dem
+    // konkreten <Case> erwartet der Compiler Iterable<Case> und lehnt den
+    // QueryLocator ab (invariante Generics, org-verifiziert 2026-10-02).
+    // execute nimmt List<Case> entgegen (house-Praxis, kompiliert).
 
     public static final Integer DEFAULT_BATCH_SIZE = 200;
 
