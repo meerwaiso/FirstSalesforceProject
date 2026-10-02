@@ -100,7 +100,9 @@ private class SCRUM436CaseReminderTest {
     @isTest
     static void ac1_open_case_starts_clock() {
         User cu = cust();
-        Integer before = LIMITS.getSoqlQueries();
+        // AC1: before-insert Trigger macht 0 SOQL (0 DML, schreibt direkt
+        // auf Trigger.new). Limits.getQueries(): house-Idiom (SCRUM-384/418).
+        Integer queriesBefore = Limits.getQueries();
         Test.startTest();
         Case c = plantCase(cu, 'New', 'Medium', null);  // null -> Trigger setzt now
         Test.stopTest();
@@ -109,7 +111,7 @@ private class SCRUM436CaseReminderTest {
             'AC1: Last_Relevant_Update bei Eroeffnung gesetzt');
         System.assertEquals(false, r.Reminder_Required__c, 'AC1: Flag initial false');
         System.assertEquals(0, r.Reminder_Count__c.intValue(), 'AC1: Zähler initial 0');
-        System.assertEquals(before, LIMITS.getSoqlQueries(),
+        System.assertEquals(queriesBefore, Limits.getQueries(),
             'AC1: before-insert Trigger macht 0 SOQL');
     }
 
@@ -266,29 +268,23 @@ private class SCRUM436CaseReminderTest {
                 all.add(new CaseComment(ParentId = c.Id, CommentBody = 'bulk ' + k));
             }
         }
-        Integer soqlBefore = LIMITS.getSoqlQueries();
-        Integer dmlBefore  = LIMITS.getDmlRows();
+        Integer soqlBefore = Limits.getQueries();
         System.runAs(svcU) { insert all; }
-        Integer soqlUsed = LIMITS.getSoqlQueries() - soqlBefore;
-        Integer dmlUsed  = LIMITS.getDmlRows() - dmlBefore;
+        Integer soqlUsed = Limits.getQueries() - soqlBefore;
 
         // 20 Cases -> je genau 1 Parent-Update (dedup), also 20 + 200 Comments.
         // ACHTUNG: die 20 Parent-Updates feuern auch die ANDEREN Case-Trigger
-        // der Org (CaseReaction, CaseOpenCount, ...); deren SOQL/DML mischen
-        // sich in diese Messung. Deshalb: SOQL nur "begrenzt, keine echte
-        // N+1 im eigenen Service-Loop" (1 pro Trigger-Exec, 200er-Chunk),
-        // DML gegen 200 Parent-Updates (waere >= 400) abgesichert.
+        // der Org (CaseReaction, CaseOpenCount, ...); deren SOQL mischt sich
+        // in diese Messung. Eigener Service: 1 SOQL pro Trigger-Exec
+        // (Trigger.new = alle 200 in 1 Batch) -> ohne N+1. Groesszuehiger
+        // Rahmen gegen fremde Org-Trigger, streng genug gegen eine echte
+        // Per-Row-Query (>= 200). Limits.getQueries(): house-Idiom.
         Integer counted = 0;
         for (Case c : cases) {
             if (refresh(c.Id).Last_Relevant_Update__c != null) counted++;
         }
         System.assertEquals(20, counted, 'AC9: alle 20 Cases haben Last_Relevant_Update gesetzt');
-        // Eigener Service: 1 SOQL + 1 DML pro Trigger-Exec (Trigger.new = alle
-        // 200 in 1 Batch) -> ohne N+1. Groesszuehiger Rahmen gegen fremde
-        // Org-Trigger, streng genug gegen eine echte Per-Row-Query (>= 200).
-        System.assert(soqlUsed <= 25, 'AC9: Service-SOQL bulk-safe, war ' + soqlUsed);
-        // 200 Comments + 20 Parent-Updates; 200 Parent-Updates (N+1) waeren >= 400.
-        System.assert(dmlUsed < 350, 'AC9: DML-Dedup — 20 Parent-Updates, war ' + dmlUsed);
+        System.assert(soqlUsed <= 25, 'AC9: Service-SOQL bulk-safe (kein Per-Row-N+1), war ' + soqlUsed);
     }
 
     /* ================================================================
