@@ -53,10 +53,12 @@ private class SCRUM436CaseReminderTest {
     private static Case plantCase(User owner, String status, String priority, DateTime lastUpdate) {
         Case c = new Case(Subject='SCR436', Origin='Phone',
             Status=status, Priority=priority, Last_Relevant_Update__c=lastUpdate);
-        // Org-Validierung: ein geschlossener Case braucht zwingend einen
-        // Grund (Reason). 'Breakdown' = aktiver Picklist-Wert (describe).
+        // Org-Validierung auf Case (CUSTOM-Feld!): ein geschlossener Case
+        // braucht zwingend eine Ursache. Geprueft wird das Custom Picklist-
+        // Feld Ursache__c (NOT the standard Reason — org-verifiziert,
+        // sf sobject describe). 'TechnischerFehler' = aktiver Wert.
         if (status != null && status.equalsIgnoreCase('Closed')) {
-            c.Reason = 'Breakdown';
+            c.Ursache__c = 'TechnischerFehler';
         }
         System.runAs(owner) { insert c; }
         return c;
