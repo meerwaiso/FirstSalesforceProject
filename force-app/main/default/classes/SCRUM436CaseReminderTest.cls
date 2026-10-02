@@ -53,14 +53,24 @@ private class SCRUM436CaseReminderTest {
     private static Case plantCase(User owner, String status, String priority, DateTime lastUpdate) {
         Case c = new Case(Subject='SCR436', Origin='Phone',
             Status=status, Priority=priority, Last_Relevant_Update__c=lastUpdate);
-        // Org-Validierung auf Case (CUSTOM-Feld!): ein geschlossener Case
-        // braucht zwingend eine Ursache. Geprueft wird das Custom Picklist-
-        // Feld Ursache__c (NOT the standard Reason — org-verifiziert,
-        // sf sobject describe). 'TechnischerFehler' = aktiver Wert.
         if (status != null && status.equalsIgnoreCase('Closed')) {
+            // Org-Validierung auf Case (CUSTOM-Feld!): ein geschlossener Case
+            // braucht zwingend eine Ursache (Feld Ursache__c, org-verifiziert
+            // via sf sobject describe; NICHT Standard-Reason).
+            // FLS: Ursache__c wird NUR vom Permission Set SCRUM434_Ursache
+            // gewaehrt (1 Zeile in FieldPermissions, IsOwnedByProfile=false) —
+            // das Standard-User-Profil hat KEINE Profil-FLS, also kann der
+            // runAs-Standard-User das Feld nicht schreiben und die Validierung
+            // feuert weiter. Der Closed-Case dient in AC5 nur als NEGATIVER
+            // Batch-Filter-Kontrollfall — sein Owner/FLS ist fuer die
+            // Assertion (Reminder_Required__c bleibt false) irrelevant.
+            // Daher im SYSTEM-Modus pflanzen (volle FLS, Validierung erfüllt),
+            // statt das Fremd-PS SCRUM434_Ursache an den Test-User zu hängen.
             c.Ursache__c = 'TechnischerFehler';
+            insert c;               // SYSTEM-Modus
+        } else {
+            System.runAs(owner) { insert c; }
         }
-        System.runAs(owner) { insert c; }
         return c;
     }
 
