@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Last_Relevant_Update__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Reminder_Due_Date__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Reminder_Required__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Reminder_Count__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM436_CaseReminderSystem</label>
+    <description>Update-FLS aller vier SCRUM-436-Wiedervorlage-Felder (Case) fuer den naechtlichen Batch-Executor / Automation-User. Notwendig: Apex-DML prueft FLS auch in without-sharing-Klassen (ADR-5, house SCRUM388_AccountReactivationWrite). Redundant, wenn der laufende User System-Admin ist — in Org verifizieren (read-back eines Feldes durch eine Session mit diesem PS).</description>
+</PermissionSet>

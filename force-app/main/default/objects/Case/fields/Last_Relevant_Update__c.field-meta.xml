@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Last_Relevant_Update__c</fullName>
+    <label>Letzte Bearbeitung</label>
+    <description>SCRUM-436: Zeitstempel der letzten relevanten Bearbeitung eines offenen Cases (Statuswechsel oder Mitarbeiter-Kommentar/Antwort). Ausschliesslich systemgepflegt (CaseReminderTrigger / CaseCommentReminderTrigger); read-only. Bei Case-Erstellung = Zeitpunkt der Eroeffnung. Bewusst getrennt von LastModifiedDate/LastActivityDate (diese reagieren auf jede Aenderung, inkl. systemseitig/API — ungeeignet als Metrik, PO-Hinweis).</description>
+    <externalId>false</externalId>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>
