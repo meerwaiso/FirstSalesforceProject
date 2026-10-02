@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-436 Phase 1: 4 neue Case-Felder. House-pattern: CustomField
+     members mit Object-Prefix (Case.XXX__c), wie scr382/421/428/432.
+     Deployt zuerst; Read-PS, Layout, Batch/Trigger/Service/Config referenzieren sie. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Case.Last_Relevant_Update__c</members>
+        <members>Case.Reminder_Due_Date__c</members>
+        <members>Case.Reminder_Required__c</members>
+        <members>Case.Reminder_Count__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>

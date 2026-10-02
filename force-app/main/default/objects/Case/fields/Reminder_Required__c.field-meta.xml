@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Reminder_Required__c</fullName>
+    <label>Wiedervorlage erforderlich</label>
+    <description>SCRUM-436: true, wenn der Case im bearbeiteten Status laenger als die PO-Werktag-Schwelle (Standard 3, High 1) ohne relevante Bearbeitung geblieben ist und der naechtliche Batch die Wiedervorlage ausgeloesst hat. Systemgepflegt (CaseReminderBatch setzt, CaseReminderTrigger/CaseCommentReminderTrigger resetten); read-only. PO-Offenpunkt #2 (Default: rein systemgesteuert/lesbar, kein manuelles Schieben).</description>
+    <type>Checkbox</type>
+    <defaultValue>false</defaultValue>
+</CustomField>

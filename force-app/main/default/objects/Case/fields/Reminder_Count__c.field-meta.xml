@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Reminder_Count__c</fullName>
+    <defaultValue>0</defaultValue>
+    <description>SCRUM-436: Anzahl der ausgeloessten Wiedervorlagen, die durch eine naechste relevante Bearbeitung abgearbeitet wurden (zaeht hoch: 1, 2, 3, ...). Systemgepflegt (CaseReminderTrigger / CaseCommentReminderTrigger inkrementieren beim Zuruecksetzen); read-only. 0 = noch keine Wiedervorlage abgearbeitet. Bewusst getrennt von SCRUM-418 Reactivation_Count__c (zählt Wiederaufmacher geschlossener Fälle — andere Semantik).</description>
+    <externalId>false</externalId>
+    <label>Anzahl Wiedervorlagen</label>
+    <precision>3</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

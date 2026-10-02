@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-436 Phase 2: Read-PS + System-Write-PS + Case-Layout + Apex
+     (Config/Service/Batch/Scheduler, beide Trigger). Referenzieren die
+     Phase-1-Felder. House-pattern scr432-phase2-referencing.xml. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM436_CaseReminder</members>
+        <members>SCRUM436_CaseReminderSystem</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Case-Case Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>CaseReminderConfig</members>
+        <members>CaseReminderService</members>
+        <members>CaseReminderBatch</members>
+        <members>CaseReminderScheduler</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>CaseReminderTrigger</members>
+        <members>CaseCommentReminderTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <version>67.0</version>
+</Package>

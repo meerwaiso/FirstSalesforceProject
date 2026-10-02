@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Reminder_Due_Date__c</fullName>
+    <label>Wiedervorlage am</label>
+    <description>SCRUM-436: Zeitpunkt, zu dem der naechtliche Batch-Lauf die Wiedervorlage ausgeloesst hat (Batch-System.now()). Systemgepflegt (CaseReminderBatch); read-only. Beim Zuruecksetzen (naechste relevante Bearbeitung) wird der Wert BEIBEHALTEN (Audit: letzter Ausloese-Zeitpunkt bleibt lesbar). PO-Offenpunkt #5 (beibehalten vs. leeren) — Default: beibehalten.</description>
+    <externalId>false</externalId>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>
