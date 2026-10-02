@@ -136,15 +136,15 @@ public without sharing class CaseReminderService {
      * @param to   Pruefzeitpunkt (Batch-System.now() bzw. test-injiziert)
      * @return Anzahl Werktage im Intervall (>= 0)
      */
-    public static Integer workingDaysBetween(DateTime from, DateTime to) {
-        if (from == null || to == null || to.getTime() <= from.getTime()) {
+    public static Integer workingDaysBetween(DateTime startAt, DateTime endAt) {
+        if (startAt == null || endAt == null || endAt.getTime() <= startAt.getTime()) {
             return 0;
         }
-        Date start = from.date(); // org-TZ, auf Tag-Ebene
-        Date end   = to.date();
+        Date startDate = startAt.date(); // org-TZ, auf Tag-Ebene
+        Date endDate   = endAt.date();
         Integer count = 0;
-        Date d = start + 1;       // erster Tag NACH from
-        while (d <= end) {
+        Date d = startDate + 1;          // erster Tag NACH startAt
+        while (d <= endDate) {
             if (isWorkingDay(d)) {
                 count++;
             }
@@ -153,9 +153,11 @@ public without sharing class CaseReminderService {
         return count;
     }
 
-    /** Date.dayOfWeek(): 1=So .. 7=Sa -> 2..6 = Mo-Fr. */
+    /** Wochentag 1..7 (1=So..7=Sa) aus Epoch-Tagen. Referenz: 1970-01-01 =
+     *  Donnerstag = 5 (in 1=So-Skala), daysSinceEpoch(1970-01-01) = 0.
+     *  Wochentag(n) = ((5 - 1 + n) mod 7) + 1 = ((4 + n) mod 7) + 1. 2..6 = Mo-Fr. */
     private static Boolean isWorkingDay(Date d) {
-        Integer dow = Integer.valueOf(d.dayOfWeek());
+        Integer dow = (d.daysSinceEpoch() + 4) mod 7 + 1;
         return dow >= 2 && dow <= 6;
     }
 }

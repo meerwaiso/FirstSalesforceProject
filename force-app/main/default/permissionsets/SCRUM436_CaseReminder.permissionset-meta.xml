@@ -22,5 +22,5 @@
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>SCRUM436_CaseReminder</label>
-    <description>Read-only FLS fuer alle vier SCRUM-436-Wiedervorlage-Felder am Case (systemgepflegt: CaseReminderTrigger / CaseCommentReminderTrigger / CaseReminderBatch). Wer Case lesen kann, sieht die Felder; niemand aendert sie von Hand (editable=false). Shape 1:1 SCRUM418_Reactivation (ADR-5). System-/Batch-Writes laufen im System-Modus und umgehen FLS — der Batch-Executor braucht dennoch das Write-PS SCRUM436_CaseReminderSystem (ADR-5).</description>
+    <description>Read-only FLS aller vier SCRUM-436-Wiedervorlage-Felder am Case (systemgepflegt per Trigger/Batch, ADR-5). Shape 1:1 SCRUM418_Reactivation; Batch-Executor braucht zusaetzlich SCRUM436_CaseReminderSystem.</description>
 </PermissionSet>

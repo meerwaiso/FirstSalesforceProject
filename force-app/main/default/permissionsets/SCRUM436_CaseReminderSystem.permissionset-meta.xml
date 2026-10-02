@@ -22,5 +22,5 @@
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>SCRUM436_CaseReminderSystem</label>
-    <description>Update-FLS aller vier SCRUM-436-Wiedervorlage-Felder (Case) fuer den naechtlichen Batch-Executor / Automation-User. Notwendig: Apex-DML prueft FLS auch in without-sharing-Klassen (ADR-5, house SCRUM388_AccountReactivationWrite). Redundant, wenn der laufende User System-Admin ist — in Org verifizieren (read-back eines Feldes durch eine Session mit diesem PS).</description>
+    <description>Update-FLS aller vier SCRUM-436-Wiedervorlage-Felder (Case) fuer den naechtlichen Batch-Executor: Apex-DML prueft FLS auch in without-sharing-Klassen (ADR-5). Shape SCRUM388_AccountReactivationWrite.</description>
 </PermissionSet>
