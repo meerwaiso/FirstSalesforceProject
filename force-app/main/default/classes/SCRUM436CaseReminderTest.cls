@@ -259,33 +259,31 @@ private class SCRUM436CaseReminderTest {
         Case c1 = plantCase(cu, 'Working',   'High',   at(2026,1,5,9));
         Case c2 = plantCase(cu, 'Escalated', 'Medium', at(2026,1,5,9));
 
-        // Erstlauf: beide fällig -> geflaggt.
+        // Beide Laeufe in EINEM Test-Fenster: Test.startTest/stopTest ist in
+        // Apex pro Test-Methode NUR EINMAL aufrufbar (org-verifiziert: der
+        // zweite startTest wirft "Testing already started" — gemessen in
+        // Run 707WU00001LeuT9). executeBatch-Aufrufe stellen sich in Reihung
+        // ein und werden am stopTest sequentiell geflusht.
+        //
+        // Zweitlauf: die execute()-Zeile `if (c.Reminder_Required == true)
+        // continue;` ist der strukturelle 0-Rows-Guard — beides ist bereits
+        // true, also bleibt toFlag leer -> KEIN update-DML. Observable
+        // Konsequenz unten: Final-Zustand == Zustand nach Erstlauf, Zähler
+        // und Uhr berührt. (Der Stateful-Counter getFlagged() ist NICHT
+        // pruefbar: executeBatch laeuft auf einer deserialisierten Kopie.)
         Test.startTest();
-        Database.executeBatch(new CaseReminderBatch(at(2026,1,12,1), 200));
+        Database.executeBatch(new CaseReminderBatch(at(2026,1,12,1), 200));  // Erstlauf
+        Database.executeBatch(new CaseReminderBatch(at(2026,1,12,1), 200));  // Zweitlauf
         Test.stopTest();
+
         System.assertEquals(true, refresh(c1.Id).Reminder_Required__c, 'AC9/1: c1 nach Erstlauf geflaggt');
         System.assertEquals(true, refresh(c2.Id).Reminder_Required__c, 'AC9/1: c2 nach Erstlauf geflaggt');
 
-        // Ist-Zustand vor dem Zweitlauf festhalten.
-        DateTime lru1  = refresh(c1.Id).Last_Relevant_Update__c;
-        DateTime due1  = refresh(c1.Id).Reminder_Due_Date__c;
-        Decimal count1 = refresh(c1.Id).Reminder_Count__c;
-
-        // Zweitlauf (gleicher asOf): die execute()-Zeile `if (c.Reminder_Required
-        // == true) continue;` ist der strukturelle 0-Rows-Guard — beides ist
-        // bereits true, also wird toFlag leer -> KEIN update-DML. Observable
-        // Konsequenz: der Org-Stand bleibt bitstabil. (Der Stateful-Counter
-        // getFlagged() ist NICHT pruefbar: executeBatch laeuft auf einer
-        // deserialisierten Kopie, der lokale Counter bleibt 0.)
-        Test.startTest();
-        Database.executeBatch(new CaseReminderBatch(at(2026,1,12,1), 200));
-        Test.stopTest();
-
         Case again = refresh(c1.Id);
         System.assertEquals(true,    again.Reminder_Required__c, 'AC9/2: c1 bleibt geflaggt (idempotent)');
-        System.assertEquals(lru1,    again.Last_Relevant_Update__c, 'AC9/2: LRU unveraendert');
-        System.assertEquals(due1,    again.Reminder_Due_Date__c,   'AC9/2: Due-Date unveraendert');
-        System.assertEquals(count1,  again.Reminder_Count__c,      'AC9/2: Zähler unveraendert (Zweitlauf toucht nichts)');
+        System.assertEquals(at(2026,1,5,9), again.Last_Relevant_Update__c,  'AC9/2: LRU unveraendert (Zweitlauf toucht nichts)');
+        System.assertEquals(at(2026,1,12,1), again.Reminder_Due_Date__c,    'AC9/2: Due-Date = asOf (nur Erstlauf)');
+        System.assertEquals(0,     again.Reminder_Count__c.intValue(),      'AC9/2: Zähler 0 (Zweitlauf zahlt nicht hoch)');
     }
 
     /* ================================================================
