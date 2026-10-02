@@ -45,7 +45,8 @@ private class SCRUM436CaseReminderTest {
     private static User cust() { User u = makeUser('cust436', 'Customer436'); insert u; return u; }
 
     private static DateTime at(Integer y, Integer mo, Integer d, Integer h) {
-        return new DateTime(y, mo, d, (h == null ? 0 : h), 0, 0);
+        // DateTime.newInstance: org-verifiziert (sf apex run, 2026-10-02).
+        return DateTime.newInstance(y, mo, d, (h == null ? 0 : h), 0, 0);
     }
 
     /** Case owned by `owner`, Last_Relevant_Update__c backdated auf `lastUpdate`. */

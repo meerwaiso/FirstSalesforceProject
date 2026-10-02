@@ -124,27 +124,28 @@ public without sharing class CaseReminderService {
 
     /**
      * ADR-2: Werktag-Arithmetik Mo-Fr, KEIN Feiertag, KEIN BusinessHours-
-     * Objekt. Zaehlt die Kalendertage im OFFENEN Intervall (from, to] auf
-     * Tages-Ebene: der Tag von `from` zaehlt NICHT mit, der Tag von `to`
-     * ja. Reine CPU-Arithmetik ueber DayOfWeek, TZ-agnostisch (nur das
-     * Kalendertag-Zeichen zahlt, nicht die Uhrzeit), kein Governor-Risiko.
+     * Objekt. Zaehlt die Kalendertage im OFFENEN Intervall (startAt, endAt]
+     * auf Tages-Ebene: der Tag von `startAt` zaehlt NICHT mit, der Tag von
+     * `endAt` ja. Reine CPU-Arithmetik via daysBetween + Math.mod gegen den
+     * verifizierten Epoch-Anker 1970-01-01 (Donnerstag), TZ-agnostisch
+     * (nur das Kalendertag-Zeichen zahlt, nicht die Uhrzeit), kein
+     * Governor-Risiko. (Probe v4, 2026-10-02: gegen 2026-01-05..12 gruen.)
      *
-     * Beispiel: from = Mo 09:00, to = Fr 01:00 -> (Mo, Fr] = Di, Mi, Do, Fr
-     * = 4 Werktage.
+     * Beispiel: startAt = Mo 09:00, endAt = Fr 01:00 -> (Mo, Fr] =
+     * Di, Mi, Do, Fr = 4 Werktage.
      *
-     * @param from letzte relevante Bearbeitung (oder null -> 0)
-     * @param to   Pruefzeitpunkt (Batch-System.now() bzw. test-injiziert)
+     * @param startAt letzte relevante Bearbeitung (oder null -> 0)
+     * @param endAt   Pruefzeitpunkt (Batch-System.now() bzw. test-injiziert)
      * @return Anzahl Werktage im Intervall (>= 0)
      */
     public static Integer workingDaysBetween(DateTime startAt, DateTime endAt) {
         if (startAt == null || endAt == null || endAt.getTime() <= startAt.getTime()) {
             return 0;
         }
-        Date startDate = startAt.date(); // org-TZ, auf Tag-Ebene
-        Date endDate   = endAt.date();
+        Date endDate = endAt.date();
         Integer count = 0;
-        Date d = startDate + 1;          // erster Tag NACH startAt
-        while (d <= endDate) {
+        Date d = startAt.date().addDays(1);   // erster Tag NACH startAt
+        while (d <= endDate) {                // Date <= Date: verifiziert (probe v4)
             if (isWorkingDay(d)) {
                 count++;
             }
@@ -153,11 +154,16 @@ public without sharing class CaseReminderService {
         return count;
     }
 
-    /** Wochentag 1..7 (1=So..7=Sa) aus Epoch-Tagen. Referenz: 1970-01-01 =
-     *  Donnerstag = 5 (in 1=So-Skala), daysSinceEpoch(1970-01-01) = 0.
-     *  Wochentag(n) = ((5 - 1 + n) mod 7) + 1 = ((4 + n) mod 7) + 1. 2..6 = Mo-Fr. */
+    /** Werktag (Mo-Fr)? Epoch-Anker 1970-01-01 = Donnerstag. offset =
+     * daysSinceEpoch, 1970-01-01 = 0. Wochentagsindex w = Math.mod(offset, 7):
+     * 0=Do 1=Fr 2=Sa 3=So 4=Mo 5=Di 6=Mi. Mo-Fr = w in {4,5,6,0,1}.
+     * Apex' Date hat KEIN dayOfWeek() (org-verifiziert, 2026-10-02). */
     private static Boolean isWorkingDay(Date d) {
-        Integer dow = (d.daysSinceEpoch() + 4) mod 7 + 1;
-        return dow >= 2 && dow <= 6;
+        Long off = EPOCH_ANCHOR.daysBetween(d);   // 1970-01-01 -> 0
+        Long w = Math.mod(off, 7);
+        return (w >= 4) || (w <= 1);
     }
+
+    /** Verifizierter Anker: 1970-01-01 (UTC-Mitternacht), ein Donnerstag. */
+    private static final Date EPOCH_ANCHOR = Date.valueof('1970-01-01');
 }
