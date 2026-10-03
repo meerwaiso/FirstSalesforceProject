@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-437 Phase 1: 5 neue Case-Felder (Problemkategorie + Problemserie +
+     3 Erkennungsfelder). House-pattern CustomField members mit Object-Prefix
+     (Case.XXX__c), wie scr382/421/428/432/436. Deployt zuerst; Read-PS,
+     System-PS, Layout, Trigger, Handler referenzieren sie. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Case.Wiederkehrendes_Problem__c</members>
+        <members>Case.Anzahl_aehnlicher_offener_Cases__c</members>
+        <members>Case.Letzter_aehnlicher_Case__c</members>
+        <members>Case.Problemserie__c</members>
+        <members>Case.Problemkategorie__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>

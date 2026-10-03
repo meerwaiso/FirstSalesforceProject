@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Letzter_aehnlicher_Case__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description>Der zuletzt passende aehnliche Case im Pool (neueste CreatedDate, gleicher Account + gleiche Problemkategorie, SCRUM-437). Selbst-Lookup auf Case; systemgepflegt, read-only. Optional (SetNull).</description>
+    <label>Letzter aehnlicher Case</label>
+    <referenceTo>Case</referenceTo>
+    <relationshipLabel>Aehnliche_Cases_Vor__r</relationshipLabel>
+    <relationshipName>Letzter_aehnliche_Cases</relationshipName>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

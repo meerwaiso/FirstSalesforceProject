@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Wiederkehrendes_Problem__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Ja, wenn im Pool (gleicher Account, gleiche Problemkategorie, offen oder &lt;=30 Tage geschlossen) mindestens zwei weitere aehnliche Cases existieren (SCRUM-437). Ausschliesslich systemgepflegt (CaseProblemSerieHandler); read-only.</description>
+    <label>Wiederkehrendes Problem</label>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Checkbox</type>
+</CustomField>
