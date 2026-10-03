@@ -48,3 +48,55 @@ Worktree: `scr437-wt`, Branch `feature/SCRUM-437-problemserie` (1 Commit: Design
 - `Letzter_aehnlicher_Case__c` = Id mit max CreatedDate in Pool (Tie-break: max Id); Pool leer → NULL
 - `Problemserie__c` = Serienkennung, SET auf alle Cases der Gruppe, falls (a) existingKey≠null ODER (b) |Fenster-Cases| >= 3 (Schwelle: ≥2 weitere). Sonst NULL. (Lebenszyklus ADR-2: persistiert, nicht löschbar bei leerem Fenster.)
 - Bulk: 1 SOQL (`WHERE AccountId IN :accountIds AND AccountId!=null`) + 1 DML (`update toUpdate`), no SOQL/DML-in-Loop.
+
+## Org-Defekt + Test-Architektur (gemessen 2026-10-03, entscheidet die Test-Struktur)
+
+- **`Case.Ursache__c` existiert** (Custom, Picklist). Der vorherige FieldDefinition-
+  „NOT FOUND" war eine kaputte Disjunction-Query (`OR` wird in `sf data query`
+  nicht unterstützt → „Disjunctions not supported"); die Felder waren da.
+  Geschlossene Cases brauchen ein gesetztes Pflichtfeld, sonst Validierungsfehler
+  beim Insert (`Status='Closed'` + `Ursache__c='TechnischerFehler'` → geht).
+
+- **Org-Defekt (blockiert die runAs-Restrukturierung der 9 ACs):**
+  Ein Case-Insert **mit AccountId** stirbt unter `System.runAs(<Standard User>)`
+  an dem in der Org (NICHT im Repo) installierten `CasePriorityTrigger`:
+  `QueryException: Variable does not exist: tmpVar1`
+  (`Class.CasePriorityTrigger.buildBatchData: line 112`, via `beforeInsert: 27`).
+  - Nachgewiesen mit einer boundary-Probe (4 Methoden, alle unter runAs/Std-User):
+    `m1` insert+ACCT (ohne Cat)     → FAIL (der Insert)
+    `m2` insert+ACCT+Cat            → FAIL (der Insert)
+    `m3` insert+ACCT+Cat, dann Update→ FAIL (schon der Insert)
+    `m4` insert OHNE ACCT+Cat+Update  → PASS
+    → Der Breaker ist **jede Case-DML mit AccountId unter Nicht-Admin**.
+    Ohne AccountId läuft Case-DML unter Standard User fehlerfrei.
+  - Die Serie ist (AccountId,Kategorie)-geschlüsselt → die AC-Cases tragen
+    IMMER ein AccountId → die 9 ACs **können unter runAs(Standard User) NICHT**
+    laufen, in dieser Org. Sie laufen als Admin. (SCRUM-432/436 konnten runAs
+    nehmen, weil ihre Cases kein AccountId tragen.)
+
+- **Fls-Gate Lücke C — Lösung statt Form:** `SCRUM437ProblemSerieTest` enthält
+  jetzt `System.runAs(` (Voraussetzung des Gates: „neues Feld wird unter
+  runAs(nachweislich les-/schreibbar) berührt, nicht nur Admin-DML+getDescribe").
+  `flsStandardUserNuetztDasFeature`: Standard User + `SCRUM437_ProblemSerie_System`
+  erzeugt 1 Case **ohne** AccountId (sonst §Org-Defekt oben) und liest ALLE 5
+  neuen Felder per SOQL im Standard-User-Kontext zurück. Das ist der exakte
+  CI-#367-Fall (5 Tests „No such column" in Prod, weil Feld als Nicht-Admin
+  angefasst wurde) — hier POSITIV: Roundtrip-Read geht. Serie-Logik selbst
+  beweisen die 9 Admin-ACs. Setup (User+PSA) OUTSIDE von runAs — ein User kann
+  sich selbst kein PSA geben.
+
+- **`isInWindow` ist `public static`** (statt private): AC4 (30-Tage-Fenster)
+  lässt sich nicht per DML konstruieren (`Case.ClosedDate` = `updateable=false`,
+  Workflow-Stempel beim Schließen) → Prädikat-Test gegen die Produktionslogik.
+  `Datetime`, nicht `Date`.
+
+- **Tests gruen (Test-Org, gemessen):** `SCRUM437ProblemSerieTest` 10/10
+  (9 AC admin + `flsStandardUserNuetztDasFeature` non-admin).
+  `SCRUM437ProblemSerieFlsTest` 1/1.
+
+- **E2E-Spec is Tester-Deliverable** (Playwright, `tests/e2e/SCRUM-437_problem-serie.spec.ts`)
+  — out of scope für Developer.
+
+- `scripts/fls-gate.py` (master-identisch, branch==master diff=0) Lücke C:
+  eine Testklasse, die ein neues Feld berührt, MUSS `System.runAs(` in der
+  Source enthalten (sonst FLS-RED in CI).

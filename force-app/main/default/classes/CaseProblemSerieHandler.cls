@@ -183,8 +183,14 @@ public without sharing class CaseProblemSerieHandler {
      * Ist der Case im 30-Tage-Zeitfenster? Offene Fälle zählen immer;
      * geschlossene Fälle nur, wenn ClosedDate >= windowStart.
      * (Case.ClosedDate ist in dieser Org ein Datetime — sobject describe.)
+     *
+     * public (statt private), weil das 30-Tage-Fenster die Kern-Geschäftsregel
+     * des Tickets ist und direkt gegen die Produktionslogik verifizierbar sein
+     * muss (AC4). Case.ClosedDate ist nicht schreibbar (Workflow stempelt
+     * beim Schliessen on now), daher lässt sich der >30-Tage-Fall nicht per
+     * DML konstruieren — der Prädikat-Test ist der exakte Beleg.
      */
-    private static Boolean isInWindow(String status, Datetime closedDate, Datetime windowStart) {
+    public static Boolean isInWindow(String status, Datetime closedDate, Datetime windowStart) {
         if (status != CLOSED_STATUS) {
             return true; // offen
         }
