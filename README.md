@@ -35,6 +35,28 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 ---
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
+## 03.10.2026 — Automatische Wiedervorlage für länger unaktive Servicefälle (SCRUM-436)
+
+**Was sich ändert**
+- Ein Servicefall, der **länger unaktiv bleibt**, kommt jetzt von selbst wieder auf den Tisch des zuständigen Mitarbeiters — er gerät nicht mehr in Vergessenheit. Dafür zeigt die Falldetailseite vier neue Werte: **Letzte relevante Bearbeitung** (wann zuletzt ein Mitarbeiter den Fall wirklich bearbeitet hat), **Wiedervorlage erforderlich** (Ja/Nein), **Wiedervorlage am** (Zeitpunkt der ausgelösten Wiedervorlage) und **Anzahl Wiedervorlagen** (wie oft der Fall schon einmal wieder auf den Tisch kam).
+- Die Wiedervorlage entsteht **automatisch, in der Nacht**: ein regelmäßiger Lauf prüft **alle** offenen Fälle gleichzeitig. Liegt ein Fall länger als **3 Werktage** ohne relevante Bearbeitung, wird „Wiedervorlage erforderlich" auf **Ja** gesetzt und „Wiedervorlage am" gefüllt.
+- Fälle mit Priorität **High** werden bereits nach **1 Werktag** wieder vorgelegt — dringende Themen warten nicht so lange.
+- Was als „relevante Bearbeitung" zählt: eine Antwort im Fall, eine Statusänderung, ein neuer Kommentar. Solche Handlungen setzen die Uhr **zurück**; der Countdown beginnt von vorn, erst wenn wieder Ruhe einkehrt.
+- Ein **geschlossener Fall** wird nie wieder vorgelegt.
+
+**Wo man es sieht**
+- Servicefall → Detailseite → die vier Felder: **Letzte relevante Bearbeitung, Wiedervorlage am, Wiedervorlage erforderlich, Anzahl Wiedervorlagen** (im Fall-Layout, für Service-Mitarbeitende lesbar).
+
+**Was bewusst NICHT drin ist**
+- **„Warten auf Kunde" pausiert die Wiedervorlage aktuell noch nicht:** Der Fallstatus „Warten auf Kunde" existiert in der Org heute noch nicht (Status-Liste: Neu / In Bearbeitung / Eskaliert / Geschlossen). Die Logik dafür ist aber bereits verankert und **schaltet sich automatisch ein**, sobald dieser Status eingeführt wird — es fehlt nur noch der Statuswert selbst (folgt als eigene, kurze Folgeanforderung).
+- **Keine Erinnerungsmail / Task:** Es wird nur das Feld „Wiedervorlage erforderlich = Ja" gesetzt — die Nachricht kommt über den Blick auf den Fall, nicht per Zusendung. (Abgrenzung zu SCRUM-432 vom 27.09, das eine **manuelle** Wiedervorlage mit Notiz war; hier ist alles **automatisch**.)
+- **Kein Feiertagskalender:** „Werktage" = Montag bis Freitag; Feiertage werden nicht abgezogen.
+
+**Deploy-ID**
+3-Phasen-Prod-Deploy (2026-10-03): Phase 1 18/18 Komponenten, Phase 2 4/4 Berechtigungsgruppen zugewiesen (an dich als End-Nutzer UND an den Betriebs-Nutzer), Phase 3 19/19 Tests grün; Release-Tag `release/2026-10-03-SCRUM-436` auf Commit `afc2693`. Zusätzlich **aktivierter nächtlicher Lauf** `SCRUM436-Reminder-Cron` (Cron `0 0 1 * * ?`, Status WAITING, ID `08eg500000LDqpq`, erster Lauf 2026-10-04 08:00 UTC).
+
+**Live-Beleg (PO-Read-back in Prod, 03.10):** alle vier Case-Felder in der Prod-Org vorhanden; beide Berechtigungsgruppen mit genau **jeweils 2 Zuweisungen (4/4)** — End-Nutzer UND Betriebs-Nutzer (ohne diese Zuweisung sahe außer einem Admin niemand die Felder); der nächtliche Lauf ist in den aktiven Cron-Jobs als WAITING mit dem erwarteten Cron-Expression und NextFireTime bestätigt.
+
 ## 30.09.2026 — Fall Ursache beim Schliessen erfassen + Auswertung je Kategorie (SCRUM-434, SCRUM-435)
 
 **Was sich aendert**
