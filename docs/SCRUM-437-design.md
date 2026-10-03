@@ -27,7 +27,7 @@ Ein Case erkennt automatisch, ob derselbe Account bereits ≥ 2 weitere ähnlich
 | 1 | `Wiederkehrendes_Problem__c` | Checkbox | Wiederkehrendes Problem | System-gesetzt, read-only. Ja, wenn im Pool ≥ 2 weitere ähnliche Cases. |
 | 2 | `Anzahl_aehnlicher_offener_Cases__c` | Number(8,0), defaultValue 0 | Anzahl ähnlicher offener Cases | Zahl der Pool-Cases mit Status offen. |
 | 3 | `Letzter_aehnlicher_Case__c` | **Lookup auf Case** (self-lookup) | Letzter ähnlicher Case | Der zuletzt passende Case im Pool (neuere `CreatedDate`). |
-| 4 | `Problemserie__c` | Text(40), **unique** | Problemserie | Gemeinsame eindeutige Kennung je Serie. |
+| 4 | `Problemserie__c` | Text(40), **unique=false** (Review-Korrektur 2026-10-03: gemeinsam geteilter String je Serie — row-level `unique=true` würde beim 2. Case der Serie in Duplicate-Violation laufen) | Problemserie | Gemeinsame eindeutige Kennung je Serie. |
 | 5 | `Problemkategorie__c` | Picklist | Problemkategorie | Einziges manuell gepflegtes Feld. |
 
 ### 3.1 Feld-Detail (Shape = verifierte House-Beispiele)
@@ -87,10 +87,10 @@ Alle `default=false` (Feld ist optional; nur bei gesetzt = Neubewertung).
 ### 4.3 Serienkennung berechnen (ADR-1: Textfeld, kein SObject)
 Serien-Identität = stabile Kennung je (AccountId, Kategorie). Berechnung **deterministisch und nachvollziehbar:**
 ```
-serie = AccountId (18 Zeichen, volle Key) + '_' + Problemkategorie__c (Label ohne Leerstrich/Schrägstrich)
-        z.B. '00D...abc_Login_Zugang'
+serie = AccountId (18 Zeichen, volle Key) + '_' + Problemkategorie__c (API-Value)
+        z.B. '00D...abc_Rechnung'
 ```
-→ Längster Picklist-Label „Login / Zugang" = 12 Zeichen → 18 + 1 + 12 = **31 ≤ 40** (Text(40)), **unique-sicher**, je (AccountId,Kategorie) **immer derselbe String** (AC9: «dieselbe eindeutige Kennung»). Die Kennung ist reine Funktion der Eingabe (AccountId + Picklist-Label) → **keine zweite SOQL** nötig (§4.2 bleibt bei exakt 1 Query). ⚠️ **Kein DB-Unique-Race**, weil alle Cases derselben Gruppe den *identischen* String bekommen. ⚠️ **Picklist-Label-Umbenennung ändert die Kennung** (bekannte, akzeptierte Nebenwirkung eines Konfig-Migrations-Ereignisses; blockiert nichts im Build) — siehe §8.
+→ **Implementierungsabweichung (PR #157, Review bestätigt 2026-10-03):** SOQL liefert beim Custom-Picklist-Feld den **API-Value** (fullName), nicht das Label (Beleg im Ticket/Doku: `SELECT Ursache__c FROM Case` → `RechnungAbrechnung`). Die Kennung nutzt deshalb den API-Value — deterministischer, und ein Picklist-**Label**-Rename bricht sie dann nicht mehr. Längster API-Value (z.B. `TechnischerDefekt` = 17 Zeichen) → 18 + 1 + 17 = **36 ≤ 40** (Text(40)), je (AccountId,Kategorie) **immer derselbe String** (AC9: «dieselbe eindeutige Kennung»). Die Kennung ist reine Funktion der Eingabe (AccountId + Picklist-API-Value) → **keine zweite SOQL** nötig (§4.2 bleibt bei exakt 1 Query). ⚠️ **Kein DB-Unique-Race**, weil alle Cases derselben Gruppe den *identischen* String bekommen (daher Feld **unique=false** — s. §3-Zeile 4). ⚠️ **Picklist-VALUE-Umbenennung** ändert die Kennung (API-Value-Rename ist ein Konfig-Migrations-Ereignis; blockiert nichts im Build) — siehe §8.
 
 ### 4.4 Schwellen-Lebenszyklus von `Problemserie__c` (ADR-2 — Kern-Entscheidung)
 Die **Erkennungsfelder** (1–3) sind strikt **fensterbasiert** (30 Tage) und dürfen bei leerem Fenster auf **false / 0 / NULL** zurückfallen (AC4/5: alte zählen NICHT; Anzahl kann 0 werden).
