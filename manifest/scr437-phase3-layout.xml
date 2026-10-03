@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-437 Phase 3a: Case-Layout-Ergänzung. Neue Section «Problemserie»
+     mit den 5 Feldern (Design §5.4). Referenziert die deployed Felder. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Case-Case Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>
