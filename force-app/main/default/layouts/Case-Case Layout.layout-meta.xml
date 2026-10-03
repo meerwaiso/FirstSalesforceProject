@@ -341,6 +341,41 @@
         </layoutColumns>
         <style>OneColumn</style>
     </layoutSections>
+    <!-- SCRUM-437: Problemserie — wiedererkennende Cases, eigene Section mit
+         den 5 neuen Feldern. 4 Systemfelder read-only, Problemkategorie__c
+         editierbar (einziges manuelles Feld). Haus-Pattern wie „Rückschau"
+         (SCRUM-434) / „Wiedervorlage" (SCRUM-436). -->
+    <layoutSections>
+        <customLabel>true</customLabel>
+        <detailHeading>true</detailHeading>
+        <editHeading>true</editHeading>
+        <label>Problemserie</label>
+        <layoutColumns>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>Problemkategorie__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Wiederkehrendes_Problem__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Anzahl_aehnlicher_offener_Cases__c</field>
+            </layoutItems>
+        </layoutColumns>
+        <layoutColumns>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Letzter_aehnlicher_Case__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Problemserie__c</field>
+            </layoutItems>
+        </layoutColumns>
+        <style>TwoColumnsLeftToRight</style>
+    </layoutSections>
     <layoutSections>
         <customLabel>false</customLabel>
         <detailHeading>false</detailHeading>

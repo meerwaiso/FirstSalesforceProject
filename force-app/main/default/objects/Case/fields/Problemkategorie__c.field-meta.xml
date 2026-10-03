@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Problemkategorie__c</fullName>
+    <description>Problemkategorie des Servicefalls (SCRUM-437). Einziges manuell gepflegtes Feld des Problemserie-Feldsatzes; Aenderungen traegern die Neubewertung der Serienzuordnung (CaseProblemSerieTrigger). Fest 6 Werte, kein Freitext.</description>
+    <label>Problemkategorie</label>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>TechnischerDefekt</fullName>
+                <default>false</default>
+                <label>Technischer Defekt</label>
+            </value>
+            <value>
+                <fullName>LoginZugang</fullName>
+                <default>false</default>
+                <label>Login / Zugang</label>
+            </value>
+            <value>
+                <fullName>Rechnung</fullName>
+                <default>false</default>
+                <label>Rechnung</label>
+            </value>
+            <value>
+                <fullName>Lieferung</fullName>
+                <default>false</default>
+                <label>Lieferung</label>
+            </value>
+            <value>
+                <fullName>Vertrag</fullName>
+                <default>false</default>
+                <label>Vertrag</label>
+            </value>
+            <value>
+                <fullName>Sonstiges</fullName>
+                <default>false</default>
+                <label>Sonstiges</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

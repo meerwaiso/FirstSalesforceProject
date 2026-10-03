@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Wiederkehrendes_Problem__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Anzahl_aehnlicher_offener_Cases__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Letzter_aehnlicher_Case__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Problemserie__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Problemkategorie__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM437_ProblemSerie_System</label>
+    <description>Update-FLS aller 5 SCRUM-437-Problemserie-Felder (Case) für den Trigger-Executor und runAs-Tests: Apex-DML prüft FLS auch in without-sharing-Klassen (ADR-4). Shape 1:1 SCRUM436_CaseReminderSystem. Kein Case-Object-CRUD nötig — das kommt vom Profil.</description>
+</PermissionSet>

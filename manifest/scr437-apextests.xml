@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-437 Phase 3b: Apex-Tests (AC 1-9 + FLS-Test). House-pattern
+     scr436-apextests.xml. version 67.0 (Manifest-API). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM437ProblemSerieTest</members>
+        <members>SCRUM437ProblemSerieFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>
