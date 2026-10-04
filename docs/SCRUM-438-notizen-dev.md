@@ -58,6 +58,30 @@ Architect-Notiz sagt: "BusinessHours Default = 24/7, America/Los_Angeles". **FAL
 ## FLS (PS ≠ zugeordnet; DoD = vorhanden UND zugewiesen) — 7. Wiederholung riskieren? NEIN
 - `SCRUM438_SLA_Read` (editable=false ×7) → Service-Team. `SCRUM438_SLA_System` (editable=true ×7) → Batch/Scheduled-User.
 - NACH Deploy: an CLI-User + Mensch-Test-Account zuweisen, 2×2-Beleg per SOQL `PermissionSetAssignment`, 1 Feld per realer Session read-back.
+- **ERGEBNIS (2026-10-04):** beide PS an `devops-agent@cline.test` + `meerwais.osmani@resourceful-bear-6f1u4j.com` zugewiesen (House-Prezedenz SCRUM-436, gleiche 2). `fls-gate.py --base origin/master --org Test-Org` → **grün** (A: Feld→PS, B: PS zugewiesen). Feld-Read-back als CLI-User (hält beide PS): alle 7 `SLA_*__c` lesbar, kein „No such column". 2×2-Beleg in Jira-Handoff.
+
+## ⚠️⚠️ CLOSED CASES — ClosedDate NICHT im before-Kontext (KERN-BEFUND, VERIFIZIERT 2026-10-04)
+- `Case.ClosedDate` wird erst **BEIM insert** aus `Status='Closed'` auto-gesetzt → im **before-insert** ist `c.ClosedDate == null`, SELBST wenn Case mit `Status='Closed'` angelegt wird. Trigger-Guard `if (c.ClosedDate == null)` initSLA → würde CLOSED Cases initialisieren (BUG).
+- **Fix:** before-insert-Guard auf `if (c.Status != 'Closed')` (Design-Note 4: „Closed" = geschlossener Picklist-Wert). Batch-Filter `ClosedDate = null` bleibt (Batch liest Post-Insert-Daten, da ist ClosedDate gesetzt).
+- Beweistest (Probe438Close, Test-Org, Test-Context → auto-rollback): open `New` Case → `ZIEL=SET LASTCHK=SET`; closed `Closed` Case → `ZIEL=NULL LASTCHK=NULL` (Engine hat ihn NICHT angefasst). Trigger korrekt.
+
+## ⚠️ AC8-Picklist-Default-Gefahr (VERIFIZIERT 2026-10-04)
+- Ich hatte `<default>true` auf `SLA_Status__c="Im Zeitplan"` + `SLA_Eskalation__c="Keine"` gesetzt → **JEDER insert** (auch closed, Engine inaktiv) füllt Status/Eskalation mit dem Default. Geschlossener Case zeigte `SLA_Status__c='Im Zeitplan'` obwohl Engine ihn nie sah.
+- Design-Note 3: „geschlossener Case: **alle** SLA-Felder bleiben leer" → Default-Werte RÄSCHTIG. **ENTFERNT** aus beiden field-meta.xml + redeployed.
+- **AC8-Test darf NICHT auf `SLA_Status__c == null` asserten** (Default füllt ihn = Probe, die under my Hypothese nicht failen kann). Korrekt: `SLA_Zielzeit__c == null` OR `SLA_Last_Checked__c == null` — das sind die von der Engine verwalteten Felder.
+
+## Compiler-Quirks (in dieser Org/CLI 2.150.6, VERIFIZIERT 2026-10-04)
+- **`%` Operator:** `i % 3` → Deploy-Error „Found punctuation symbol or operator '%'" (trotz gültiger Apex-Syntax, unbekannter Parser-Quirk). **Workaround: `Math.mod(i,3)`.**
+- **Reserved Words:** `from`, `end` als Variablenamen → Compile-Fehler. `basis`/`stopp` verwenden.
+- **`Integer`:** kein `.doubleValue()` → `* 1.0`. **`DateTime.addMinutes`:** erwartet `Integer`, nicht `Long` → explicit Cast.
+- **`ISNULL(ClosedDate)`** ungültiges SOQL (kein WHERE-Aggregat) → `ClosedDate = null`.
+- House-Konvention: jede `.cls` braucht `.cls-meta.xml`, jeder `.trigger` braucht `.trigger-meta.xml` — fehlt → `project deploy` (mit --source-dir) findet Komponente nicht beim Zipping.
+- Meta apiVersion: **62.0** (House-Pattern). Test-Deploy-Manifest `scr438-apextests.xml` separat.
 
 ## Offene Punkte (PO/Org, blocken NICHT, Defaults implementiert — für Review aufzählen)
-a) Feiertagskalender (Default: Mo-Fr ohne Feiertage — Org hat ohnehin keine Feiertage). b) Picklist-Wert "Warten auf Kunde" (Org-Step, DevOps) → PAUSE_STATUSES leer im Default, Pause über Checkbox-Test. c) Eskalations-Sprung 4h = WERK-stunden (BusinessHours.diff, Default).
+a) Feiertagskalender (Default: Mo-Fr ohne Feiertage — Org hat ohnehin keine Feiertage). b) Picklist-Wert "Warten auf Kunde" (Org-Step, DevOps) → PAUSE_STATUSES leer im Default, Pause über Checkbox-Test. c) Eskalations-Sprung 4h = WERK-stunden (BusinessHours.diff, Default). d) **Org-Orphan `Probe438Close`** (benign @isTest, in Test-Org, NICHT in der Branch — CLI 2.150.6 hat kein `sf org metadata delete`; 4 Lösungswege abgebrochen, DevOps kann purgen). e) Scheduled Job manuell setzten (`System.schedule`, Cron `0 15 * * * ?`) — kein Metadata.
+
+## FINAL (2026-10-04, Test-Org, Run 707WU00001LwtVF)
+- **9 Tests: SCRUM438SLATest (8 fktl., AC2/3/4/6/7/8/9 + Config) + SCRUM438SLAFlsTest (1, FLS neg/pos alle 7 Felder) = 9/9 PASS, 0 % Fail, 0 % Skip.**
+- Deploy: Phase 1 (7 Felder) + Phase 2 (PS+Layout+4 Apex+Trigger+Meta-Companions+Layout) + apextests + 2 Feld-Redeploys (Default-Entfernung) + `SLAJobBatch`-Redeploy (ISNULL-Fix) — alle **Succeeded**.
+- Probe-Pollution (probe438closeX) aus Test-Org entfernt.
