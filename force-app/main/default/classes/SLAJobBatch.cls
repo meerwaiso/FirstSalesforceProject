@@ -68,7 +68,7 @@ public without sharing class SLAJobBatch
             'SLA_Zielzeit__c, SLA_Status__c, SLA_Eskalation__c, ' +
             'SLA_Ueberschritten__c, SLA_Akkumulierte_WorkingMins__c, ' +
             'SLA_Last_Checked__c, SLA_Uhr_gestoppt__c ' +
-            'FROM Case WHERE ISNULL(ClosedDate)');
+            'FROM Case WHERE ClosedDate = null');
     }
 
     public void execute(Database.BatchableContext ctx, List<Case> scope) {

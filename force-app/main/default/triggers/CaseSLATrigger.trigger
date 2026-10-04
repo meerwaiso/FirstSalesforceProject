@@ -33,7 +33,11 @@ trigger CaseSLATrigger on Case (before insert, before update) {
         Id   bh   = SLAService.bhId();      // 1x pro Execution
         DateTime now = System.now();
         for (Case c : Trigger.new) {
-            if (c.ClosedDate == null) {     // offene Cases (AC6)
+            // Geschlossene Cases NIE tracken (AC6). ACHTUNG: ClosedDate wird
+            // erst BEIM insert auto-gesetzt -> im before-Kontext ist sie null,
+            // selbst wenn Status='Closed'. Das brauchbare Signal hier ist
+            // Status (Design Note 4: Closed ist der geschlossene Picklist-Wert).
+            if (c.Status != 'Closed') {
                 SLAService.initSLA(c, now, bh);
             }
         }

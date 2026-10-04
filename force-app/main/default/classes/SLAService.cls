@@ -16,7 +16,7 @@
  * weil nur BusinessHours.diff vorkommt und dasselbe Set beide Male liest.
  *
  * BELEGTES BH-VERHALTEN (Probe 2026-10-04, Test-Org):
- *  - diff(start,end) CLAMPT start auf das naechste Fenster (Case um 08:00
+ *  - diff(start,stop) CLAMPT start auf das naechste Fenster (Case um 08:00
  *    zahlt ab 09:00, wie um 05:00/00:00) -> Deadline von CreatedDate aus
  *    korrekt, unabhaengig ob Creation im/ausserhalb des Fensters.
  *  - add(...) ist DEF EKT (liefert Fensterstart); NIEMALS verwenden.
@@ -42,8 +42,7 @@ public without sharing class SLAService {
 
     // ===================== Wrappers (1 SOQL bhId-Call) =================== //
 
-
-    /** Batch-Pfad: bhId einmal im Batch holen wird empfohlen; hier Fallback. */
+    /** Fallback ohne injizierten bh (ruft 1x bhId). Batch/Trigger injizieren. */
     public static void evaluate(Case c, DateTime now) {
         evaluate(c, now, bhId());
     }
@@ -74,16 +73,17 @@ public without sharing class SLAService {
         Decimal  A  = (c.SLA_Akkumulierte_WorkingMins__c == null)
                                ? 0 : c.SLA_Akkumulierte_WorkingMins__c;
         DateTime L    = c.SLA_Last_Checked__c;
-        DateTime from = (c.CreatedDate == null) ? now : c.CreatedDate;
+        // "from" ist reserviert (Apex) -> "basis".
+        DateTime basis = (c.CreatedDate == null) ? now : c.CreatedDate;
 
         Decimal worked;
         if (L == null) {
             // Bootstrap (Legacy ohne Anker): ganze Zeit seit Creation.
-            worked = inPause ? A : workedMins(bh, from, now);
+            worked = inPause ? A : workedMins(bh, basis, now);
             c.SLA_Akkumulierte_WorkingMins__c = worked;
             c.SLA_Last_Checked__c             = now;
             if (c.SLA_Zielzeit__c == null) {
-                c.SLA_Zielzeit__c = estimateDeadline(bh, from, target);
+                c.SLA_Zielzeit__c = estimateDeadline(bh, basis, target);
             }
         } else if (inPause) {
             // Pause: gefroren, Anker laeuft auf jetzt; Zielzeit STABIL.
@@ -96,9 +96,10 @@ public without sharing class SLAService {
             c.SLA_Akkumulierte_WorkingMins__c = worked;
             c.SLA_Last_Checked__c = now;
             // Zielzeit bleibt stabil; nur Legacy mit Anker aber ohne
-            // Zielzeit nachbestuecken.
+            // Zielzeit nachbestuecken (Integer hat kein doubleValue() ->
+            // target * 1.0 promotes zu Double).
             if (c.SLA_Zielzeit__c == null) {
-                Integer rem = (Integer)Math.floor(target.doubleValue()
+                Integer rem = (Integer)Math.floor((target * 1.0)
                                           - worked.doubleValue());
                 if (rem < 0) { rem = 0; }
                 c.SLA_Zielzeit__c = estimateDeadline(bh, L, rem);
@@ -120,11 +121,11 @@ public without sharing class SLAService {
         Decimal  A  = (c.SLA_Akkumulierte_WorkingMins__c == null)
                                ? 0 : c.SLA_Akkumulierte_WorkingMins__c;
         DateTime L    = c.SLA_Last_Checked__c;
-        DateTime from = (c.CreatedDate == null) ? now : c.CreatedDate;
+        DateTime basis = (c.CreatedDate == null) ? now : c.CreatedDate;
 
         Decimal worked;
         if (L == null) {
-            worked = workedMins(bh, from, now);
+            worked = workedMins(bh, basis, now);
             c.SLA_Akkumulierte_WorkingMins__c = worked;
             c.SLA_Last_Checked__c = now;
         } else {
@@ -134,7 +135,8 @@ public without sharing class SLAService {
         }
         c.SLA_Uhr_gestoppt__c = SLAConfig.isPauseStatus(c.Status);
 
-        Integer remaining = newTarget - (Integer)Math.floor(worked.doubleValue());
+        Integer remaining = newTarget
+                - (Integer)Math.floor(worked.doubleValue());
         if (remaining < 0) { remaining = 0; }
         c.SLA_Zielzeit__c = estimateDeadline(bh, now, remaining);
         setStatus(c, newTarget, worked);
@@ -149,11 +151,11 @@ public without sharing class SLAService {
         if (c == null || now == null) { return; }
         Integer target = SLAConfig.targetMinutes(c.Priority,
                                 c.Kundenstatus__c == 'Premium');
-        DateTime from = (c.CreatedDate == null) ? now : c.CreatedDate;
+        DateTime basis = (c.CreatedDate == null) ? now : c.CreatedDate;
         c.SLA_Akkumulierte_WorkingMins__c = 0;
         c.SLA_Last_Checked__c             = now;
         c.SLA_Uhr_gestoppt__c             = SLAConfig.isPauseStatus(c.Status);
-        c.SLA_Zielzeit__c                 = estimateDeadline(bh, from, target);
+        c.SLA_Zielzeit__c                 = estimateDeadline(bh, basis, target);
         setStatus(c, target, 0);
         setEscalation(c, target, 0);
     }
@@ -161,15 +163,16 @@ public without sharing class SLAService {
     // ================ Statusregeln (PO-AC3/AC4), nur worked vs total ===== //
 
     private static void setStatus(Case c, Integer target, Decimal worked) {
-        if (worked >= target.doubleValue()) {
+        if (worked.doubleValue() >= target) {
             c.SLA_Status__c = 'Ueberschritten';
             c.SLA_Ueberschritten__c = true;
             return;
         }
         c.SLA_Ueberschritten__c = false;
         if (target > 0) {
-            Decimal remaining = target.doubleValue() - worked.doubleValue();
-            if (remaining / target.doubleValue() < SLAConfig.DANGER_THRESHOLD) {
+            Double remaining = (target * 1.0) - worked.doubleValue();
+            Double fraction  = remaining / target;
+            if (fraction < SLAConfig.DANGER_THRESHOLD.doubleValue()) {
                 c.SLA_Status__c = 'Gefaehrdet';
                 return;
             }
@@ -179,7 +182,7 @@ public without sharing class SLAService {
 
     private static void setEscalation(Case c, Integer target, Decimal worked) {
         Double w = worked.doubleValue();
-        if (w >= target + SLAConfig.ESCALATION_LEVEL2_AFTER_MINUTES) {
+        if (w >= (target + SLAConfig.ESCALATION_LEVEL2_AFTER_MINUTES) * 1.0) {
             c.SLA_Eskalation__c = 'Stufe 2';
         } else if (w >= target) {
             c.SLA_Eskalation__c = 'Stufe 1';
@@ -193,14 +196,15 @@ public without sharing class SLAService {
     // ======================== BusinessHours-Utilities ===================== //
 
     /**
-     * Werk-Minuten start..end via BusinessHours.diff (MS -> Decimal-Min).
-     * diff CLAMPT start auf das naechste Fenster (verifiziert), damit ist
-     * die Uhr korrekt auch fuer Cases, die auesserhalb des Fensters
-     * angelegt wurden.
+     * Werk-Minuten start..stop via BusinessHours.diff (MS -> Decimal-Min).
+     * "end" ist reserviert (Apex) -> "stop". diff CLAMPT start auf das
+     * naechste Fenster (verifiziert), damit ist die Uhr korrekt auch fuer
+     * Cases, die auesserhalb des Fensters angelegt wurden.
      */
-    public static Decimal workedMins(Id bh, DateTime start, DateTime end) {
-        if (bh == null || start == null || end == null) { return 0; }
-        return Decimal.valueOf(BusinessHours.diff(bh, start, end)) / 60000.0;
+    public static Decimal workedMins(Id bh, DateTime start, DateTime stop) {
+        if (bh == null || start == null || stop == null) { return 0; }
+        Long ms = BusinessHours.diff(bh, start, stop);
+        return Decimal.valueOf(ms) / 60000.0;
     }
 
     /** Default-BusinessHours-Id (1 Query). Im Trigger/Batch EINMAL holen. */
@@ -210,31 +214,34 @@ public without sharing class SLAService {
     }
 
     /**
-     * deadline = from + exactly `workMinsMin` worked-Min per BusinessHours,
+     * deadline = basis + exactly `workMinsMin` worked-Min per BusinessHours,
      * via Binary-Search ueber diff (BusinessHours.add defekt). 1s-Praezision.
-     * Sucht das ERSTE T mit diff(from,T) >= workMinsMin (monotone Funktion
+     * Sucht das ERSTE T mit diff(basis,T) >= workMinsMin (monotone Funktion
      * von T). Obergrenze wird iterativ verdraengt, bis sie genug worked-Min
-     * deckt.
+     * deckt. "from" ist reserviert (Apex) -> "basis".
      */
-    public static DateTime estimateDeadline(Id bh, DateTime from,
+    public static DateTime estimateDeadline(Id bh, DateTime basis,
                                             Integer workMinsMin) {
-        if (from == null) { return null; }
-        if (workMinsMin == null || workMinsMin <= 0) { return from; }
+        if (basis == null) { return null; }
+        if (workMinsMin == null || workMinsMin <= 0) { return basis; }
 
-        Double need = workMinsMin.doubleValue();
-        DateTime hi = from.addMinutes(workMinsMin * 3);
+        Double need = workMinsMin * 1.0;
+        DateTime hi = basis.addMinutes(workMinsMin * 3);
         // Obergrenze aufstocken, bis sie >= need worked-Min deckt (Wochen-
-        // enden/Non-BH-Zonen brauchen mehr Kalendertage).
+        // enden/Non-BH-Zonen brauchen mehr Kalendertage). addMinutes nimmt
+        // Integer -> Spanne in Millisekunden nach Integer casten.
         for (Integer i = 0; i < 30
-             && BusinessHours.diff(bh, from, hi) / 60000.0 < need; i++) {
-            hi = from.addMinutes((hi.getTime() - from.getTime()) / 60000L * 3);
+             && BusinessHours.diff(bh, basis, hi) / 60000.0 < need; i++) {
+            Long span = hi.getTime() - basis.getTime();   // ms
+            Integer newSpan = (Integer)(span / 60000L * 3);
+            hi = basis.addMinutes(newSpan);
         }
 
-        Long loMs = from.getTime();
+        Long loMs = basis.getTime();
         Long hiMs = hi.getTime();
         for (Integer it = 0; it < 60 && (hiMs - loMs) > 1000; it++) {
             Long mid = loMs + (hiMs - loMs) / 2;
-            if (BusinessHours.diff(bh, from, DateTime.newInstance(mid))
+            if (BusinessHours.diff(bh, basis, DateTime.newInstance(mid))
                        / 60000.0 >= need) {
                 hiMs = mid;
             } else {
