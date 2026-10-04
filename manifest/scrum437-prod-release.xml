@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-437 PROD-RELEASE (04.10.2026) — source of record for the
+         production deploy. Actual deploy JOB: 0Afg500000FVhcjCAD
+         (11/11 Komponenten, 0 Fehler, NoTestRun), danach 11/11 Apex via
+         getrenntem Run: run 707g500000oPqOI. Tag: release/2026-10-04-SCRUM-437.
+         Phase-1/Phase-2-Split-Files (scrum437-phase1/phase2.xml) blieben im
+         Worktree, weil das komplette Paket in EINEM NoTestRun-Deploy lief. -->
+    <types>
+        <members>CaseProblemSerieHandler</members>
+        <members>SCRUM437ProblemSerieFlsTest</members>
+        <members>SCRUM437ProblemSerieTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>Case.Anzahl_aehnlicher_offener_Cases__c</members>
+        <members>Case.Letzter_aehnlicher_Case__c</members>
+        <members>Case.Problemkategorie__c</members>
+        <members>Case.Problemserie__c</members>
+        <members>Case.Wiederkehrendes_Problem__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>SCRUM437_ProblemSerie_Read</members>
+        <members>SCRUM437_ProblemSerie_System</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>CaseProblemSerieTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <version>62.0</version>
+</Package>
