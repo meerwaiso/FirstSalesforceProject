@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-438 Phase 1: 7 neue Case-Felder (SLA-Zielzeit/Status/Eskalation/
+     Ueberschritten/Last_Checked/Uhr_gestoppt/Akkumulierte_WorkingMins).
+     House-pattern: CustomField members mit Object-Prefix (Case.SLA_XXX__c),
+     wie scr436-phase1-fields.xml. Deployt zuerst; Read-/System-PS, Layout,
+     Apex (Config/Service/Batch/Scheduler) + Trigger referenzieren sie. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Case.SLA_Zielzeit__c</members>
+        <members>Case.SLA_Status__c</members>
+        <members>Case.SLA_Eskalation__c</members>
+        <members>Case.SLA_Ueberschritten__c</members>
+        <members>Case.SLA_Last_Checked__c</members>
+        <members>Case.SLA_Uhr_gestoppt__c</members>
+        <members>Case.SLA_Akkumulierte_WorkingMins__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-438 Phase 2: Read-PS + System-PS + Case-Layout + Apex
+     (Config/Service/Batch/Scheduler) + Trigger. Referenzieren die
+     Phase-1-Felder. House-pattern scr436-phase2-referencing.xml. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM438_SLA_Read</members>
+        <members>SCRUM438_SLA_System</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Case-Case Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>SLAConfig</members>
+        <members>SLAService</members>
+        <members>SLAJobBatch</members>
+        <members>SLAJobScheduler</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>CaseSLATrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <version>67.0</version>
+</Package>
