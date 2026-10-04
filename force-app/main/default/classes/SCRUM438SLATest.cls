@@ -309,8 +309,14 @@ private class SCRUM438SLATest {
      * ================================================================ */
     @isTest
     static void ac8_batch_runsAndIgnoresClosed() {
-        User u = slaUser('ac8batch');
-
+        // SYSTEM-MODUS (SCRUM-436-Hausmuster, s. SCRUM436CaseReminderTest
+        // Zeilen 60-68 + plantCase): das Batch ist ein Scheduled-Job und
+        // laeuft unter dem Scheduler (volle FLS). `without sharing` im
+        // Batch-SELECT umgeht NUR Sharing, NICHT FLS — der Scheduler haelt
+        // die 7 SLA-Felder + Kundenstatus__c. Der runAs-FLS-Druck lebt in
+        // AC9 (Trigger-Pfad). Deshalb hier: beide Inserts + Batch in
+        // System-Modus (kein runAs-User — der haette weder Kundenstatus-FLS
+        // fuers Batch-SELECT noch Ursache-FLS, das SCRUM-434-ValRule-Feld).
         String[] prs = new String[]{'High','Medium','Low'};
         List<Case> open = new List<Case>();
         for (Integer i = 0; i < 30; i++) {
@@ -319,43 +325,46 @@ private class SCRUM438SLATest {
         }
         List<Case> closed = new List<Case>();
         for (Integer i = 0; i < 2; i++) {
+            // Ursache__c PFLICHT bei geschlossenen Faellen (SCRUM-434
+            // UrsachepflichtBeiGeschlossen, hart: ohne Ursache kein Insert —
+            // FIELD_CUSTOM_VALIDATION_EXCEPTION). Wert = picklist-valid,
+            // wie im urspruenglichen 9/9-Run (9e5abe0).
             closed.add(new Case(
                 Subject  = 'SCR438 closed ' + i,
                 Origin   = 'Phone',
                 Priority = 'High',
-                Status   = 'Closed'));
+                Status   = 'Closed',
+                Ursache__c = 'HowToAnfrage'));
         }
 
-        System.runAs(u) {
-            insert open;
-            insert closed;
+        insert open;
+        insert closed;
 
-            Test.startTest();
-            Database.executeBatch(new SLAJobBatch());
-            Test.stopTest();
+        Test.startTest();
+        Database.executeBatch(new SLAJobBatch());
+        Test.stopTest();
 
-            Integer openValid = 0;
-            for (Case c : open) {
-                Case r = [SELECT SLA_Last_Checked__c, SLA_Status__c
-                            FROM Case WHERE Id = :c.Id LIMIT 1][0];
-                System.assert(r.SLA_Status__c == 'Im Zeitplan'
-                             || r.SLA_Status__c == 'Gefaehrdet'
-                             || r.SLA_Status__c == 'Ueberschritten',
-                    'AC8: offener Case hat valides SLA_Status__c: ' + r.SLA_Status__c);
-                if (r.SLA_Last_Checked__c != null) { openValid++; }
-            }
-            System.assertEquals(30, openValid,
-                'AC8: alle 30 offenen Cases getrackt');
+        Integer openValid = 0;
+        for (Case c : open) {
+            Case r = [SELECT SLA_Last_Checked__c, SLA_Status__c
+                       FROM Case WHERE Id = :c.Id LIMIT 1][0];
+            System.assert(r.SLA_Status__c == 'Im Zeitplan'
+                         || r.SLA_Status__c == 'Gefaehrdet'
+                         || r.SLA_Status__c == 'Ueberschritten',
+                'AC8: offener Case hat valides SLA_Status__c: ' + r.SLA_Status__c);
+            if (r.SLA_Last_Checked__c != null) { openValid++; }
+        }
+        System.assertEquals(30, openValid,
+            'AC8: alle 30 offenen Cases getrackt');
 
-            for (Case c : closed) {
-                Case r = [SELECT SLA_Zielzeit__c, SLA_Last_Checked__c,
-                                   SLA_Akkumulierte_WorkingMins__c
-                            FROM Case WHERE Id = :c.Id LIMIT 1][0];
-                System.assertEquals(null, r.SLA_Zielzeit__c,
-                    'AC8: geschlossener Case hat KEINE Zielzeit (Engine inaktiv)');
-                System.assertEquals(null, r.SLA_Last_Checked__c,
-                    'AC8: geschlossener Case hat KEINEN Letzter_Lauf (Engine inaktiv)');
-            }
+        for (Case c : closed) {
+            Case r = [SELECT SLA_Zielzeit__c, SLA_Last_Checked__c,
+                               SLA_Akkumulierte_WorkingMins__c
+                       FROM Case WHERE Id = :c.Id LIMIT 1][0];
+            System.assertEquals(null, r.SLA_Zielzeit__c,
+                'AC8: geschlossener Case hat KEINE Zielzeit (Engine inaktiv)');
+            System.assertEquals(null, r.SLA_Last_Checked__c,
+                'AC8: geschlossener Case hat KEINEN Letzter_Lauf (Engine inaktiv)');
         }
     }
 }
