@@ -35,6 +35,29 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 ---
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
+## 04.10.2026 — Wiederkehrende Servicefälle eines Kunden automatisch erkennen (SCRUM-437)
+
+**Was sich ändert**
+- Ein Servicefall erkennt jetzt **automatisch**, ob derselbe Kunde in den letzten **30 Tagen** bereits **mindestens zwei weitere Fälle** mit demselben Anliegen hatte — ohne dass du die Historie mühsam selbst durchsuchst. Dafür trägst du auf jedem Fall eine **Problemkategorie** ein (*Technischer Defekt, Login/Zugang, Rechnung, Lieferung, Vertrag, Sonstiges*).
+- Passt die Regel, werden auf dem Fall markiert: **Wiederkehrendes Problem = Ja**, dazu **Anzahl ähnlicher offener Fälle** (wie viele der ähnlichen Fälle gerade noch offen sind) und **Letzter ähnlicher Fall** (ein Klick auf die Fallnummer direkt zum vorigen Fall).
+- Alle Fälle derselben Serie (gleicher Kunde, gleiche Kategorie) tragen dabei eine gemeinsame **Problemserie-Kennung** — auf der Falldetailseite siehst du in der neuen Sektion **„Problemserie“**, welche anderen Fälle dazu gehören.
+- Neue Fälle gleicher Kategorie hängen automatisch an die bestehende Serie; änderst du die Kategorie eines Falls, wird die Serien-Zuordnung **neu bewertet**.
+- Mehrere gleichzeitig angelegte Fälle werden **korrekt gemeinsam verarbeitet** (keine pro-Fall-Suche, keine doppelte Serienzählung).
+
+**Wo man es sieht**
+- Servicefall → Detailseite → Sektion **„Problemserie“**: Problemkategorie (einziges manuelles Feld), Wiederkehrendes Problem, Anzahl ähnlicher offener Fälle, Letzter ähnlicher Fall (klickbar).
+
+**Was bewusst NICHT drin ist**
+- **Keine Bestandspflege:** die heute in Prod vorhandenen 26 Fälle tragen keine Problemkategorie und bleiben „Wiederkehrendes Problem = Nein“ — die Erkennung wirkt erst ab dem ersten neu angelegten Fall mit Kategorie. Ein Nachtragen ist keine Migration, sondern eine Datenpflege (bewusst nicht automatisch).
+- **„Ähnlich“ ist streng definiert:** gleicher Kunde (Account) **und** gleiche Problemkategorie — kein Freitext-Vergleich über die Betreff-Zeilen.
+- **Schwellen sind fix:** 2 weitere Fälle, 30 Tage, offen oder in dem Fenster geschlossen. Anderes Verhalten wäre eine eigene Folgeanforderung.
+- **Keine Benachrichtigung:** es kommt keine Mail oder ein Task — die Erkennung siehst du auf der Falldetailseite.
+
+**Deploy-ID**
+3-Phasen-Prod-Deploy (2026-10-04): Phase 1 Deploy-Job `0Afg500000FVhcjCAD` (11/11 Komponenten, 0 Fehler, 0 Warnings), Phase 2 beide Berechtigungsgruppen je an **2 Prod-Nutzer** zugewiesen (4/4 `PermissionSetAssignment`), Phase 3 Apex-Tests getrennt in Prod: `SCRUM437ProblemSerieTest` + `SCRUM437ProblemSerieFlsTest` = **11/11 Pass, 100%** (Run `707g500000oPqOI`). Release-Tag `release/2026-10-04-SCRUM-437` auf Commit `83f393b`, PR #157.
+
+**Live-Beleg (PO-Read-back in Prod, 04.10):** alle **5 Case-Felder** in der Prod-Org mit korrektem Shape vorhanden (Read-back via `FieldDefinition`-SOQL); beide Berechtigungsgruppen mit je **2 Zuweisungen (4/4)** an End-Nutzer und Betriebs-Nutzer — ohne sie wäre außer einem Admin niemand die Felder (Read-back via `PermissionSetAssignment`); Trigger `CaseProblemSerieTrigger` aktiv auf Case und Handler `CaseProblemSerieHandler` anwesend (Read-back via Tooling `ApexTrigger`/`ApexClass`); Release-Tag `release/2026-10-04-SCRUM-437` auf Remote `origin` vorhanden (Read-back via `git ls-remote --tags`).
+
 ## 03.10.2026 — Automatische Wiedervorlage für länger unaktive Servicefälle (SCRUM-436)
 
 **Was sich ändert**
