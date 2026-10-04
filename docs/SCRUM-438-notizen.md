@@ -34,3 +34,70 @@ Befunde, die Verdichtung nicht überleben dürfen. Eine Zeile = ein harter Befun
 2. Pause-Status: exakter Picklist-Wert wird noch nicht existieren → Org-Step "Warten auf Kunde" anlegen + SLAConfig.DEFAULT_PAUSE_STATUSES = {'Warten auf Kunde'}.
 3. Eskalations-Sprung Stufe1→2: 4 Werkstunden (Default, BusinessHours.diff) vs 4 Kalendersunden.
 4. Batch-Häufigkeit: 1h (empfohlen) vs häufiger.
+
+---
+
+## Tester-Agent Befunde (2026-10-04, Test-Org verifiziert via CLI)
+
+### Deploy-Verifikation (Org-Lese-Readback)
+- 7 SLA-Felder auf Case deployed (FieldDefinition LIKE 'SLA_%'):
+  SLA_Zielzeit/SLA_Status/SLA_Eskalation/SLA_Ueberschritten/SLA_Last_Checked/SLA_Uhr_gestoppt/
+  SLA_Akkumulierte_WorkingMins. (ALTES `SLAViolation__c` existiert daneben — NICHT SCRUM-438.)
+- 2 Permission Sets deployed: SCRUM438_SLA_Read (editable=false ×7), SCRUM438_SLA_System (editable=true ×7).
+- PSA 2×2: beide PS an `devops-agent@cline.test` + `meerwais.osmani@...` (beide System Admin).
+  → DoD "PS vorhanden UND zugewiesen" erfüllt.
+- 4 Apex-Klassen + Trigger deployed: SLAService/SLAConfig/SLAJobBatch/SLAJobScheduler/CaseSLATrigger.
+
+### Kritische Lücken für PO-Szenarien
+- **CronTrigger: 0 Records in Test-Org** → SLAJobScheduler als Scheduled Job NIE angelegt.
+  → PO-Szenario 11 "periodische Bewertung über alle offenen Cases" läuft LIVE nie.
+  Batch-LOGIK bleibt via `Database.executeBatch(new SLAJobBatch())` in Test prüfbar (AC8).
+  = DevOps-Setup-Point (b), Architect: "nicht blockierend" — aber es ist der Kern der Skalierungs-AC.
+- **Case.Status Picklist = New/Working/Escalated/Closed** (describe) → KEIN "Warten auf Kunde".
+  SLAConfig.PAUSE_STATUSES = leer (bestätigt im Code).
+  → PO-Szenario 3 (Pause) und 4 (Resume) NICHT testbar in der Org. DevOps-Setup-Point (a).
+
+### Testplan
+- Apex: `sf apex run test -o Test-Org -l RunSpecifiedTests -t SCRUM438SLATest,SCRUM438SLAFlsTest`
+  (kein --async; -t = --tests; -l RunSpecifiedTests). Erwartet 8+1 = 9 Tests (Developer: 9/9).
+- E2E (Playwright): AC12 — "SLA"-Layout-Sektion auf Case-UI sichtbar, 4 primäre Felder + Letzter_Lauf,
+  alle READONLY (kein Inline-Edit). Vorher: smoke, dann Locator probe.
+- FLS-negatives (AC13) = in SCRUM438SLAFlsTest via System.runAs (2nd UI-Session unnötig).
+
+### AC ↔ PO-Szenario-Korrektur (PO zählt 12 Szenarien, Design 14 ACs)
+PO-SZ → Design-AC: S1=AC2, S2=AC2(Premium), S3=AC5[GAP], S4=AC5[GAP], S5=AC3, S6=AC3,
+S7=AC4, S8=AC4, S9=AC7, S10=AC6, S11=AC8[GAP Live-Scheduler], S12=AC2(Werktag), +FLS=AC13.
+AC1(Felder)/AC9(Trigger)/AC10(Read)/AC11(System)/AC12(Layout-UI) sind zusätzlich.
+
+---
+## Tester-Sektion — Befund 2026-10-04 (21:40 UTC)
+
+### Kritischer Defekt (PROD-Auswirkung)
+`SLAJobBatch.execute` Line 90 ruft `SLAService.evaluate(c, asOf)` (TWO-ARG-Overload)
+-> intern `bhId()` pro ROW. Bei Chunk=200, >100 offene Cases ->
+`System.LimitException: Too many SOQL queries: 101` (Run 707WU00001M0Y7l, 11.290 ms).
+
+**Ursache:** Die Stateful-Member `bh` (gesetzt Line 75 im 1. execute-Aufruf)
+wird NICHT an evaluate übergeben. Korrekt: `SLAService.evaluate(c, asOf, bh)`.
+
+**Auswirkung:** Der stündliche Batch-Job scheitert in Prod immer, wenn
+>99 offene Cases existieren. Heute latent (CronTrigger=0), bei Scheduling
+sofort produktionsrelevant.
+
+**Test-Nachweis:** `SCRUM438SLAScaleTest` (420 Cases, 3 Chunks, 200er-Batch),
+beide Tests FAILen mit LimitException — reproduzierbar.
+
+### Apex-Suite (SCRUM438SLATest + SCRUM438SLAFlsTest): 9/9 GRÜN (Run 707WU00001M062C)
+### E2E (SCRUM-438-sla-layout.spec.ts): 3/3 GRÜN + Smoke 2/2
+  AC12a: SLA-Sektion im Layout sichtbar (5 Felder)
+  AC12b: Alle 5 Felder + Labels korrekt (SLA-Zielzeit/Status/Eskalation/überschritten/letzter Lauf)
+  AC12c: Live-Case 500WU00002uFVFCYA4 — Werte gefüllt (Status=Im Zeitplan, Zielzeit gesetzt)
+  AC12d: NICHT separater Test — Readonly-Enforcement für Restricted-User ist in
+         AC13 (SCRUM438SLAFlsTest, System.runAs) abgedeckt. SA-User (Session) hat edit
+         FLS via SCRUM438_SLA_System -> Edit-Buttons in Lightning korrekt.
+### Live-Init: Case 500WU00002uFVFCYA4 — before-Trigger initialisiert alle 7 SLA-Felder
+### Org-Befunde:
+  - 7/7 SLA-Felder deployed
+  - 2 Permission Sets (Read + System) existieren, je 2×2 Assigned
+  - CronTrigger = 0 (Scheduled Job nie aktiviert — DevOps-Setup-Punkt)
+  - PAUSE_STATUSES = [] und Picklist-Wert "Warten auf Kunde" NICHT in Org (S3/S4 nicht testbar)
