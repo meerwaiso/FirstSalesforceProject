@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.SLA_Akkumulierte_WorkingMins__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.SLA_Eskalation__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.SLA_Last_Checked__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.SLA_Status__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.SLA_Uhr_gestoppt__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.SLA_Ueberschritten__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Case.SLA_Zielzeit__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM438_SLA_Read</label>
+    <description>Read-only FLS aller sieben SCRUM-438 SLA-Felder am Case (systemgepflegt per Trigger/Batch, ADR-2/ADR-5). Shape 1:1 SCRUM436_CaseReminder; Batch-Executor braucht zusaetzlich SCRUM438_SLA_System. PO-AC10: Service-Mitarbeiter nur Read (keine manuelle Edit).</description>
+</PermissionSet>

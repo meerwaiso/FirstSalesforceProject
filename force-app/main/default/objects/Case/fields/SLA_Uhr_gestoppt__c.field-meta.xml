@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SLA_Uhr_gestoppt__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>SCRUM-438: INTERNE Pause-Flag. true, wenn der Case in einem Pause-Status ist (SLAConfig.isCaseInPause: Case.Status in getPauseStatuses). Bei true wird die SLA-Uhr gefroren (arbeitete Minuten werden NICHT weiter hochgezählt, aber Last_Checked läuft weiter auf now — so wird das Pause-Intervall korrekte aus der worked-Zahl herausgerechnet). Resume beim Statuswechsel aus der Pause-Liste auf false. Bewusst NICHT auf dem Layout (intern). ADR-4.</description>
+    <type>Checkbox</type>
+</CustomField>

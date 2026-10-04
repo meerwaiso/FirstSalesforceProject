@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SLA_Akkumulierte_WorkingMins__c</fullName>
+    <defaultValue>0</defaultValue>
+    <description>SCRUM-438: INTERNE kumulierte Business-Minuten (BusinessHours.diff, Pausen abgezogen) seit Case-Erstellung. Systemgepflegt (SLAService.evaluate); read-only, bewusst NICHT auf dem Layout. Dient der Prioritätswechsel-Anrechnung (AC7): neue Deadline = now + (neue Total-Minuten - dieses Feld), d.h. bereits gearbeitete Zeit bleibt gewahrt. Number(16,0).</description>
+    <externalId>false</externalId>
+    <label>SLA kumulierte Working-Minuten</label>
+    <precision>16</precision>
+    <required>false</required>
+    <scale>0</scale>
+    <trackTrending>false</trackTrending>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

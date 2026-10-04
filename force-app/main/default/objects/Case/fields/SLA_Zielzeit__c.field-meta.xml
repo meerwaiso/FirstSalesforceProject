@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SLA_Zielzeit__c</fullName>
+    <label>SLA-Zielzeit</label>
+    <description>SCRUM-438: Absolute Deadline (DateTime), ab der der Case als SLA-Ueberschritten gilt. Systemgepflegt (SLAService.computeDeadline via BusinessHours.add + SLAJobBatch); read-only. Erstlauf: CreatedDate + Ziel-Minuten (Werkzeit). Prioritaetswechsel: neu = now + (neue Ziel-Minuten - bereits gearbeitet). Pause verschiebt die Anzeige-Deadline NICHT (nur die gearbeitet-Uhr wird gefroren).</description>
+    <externalId>false</externalId>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>

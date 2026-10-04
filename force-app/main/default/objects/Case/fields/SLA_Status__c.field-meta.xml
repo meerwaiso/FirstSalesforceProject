@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SLA_Status__c</fullName>
+    <description>SCRUM-438: SLA-Fortschrittsstatus. Systemgepflegt (SLAService.evaluate); read-only. Im Zeitplan (Default): &gt;=20% Zielzeit uebrig. Gefaehrdet: &lt;20% Zielzeit uebrig. Ueberschritten: Zielzeit ueberschritten (arbeitet weiter, keine Regression).</description>
+    <externalId>false</externalId>
+    <label>SLA-Status</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Im Zeitplan</fullName>
+                <default>true</default>
+                <label>Im Zeitplan</label>
+            </value>
+            <value>
+                <fullName>Gefaehrdet</fullName>
+                <default>false</default>
+                <label>Gefährdet</label>
+            </value>
+            <value>
+                <fullName>Ueberschritten</fullName>
+                <default>false</default>
+                <label>Überschritten</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>
