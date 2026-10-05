@@ -169,7 +169,14 @@ private class SCRUM420EscalationKundeTest {
         // Ein Batch mit 250 Records auf 10 Accounts darf deutlich mehr als
         // ~10 Queries nicht erzeugen (Handler: eine SOQL fuer alle offenen Cases
         // mit IN(:accountIds); je-eine-Query-je-Case wuerde >250).
-        assertTrue(usedInBatch < 10, 'Batch-Queries ueber Budget: ' + usedInBatch);
+        //
+        // [SCRUM-438] Schwellwert <10 -> <15 (gemessen 2026-10-05, DevOps-Run
+        // 37279408056): alle Case-Triggers feuern bei insert; 438's
+        // CaseSLATrigger ruft SLAService.bhId() EINMAL pro Execution (= +1
+        // SOQL, by Design ADR-3; initSLA/evaluate SOQL-frei). Summe = 13
+        // (vor 438: 12). <15 laesst 13 durch und faengt einen echten
+        // per-Record-N+1 (~250 Queries) weiterhin hart.
+        assertTrue(usedInBatch < 15, 'Batch-Queries ueber Budget: ' + usedInBatch);
         // Spot check: alle Accounts korrekt, Werte matchen je Account
         for (Integer a = 0; a < accountsN; a++) {
             Id accId = accIds[a];
