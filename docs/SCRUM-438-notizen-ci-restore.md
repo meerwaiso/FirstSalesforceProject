@@ -92,6 +92,49 @@ CI bleibt aber rot wegen `CasePriorityTrigger` (Org-Drift). → Blocker an
 Architect mit Belegen; Lösung = CasePriorityTrigger aus Test-Org entfernen
 (bzw. als Bug-Ticket an DevOps/PO routen) oder ursacheUser als Admin-Kontext.
 
+## Round 2 — Architect-REJECT Kmt 22893 (20:46) → Hoist war NICHT der Fix (2026-10-05)
+
+**Deploy der 4-arg-Klasse in die Test-Org + REAL-Test-Run (707WU00001M9HxJ):**
+`MIXED_DML × 13`, diesmal am **`createAccount:17`** (nicht mehr am Case-Insert).
+Der Hoist hat den Fehler nur **getauscht**, nicht behoben:
+
+- Alt: Account (Non-Setup) → PSA+User (Setup) = MIXED_DML.
+- 4-arg: PSA+User (Setup) → Account (Non-Setup) = MIXED_DML.
+- **Schlussfolgerung: PSA-DML (User+PermissionSetAssignment) und Account-Insert
+  können in KEINER Apex-Test-Transaktion koexistieren — in keiner Reihenfolge.**
+  (User ist nicht in der Setup-Object-Liste, PSA schon; die "original object"
+  in der Meldung wechselt mit der Richtung, der Fehler bleibt.)
+- Beweise aus den grünen Hausklassen: SCRUM-390/418/419/432/437 mixen
+  **nirgendwo** Account-Insert mit PSA in derselben Methode. 437 (grün in CI):
+  Account-geschlüsselte ACs als System/Admin, der runAs-Beweis OHNE AccountId.
+  420 ist der einzige Ausreißer, weil Eskalation pro Kunde (AccountId) rechnet.
+
+**`tmpVar1` re-verifiziert (Architect-Forderung, Kmt 22893) — BELEGT, nicht
+validat-Artefakt:**
+- REAL-Run (nicht validate), deployed 4-arg-Code: 13× tmpVar1, exakt die
+  13 runAs-Methoden mit AccountId; die 3 PASS (ak7, handler_direct,
+  derive_stufe) machen AccountId-Inserts als System-Kontext.
+- Org-Klasse `CasePriorityTrigger.cls` via Tooling-Query abgefragt
+  (Body 4370 Zeichen): **kein `tmpVar1` im Quelltext** → der Name ist der
+  **Runtime-Bind** in `buildBatchData:112`:
+  `WHERE Id IN :accountIds AND VIP_Customer__c = true`. FLS-Erwartung an
+  dem Bind im runAs(Standard User)-Kontext schlägt fehl, weil Standard User
+  kein FLS auf `Account.VIP_Customer__c` hat (fls-check.sh 2026-10-05:
+  nur `SCRUM333_VIP_Customer` gewährt es; assigned 1× → devops-agent).
+- Architektur-Entscheidung (wie 437, empirisch grün): alle
+  Account-geschlüsselten Tests in den **System-Kontext** (kein PSA in der
+  Methode → MIXED_DML strukturell ausgeschlossen, Trigger-Durchlauf mit
+  Admin-FLS); die Lücke-C-Erfüllung (`System.runAs(` in der
+  Ursache__c-berührenden Klasse) bleibt in einer eigenen Methode
+  `fls_lueckeC_ursache_unter_standard_user` mit **Case ohne AccountId**
+  (PSA → Case-Insert ohne Account = seit Wochen grün in CI: 390/418/419/437).
+
+**Neue Klassen-Struktur (Round 2, deployed):**
+- 17 testmethods: 16 Business (alle System-Kontext, kein ursacheUser) +
+  1 `fls_lueckeC_ursache_unter_standard_user` (einziges PSA, kein AccountId).
+- `insertCase(accId, priority, status)` — 3-arg, System-Insert.
+- `Case.CreatedDate/ClosedDate/IsClosed` bleiben unangetastet (platform-managed).
+
 ## Handoff-Entscheidung (FINAL)
 → **Architect-Agent, Spalte Review** (meine dokumentierte Übergabestelle; "an DevOps" war eine
   Abkürzung, die der Handoff-Chain widerspricht — Developer→Architect, Review).

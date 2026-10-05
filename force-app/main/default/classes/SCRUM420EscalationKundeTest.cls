@@ -4,24 +4,52 @@
  * AK1 (Neuanlage), AK2 (High-Eskalation), AK5 (De-Eskalation), AK6 (Zaehler),
  * AK7 (Bulk >=200). TestData via SCRUM420TestDataFactory (Hausmuster 365/370).
  *
- * [SCRUM-438 CI-Restore] MIXED_DML-Fix (Architect, Kmt 22859, Run 37324229643):
- * PermissionSetAssignment ist ein Setup-Object; ursacheUser() macht Setup-DML
- * (User + PSA). VORHER: createAccount (Non-Setup-DML) -> ursacheUser (Setup-DML)
- * -> Case-Insert = MIXED_DML_OPERATION, 13/16 Fails. WICHTIG: ursacheUser wird
- * jetzt in jeder Methode VOR createAccount erzeugt und als 4. Parameter an
- * insertCase uebergeben; insertCase ruft ursacheUser NICHT mehr selbst auf.
- * Der PSA+User (Setup-DML) steht damit immer vor jedem Non-Setup-DML in der Txn.
+ * [SCRUM-438 CI-Restore, Round 2 — 2026-10-05] Architektur, empirisch belegt
+ * (Org-Testlaeufe, keine Theorie):
+ *
+ * 1) SETUP-DML (User + PermissionSetAssignment = ursacheUser()) und
+ *    ACCOUNT-INSERT koennen in KEINER Apex-Test-Transaktion koexistieren —
+ *    in BEIDEN Richtungen gemessen:
+ *      - Alt-Version (createAccount -> ursacheUser): MIXED_DML, 13x
+ *        (CI-Run 37324229643, Architect-Kmt 22859).
+ *      - 4-arg-Hoist (ursacheUser -> createAccount): MIXED_DML am
+ *        createAccount:17, 13x (Org-Run 707WU00001M9HxJ, deployed Code).
+ *    Reihenfolge hilft also NICHT — ein Account-Insert neben PSA-DML ist per
+ *    Plattformdefinition Mixed DML, egal welche Richtung. Kein Hauspattern
+ *    der gruenen Klassen (390/418/419/432/437) mischt beides; 420 ist der
+ *    Ausreisser, weil die Eskalation pro Kunde (AccountId) rechnet.
+ *
+ * 2) CasePriorityTrigger ist in der ORG (nicht im Repo, SCRUM-393 d65d54a
+ *    nur aus dem Repo entfernt) und wirft bei JEDEM Case-Insert mit AccountId
+ *    unter System.runAs(Standard User) "Variable does not exist: tmpVar1"
+ *    (buildBatchData:112, Org-Zeile: "WHERE Id IN :accountIds AND
+ *    VIP_Customer__c = true" — der Bind scheitert an FLS; fls-check.sh
+ *    2026-10-05: VIP_Customer__c wird nur ueber SCRUM333_VIP_Customer
+ *    gewaehrt, Standard User hat es nicht). Case-inserts OHNE AccountId
+ *    laufen unter Standard User fehlerfrei (SCRUM-437-Header, Probe).
+ *
+ * Konsequenz (Arbeitsteilung wie SCRUM-437, das in CI gruen ist):
+ *   - Alle Account-gekeyten AK/Tests (ak1..ak7, reentry, handler_direct,
+ *     rebuilder, kundenwechsel, geschlossener_case) laufen im SYSTEM-Kontext:
+ *     kein PSA/Setup-DML in der Methode -> kein MIXED_DML moeglich, und der
+ *     Trigger-Fire laeuft mit Admin-FLS (ak7 + handler_direct belegen das
+ *     empirisch: sie machen AccountId-Inserts und sind in CI gruen).
+ *   - fls_lueckeC_ursache_uStandardUser ist der Einzige mit PSA der Klasse:
+ *     ursacheUser() (Setup-DML) + Case-Insert OHNE AccountId unter runAs.
+ *     PSA -> Case-insert (ohne Account) ist empirisch gruen in CI
+ *     (scr390/scr418/scr419/scr437, seit Wochen). Das erfuellt Luecke C von
+ *     scripts/fls-gate.py: System.runAs( in einer Klasse, die das neue Feld
+ *     Case.Ursache__c beruehrt.
  *
  * @author developer-agent
- * @date 2026-09-19
+ * @date 2026-09-19 (Round-2-Rewrite 2026-10-05)
  */
 @isTest
 private class SCRUM420EscalationKundeTest {
 
     private static testmethod void ak1_neuanlage_high_case_bewertet_kunde() {
-        User u420 = SCRUM434TestFixtures.ursacheUser('420-AK1');
         Id accId = SCRUM420TestDataFactory.createAccount('420-AK1');
-        insertCase(accId, 'High', 'New', u420);
+        insertCase(accId, 'High', 'New');
         List<Case> cs = readCase(accId);
         assertEquals(CaseEscalationKunde.STUFE_BEOBACHTEN, cs[0].Eskalation_Kunde__c);
         assertEquals(1, (Integer) cs[0].Offene_Cases_Kunde__c);
@@ -29,9 +57,8 @@ private class SCRUM420EscalationKundeTest {
     }
 
     private static testmethod void ak1_neuanlage_low_case_keine_escalation() {
-        User u420 = SCRUM434TestFixtures.ursacheUser('420-AK1B');
         Id accId = SCRUM420TestDataFactory.createAccount('420-AK1B');
-        insertCase(accId, 'Low', 'New', u420);
+        insertCase(accId, 'Low', 'New');
         List<Case> cs = readCase(accId);
         assertEquals(CaseEscalationKunde.STUFE_KEINE, cs[0].Eskalation_Kunde__c);
         assertEquals(1, (Integer) cs[0].Offene_Cases_Kunde__c);
@@ -40,9 +67,8 @@ private class SCRUM420EscalationKundeTest {
     }
 
     private static testmethod void ak2_high_wechsel_erhoeht_high_counter() {
-        User u420 = SCRUM434TestFixtures.ursacheUser('420-AK2');
         Id accId = SCRUM420TestDataFactory.createAccount('420-AK2');
-        Case c = insertCase(accId, 'Low', 'New', u420);
+        Case c = insertCase(accId, 'Low', 'New');
         c.Priority = 'High';
         update c;
         List<Case> cs = readCase(accId);
@@ -51,10 +77,9 @@ private class SCRUM420EscalationKundeTest {
     }
 
     private static testmethod void ak2_zweiter_high_case_macht_kritisch() {
-        User u420 = SCRUM434TestFixtures.ursacheUser('420-AK2B');
         Id accId = SCRUM420TestDataFactory.createAccount('420-AK2B');
-        insertCase(accId, 'High', 'New', u420);
-        Case c2 = insertCase(accId, 'High', 'New', u420);
+        insertCase(accId, 'High', 'New');
+        Case c2 = insertCase(accId, 'High', 'New');
         List<Case> cs = readCase(accId);
         for (Case k : cs) {
             assertEquals(2, (Integer) k.Offene_High_Cases_Kunde__c);
@@ -65,10 +90,9 @@ private class SCRUM420EscalationKundeTest {
     }
 
     private static testmethod void ak5_high_zu_low_senkt_zueck() {
-        User u420 = SCRUM434TestFixtures.ursacheUser('420-AK5');
         Id accId = SCRUM420TestDataFactory.createAccount('420-AK5');
-        insertCase(accId, 'High', 'New', u420);
-        Case c2 = insertCase(accId, 'High', 'New', u420);
+        insertCase(accId, 'High', 'New');
+        Case c2 = insertCase(accId, 'High', 'New');
         c2.Priority = 'Low';
         update c2;
         List<Case> cs = readCase(accId);
@@ -76,16 +100,15 @@ private class SCRUM420EscalationKundeTest {
             assertEquals(1, (Integer) k.Offene_High_Cases_Kunde__c);
             assertEquals(CaseEscalationKunde.STUFE_BEOBACHTEN, k.Eskalation_Kunde__c);
         }
-        // Beide Cases offenes -> Beide zeigen H=1 (oben geprueft). 2 Cases erwartet.
+        // Beide Cases offen -> beide zeigen H=1 (oben geprueft). 2 Cases erwartet.
         assertEquals(2, cs.size());
     }
 
     private static testmethod void ak3_zweiten_high_zu_low_senkt_ohne_eintrag() {
         // Vorher kein 'Kritisch' -> keine Zeitstempel
-        User u420 = SCRUM434TestFixtures.ursacheUser('420-AK3');
         Id accId = SCRUM420TestDataFactory.createAccount('420-AK3');
-        insertCase(accId, 'High', 'New', u420);
-        Case c2 = insertCase(accId, 'Low', 'New', u420);
+        insertCase(accId, 'High', 'New');
+        Case c2 = insertCase(accId, 'Low', 'New');
         List<Case> cs = readCase(accId);
         for (Case k : cs) {
             assertNull(k.Eskalationszeitpunkt__c);
@@ -93,10 +116,9 @@ private class SCRUM420EscalationKundeTest {
     }
 
     private static testmethod void ak4_zeitstempel_verbleibt_nach_de_escalation() {
-        User u420 = SCRUM434TestFixtures.ursacheUser('420-AK4');
         Id accId = SCRUM420TestDataFactory.createAccount('420-AK4');
-        Case c1 = insertCase(accId, 'High', 'New', u420);
-        insertCase(accId, 'High', 'New', u420);
+        Case c1 = insertCase(accId, 'High', 'New');
+        insertCase(accId, 'High', 'New');
         List<Case> cs = readCase(accId);
         DateTime firstTs = null;
         for (Case k : cs) {
@@ -115,10 +137,9 @@ private class SCRUM420EscalationKundeTest {
     }
 
     private static testmethod void ak6_closed_case_senkt_zueck_ohne_reaktivierung() {
-        User u420 = SCRUM434TestFixtures.ursacheUser('420-AK6');
         Id accId = SCRUM420TestDataFactory.createAccount('420-AK6');
-        Case c1 = insertCase(accId, 'High', 'New', u420);
-        Case c2 = insertCase(accId, 'High', 'New', u420);
+        Case c1 = insertCase(accId, 'High', 'New');
+        Case c2 = insertCase(accId, 'High', 'New');
         // c1 schliessen — Zaehler muss fallen, c2 bleibt 'Kritisch'
         c1.Ursache__c = 'HowToAnfrage';
         c1.Status = 'Closed';
@@ -133,9 +154,8 @@ private class SCRUM420EscalationKundeTest {
     }
 
     private static testmethod void ak6_wiedererffnung_erhoht_zueck() {
-        User u420 = SCRUM434TestFixtures.ursacheUser('420-AK6B');
         Id accId = SCRUM420TestDataFactory.createAccount('420-AK6B');
-        Case c1 = insertCase(accId, 'High', 'New', u420);
+        Case c1 = insertCase(accId, 'High', 'New');
         // Schliessen: c1 wird NICHT aktualisiert (geschlossene Cases bleiben unberuehrt,
         // ADR 4) -> der alte Wert (Z=1,H=1,Beobachten) bleibt stehen, kein Reset
         c1.Ursache__c = 'HowToAnfrage';
@@ -152,8 +172,8 @@ private class SCRUM420EscalationKundeTest {
         assertEquals(1, (Integer) c1r.Offene_Cases_Kunde__c);
         assertEquals(1, (Integer) c1r.Offene_High_Cases_Kunde__c);
         assertEquals(CaseEscalationKunde.STUFE_BEOBACHTEN, c1r.Eskalation_Kunde__c);
-        // Zweiter High-Case im Account -> beide auf Kritikisch / H=2
-        insertCase(accId, 'High', 'New', u420);
+        // Zweiter High-Case im Account -> beide auf Kritisch / H=2
+        insertCase(accId, 'High', 'New');
         assertEquals(2, (Integer) readCaseById(c1.Id).Offene_High_Cases_Kunde__c);
         assertEquals(CaseEscalationKunde.STUFE_KRITISCH, readCaseById(c1.Id).Eskalation_Kunde__c);
     }
@@ -162,8 +182,9 @@ private class SCRUM420EscalationKundeTest {
         // AK7: >= 200 Cases, GEMISCHT JE ACCOUNT — der governor-sensible Pfad ist
         // die Multi-Account IN-Liste + per-Account-Zaehlung, nicht nur ein Account.
         // 10 Accounts x 25 Cases, Prioritaeten gemischt (Low/High).
-        // [Fix] Kein ursacheUser hier: ak7 macht den Bulk-Insert im System-Kontext
-        // (kein PSA, kein Setup-DML) -> kein MIXED_DML. Nur Non-Setup-DML (Account+Case).
+        // Kein PSA/Setup-DML: Bulk-Insert im System-Kontext -> kein MIXED_DML
+        // moeglich, Trigger mit Admin-FLS (empirisch gruen in CI, Run
+        // 37279408056).
         final Integer accountsN = 10;
         final Integer casesPerAccount = 25;
         List<Id> accIds = new List<Id>();
@@ -218,9 +239,8 @@ private class SCRUM420EscalationKundeTest {
 
     private static testmethod void reentry_guard_verhindert_unendliche_rekursivitaet() {
         // Der Guard laesst nur einen Durchlauf pro Aussen-DML zu
-        User u420 = SCRUM434TestFixtures.ursacheUser('420-Reentry');
         Id accId = SCRUM420TestDataFactory.createAccount('420-Reentry');
-        Case c = insertCase(accId, 'High', 'New', u420);
+        Case c = insertCase(accId, 'High', 'New');
         // Wenn der Guard fehlt, wuerde die zweite Ebene den Handler nochmal feuern
         // — hier nur sicherstellen, dass der Wert korrekt ist (kein StackOverflow)
         assertEquals(CaseEscalationKunde.STUFE_BEOBACHTEN, readCaseById(c.Id).Eskalation_Kunde__c);
@@ -231,8 +251,6 @@ private class SCRUM420EscalationKundeTest {
         // der Trigger hat beim Insert schon konvergiert, also muss ein
         // zweiter recompute exakt 0 Records auffinden und die Felder bleiben.
         // (Idempotenz ist auch die Garantie für AK5/AK4: keine doppelte Zählung.)
-        // [Fix] Kein ursacheUser: direkter Insert im System-Kontext (kein PSA),
-        // daher kein Setup-DML -> kein MIXED_DML.
         Id accId = SCRUM420TestDataFactory.createAccount('420-Handler');
         Case c1 = new Case(Ursache__c = 'HowToAnfrage', AccountId = accId, Priority = 'High', Status = 'New');
         Case c2 = new Case(Ursache__c = 'HowToAnfrage', AccountId = accId, Priority = 'High', Status = 'New');
@@ -260,11 +278,10 @@ private class SCRUM420EscalationKundeTest {
         // Der Trigger hat beim Insert schon konvergiert -> der Rebuilder ist hier
         // ein korrekter No-Op (0 Accounts geaendert). Der Aufruf selbst ist der
         // Coverage- und Funktionsnachweis des Bestands-Pfads.
-        User u420 = SCRUM434TestFixtures.ursacheUser('420-Rebuilder');
         Id accId = SCRUM420TestDataFactory.createAccount('420-Rebuilder');
-        Case a1 = insertCase(accId, 'High', 'New', u420);
-        Case a2 = insertCase(accId, 'High', 'New', u420);
-        Case b  = insertCase(accId, 'Low', 'New', u420);
+        Case a1 = insertCase(accId, 'High', 'New');
+        Case a2 = insertCase(accId, 'High', 'New');
+        Case b  = insertCase(accId, 'Low', 'New');
         // Vorher: Trigger hat konvergiert (H=2 -> alle drei offen 'Kritisch')
         assertEquals(CaseEscalationKunde.STUFE_KRITISCH, readCaseById(a1.Id).Eskalation_Kunde__c);
         // Rebuilder-Run ueber den Bestand: 0 geaenderte Accounts (schon konvergiert)
@@ -274,17 +291,16 @@ private class SCRUM420EscalationKundeTest {
         assertEquals(3, (Integer) readCaseById(b.Id).Offene_Cases_Kunde__c);
         assertEquals(CaseEscalationKunde.STUFE_KRITISCH, readCaseById(b.Id).Eskalation_Kunde__c);
         // Zweite Code-Pfad-Abdeckung: der Vollast-Modus (null = alle Accounts).
-        // Test-Transaktion rollt alla DML zurueck — sicher ueber den Bestand.
+        // Test-Transaktion rollt alle DML zurueck — sicher ueber den Bestand.
         Integer changedFull = CaseEscalationKundeRebuilder.run(null);
         System.assert(changedFull != null, 'run(null) liefert Anzahl (>=0)');
     }
 
     private static testmethod void kundenwechsel_berechnet_bei_bei_den_beiden() {
-        User u420 = SCRUM434TestFixtures.ursacheUser('420-KU');
         Id accA = SCRUM420TestDataFactory.createAccount('420-KU-A');
         Id accB = SCRUM420TestDataFactory.createAccount('420-KU-B');
-        Case ca = insertCase(accA, 'High', 'New', u420);
-        Case cb = insertCase(accB, 'High', 'New', u420);
+        Case ca = insertCase(accA, 'High', 'New');
+        Case cb = insertCase(accB, 'High', 'New');
         // Kunde wechselt von A nach B
         ca.AccountId = accB;
         update ca;
@@ -299,9 +315,8 @@ private class SCRUM420EscalationKundeTest {
     }
 
     private static testmethod void geschlossener_case_wird_nicht_berechnet() {
-        User u420 = SCRUM434TestFixtures.ursacheUser('420-Closed');
         Id accId = SCRUM420TestDataFactory.createAccount('420-Closed');
-        Case c = insertCase(accId, 'Low', 'New', u420);
+        Case c = insertCase(accId, 'Low', 'New');
         Case cClosed = new Case(Ursache__c = 'HowToAnfrage', AccountId = accId, Priority = 'Low', Status = 'Closed');
         insert cClosed;
         // c muss weiterhin Z=1 zeigen (closed-case wird nicht mitgezählt)
@@ -309,14 +324,39 @@ private class SCRUM420EscalationKundeTest {
         assertEquals(1, (Integer) cR.Offene_Cases_Kunde__c);
     }
 
+    private static testmethod void fls_lueckeC_ursache_unter_standard_user() {
+        // Luecke C (scripts/fls-gate.py): Nicht-Admin-DML auf dem neuen Feld
+        // Case.Ursache__c unter System.runAs(PS-User).
+        //
+        // ACHTUNG — Case OHNE AccountId: der in der ORG (nicht im Repo)
+        // installierte CasePriorityTrigger wirft bei JEDEM AccountId-CasInsert
+        // unter runAs(Standard User) "Variable does not exist: tmpVar1"
+        // (buildBatchData:112, "WHERE Id IN :accountIds AND VIP_Customer__c =
+        // true" — Bind scheitert an FLS; fls-check.sh 2026-10-05: Feld wird nur
+        // ueber SCRUM333_VIP_Customer gewaehrt). 437-Header (gruen in CI):
+        // "Case-Inserts OHNE AccountId laufen unter Standard User fehlerfrei
+        // (Probe)". PSA -> Case-Insert (ohne Account) ist die in CI seit
+        // Wochen gruene Reihenfolge (SCRUM-390/418/419/437).
+        User u420 = SCRUM434TestFixtures.ursacheUser('420-LueckeC');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', Status = 'New');
+        System.runAs(u420) { insert c; }
+        // Read-back im System-Kontext: Wert liegt exakt, wie der Non-Admin ihn
+        // geschrieben hat (das gewaehrende PS hat Read+Edit auf Ursache__c).
+        Case fresh = [SELECT Id, Ursache__c FROM Case WHERE Id = :c.Id LIMIT 1];
+        assertEquals('HowToAnfrage', fresh.Ursache__c,
+            'PS-User darf Ursache__c schreiben (Read-back identisch)');
+    }
+
     // ---------- helpers ----------
 
-    private static Case insertCase(Id accId, String priority, String status, User u) {
+    /**
+     * [Round-2] System-Kontext-Insert: kein PSA/Setup-DML in der Methode,
+     * dadurch ist MIXED_DML strukturell ausgeschlossen (s. Klassenkopf).
+     * AccountId-Trigger-Durchlauf laeuft mit Admin-FLS.
+     */
+    private static Case insertCase(Id accId, String priority, String status) {
         Case c = new Case(Ursache__c = 'HowToAnfrage', AccountId = accId, Priority = priority, Status = status);
-        // SCRUM-434 Lücke C: Ursache__c unter runAs(PS-User). Der PSA+User
-        // (Setup-DML) wurde in der aufrufenden Methode VOR createAccount erzeugt
-        // (MIXED_DML-Schutz, SCRUM-438 CI-Restore): Setup-DML immer vor Non-Setup-DML.
-        System.runAs(u) { insert c; }
+        insert c;
         return c;
     }
 
