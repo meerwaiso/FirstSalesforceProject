@@ -55,6 +55,43 @@
   → **Keine eigenmächtige Addition.** AC3/4-Re-Test bleibt "NOT COVERED — Org-Setup" bis PO den Wert
   bestätigt + DevOps/UI den Wert im Setup einträgt (standard object → kein Metadata-Weg).
 
+## Architect-REJECT (Kmt 22859) → MIXED_DML-Fix + 2. Blocker entdeckt (2026-10-05)
+
+Architect rejected PR #160: CI rot mit **13× `MIXED_DML_OPERATION` in
+`SCRUM420EscalationKundeTest`**. Root Cause: `createAccount` (Non-Setup-DML) →
+`ursacheUser` (PS-Setup) → Case-Insert = Setup-DML nach Non-Setup-DML.
+
+**Fix (eingespielt, VERIFIZIERT grün in diesem Run):** `ursacheUser` in
+jede der 13 Account-keyed Methoden HEBO (vor `createAccount`), als 4. Param
+in `insertCase` übergeben, Helper ruft `ursacheUser` NICHT mehr selbst.
+ak7 (bulk, System-Kontext, kein PSA), `handler_direct`, `derive_stufe` bleiben
+unverändert.
+
+**`deploy validate --tests SCRUM420EscalationKundeTest` (Test-Org, full log
+`/tmp/v438full.txt`):** `MIXED_DML × 0`. Der Reject ist damit behoben.
+
+**ABER: 2. Blocker, EXTERN zu SCRUM-438** — `tmpVar1 × 26`, 13/16 methods
+fail mit `CasePriorityTrigger.beforeInsert:27 → buildBatchData:112 → "Variable
+does not exist: tmpVar1"`. Die 3, die PASS (`ak7`, `handler_direct`,
+`derive_stufe`) = exakt die, die KEIN `runAs(u420)` mit AccountId machen.
+
+- Ursache: `SCRUM434TestFixtures.ursacheUser()` (Line 44) legt einen
+  **Standard User** (non-admin) an. SCRUM-437-Test-Header (2026-10-03)
+  dokumentiert: der in der ORG (nicht im Repo) installierte, LIVE `CasePriorityTrigger`
+  wirft bei JEDEM non-admin (runAs) AccountId-Case-Insert `tmpVar1`.
+- **SCRUM-393 (commit d65d54a) hat `CasePriorityTrigger` (class+trigger+meta)
+  aus dem force-app gelöscht** ("verified absent from Prod-Org, no code
+  dependency") — **wird aber NICHT aus Test-Org gepurgt; er ist dort noch live
+  und defekt.**
+- Das ist ein ORG-DRIFT / Org-Cleanup-Task, kein SCRUM-438-Impl-Ticket. Ich
+  löse es nicht selbst (wiederholt: kein `sf org delete`/eigenmächtiger
+  Setup-Drift-Fix ohne Ticket).
+
+**Konsequenz:** MIXED_DML-Fix ist korrekt + in & pushed, PR #160 aktualisiert.
+CI bleibt aber rot wegen `CasePriorityTrigger` (Org-Drift). → Blocker an
+Architect mit Belegen; Lösung = CasePriorityTrigger aus Test-Org entfernen
+(bzw. als Bug-Ticket an DevOps/PO routen) oder ursacheUser als Admin-Kontext.
+
 ## Handoff-Entscheidung (FINAL)
 → **Architect-Agent, Spalte Review** (meine dokumentierte Übergabestelle; "an DevOps" war eine
   Abkürzung, die der Handoff-Chain widerspricht — Developer→Architect, Review).
