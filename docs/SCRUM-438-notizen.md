@@ -101,3 +101,11 @@ beide Tests FAILen mit LimitException — reproduzierbar.
   - 2 Permission Sets (Read + System) existieren, je 2×2 Assigned
   - CronTrigger = 0 (Scheduled Job nie aktiviert — DevOps-Setup-Punkt)
   - PAUSE_STATUSES = [] und Picklist-Wert "Warten auf Kunde" NICHT in Org (S3/S4 nicht testbar)
+
+## Re-Test 2026-10-05 08:40 UTC (nach SCRUM-439-Fix 19f71fb)
+- Worktree gerefabet auf 19f71fb (Fix: SLAJobBatch Line 90 evaluate(c, asOf, bh))
+- SLAJobBatch neu deployed (Succeeded)
+- Apex: **11/11 PASS** (SLATest+FlsTest 9 + **ScaleTest 2/2**, Run 707WU00001M48rO)
+  — vorher 2/2 FAIL (SOQL 101), jetzt grün -> SCRUM-439 fix verifiziert
+- E2E SCRUM-438: 3/3 PASS (neuer Report 20261005)
+- Org-Setup-Points unverändert (Picklist-Wert Pause, CronTrigger=0) -> DevOps
