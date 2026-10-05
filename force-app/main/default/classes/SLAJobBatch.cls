@@ -87,7 +87,7 @@ public without sharing class SLAJobBatch
             Boolean origOver     = c.SLA_Ueberschritten__c;
             DateTime origDeadline = c.SLA_Zielzeit__c;
 
-            SLAService.evaluate(c, asOf);
+            SLAService.evaluate(c, asOf, bh);
 
             // Nur wenn sich AETWAS an einem Feld geaendert hat -> DML.
             // (Die arbeitete-Uhr laeuft waehrend ein Fall offen ist weiter;
