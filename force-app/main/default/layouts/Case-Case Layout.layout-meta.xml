@@ -376,6 +376,42 @@
         </layoutColumns>
         <style>TwoColumnsLeftToRight</style>
     </layoutSections>
+    <!-- SCRUM-438: SLA-Eskalation — eigene Section mit den 4 primären SLA-
+         Feldern (Zielzeit, Status, Eskalation, Ueberschritten) links + dem
+         Detail-Feld Letzter Lauf rechts. Alle Readonly (systemgepflegt per
+         Trigger/Batch, PO-AC10/AC11). Haus-Pattern wie „Problemserie"
+         (SCRUM-437) / „Rückschau" (SCRUM-434), vor „System Information". -->
+    <layoutSections>
+        <customLabel>true</customLabel>
+        <detailHeading>true</detailHeading>
+        <editHeading>true</editHeading>
+        <label>SLA</label>
+        <layoutColumns>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>SLA_Zielzeit__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>SLA_Status__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>SLA_Eskalation__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>SLA_Ueberschritten__c</field>
+            </layoutItems>
+        </layoutColumns>
+        <layoutColumns>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>SLA_Last_Checked__c</field>
+            </layoutItems>
+        </layoutColumns>
+        <style>TwoColumnsLeftToRight</style>
+    </layoutSections>
     <layoutSections>
         <customLabel>false</customLabel>
         <detailHeading>false</detailHeading>

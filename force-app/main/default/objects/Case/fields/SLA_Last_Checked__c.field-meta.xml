@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SLA_Last_Checked__c</fullName>
+    <label>SLA letzter Lauf</label>
+    <description>SCRUM-438: Zeitstempel des letzten erfolgreichen SLA-Bewertungslaufs (SLAService.evaluate, via BusinessHours-Add-Anker). Systemgepflegt; read-only. Internes Buchungs-Feld fuer die Pause-Korrektur (gefroren-Uhr): die gearbeiteten Minuten = BusinessHours.diff(Last_Checked, now) minus Pause-Intervalle. Auf dem Layout als Readonly/Detail (interne Referenz).</description>
+    <externalId>false</externalId>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>

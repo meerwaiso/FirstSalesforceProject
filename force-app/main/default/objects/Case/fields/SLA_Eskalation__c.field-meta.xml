@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SLA_Eskalation__c</fullName>
+    <description>SCRUM-438: SLA-Eskalationsstufe (API-Namen getrennt von SCRUM-398 Eskalationsstufe__c, ADR-5). Systemgepflegt (SLAService.evaluate); read-only. Keine (Default): keine Eskalation. Stufe 1: Zielzeit ueberschritten (SLA_Ueberschritten__c=true). Stufe 2: +4 Werkstunden (ESCALATION_LEVEL2_AFTER_MINUTES=240) ueber Stufe 1. Monoton — Stufe sinkt nie (Pause-behaltend, PO-Regel).</description>
+    <externalId>false</externalId>
+    <label>SLA-Eskalationsstufe</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Keine</fullName>
+                <label>Keine</label>
+            </value>
+            <value>
+                <fullName>Stufe 1</fullName>
+                <default>false</default>
+                <label>Stufe 1</label>
+            </value>
+            <value>
+                <fullName>Stufe 2</fullName>
+                <default>false</default>
+                <label>Stufe 2</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

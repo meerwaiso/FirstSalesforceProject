@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SLA_Ueberschritten__c</fullName>
+    <label>SLA überschritten</label>
+    <description>SCRUM-438: true, wenn die SLA-Zielzeit ueberschritten wurde; false initial. Systemgepflegt (SLAService.evaluate); read-only. Bewusst getrennt von Is_Overdue__c (SCRUM-390, Tage-Schwelle High&gt;2/Med&gt;5/Low&gt;10) — andere Metrik (Deadline vs. Tage-Verzögerung). Storable Checkbox (wird vom Prozess gesetzt, keine Formel).</description>
+    <defaultValue>false</defaultValue>
+    <type>Checkbox</type>
+</CustomField>
