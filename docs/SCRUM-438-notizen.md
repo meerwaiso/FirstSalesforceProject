@@ -34,3 +34,25 @@ Befunde, die Verdichtung nicht überleben dürfen. Eine Zeile = ein harter Befun
 2. Pause-Status: exakter Picklist-Wert wird noch nicht existieren → Org-Step "Warten auf Kunde" anlegen + SLAConfig.DEFAULT_PAUSE_STATUSES = {'Warten auf Kunde'}.
 3. Eskalations-Sprung Stufe1→2: 4 Werkstunden (Default, BusinessHours.diff) vs 4 Kalendersunden.
 4. Batch-Häufigkeit: 1h (empfohlen) vs häufiger.
+
+## Re-Test 2026-10-06 08:00-08:20 UTC (Zyklus R2, PR #160 Head 2987bf9)
+### Org-Befunde (live verifiziert)
+- CronTrigger 'SCRUM-438 SLA' VORHANDEN, State=WAITING, next 2026-10-06T06:15Z (vorher 0)
+- **05:15:04 UTC: Job lief real** — Cases tragen SLA_Last_Checked__c=2026-10-06T05:15:04 (z.B. 500WU00002nbKvPYAU, 500WU00002nbN6sYAE)
+- Case.Status Picklist (describe): ['New','Working','Escalated','Closed'] — 'Warten auf Kunde' NICHT vorhanden (Standard-Picklist, kein Metadata-Pfad; DevOps-Setup)
+- **ORG-DRIFT (Blocker):** Live-Probe `sf apex run` gegen deploytes SLAConfig: `PAUSE_EMPTY=true MATCH=false SIZE=0`.
+  Branch 2987bf9 hat `PAUSE_STATUSES={'Warten auf Kunde'}` (Kmt 22826 'deployed' gemeldet) —
+  Org hat die LEERE Version. Round-1-Muster (Kmt 22893): CI sieht es nicht, sf apex run test
+  fuehrt deployten Org-Code aus. Fix: SLAConfig aus 2987bf9 deployen (Manifest scr438-fix420.xml).
+### Testergebnisse (Run 707WU00001MDjOQ)
+- SLATest + FlsTest + ScaleTest = **11/11 PASS** (Regression R1 intakt, SCRUM-439-Fix weiterhin gruen)
+- SCRUM438SLAPauseTest (NEU, S3/S4): **0/3 FAIL** — alle 3 auf Org-Drift (Uhr_gestoppt=false,
+  A=180 statt 60 gefroren, Stufe 2 statt 1 erhalten). Tests sind korrekt; Org-Code fehlt der Wert.
+### Neue Test-Artefakte
+- SCRUM438SLAPauseTest.cls (+meta): S3 Pause friert A, S4 Resume bucht keine Pause-Zeit,
+  PO-Regel Eskalation bleibt in Pause. Unit-Level (in-memory Case): Pause-Logik ist pure String-Funktion
+  (SLAConfig.isPauseStatus); Picklist-Wert in ORG braucht man fuer Unit-Tests NICHT.
+- E2E S3/S4 mit REALER Record bleibt an Picklist-Wert 'Warten auf Kunde' (DevOps-Setup) gebunden.
+### Befehl zur Org-Verifikation (reproduzierbar)
+sf apex run -o Test-Org -f <probe>  ->  PAUSE_EMPTY=true SIZE=0  (Blocker)
+sf apex run test -o Test-Org -l RunSpecifiedTests -t SCRUM438SLAPauseTest -> 0/3 (solange Org leer)
