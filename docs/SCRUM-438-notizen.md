@@ -34,3 +34,22 @@ Befunde, die Verdichtung nicht überleben dürfen. Eine Zeile = ein harter Befun
 2. Pause-Status: exakter Picklist-Wert wird noch nicht existieren → Org-Step "Warten auf Kunde" anlegen + SLAConfig.DEFAULT_PAUSE_STATUSES = {'Warten auf Kunde'}.
 3. Eskalations-Sprung Stufe1→2: 4 Werkstunden (Default, BusinessHours.diff) vs 4 Kalendersunden.
 4. Batch-Häufigkeit: 1h (empfohlen) vs häufiger.
+
+## Re-Test R3 2026-10-06 10:30 UTC (Head 9b14fe8, PR #160)
+### Org-Drift behoben (unabhaengig bestaetigt)
+- Live-Probe `sf apex run` -> **PAUSE_EMPTY=false MATCH=true SIZE=1** (Developer Read-back 9b14fe8)
+- Ursache (Kmt 22993): der destruktive Orphan-Clean-Deploy (RunLocalTests -> 13x DmlException-Rollback)
+  hatte SLAConfig mit-gerollt; Fix via manifest/scr438-slaconfig.xml (NoTestRun, Succeeded)
+### Vollstaendiger Lauf (unabhaengig, neuer Worktree wt-438-r3)
+- Apex: **14/14 PASS, 100%** (Run ~37.6 s)
+  - SCRUM438SLATest 8 + SCRUM438SLAFlsTest 1 + SCRUM438SLAScaleTest 2 + SCRUM438SLAPauseTest 3
+  - **S3/S4 jetzt GRUEN** (s3_pause_freezesClock, s3s4_pauseThenResume, s3_escalationPreservedDuringPause)
+  - Scale 420 Cases intakt (SCRUM-439-Fix bleibt stabil)
+- E2E: **3/3 PASS** (20.2 s) — AC12a/b/c (Sektion, 5 Felder, 2 interne unsichtbar)
+### Ergebnis: ALLE 14 Szenarien PASS (0 open Items im Code)
+- Rest-Offen (DEVOPS, vor Release, kein Code): Picklist-Wert 'Warten auf Kunde' auf Case.Status
+  (Standard-Picklist, kein Metadata-Pfad) -> erst danach S3/S4 mit ECHTER Record end-to-end.
+  UNIT-Abdeckung (PauseTest) gilt ab sofort; E2E-Record-Abdeckung wartet auf den Picklist-Wert.
+### Befehle (reproduzierbar)
+- sf apex run test -o Test-Org -l RunSpecifiedTests -t SCRUM438SLATest,SCRUM438SLAFlsTest,SCRUM438SLAScaleTest,SCRUM438SLAPauseTest  -> 14/14
+- npx playwright test tests/e2e/SCRUM-438-sla-layout.spec.ts -> 3/3
