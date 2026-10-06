@@ -42,7 +42,8 @@ public without sharing class SLAConfig {
     // der Org (Case.Status hat genau 4 Werte) -> leer bis Org-Setup-Step.
     // 1-Zeilen-Aenderung, sobald der PO/DevOps den Wert liefert.
     public static final Set<String> PAUSE_STATUSES = new Set<String>{
-        // 'Warten auf Kunde' — Org-Setup-Step (DevOps), dann hier eintragen.
+        // AC3/AC4 (SCRUM-438): Pause-Status(e), Uhr friert (ADR-4).
+        'Warten auf Kunde'
     };
 
     private SLAConfig() {}

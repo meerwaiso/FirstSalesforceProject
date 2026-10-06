@@ -4,8 +4,45 @@
  * AK1 (Neuanlage), AK2 (High-Eskalation), AK5 (De-Eskalation), AK6 (Zaehler),
  * AK7 (Bulk >=200). TestData via SCRUM420TestDataFactory (Hausmuster 365/370).
  *
+ * [SCRUM-438 CI-Restore, Round 2 — 2026-10-05] Architektur, empirisch belegt
+ * (Org-Testlaeufe, keine Theorie):
+ *
+ * 1) SETUP-DML (User + PermissionSetAssignment = ursacheUser()) und
+ *    ACCOUNT-INSERT koennen in KEINER Apex-Test-Transaktion koexistieren —
+ *    in BEIDEN Richtungen gemessen:
+ *      - Alt-Version (createAccount -> ursacheUser): MIXED_DML, 13x
+ *        (CI-Run 37324229643, Architect-Kmt 22859).
+ *      - 4-arg-Hoist (ursacheUser -> createAccount): MIXED_DML am
+ *        createAccount:17, 13x (Org-Run 707WU00001M9HxJ, deployed Code).
+ *    Reihenfolge hilft also NICHT — ein Account-Insert neben PSA-DML ist per
+ *    Plattformdefinition Mixed DML, egal welche Richtung. Kein Hauspattern
+ *    der gruenen Klassen (390/418/419/432/437) mischt beides; 420 ist der
+ *    Ausreisser, weil die Eskalation pro Kunde (AccountId) rechnet.
+ *
+ * 2) CasePriorityTrigger ist in der ORG (nicht im Repo, SCRUM-393 d65d54a
+ *    nur aus dem Repo entfernt) und wirft bei JEDEM Case-Insert mit AccountId
+ *    unter System.runAs(Standard User) "Variable does not exist: tmpVar1"
+ *    (buildBatchData:112, Org-Zeile: "WHERE Id IN :accountIds AND
+ *    VIP_Customer__c = true" — der Bind scheitert an FLS; fls-check.sh
+ *    2026-10-05: VIP_Customer__c wird nur ueber SCRUM333_VIP_Customer
+ *    gewaehrt, Standard User hat es nicht). Case-inserts OHNE AccountId
+ *    laufen unter Standard User fehlerfrei (SCRUM-437-Header, Probe).
+ *
+ * Konsequenz (Arbeitsteilung wie SCRUM-437, das in CI gruen ist):
+ *   - Alle Account-gekeyten AK/Tests (ak1..ak7, reentry, handler_direct,
+ *     rebuilder, kundenwechsel, geschlossener_case) laufen im SYSTEM-Kontext:
+ *     kein PSA/Setup-DML in der Methode -> kein MIXED_DML moeglich, und der
+ *     Trigger-Fire laeuft mit Admin-FLS (ak7 + handler_direct belegen das
+ *     empirisch: sie machen AccountId-Inserts und sind in CI gruen).
+ *   - fls_lueckeC_ursache_uStandardUser ist der Einzige mit PSA der Klasse:
+ *     ursacheUser() (Setup-DML) + Case-Insert OHNE AccountId unter runAs.
+ *     PSA -> Case-insert (ohne Account) ist empirisch gruen in CI
+ *     (scr390/scr418/scr419/scr437, seit Wochen). Das erfuellt Luecke C von
+ *     scripts/fls-gate.py: System.runAs( in einer Klasse, die das neue Feld
+ *     Case.Ursache__c beruehrt.
+ *
  * @author developer-agent
- * @date 2026-09-19
+ * @date 2026-09-19 (Round-2-Rewrite 2026-10-05)
  */
 @isTest
 private class SCRUM420EscalationKundeTest {
@@ -63,7 +100,7 @@ private class SCRUM420EscalationKundeTest {
             assertEquals(1, (Integer) k.Offene_High_Cases_Kunde__c);
             assertEquals(CaseEscalationKunde.STUFE_BEOBACHTEN, k.Eskalation_Kunde__c);
         }
-        // Beide Cases offenes -> Beide zeigen H=1 (oben geprueft). 2 Cases erwartet.
+        // Beide Cases offen -> beide zeigen H=1 (oben geprueft). 2 Cases erwartet.
         assertEquals(2, cs.size());
     }
 
@@ -135,7 +172,7 @@ private class SCRUM420EscalationKundeTest {
         assertEquals(1, (Integer) c1r.Offene_Cases_Kunde__c);
         assertEquals(1, (Integer) c1r.Offene_High_Cases_Kunde__c);
         assertEquals(CaseEscalationKunde.STUFE_BEOBACHTEN, c1r.Eskalation_Kunde__c);
-        // Zweiter High-Case im Account -> beide auf Kritikisch / H=2
+        // Zweiter High-Case im Account -> beide auf Kritisch / H=2
         insertCase(accId, 'High', 'New');
         assertEquals(2, (Integer) readCaseById(c1.Id).Offene_High_Cases_Kunde__c);
         assertEquals(CaseEscalationKunde.STUFE_KRITISCH, readCaseById(c1.Id).Eskalation_Kunde__c);
@@ -145,6 +182,9 @@ private class SCRUM420EscalationKundeTest {
         // AK7: >= 200 Cases, GEMISCHT JE ACCOUNT — der governor-sensible Pfad ist
         // die Multi-Account IN-Liste + per-Account-Zaehlung, nicht nur ein Account.
         // 10 Accounts x 25 Cases, Prioritaeten gemischt (Low/High).
+        // Kein PSA/Setup-DML: Bulk-Insert im System-Kontext -> kein MIXED_DML
+        // moeglich, Trigger mit Admin-FLS (empirisch gruen in CI, Run
+        // 37279408056).
         final Integer accountsN = 10;
         final Integer casesPerAccount = 25;
         List<Id> accIds = new List<Id>();
@@ -169,7 +209,14 @@ private class SCRUM420EscalationKundeTest {
         // Ein Batch mit 250 Records auf 10 Accounts darf deutlich mehr als
         // ~10 Queries nicht erzeugen (Handler: eine SOQL fuer alle offenen Cases
         // mit IN(:accountIds); je-eine-Query-je-Case wuerde >250).
-        assertTrue(usedInBatch < 10, 'Batch-Queries ueber Budget: ' + usedInBatch);
+        //
+        // [SCRUM-438] Schwellwert <10 -> <15 (gemessen 2026-10-05, DevOps-Run
+        // 37279408056): alle Case-Triggers feuern bei insert; 438's
+        // CaseSLATrigger ruft SLAService.bhId() EINMAL pro Execution (= +1
+        // SOQL, by Design ADR-3; initSLA/evaluate SOQL-frei). Summe = 13
+        // (vor 438: 12). <15 laesst 13 durch und faengt einen echten
+        // per-Record-N+1 (~250 Queries) weiterhin hart.
+        assertTrue(usedInBatch < 15, 'Batch-Queries ueber Budget: ' + usedInBatch);
         // Spot check: alle Accounts korrekt, Werte matchen je Account
         for (Integer a = 0; a < accountsN; a++) {
             Id accId = accIds[a];
@@ -277,12 +324,39 @@ private class SCRUM420EscalationKundeTest {
         assertEquals(1, (Integer) cR.Offene_Cases_Kunde__c);
     }
 
+    private static testmethod void fls_lueckeC_ursache_unter_standard_user() {
+        // Luecke C (scripts/fls-gate.py): Nicht-Admin-DML auf dem neuen Feld
+        // Case.Ursache__c unter System.runAs(PS-User).
+        //
+        // ACHTUNG — Case OHNE AccountId: der in der ORG (nicht im Repo)
+        // installierte CasePriorityTrigger wirft bei JEDEM AccountId-CasInsert
+        // unter runAs(Standard User) "Variable does not exist: tmpVar1"
+        // (buildBatchData:112, "WHERE Id IN :accountIds AND VIP_Customer__c =
+        // true" — Bind scheitert an FLS; fls-check.sh 2026-10-05: Feld wird nur
+        // ueber SCRUM333_VIP_Customer gewaehrt). 437-Header (gruen in CI):
+        // "Case-Inserts OHNE AccountId laufen unter Standard User fehlerfrei
+        // (Probe)". PSA -> Case-Insert (ohne Account) ist die in CI seit
+        // Wochen gruene Reihenfolge (SCRUM-390/418/419/437).
+        User u420 = SCRUM434TestFixtures.ursacheUser('420-LueckeC');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', Status = 'New');
+        System.runAs(u420) { insert c; }
+        // Read-back im System-Kontext: Wert liegt exakt, wie der Non-Admin ihn
+        // geschrieben hat (das gewaehrende PS hat Read+Edit auf Ursache__c).
+        Case fresh = [SELECT Id, Ursache__c FROM Case WHERE Id = :c.Id LIMIT 1];
+        assertEquals('HowToAnfrage', fresh.Ursache__c,
+            'PS-User darf Ursache__c schreiben (Read-back identisch)');
+    }
+
     // ---------- helpers ----------
 
+    /**
+     * [Round-2] System-Kontext-Insert: kein PSA/Setup-DML in der Methode,
+     * dadurch ist MIXED_DML strukturell ausgeschlossen (s. Klassenkopf).
+     * AccountId-Trigger-Durchlauf laeuft mit Admin-FLS.
+     */
     private static Case insertCase(Id accId, String priority, String status) {
         Case c = new Case(Ursache__c = 'HowToAnfrage', AccountId = accId, Priority = priority, Status = status);
-        // SCRUM-434 Lücke C: Ursache__c unter runAs(PS-User).
-        System.runAs(SCRUM434TestFixtures.ursacheUser('420' + System.now().getTime())) { insert c; }
+        insert c;
         return c;
     }
 
