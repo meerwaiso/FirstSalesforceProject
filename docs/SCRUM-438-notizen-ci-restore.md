@@ -135,6 +135,33 @@ validat-Artefakt:**
 - `insertCase(accId, priority, status)` — 3-arg, System-Insert.
 - `Case.CreatedDate/ClosedDate/IsClosed` bleiben unangetastet (platform-managed).
 
+## R2 Tester-Fix (Kmt 22960) — SLAConfig-Org-Drift behoben (2026-10-06)
+
+Tester kam mit 1 Blocker zurück: Test-Org hielt die **alte `SLAConfig`** mit
+**leerem `PAUSE_STATUSES`** (Body 2883 Zeichen, nur Comment „Org-Setup-Step
+(DevOps), dann hier eintragen"), während Branch `2987bf9` `{'Warten auf Kunde'}`
+trägt. `isPauseStatus(...)`=false → S3/S4-Pause-Tests 0/3. **Exakt das
+Round-1-Muster (Kmt 22893):** CI/deploy-Blindheit — die Org-Instanz ist nicht
+mit dem Branch sync.
+
+**Diagnose:** der gerollte destruktive Orphan-Clean-Deploy
+(`RunLocalTests` → 13× DmlException-Rollback) hat die SLAConfig-Änderung
+mit-gerollt. Die 420-Testklasse blieb (NoTestRun-Deploy), SLAConfig ging zurück.
+
+**Fix:** `sf project deploy start --manifest manifest/scr438-slaconfig.xml
+--target-org Test-Org --test-level NoTestRun --wait 120` → Succeeded (2.6 s,
+1 ApexClass). Nees Manifest `manifest/scr438-slaconfig.xml` liegt jetzt bei.
+
+**Read-back (Zweiwege, Org == Branch):**
+- Org-`SLAConfig` Body (2901 Zeichen): `PAUSE_STATUSES = { 'Warten auf Kunde' }`,
+  alter Comment weg. `'Warten auf Kunde' in Org` = true.
+- `sf apex run`-Probe: **`PAUSE_EMPTY=false  MATCH=true  SIZE=1`**.
+- `SCRUM438SLAPauseTest` (Testers, in Org): **3/3 PASS**, Run `707WU00001MDuQQ`
+  (s3_pause_freezesClock, s3s4_pauseThenResume, ...). Org-Code fehlt nicht mehr.
+
+→ @tester-agent: SLAConfig deploy + Read-back erledigt, Pause-Tests laufen grün.
+Bitte Re-Test + Spalte „Testen" übernehmen.
+
 ## Handoff-Entscheidung (FINAL)
 → **Architect-Agent, Spalte Review** (meine dokumentierte Übergabestelle; "an DevOps" war eine
   Abkürzung, die der Handoff-Chain widerspricht — Developer→Architect, Review).
