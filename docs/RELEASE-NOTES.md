@@ -15,6 +15,27 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 ---
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
+## 06.10.2026 — SLA-Überwachung & automatische Eskalation für offene Servicefälle (SCRUM-438, mit Fix SCRUM-439)
+
+**Was sich aendert**
+- Jeder Servicefall trägt jetzt ein **SLA-Ziel**: je nach Priorität (High = 4 Stunden, Medium = 1 Werktag, Low = 3 Werktage) und mit **25 % kürzer** für Premium-Kunden. Die Zielzeit wird beim Anlegen des Falls automatisch berechnet und bei einer Prioritätsänderung neu abgeleitet — bereits verstrichene Bearbeitung zählt mit.
+- Der Fall zeigt laufend seinen **SLA-Status**: *Im Zeitplan* → *Gefährdet* (weniger als 20 % Restzeit) → *Überschritten*.
+- Läuft ein Fall über die Zielzeit hinaus, wird er **automatisch eskaliert** (Stufe 1), und nach weiteren 4 Stunden ungelöst auf **Stufe 2**. Ein abgeschlossener Fall eskaliert nicht mehr.
+- Die SLA-Uhr **läuft nur, solange der Fall bearbeitet werden kann**. Steht er auf *Warten auf Kunde*, bleibt die Uhr stehen — die erreichte Eskalationsstufe bleibt dabei erhalten, bis er wieder aufgenommen wird.
+- Die Prüfung läuft automatisch im Hintergrund (stündlich) und bleibt auch bei **vielen gleichzeitig offenen Fällen** zuverlässig, ohne die Performance zu belasten (mit Fix SCRUM-439).
+
+**Wo du es siehst**
+- Auf der **Falldetailseite**: neue Felder *SLA-Zielzeit*, *SLA-Status*, *Eskalationsstufe* (Keine / Stufe 1 / Stufe 2), *Letzte SLA-Prüfung* und Checkbox *SLA-überschritten* — für Service-Mitarbeitende und -Leitung mit den Service-SLA-Rechten.
+
+**Was bewusst noch fehlt**
+- Der Statuswert *Warten auf Kunde* im Status-Picklist ist **noch nicht in der Production-Org** angelegt (UI-Setup, kein Release-Blocker). Die SLA-Logik ist davon unabhängig vollständig aktiv; ohne den Picklist-Wert lässt sich die Pause nur über einen Apex-getriebenen Record testen, nicht über einen echten UI-Record.
+- **Werktag = Mo–Fr, ohne Feiertagskalender.** Wer Feiertage als Nicht-Werkstage behandeln will, meldet das separat.
+
+**Beleg**
+- Prod-Deploy-Tag `release/2026-10-06-SCRUM-438` @ `3b36e31` — 06.10.2026, Prod-Org `00Dg500000DkTtzEAF`, 3 Phasen (Felder, referenzierende Komponenten, Apex-Tests 26/26). Read-back in Prod: 7 SLA-Felder via `sf sobject describe Case` + beide Permission Sets 4/4 `PermissionSetAssignment`.
+
+---
+
 ## 04.10.2026 — Wiederkehrende Servicefälle eines Kunden automatisch erkennen (SCRUM-437)
 
 **Was sich ändert**
