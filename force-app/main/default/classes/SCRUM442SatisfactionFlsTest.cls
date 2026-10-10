@@ -46,7 +46,7 @@ private class SCRUM442SatisfactionFlsTest {
     /** Precondition: the Standard User has object-level Case + Account access. */
     @isTest
     static void precondition_objectAccess() {
-        User u = mkTestUser('pre442fls');
+        User u = mkTestUser('pre442a');
         Boolean caseReadable = false;
         Boolean accountReadable = false;
         System.runAs(u) {
@@ -61,7 +61,7 @@ private class SCRUM442SatisfactionFlsTest {
     /** AC8 (negative): without any PS the score field is not offered at all. */
     @isTest
     static void withoutPS_scoreInvisible() {
-        User u = mkTestUser('neg442fls');
+        User u = mkTestUser('neg442a');
         Boolean invisible;
         System.runAs(u) {
             invisible = !Case.Customer_Satisfaction__c.getDescribe().isAccessible();
@@ -74,7 +74,7 @@ private class SCRUM442SatisfactionFlsTest {
     /** AC7: with the Read-PS only the score is readable but NOT updateable. */
     @isTest
     static void readPS_readableNotUpdateable() {
-        User u = grantPS(mkTestUser('sales442fls'), 'SCRUM442_Satisfaction_Read');
+        User u = grantPS(mkTestUser('sales442'), 'SCRUM442_Satisfaction_Read');
         Boolean accessible;
         Boolean updateable;
         System.runAs(u) {
@@ -92,22 +92,23 @@ private class SCRUM442SatisfactionFlsTest {
     static void salesShape_writeRefusedValueUnchanged() {
         // Setup OUTSIDE runAs: a Standard User cannot grant itself a PSA, and
         // the Case is created by the System context (a Service colleague).
-        User u = grantPS(mkTestUser('sales442rt'), 'SCRUM442_Satisfaction_Read');
+        User u = grantPS(mkTestUser('salesrt1'), 'SCRUM442_Satisfaction_Read');
 
         Case seed = new Case(Subject = 'V442 fls rt', Status = 'Working');
         insert seed;
         Id caseId = seed.Id;
         seed.Status = 'Closed';
+        seed.Ursache__c = 'TechnischerFehler';
         seed.Customer_Satisfaction__c = 'Score_4';
         update seed;
 
-        SalesforceException caught = null;
+        DmlException caught = null;
         System.runAs(u) {
             try {
                 Case c = [SELECT Id, Customer_Satisfaction__c FROM Case WHERE Id = :caseId LIMIT 1];
                 c.Customer_Satisfaction__c = 'Score_1';
                 update c;
-            } catch (SalesforceException e) {
+            } catch (DmlException e) {
                 caught = e;
             }
         }
@@ -122,7 +123,7 @@ private class SCRUM442SatisfactionFlsTest {
     /** AC2/AC8 positive: with the Write-PS the Service shape reads + writes. */
     @isTest
     static void writePS_readableAndUpdateable() {
-        User u = grantPS(mkTestUser('service442fls'), 'SCRUM442_Satisfaction_Write');
+        User u = grantPS(mkTestUser('srv442wr'), 'SCRUM442_Satisfaction_Write');
         Boolean accessible;
         Boolean updateable;
         System.runAs(u) {
@@ -137,7 +138,7 @@ private class SCRUM442SatisfactionFlsTest {
     /** AC5 read-path: the Account overview fields follow the Read-PS. */
     @isTest
     static void readPS_accountOverviewReadable() {
-        User u = grantPS(mkTestUser('sales442acc'), 'SCRUM442_Satisfaction_Read');
+        User u = grantPS(mkTestUser('salesacc'), 'SCRUM442_Satisfaction_Read');
         Boolean avgReadable;
         Boolean argerReadable;
         System.runAs(u) {

@@ -46,7 +46,8 @@ private class SCRUM442SatisfactionTest {
         );
         insert u;
         for (String psName : new List<String>{'SCRUM442_Satisfaction_Write',
-                                              'SCRUM442_Satisfaction_Read'}) {
+                                              'SCRUM442_Satisfaction_Read',
+                                              'SCRUM434_Ursache'}) {
             PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = :psName LIMIT 1];
             insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);
         }
@@ -75,11 +76,12 @@ private class SCRUM442SatisfactionTest {
             insert c;
             Id caseId = c.Id;
 
-            SalesforceException caught = null;
+            DmlException caught = null;
             try {
                 c.Status = 'Closed';
+                c.Ursache__c = 'TechnischerFehler';
                 update c;
-            } catch (SalesforceException e) {
+            } catch (DmlException e) {
                 caught = e;
             }
             System.assert(caught != null,
@@ -106,6 +108,7 @@ private class SCRUM442SatisfactionTest {
             Id caseId = c.Id;
 
             c.Status = 'Closed';
+            c.Ursache__c = 'TechnischerFehler';
             c.Customer_Satisfaction__c = 'Score_4';
             update c;
 
@@ -131,6 +134,7 @@ private class SCRUM442SatisfactionTest {
             Id caseId = c.Id;
 
             c.Status = 'Closed';
+            c.Ursache__c = 'TechnischerFehler';
             c.Customer_Satisfaction__c = 'Score_2';
             update c;
 
@@ -166,6 +170,7 @@ private class SCRUM442SatisfactionTest {
             insert c;
             Id caseId = c.Id;
             c.Status = 'Closed';
+            c.Ursache__c = 'TechnischerFehler';
             c.Customer_Satisfaction__c = 'Score_4';
             update c;
             List<Task> tasks = [SELECT Id FROM Task WHERE WhatId = :caseId];
@@ -184,6 +189,7 @@ private class SCRUM442SatisfactionTest {
             Id caseId = c.Id;
 
             c.Status = 'Closed';
+            c.Ursache__c = 'TechnischerFehler';
             c.Customer_Satisfaction__c = 'Score_1';
             update c;
             System.assertEquals(1,
@@ -200,6 +206,7 @@ private class SCRUM442SatisfactionTest {
 
             // Reclose with a low score again.
             c.Status = 'Closed';
+            c.Ursache__c = 'TechnischerFehler';
             c.Customer_Satisfaction__c = 'Score_2';
             update c;
             List<Task> tasks = [SELECT Id, Subject, ActivityDate
@@ -238,6 +245,7 @@ private class SCRUM442SatisfactionTest {
             for (Id cid : ids) {
                 Case c = new Case(Id = cid,
                                   Status = 'Closed',
+                                  Ursache__c = 'TechnischerFehler',
                                   Customer_Satisfaction__c = 'Score_1');
                 closings.add(c);
             }
@@ -250,11 +258,12 @@ private class SCRUM442SatisfactionTest {
             'Bulk: one Task per low-score Case, created in one batch');
 
         // Direct handler call over the same stock: idempotent, 0 new Tasks.
-        List<Case> reopened = [SELECT Id, Subject, Status, ClosedDate,
+        List<Case> reopened = [SELECT Id, Subject, Status, IsClosed, ClosedDate,
                                       Customer_Satisfaction__c
                                FROM Case WHERE Id IN :ids];
         for (Case c : reopened) {
             c.Status = 'Closed';
+            c.Ursache__c = 'TechnischerFehler';
             c.Customer_Satisfaction__c = 'Score_2';
         }
         SatisfactionTaskHandler.handle(reopened);

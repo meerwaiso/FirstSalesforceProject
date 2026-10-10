@@ -84,7 +84,9 @@ public without sharing class AccountSatisfactionRebuilder {
         // records; the chunk loop below groups them into `size`-sized chunks.
         List<Account> buffer = new List<Account>();
         for (SObject so : (Iterable<SObject>) Database.getQueryLocator([
-                SELECT Id FROM Account
+                SELECT Id, Satisfaction_Durchdurch__c, Satisfaction_Min__c,
+                       Satisfaction_Anzahl__c, Satisfaction_Fenster_Start__c
+                       FROM Account
             ])) {
             buffer.add((Account) so);
             if (buffer.size() >= size) {

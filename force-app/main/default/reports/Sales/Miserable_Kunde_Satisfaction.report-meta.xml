@@ -54,10 +54,10 @@
     <showDetails>true</showDetails>
     <showGrandTotal>true</showGrandTotal>
     <showSubTotals>true</showSubTotals>
-    <sortColumn>Satisfaction_Durchdurch__c</sortColumn>
+    <sortColumn>Account.Satisfaction_Durchdurch__c</sortColumn>
     <sortOrder>Asc</sortOrder>
     <timeFrameFilter>
-        <dateColumn>CLOSED_DATE</dateColumn>
+        <dateColumn>Account.Satisfaction_Fenster_Start__c</dateColumn>
         <interval>INTERVAL_LAST90</interval>
     </timeFrameFilter>
 </Report>

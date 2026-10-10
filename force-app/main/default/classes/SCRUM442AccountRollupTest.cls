@@ -38,6 +38,7 @@ private class SCRUM442AccountRollupTest {
         Case c = new Case(Subject = 'V442 rollup',
                           AccountId = accId,
                           Status = 'Closed',
+                          Ursache__c = 'TechnischerFehler',
                           Customer_Satisfaction__c = score);
         insert c;
         if (daysAgo != null && daysAgo > 0) {
@@ -63,10 +64,10 @@ private class SCRUM442AccountRollupTest {
                                 Satisfaction_Anzahl__c, Satisfaction_Fenster_Start__c,
                                 Satisfaction_Arger__c
                          FROM Account WHERE Id = :a.Id LIMIT 1];
-        System.assertEquals(Decimal.valueOf(3.7), after.Satisfaction_Durchdurch__c,
+        System.assertEquals(3.7, after.Satisfaction_Durchdurch__c,
             'AC5: avg of 2,4,5 = 3.7 (1 decimal)');
-        System.assertEquals(Decimal.valueOf(2), after.Satisfaction_Min__c, 'AC5: min = 2');
-        System.assertEquals(Decimal.valueOf(3), after.Satisfaction_Anzahl__c,
+        System.assertEquals(2.0, after.Satisfaction_Min__c, 'AC5: min = 2');
+        System.assertEquals(3.0, after.Satisfaction_Anzahl__c,
             'AC5: NON-ZERO count = 3 (zero-rule guard)');
         System.assertEquals(Date.today().addMonths(-3), after.Satisfaction_Fenster_Start__c,
             'AC6: the measured period is visible');
@@ -86,9 +87,9 @@ private class SCRUM442AccountRollupTest {
         Account after = [SELECT Satisfaction_Durchdurch__c, Satisfaction_Min__c,
                                 Satisfaction_Anzahl__c, Satisfaction_Arger__c
                          FROM Account WHERE Id = :a.Id LIMIT 1];
-        System.assertEquals(Decimal.valueOf(4.5), after.Satisfaction_Durchdurch__c, 'avg 4.5');
-        System.assertEquals(Decimal.valueOf(4), after.Satisfaction_Min__c, 'min 4');
-        System.assertEquals(Decimal.valueOf(2), after.Satisfaction_Anzahl__c, 'count 2 (non-zero)');
+        System.assertEquals(4.5, after.Satisfaction_Durchdurch__c, 'avg 4.5');
+        System.assertEquals(4.0, after.Satisfaction_Min__c, 'min 4');
+        System.assertEquals(2.0, after.Satisfaction_Anzahl__c, 'count 2 (non-zero)');
         System.assertEquals('OK', String.valueOf(after.Satisfaction_Arger__c),
             'AC5: avg >= 3 and min > 2 -> OK');
     }
@@ -127,7 +128,7 @@ private class SCRUM442AccountRollupTest {
         System.assertEquals(null, after.Satisfaction_Durchdurch__c,
             'PO-Decision: no closed Case in the window -> NO average');
         System.assertEquals(null, after.Satisfaction_Min__c, 'no min either');
-        System.assertEquals(Decimal.valueOf(0), after.Satisfaction_Anzahl__c, 'count reset to 0');
+        System.assertEquals(0.0, after.Satisfaction_Anzahl__c, 'count reset to 0');
         System.assertEquals('Kein Daten', String.valueOf(after.Satisfaction_Arger__c),
             'PO-Decision: reads Kein Daten, never satisfied, never Ärger-by-zero');
     }
@@ -154,7 +155,7 @@ private class SCRUM442AccountRollupTest {
             'chunking must cover the whole stock');
         for (Account a : [SELECT Id, Satisfaction_Anzahl__c, Satisfaction_Fenster_Start__c
                                  FROM Account WHERE Id IN :seeds]) {
-            System.assertEquals(Decimal.valueOf(0), a.Satisfaction_Anzahl__c,
+            System.assertEquals(0.0, a.Satisfaction_Anzahl__c,
                 'every chunked Account got its fields written');
             System.assertEquals(Date.today().addMonths(-3), a.Satisfaction_Fenster_Start__c,
                 'window written in every chunk');
