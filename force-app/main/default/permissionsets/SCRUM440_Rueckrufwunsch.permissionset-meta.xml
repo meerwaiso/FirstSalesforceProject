@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-440: FLS auf Opportunity.Rueckruf_desired__c und Opportunity.Rueckruf_am__c (Rueckrufwish) — Vertriebs + Vertriebsleitung: lesbar + änderbar. Nur Feldrechte, kein Objekt-CRUD (Opportunity-CRUD kommt ut den bestehente Profile, House-Konvention SCRUM-430/381). Standard-FLS dee Neu Fields stay OFF — reachable only via this Permission Set.</description>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Opportunity.Rueckruf_desired__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Opportunity.Rueckruf_am__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM440_Rueckrufwunsch</label>
+</PermissionSet>

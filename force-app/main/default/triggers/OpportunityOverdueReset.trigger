@@ -22,6 +22,8 @@ trigger OpportunityOverdueReset on Opportunity (
             OpenOpportunityRollupHandler.onOpportunityInsert(Trigger.new);
         } else if (Trigger.isUpdate) {
             OpenOpportunityRollupHandler.onOpportunityUpdate(Trigger.new, Trigger.oldMap);
+            // SCRUM-440: Rueckrufwish -> create/update/cancel one open callback Task.
+            RueckrufTaskHandler.handleAfterUpdate(Trigger.new, Trigger.oldMap);
         } else if (Trigger.isDelete) {
             OpenOpportunityRollupHandler.onOpportunityDelete(Trigger.old);
         }

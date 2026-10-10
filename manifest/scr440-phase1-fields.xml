@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-440 Phase 1: 2 neue Opportunity-Felder (Rueckrufwish Checkbox + Rueckruf_am DateTime).
+     House-Pattern CustomField members mit Object-Prefix (Opportunity.X__c), wie scr437/438.
+     Deployt zuerst; ValRules, PS, Layout, Trigger, Handler referenziert sie. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Opportunity.Rueckruf_desired__c</members>
+        <members>Opportunity.Rueckruf_am__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>68.0</version>
+</Package>
