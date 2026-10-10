@@ -35,6 +35,65 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 ---
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
+
+## 10.10.2026 — Rückrufwunsch bei Opportunities festhalten (SCRUM-440)
+
+**Was sich aendert**
+- Bei einer Opportunity can du jetzt blose ein **Rueckruf gewünscht** — wie bei
+  einem Kunden ein Anruf ihm wishes — und **Rueckruf am**, um wann. Two new
+  Inputfields on the Opportunity itself; du musst es nicht mehr in the
+  Description oder im Comment lost.
+- Saves it with the Checkbox set but **without** a Rueckruf date, or with a date
+  that is **now or in the past**, the save is rejected with the message
+  „Bitte einen Rückruftermin in der Zukunft angeben.“ Nothing gets stored, so no
+  Rückruf can slip in without a time.
+- Saves it with a valid future date, the System creates an **own Task**
+  (Aufgabe) for the Owner of the Opportunity: Subject „Rückruf: “ plus the
+  name of the Opportunity, due date = the Rückruf date, priority **Hoch**.
+  The Rückruf therefore exists as a work item, not only as a note.
+- Changes the date later, the **existing** Task is updated — never a second one.
+  Du will never see the same Rückruf twice.
+- Unchecks the Checkbox, the open Task is set to **Deferred** and **not deleted**:
+  the Rückruf is parked, it is not lost. (The Task status „Abgebrochen“ does not
+  exist in the System; Deferred carries the business meaning.)
+
+**Wo man es sieht**
+Opportunity → Detailpage → the two fields in the Detail-Section (both as Edit
+items). The Task appears in the Task-Overview of the Owner of the Opportunity,
+linked to the Opportunity — the Teamleitung sees the open Rückrufe there.
+
+**Was bewusst nicht drin ist**
+- **A newly created Opportunity that already has the Checkbox set gets no Task.**
+  The Task is created when an **existing** Opportunity is saved with the wish —
+  the normal flow, when the Rückruf is agreed during the negotiation. A rep who
+  notes the wish already at the creation of the Opportunity sees no Task.
+  Tracked as [SCRUM-441](https://meerwaisosmani.atlassian.net/browse/SCRUM-441),
+  its own story — not part of this delivery.
+- No E-Mail reminders, no Reports, no Dashboards — out of scope by the story.
+  The Rückruf shows up as a Task; nothing will ping the rep on its own.
+- The two fields are visible and editable only for the entitled personal
+  (Vertriebs and Vertriebsleitung, via the Permission Set
+  `SCRUM440_Rueckrufwunsch`). For everyone else the Opportunity stays as before.
+
+**Deploy-ID**
+Fields `0Afg500000FjWuLCAV` (2/2); Validationrule-Pair, Permission Set,
+Handler & Trigger `0Afg500000FjSXOCA3` (5/5); Opportunity Layout
+`0Afg500000FjWzBCAV` (1/1); Apex test classes `0Afg500000FjX41CAF` (3/3).
+Apex tests in Prod: Run `707g500000pfYbd`, 7/7 Pass, Fail Rate 0 %.
+Release-Tag `release/2026-10-10-SCRUM-440` on Commit `ea6fcb6`, 10.10.2026.
+
+**Live-Beleg (PO-Read-back in Prod, 10.10.2026)**
+Both fields present on Opportunity in Prod-Org (`sf sobject describe -o Prod-Org
+-s Opportunity`: 12 custom fields, among them `Rueckruf_desired__c` and
+`Rueckruf_am__c`). Permission Set `SCRUM440_Rueckrufwunsch` present and
+**assigned to 2 users** (`devops-agent@cline.de` and the Prod end user) — read
+back via `PermissionSetAssignment WHERE PermissionSetId = '0PSg500000DQaYDGA1'`.
+Both fields read through a real session: `SELECT Id,Name,Rueckruf_desired__c,
+Rueckruf_am__c FROM Opportunity LIMIT 2 -o Prod-Org` → values returned (false /
+null), no „No such column“. Behaviour (create/update/defer) measured live in
+Test-Org before the release: 1 Task per Opportunity, no duplicate on a second
+date change, Deferred on uncheck.
+
 ## 06.10.2026 — SLA-Überwachung & automatische Eskalation für offene Servicefälle (SCRUM-438, mit Fix SCRUM-439)
 
 **Was sich aendert**
