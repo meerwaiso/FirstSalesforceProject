@@ -290,7 +290,7 @@ private class SCRUM367OpenCasesRebuildTest {
 
         // 3 offene Fälle + 1 geschlossener (muss NICHT gezählt werden).
         Id a = staleContactWithOpenCases('Stale', 3);
-        insert new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'Closed', Subject = 'stale-closed');
+        insert new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Customer_Satisfaction__c = 'Score_4', Status = 'Closed', Subject = 'stale-closed');
         // Nach dem geschlossenen Case-Insert ist der Trigger aktiv — Zähler
         // korrigieren (2 offen gezählt), dann für Bestandslage neu auf NULL.
         Contact upd = [SELECT Id, Open_Cases_Count__c FROM Contact WHERE Id = :a];

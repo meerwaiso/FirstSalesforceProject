@@ -9,10 +9,13 @@
      overview lists EXACTLY the dissatisfied customers (AC6), never 'OK', never
      'Kein Daten'. Sort worst first = sortColumn Durchdurch asc (house
      Groesste_Einbrueche sortColumn). timeFrameFilter INTERVAL_LAST90 on
-     CLOSED_DATE — token VERIFIED in the deployed repo report Faelle_Nach_Ursache
-     (SCRUM-434, deployed green); INTERVAL_LAST3MONTHS exists nowhere in repo
-     or CLI registry. The Rebuilder window (today-3mon) is the source of truth;
-     the report window is the same 90 days, stated in the description.
+     Account.Satisfaction_Fenster_Start__c — an AccountList report needs an
+     Account-scope dateColumn (CLOSED_DATE is Case-scope and rejected there,
+     deploy finding 2026-10-10); the INTERVAL_LAST90 token itself is VERIFIED in
+     the deployed repo report Faelle_Nach_Ursache (SCRUM-434, deployed green);
+     INTERVAL_LAST3MONTHS exists nowhere in repo or CLI registry. The Rebuilder
+     window (today-3mon) is the source of truth for the rollup fields; the
+     report window is the same 90 days, stated in the description.
      Report-level sharing/folder placement = Org step (@devops-agent, design
      §11). -->
 <Report xmlns="http://soap.sforce.com/2006/04/metadata">

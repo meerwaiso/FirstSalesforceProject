@@ -79,7 +79,7 @@ private class SCRUM434UrsacheTest {
         Test.startTest();
         DmlException ex = null;
         try {
-            insert new Case(Subject = 'SCR434 closed ohne ursache', Status = 'Closed');
+            insert new Case(Subject = 'SCR434 closed ohne ursache', Customer_Satisfaction__c = 'Score_4', Status = 'Closed');
         } catch (DmlException e) {
             ex = e;
         }
@@ -95,11 +95,11 @@ private class SCRUM434UrsacheTest {
     // 3. AC2 — geschlossener Case MIT gesetztem Wert wird gespeichert.
     @isTest
     static void test_AC2_Geschlossen_MitUrsache_Speichert() {
-        User u = SCRUM434TestFixtures.ursacheUser('434ac2a');
+        User u = SCRUM442TestFixtures.satisfactionUser('434ac2a');
         System.runAs(u) {
             Case c = new Case(
                 Subject = 'SCR434 closed mit ursache',
-                Status = 'Closed',
+                Customer_Satisfaction__c = 'Score_4', Status = 'Closed',
                 Ursache__c = 'TechnischerFehler'
             );
             insert c;

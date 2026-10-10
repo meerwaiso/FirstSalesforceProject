@@ -34,9 +34,9 @@ private class SCRUM418CaseReactionTest {
 
     /** Geschlossenen Fall anlegen (Status=Closed). Count startet auf 0 (defaultValue). */
     private static Id newClosed(String tag) {
-        Case c = new Case(Ursache__c = 'HowToAnfrage', Subject = 'V418 ' + tag, Status = 'Closed');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', Subject = 'V418 ' + tag, Customer_Satisfaction__c = 'Score_4', Status = 'Closed');
         // SCRUM-434 Lücke C: Ursache__c unter runAs(PS-User).
-        System.runAs(SCRUM434TestFixtures.ursacheUser('418' + tag)) { insert c; }
+        System.runAs(SCRUM442TestFixtures.satisfactionUser('418' + tag)) { insert c; }
         return c.Id;
     }
 
@@ -107,6 +107,7 @@ private class SCRUM418CaseReactionTest {
         insert c;
         c.Ursache__c = 'HowToAnfrage';
         c.Status = 'Closed';
+        c.Customer_Satisfaction__c = 'Score_4';
         update c;
         System.assertEquals(0, read(c.Id).Reactivation_Count__c,
             'New → Closed ist Schließen, kein Wiederaufmachen → Zahl bleibt 0');
@@ -168,7 +169,7 @@ private class SCRUM418CaseReactionTest {
     static void bulk200_reopens() {
         List<Case> closed = new List<Case>();
         for (Integer i = 0; i < 200; i++) {
-            closed.add(new Case(Ursache__c = 'HowToAnfrage', Subject = 'V418bulk ' + i, Status = 'Closed'));
+            closed.add(new Case(Ursache__c = 'HowToAnfrage', Subject = 'V418bulk ' + i, Customer_Satisfaction__c = 'Score_4', Status = 'Closed'));
         }
         insert closed;
 

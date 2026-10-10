@@ -66,6 +66,7 @@ private class SCRUM365OpenCasesCountTest {
 
         c.Ursache__c = 'HowToAnfrage';
         c.Status = 'Closed';
+        c.Customer_Satisfaction__c = 'Score_4';
         update c;
         System.assertEquals(0, countOf(a), 'geschlossener Fall => 0');
 

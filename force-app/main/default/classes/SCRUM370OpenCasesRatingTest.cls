@@ -51,6 +51,7 @@ private class SCRUM370OpenCasesRatingTest {
         for (Case cc : open) {
             cc.Ursache__c = 'HowToAnfrage';
             cc.Status = 'Closed';
+            cc.Customer_Satisfaction__c = 'Score_4';
         }
         update open.size() > 0 ? open : new List<Case>();
     }
@@ -95,6 +96,7 @@ private class SCRUM370OpenCasesRatingTest {
                 tmp = [SELECT Id, Status FROM Case WHERE ContactId = :cid LIMIT 1];
                 tmp.Ursache__c = 'HowToAnfrage';
                 tmp.Status = 'Closed';
+                tmp.Customer_Satisfaction__c = 'Score_4';
                 update tmp;
             }
             Contact r = read(cid);

@@ -46,13 +46,14 @@ private class SCRUM365OpenCountVerifyTest {
         System.assertEquals(1, countOf(a), 'Neuer offener Fall => 1');
 
         // Geschlossener Fall z\u00e4hlt NICHT (AC2)
-        Case y = new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'Closed', Subject = 'L2');
+        Case y = new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Customer_Satisfaction__c = 'Score_4', Status = 'Closed', Subject = 'L2');
         insert y;
         System.assertEquals(1, countOf(a), 'Geschlossener Fall soll die Zahl nicht erh\u00f6hen');
 
         // Close senkt (AC2)
         x.Ursache__c = 'HowToAnfrage';
         x.Status = 'Closed';
+        x.Customer_Satisfaction__c = 'Score_4';
         update x;
         System.assertEquals(0, countOf(a), 'Beide geschlossen => 0');
 
@@ -98,7 +99,7 @@ private class SCRUM365OpenCountVerifyTest {
         List<Case> cs = new List<Case>();
         cs.add(new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'd1'));
         cs.add(new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'd2'));
-        cs.add(new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'Closed', Subject = 'd3'));
+        cs.add(new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Customer_Satisfaction__c = 'Score_4', Status = 'Closed', Subject = 'd3'));
         insert cs;
         System.assertEquals(2, countOf(a), '2 offen vor Delete');
 

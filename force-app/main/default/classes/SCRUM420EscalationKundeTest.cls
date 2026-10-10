@@ -143,6 +143,7 @@ private class SCRUM420EscalationKundeTest {
         // c1 schliessen — Zaehler muss fallen, c2 bleibt 'Kritisch'
         c1.Ursache__c = 'HowToAnfrage';
         c1.Status = 'Closed';
+        c1.Customer_Satisfaction__c = 'Score_4';
         update c1;
         Case c2r = readCaseById(c2.Id);
         assertEquals(1, (Integer) c2r.Offene_Cases_Kunde__c);
@@ -160,6 +161,7 @@ private class SCRUM420EscalationKundeTest {
         // ADR 4) -> der alte Wert (Z=1,H=1,Beobachten) bleibt stehen, kein Reset
         c1.Ursache__c = 'HowToAnfrage';
         c1.Status = 'Closed';
+        c1.Customer_Satisfaction__c = 'Score_4';
         update c1;
         Case c1r = readCaseById(c1.Id);
         assertEquals(1, (Integer) c1r.Offene_Cases_Kunde__c);
@@ -317,7 +319,7 @@ private class SCRUM420EscalationKundeTest {
     private static testmethod void geschlossener_case_wird_nicht_berechnet() {
         Id accId = SCRUM420TestDataFactory.createAccount('420-Closed');
         Case c = insertCase(accId, 'Low', 'New');
-        Case cClosed = new Case(Ursache__c = 'HowToAnfrage', AccountId = accId, Priority = 'Low', Status = 'Closed');
+        Case cClosed = new Case(Ursache__c = 'HowToAnfrage', AccountId = accId, Priority = 'Low', Customer_Satisfaction__c = 'Score_4', Status = 'Closed');
         insert cClosed;
         // c muss weiterhin Z=1 zeigen (closed-case wird nicht mitgezählt)
         Case cR = readCaseById(c.Id);

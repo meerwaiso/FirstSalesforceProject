@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-442 Phase 3 (Architect rejection, Cause 2 option (a)): the 14 test
+     classes on origin/master that close a Case now give it a score (test
+     artifacts only, no production change) + the shared SCRUM442TestFixtures
+     helper + the rewritten RollupTest (Cause 1, runAs). Deployed to Test-Org
+     so the Apex-Smoke compile sees the same sources the drift gate compiles. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM442TestFixtures</members>
+        <members>SCRUM365OpenCasesCountTest</members>
+        <members>SCRUM365OpenCountVerifyTest</members>
+        <members>SCRUM367OpenCasesRebuildTest</members>
+        <members>SCRUM370OpenCasesRatingTest</members>
+        <members>SCRUM390OverdueCaseTest</members>
+        <members>SCRUM403LastCaseDateTest</members>
+        <members>SCRUM410CustomerTransferTest</members>
+        <members>SCRUM418CaseReactionTest</members>
+        <members>SCRUM419ReentryRegressionTest</members>
+        <members>SCRUM420EscalationKundeTest</members>
+        <members>SCRUM434UrsacheTest</members>
+        <members>SCRUM435TesterVerificationTest</members>
+        <members>SCRUM436CaseReminderVerifyTest</members>
+        <members>SCRUM438SLATest</members>
+        <members>SCRUM442AccountRollupTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

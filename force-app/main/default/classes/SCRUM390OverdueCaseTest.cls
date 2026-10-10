@@ -82,13 +82,14 @@ private class SCRUM390OverdueCaseTest {
     static void closedCase_isNeverOverdue_evenIfItExceedsThreshold() {
         // SCRUM-434 Lücke C: insert+update auf das neue Feld Ursache__c unter
         // runAs(PS-User), sonst "inaccessible" in der Prod checkOnly-Validation.
-        User u390 = SCRUM434TestFixtures.ursacheUser('390closed');
+        User u390 = SCRUM442TestFixtures.satisfactionUser('390closed');
         Case c = new Case(Ursache__c = 'HowToAnfrage', Status = 'New', Subject = '[SCRUM-390-Test] to close', Priority = 'High');
         System.runAs(u390) {
             insert c;
             // Close it. The platform sets ClosedDate; DML cannot (see note above).
             c.Ursache__c = 'HowToAnfrage';
             c.Status = 'Closed';
+            c.Customer_Satisfaction__c = 'Score_4';
             update c;
         }
 

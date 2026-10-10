@@ -58,7 +58,7 @@ private class SCRUM403LastCaseDateTest {
         // `insert ca`/`newContact` nach der PSA wäre MIXED_DML (Contact + PSA).
         // Im runAs ist u403 Owner der Contacts (OwnerId-Default) → cross-ref im
         // Prod checkOnly resolvable (kein INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY).
-        User u403 = SCRUM434TestFixtures.ursacheUser('403a');
+        User u403 = SCRUM442TestFixtures.satisfactionUser('403a');
         Id caId;
         Id bId;
         // Open Case.
@@ -67,7 +67,7 @@ private class SCRUM403LastCaseDateTest {
             insert new Case(Ursache__c = 'HowToAnfrage', ContactId = caId, Status = 'New', Subject = 'a-open');
             // Closed Case (zweiter Kontakt) — Status spielt für das Datum keine Rolle.
             bId = newContact('Closed');
-            insert new Case(Ursache__c = 'HowToAnfrage', ContactId = bId, Status = 'Closed', Subject = 'b-closed');
+            insert new Case(Ursache__c = 'HowToAnfrage', ContactId = bId, Customer_Satisfaction__c = 'Score_4', Status = 'Closed', Subject = 'b-closed');
         }
         System.assertEquals(Date.today(), lastDateOf(caId),
             'AC1: Kontakt mit offenem Fall → Last_Case_Date__c = heute (CreatedDate = heute)');
@@ -166,6 +166,7 @@ private class SCRUM403LastCaseDateTest {
 
         c.Ursache__c = 'HowToAnfrage';
         c.Status = 'Closed';
+        c.Customer_Satisfaction__c = 'Score_4';
         update c;
         System.assertEquals(before, lastDateOf(a),
             'ADR-3: Status-Wechsel eines bestehenden Falls ist für das Datum irrelevant');
@@ -230,7 +231,7 @@ private class SCRUM403LastCaseDateTest {
         Id a = newContact('StaleA');
         Id b = newContact('StaleB');
         insert new Case(Ursache__c = 'HowToAnfrage', ContactId = a, Status = 'New', Subject = 'stale-a');
-        insert new Case(Ursache__c = 'HowToAnfrage', ContactId = b, Status = 'Closed', Subject = 'stale-b');
+        insert new Case(Ursache__c = 'HowToAnfrage', ContactId = b, Customer_Satisfaction__c = 'Score_4', Status = 'Closed', Subject = 'stale-b');
         Contact upA = [SELECT Id, Last_Case_Date__c FROM Contact WHERE Id = :a];
         upA.Last_Case_Date__c = null;   // Bestandszustand simulieren
         update upA;

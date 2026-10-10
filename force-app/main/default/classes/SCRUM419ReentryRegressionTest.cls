@@ -35,9 +35,9 @@ private class SCRUM419ReentryRegressionTest {
     }
 
     private static Id newClosed(String tag) {
-        Case c = new Case(Ursache__c = 'HowToAnfrage', Subject = 'V419 ' + tag, Status = 'Closed');
+        Case c = new Case(Ursache__c = 'HowToAnfrage', Subject = 'V419 ' + tag, Customer_Satisfaction__c = 'Score_4', Status = 'Closed');
         // SCRUM-434 Lücke C: Ursache__c unter runAs(PS-User).
-        System.runAs(SCRUM434TestFixtures.ursacheUser('419' + tag)) { insert c; }
+        System.runAs(SCRUM442TestFixtures.satisfactionUser('419' + tag)) { insert c; }
         return c.Id;
     }
 
@@ -113,6 +113,7 @@ private class SCRUM419ReentryRegressionTest {
         c = read(id);
         c.Ursache__c = 'HowToAnfrage';
         c.Status = 'Closed';
+        c.Customer_Satisfaction__c = 'Score_4';
         update c;
         System.assertEquals(1, read(id).Reactivation_Count__c, 'Schließen → bleibt 1');
 
