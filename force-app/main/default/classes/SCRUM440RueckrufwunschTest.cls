@@ -79,7 +79,7 @@ private class SCRUM440RueckrufwunschTest {
         List<Task> tasks = [SELECT Id, Subject, ActivityDate FROM Task
                             WHERE WhatId = :o.Id AND Subject LIKE 'Rückruf:%' AND IsClosed = false];
         System.assertEquals(1, tasks.size(), 'AC4: still exactly one open Task (no duplicate)');
-        System.assertEquals(later.dateValue(), tasks[0].ActivityDate, 'AC4: existing Task ActivityDate updated');
+        System.assertEquals(later.date(), tasks[0].ActivityDate, 'AC4: existing Task ActivityDate updated');
     }
 
     /** AC5: uncheck -> the open Task set to Deferred (not deleted). */
