@@ -8,5 +8,5 @@
         <members>Opportunity.Rueckruf_am__c</members>
         <name>CustomField</name>
     </types>
-    <version>68.0</version>
+    <version>67.0</version>
 </Package>
