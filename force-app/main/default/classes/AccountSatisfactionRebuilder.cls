@@ -119,7 +119,7 @@ public without sharing class AccountSatisfactionRebuilder {
                        FROM Case
                        WHERE AccountId IN :accIds
                          AND IsClosed = true
-                         AND CloseDate >= :window
+                         AND ClosedDate >= :window
                          AND Customer_Satisfaction__c != null]) {
             Integer score = scoreValue(String.valueOf(c.Customer_Satisfaction__c));
             if (score == null || c.AccountId == null) {
@@ -186,14 +186,12 @@ public without sharing class AccountSatisfactionRebuilder {
         if (apiName == null) {
             return null;
         }
-        switch (apiName) {
-            case 'Score_1': return 1;
-            case 'Score_2': return 2;
-            case 'Score_3': return 3;
-            case 'Score_4': return 4;
-            case 'Score_5': return 5;
-            default: return null;
-        }
+        if (apiName == 'Score_1') return 1;
+        if (apiName == 'Score_2') return 2;
+        if (apiName == 'Score_3') return 3;
+        if (apiName == 'Score_4') return 4;
+        if (apiName == 'Score_5') return 5;
+        return null;
     }
 
 }

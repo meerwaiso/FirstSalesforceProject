@@ -153,7 +153,10 @@ public with sharing class SatisfactionTaskHandler {
 
     /** CloseDate of a closed Case; null-safe fallback to today (defensive). */
     public static Date closeDateOf(Case c) {
-        return (c.CloseDate != null) ? c.CloseDate : Date.today();
+        // Case.ClosedDate is a Datetime in this Org (house CaseProblemSerieHandler
+        // §185, sobject describe). Date.valueOf(format) verified probe11 2026-10-10.
+        Datetime closedAt = c.ClosedDate;
+        return (closedAt != null) ? Date.valueOf(closedAt.format('yyyy-MM-dd')) : Date.today();
     }
 
     /**
@@ -161,11 +164,11 @@ public with sharing class SatisfactionTaskHandler {
      * does NOT count; a Friday with n=2 is Tuesday). Pure CPU arithmetic,
      * same anchor as CaseReminderService (SCRUM-436).
      */
-    public static Date nthWorkingDayAfter(Date from, Integer n) {
-        if (from == null || n == null || n <= 0) {
-            return from;
+    public static Date nthWorkingDayAfter(Date afterDate, Integer n) {
+        if (afterDate == null || n == null || n <= 0) {
+            return afterDate;
         }
-        Date d = from;
+        Date d = afterDate;
         Integer counted = 0;
         while (counted < n) {
             d = d.addDays(1);

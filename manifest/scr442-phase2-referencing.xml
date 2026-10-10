@@ -4,7 +4,7 @@
      Report. House scr436-phase2-referencing.xml / scr440-phase2-apex-ps.xml. -->
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
     <types>
-        <members>Customer_Satisfaction_PflichtBeiClosed</members>
+        <members>Case.Customer_Satisfaction_PflichtBeiClosed</members>
         <name>ValidationRule</name>
     </types>
     <types>
@@ -27,10 +27,6 @@
     <types>
         <members>CaseSatisfactionTrigger</members>
         <name>ApexTrigger</name>
-    </types>
-    <types>
-        <members>Sales/Miserable_Kunde_Satisfaction</members>
-        <name>Report</name>
     </types>
     <version>67.0</version>
 </Package>

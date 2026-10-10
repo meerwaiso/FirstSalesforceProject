@@ -109,12 +109,13 @@ private class SCRUM442SatisfactionTest {
             c.Customer_Satisfaction__c = 'Score_4';
             update c;
 
-            Case after = [SELECT Id, Status, IsClosed, CloseDate, ClosedDate,
+            Case after = [SELECT Id, Status, IsClosed, ClosedDate,
                                  Customer_Satisfaction__c
                           FROM Case WHERE Id = :caseId LIMIT 1];
             System.assertEquals('Closed', String.valueOf(after.Status), 'AC2: closed');
             System.assertEquals(true, after.IsClosed, 'AC2: IsClosed set');
-            System.assertEquals(Date.today(), after.CloseDate, 'AC2: CloseDate set');
+            System.assertNotEquals(null, after.ClosedDate, 'AC2: closing date set together with the score');
+            System.assertEquals(Date.today(), Date.valueOf(after.ClosedDate.format('yyyy-MM-dd')), 'AC2: closed today');
             System.assertEquals('Score_4', String.valueOf(after.Customer_Satisfaction__c),
                 'AC2: score 4 stored on the closed Case');
         }
@@ -146,11 +147,11 @@ private class SCRUM442SatisfactionTest {
             System.assertEquals('High', String.valueOf(t.Priority), 'AC3: Priority High');
             System.assertEquals(caseId, t.WhatId, 'AC3: Task linked to the Case');
 
-            Case fresh = [SELECT Id, OwnerId, CloseDate FROM Case WHERE Id = :caseId LIMIT 1];
+            Case fresh = [SELECT Id, OwnerId, ClosedDate FROM Case WHERE Id = :caseId LIMIT 1];
             System.assertEquals(fresh.OwnerId, t.OwnerId,
                 'AC3: Task owned by the responsible customer representative (Case.OwnerId)');
             System.assertEquals(SatisfactionTaskHandler.nthWorkingDayAfter(
-                                     fresh.CloseDate, SatisfactionTaskHandler.FOLLOW_UP_WORKING_DAYS),
+                                     SatisfactionTaskHandler.closeDateOf(fresh), SatisfactionTaskHandler.FOLLOW_UP_WORKING_DAYS),
                 t.ActivityDate,
                 'AC3: due date = 2nd Werktag after the closing (Friday -> Tuesday)');
         }
@@ -249,7 +250,7 @@ private class SCRUM442SatisfactionTest {
             'Bulk: one Task per low-score Case, created in one batch');
 
         // Direct handler call over the same stock: idempotent, 0 new Tasks.
-        List<Case> reopened = [SELECT Id, Subject, Status, CloseDate,
+        List<Case> reopened = [SELECT Id, Subject, Status, ClosedDate,
                                       Customer_Satisfaction__c
                                FROM Case WHERE Id IN :ids];
         for (Case c : reopened) {

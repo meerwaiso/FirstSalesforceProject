@@ -31,7 +31,7 @@
     <columns>
         <field>Account.Satisfaction_Arger__c</field>
     </columns>
-    <description>SCRUM-442 AC6: genaut die dissatisfied Kunden (Arger-Indikator = AErger, i.e. Durchdurch &lt; 3.0 ODER Min &lt;= 2) over the last 90 days (CLOSED_DATE; the Rebuilder window is today-3mon, stated in Satisfaction_Fenster_Start__c). Zeigt: Durchdurch, Min, Anzahl, Fenster-Start, Indikator. Worst first (Durchdurch asc).</description>
+    <description>SCRUM-442 AC6: exactly the dissatisfied customers (Satisfaction_Arger__c=AErger: Durchdurch &lt; 3.0 ODER Min &lt;= 2), last 90 days (CLOSED_DATE; Rebuilder window today-3mon in Satisfaction_Fenster_Start__c). Worst first. Grouping ACCOUNT.NAME (house token).</description>
     <filter>
         <criteriaItems>
             <column>Account.Satisfaction_Arger__c</column>

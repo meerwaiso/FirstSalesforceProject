@@ -22,5 +22,5 @@
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>SCRUM442_Satisfaction_System</label>
-    <description>SCRUM-442 System-PS: update-FLS for the four system-maintained Account.Satisfaction_* fields (NOT the formula field Satisfaction_Arger__c — formula fields take no write FLS). Needed because the AccountSatisfactionRebuilder writes via Apex DML, and DML checks FLS even in without-sharing classes (ADR-5, house SCRUM436_CaseReminderSystem / SCRUM388_AccountReactivationWrite). Assigned to the Rebuilder's scheduled/automation user only.</description>
+    <description>SCRUM-442 System-PS: update-FLS for the four system Account.Satisfaction_* fields (not the formula). Needed for the Rebuilder Apex DML (DML checks FLS even without sharing, ADR-5). Assigned to the scheduled user only (house SCRUM436_CaseReminderSystem).</description>
 </PermissionSet>

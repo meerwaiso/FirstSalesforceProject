@@ -32,5 +32,5 @@
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>SCRUM442_Satisfaction_Read</label>
-    <description>SCRUM-442 Read-PS: Case.Customer_Satisfaction__c AND the five Account.Satisfaction_* overview fields, readable=true / editable=false everywhere. Assigned to Sales / Customer Service staff (Vertriebsleitung, Account Manager) AND to the Service team (they must read what they wrote). PO-table: Sales = Read only, must not change a rating even with full object access. No object-CRUD in any PS (house SCRUM421_Zuordnung / SCRUM436_CaseReminder). Formula field Satisfaction_Arger__c carries a read entry like house SCRUM398_Eskalationsstufe.</description>
+    <description>SCRUM-442 Read-PS: Case.Customer_Satisfaction__c + the 5 Account.Satisfaction_* fields, readable/editable=false. Sales AND Service. No object-CRUD (house SCRUM436).</description>
 </PermissionSet>
