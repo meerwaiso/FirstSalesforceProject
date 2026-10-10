@@ -62,13 +62,15 @@ private class SCRUM440RueckrufwunschTest {
     /** AC3: check + future date on an existing Opportunity -> one open callback Task. */
     @isTest
     static void checkAndFutureDate_createsOneTask() {
-        Id acc = newAccountId('AC3');
-        User su = prepareReader('ac3');
+        User su = prepareReader('ac3');   // setup DML (User + PSA) FIRST
         System.runAs(su) {
-            // Opportunity created BY the reader, so the auto-Task (OwnerId = CreatedById)
-            // is owned by su and su can update it later (real scenario: the editor owns it).
+            // Account created inside runAs, immediately before the Opportunity, so the
+            // pre-existing SCRUM-416 rollup handler's Account update follows the
+            // Opportunity DML in the same house order (SCRUM-416: Account->Opp->rollup).
+            Account a = new Account(Name = 'V440 AC3');
+            insert a;
             Opportunity o = new Opportunity(
-                Name = 'V440 ac3', AccountId = acc, StageName = 'Prospecting',
+                Name = 'V440 ac3', AccountId = a.Id, StageName = 'Prospecting',
                 CloseDate = Date.today().addMonths(3)
             );
             insert o;
@@ -95,11 +97,12 @@ private class SCRUM440RueckrufwunschTest {
     /** AC4: change the date while an open Task exists -> that Task updated, no second. */
     @isTest
     static void changeDate_updatesExistingTaskNoDuplicate() {
-        Id acc = newAccountId('AC4');
-        User su = prepareReader('ac4');
+        User su = prepareReader('ac4');   // setup DML (User + PSA) FIRST
         System.runAs(su) {
+            Account a = new Account(Name = 'V440 AC4');
+            insert a;
             Opportunity o = new Opportunity(
-                Name = 'V440 ac4', AccountId = acc, StageName = 'Prospecting',
+                Name = 'V440 ac4', AccountId = a.Id, StageName = 'Prospecting',
                 CloseDate = Date.today().addMonths(3)
             );
             insert o;
@@ -126,11 +129,12 @@ private class SCRUM440RueckrufwunschTest {
     /** AC5: uncheck -> the open Task set to Deferred (not deleted). */
     @isTest
     static void uncheck_defersOpenTask() {
-        Id acc = newAccountId('AC5');
-        User su = prepareReader('ac5');
+        User su = prepareReader('ac5');   // setup DML (User + PSA) FIRST
         System.runAs(su) {
+            Account a = new Account(Name = 'V440 AC5');
+            insert a;
             Opportunity o = new Opportunity(
-                Name = 'V440 ac5', AccountId = acc, StageName = 'Prospecting',
+                Name = 'V440 ac5', AccountId = a.Id, StageName = 'Prospecting',
                 CloseDate = Date.today().addMonths(3)
             );
             insert o;
@@ -159,7 +163,13 @@ private class SCRUM440RueckrufwunschTest {
      * No Opportunity save here -> the OpportunityOverdueReset trigger does not fire. */
     @isTest
     static void bulk200_createsOneTaskEach() {
-        Id acc = newAccountId('Bulk');
+        User su = prepareReader('bulk');   // setup DML (User + PSA) FIRST
+        Id acc;
+        System.runAs(su) {
+            Account a = new Account(Name = 'V440 Bulk');
+            insert a;
+            acc = a.Id;
+        }
         // EINEM Multi-Record-Insert (house SCRUM-437): 200 separate inserts would
         // each fire the pre-existing rollup handler's per-record SOQL and blow the
         // 100-query governor limit in the SETUP, not in our handler.
@@ -170,14 +180,13 @@ private class SCRUM440RueckrufwunschTest {
                 CloseDate = Date.today().addMonths(3)
             ));
         }
-        insert opps;   // setup, checkbox off, outside runAs
+        insert opps;   // setup Account already inserted; Opportunity DML follows
 
         Set<Id> oppIds = new Set<Id>();
         for (Opportunity o : opps) {
             oppIds.add(o.Id);
         }
 
-        User su = prepareReader('bulk');
         System.runAs(su) {
             // Old state (checkbox off) captured fresh, so the handler sees false->true.
             Map<Id, Opportunity> beforeMap = new Map<Id, Opportunity>();
