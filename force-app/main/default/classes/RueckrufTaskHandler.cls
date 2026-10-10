@@ -90,9 +90,11 @@ public with sharing class RueckrufTaskHandler {
                             Priority     = 'High',
                             Status       = 'Not Started',
                             ActivityDate = due,
-                            WhatId       = opp.Id
-                            // OwnerId: Opportunity hat keinen Owner — Task.OwnerId
-                            // defaults to the runner (the Opportunity's creator).
+                            WhatId       = opp.Id,
+                            // Task.OwnerId is required (not defaulted). Opportunity
+                            // has no Owner field, so the callback Task is owned by
+                            // the Opportunity's creator.
+                            OwnerId      = opp.CreatedById
                         ));
                     } else if (existing.ActivityDate != due) {
                         existing.ActivityDate = due;

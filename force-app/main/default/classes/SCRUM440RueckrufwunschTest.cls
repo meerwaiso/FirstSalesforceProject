@@ -54,8 +54,10 @@ private class SCRUM440RueckrufwunschTest {
         System.assertEquals('High', t.Priority, 'AC3: Priority Hoch = High');
         System.assertEquals('Not Started', t.Status, 'AC3: new Task Not Started');
         System.assertEquals(o.Id, t.WhatId, 'AC3: Task linked via WhatId');
-        System.assertEquals(o.CreatedById, t.OwnerId,
-            'AC3: Task owned by the Opportunity creator (Opportunity hat keinen Owner; Task.OwnerId = runner)');
+        // CreatedById is only populated via SOQL, not on the in-memory record.
+        Opportunity fresh = [SELECT Id, CreatedById FROM Opportunity WHERE Id = :o.Id LIMIT 1];
+        System.assertEquals(fresh.CreatedById, t.OwnerId,
+            'AC3: Task owned by the Opportunity creator (Task.OwnerId required, set to CreatedById)');
         System.assertEquals(futureDate().date(), t.ActivityDate, 'AC3: due date = date(Rueckruf_am)');
     }
 
@@ -130,20 +132,24 @@ private class SCRUM440RueckrufwunschTest {
             oppIds.add(o.Id);
         }
         Map<Id, Opportunity> beforeMap = new Map<Id, Opportunity>();
-        for (Opportunity o : [SELECT Id, Name, Rueckruf_desired__c, Rueckruf_am__c
+        for (Opportunity o : [SELECT Id, Name, Rueckruf_desired__c, Rueckruf_am__c, CreatedById
                               FROM Opportunity WHERE Id IN :oppIds]) {
             beforeMap.put(o.Id, o);
         }
 
-        // End state: checkbox on + future date on every record.
+        // End state on SOQL-backed records — CreatedById is only populated via SOQL,
+        // and the handler needs it for the required Task.OwnerId.
         Datetime due = futureDate();
-        for (Opportunity o : opps) {
+        List<Opportunity> after = new List<Opportunity>();
+        for (Opportunity o : [SELECT Id, Name, Rueckruf_desired__c, Rueckruf_am__c, CreatedById
+                              FROM Opportunity WHERE Id IN :oppIds]) {
             o.Rueckruf_desired__c = true;
             o.Rueckruf_am__c = due;
+            after.add(o);
         }
 
         Integer queriesBefore = Limits.getQueries();
-        RueckrufTaskHandler.handleAfterUpdate(opps, beforeMap);
+        RueckrufTaskHandler.handleAfterUpdate(after, beforeMap);
         Integer handlerQueries = Limits.getQueries() - queriesBefore;
 
         System.assertEquals(1, handlerQueries,
