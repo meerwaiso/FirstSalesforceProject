@@ -60,7 +60,7 @@ public with sharing class RueckrufTaskHandler {
 
             // 2. Exactly ONE bulkified query for the open callback Tasks.
             Map<Id, Task> openByWhatId = new Map<Id, Task>();
-            for (Task t : [SELECT Id, Subject, ActivityDate, Status
+            for (Task t : [SELECT Id, Subject, ActivityDate, Status, WhatId
                            FROM Task
                            WHERE WhatId IN :relevantIds
                              AND Subject LIKE 'Rückruf:%'
@@ -90,8 +90,9 @@ public with sharing class RueckrufTaskHandler {
                             Priority     = 'High',
                             Status       = 'Not Started',
                             ActivityDate = due,
-                            WhatId       = opp.Id,
-                            OwnerId      = opp.OwnerId
+                            WhatId       = opp.Id
+                            // OwnerId: Opportunity hat keinen Owner — Task.OwnerId
+                            // defaults to the runner (the Opportunity's creator).
                         ));
                     } else if (existing.ActivityDate != due) {
                         existing.ActivityDate = due;

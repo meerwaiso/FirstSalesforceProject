@@ -54,7 +54,8 @@ private class SCRUM440RueckrufwunschTest {
         System.assertEquals('High', t.Priority, 'AC3: Priority Hoch = High');
         System.assertEquals('Not Started', t.Status, 'AC3: new Task Not Started');
         System.assertEquals(o.Id, t.WhatId, 'AC3: Task linked via WhatId');
-        System.assertEquals(o.OwnerId, t.OwnerId, 'AC3: Task owned by the Opportunity owner');
+        System.assertEquals(o.CreatedById, t.OwnerId,
+            'AC3: Task owned by the Opportunity creator (Opportunity hat keinen Owner; Task.OwnerId = runner)');
         System.assertEquals(futureDate().date(), t.ActivityDate, 'AC3: due date = date(Rueckruf_am)');
     }
 
@@ -111,10 +112,17 @@ private class SCRUM440RueckrufwunschTest {
     @isTest
     static void bulk200_createsOneTaskEach() {
         Id acc = newAccountId('Bulk');
+        // EINEM Multi-Record-Insert (house SCRUM-437): 200 separate inserts would
+        // each fire the pre-existing rollup handler's per-record SOQL and blow the
+        // 100-query governor limit in the SETUP, not in our handler.
         List<Opportunity> opps = new List<Opportunity>();
         for (Integer i = 0; i < 200; i++) {
-            opps.add(newOpp(acc, 'V440 bulk-' + i));
+            opps.add(new Opportunity(
+                Name = 'V440 bulk-' + i, AccountId = acc, StageName = 'Prospecting',
+                CloseDate = Date.today().addMonths(3)
+            ));
         }
+        insert opps;
 
         // Old state (checkbox off) captured fresh, so the handler sees false->true.
         Set<Id> oppIds = new Set<Id>();
@@ -122,7 +130,7 @@ private class SCRUM440RueckrufwunschTest {
             oppIds.add(o.Id);
         }
         Map<Id, Opportunity> beforeMap = new Map<Id, Opportunity>();
-        for (Opportunity o : [SELECT Id, Name, Rueckruf_desired__c, Rueckruf_am__c, OwnerId
+        for (Opportunity o : [SELECT Id, Name, Rueckruf_desired__c, Rueckruf_am__c
                               FROM Opportunity WHERE Id IN :oppIds]) {
             beforeMap.put(o.Id, o);
         }
