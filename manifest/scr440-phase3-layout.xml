@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-440 Phase 3: Opportunity-Layout-Ergänzung — both Rueckruf-Fields as Edit items.
+     Referenziert die deployed Fields. House-Pattern scr437-phase3-layout.xml. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Opportunity-Opportunity Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>68.0</version>
+</Package>

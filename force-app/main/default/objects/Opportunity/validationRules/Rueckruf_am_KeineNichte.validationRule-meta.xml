@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Rueckruf_am_KeineNichte</fullName>
+    <active>true</active>
+    <description>SCRUM-440 AC2: Ein gesetzter Rueckruf-Checkbox mit Rueckruf_am in dem Jetzt oder dem Past blocauft den Save. DateTime-vs-NOW()-Form vergleichte dem Datetime-Feld gegen NOW() (DateTime), house SCRUM-359-Shape adaptada para DateTime.</description>
+    <errorConditionFormula>AND(Rueckruf_desired__c = true, NOT(ISBLANK(Rueckruf_am__c)), Rueckruf_am__c &lt;= NOW())</errorConditionFormula>
+    <errorMessage>Bitte einen Rückruftermin in der Zukunft angeben.</errorMessage>
+</ValidationRule>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-440: Apex-Test-Klassen (separates Manifest, House-Pattern scr438-apextests.xml).
+     Test-Klassen deployen OHNE Test-Level. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM440RueckrufwunschTest</members>
+        <members>SCRUM440RueckrufwunschFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>68.0</version>
+</Package>
