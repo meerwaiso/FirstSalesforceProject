@@ -83,7 +83,7 @@ public with sharing class RueckrufTaskHandler {
 
                 if (nowDesired) {
                     // ValRule guarantees a non-null, future Rueckruf_am__c here.
-                    Date due = opp.Rueckruf_am__c.dateValue();
+                    Date due = opp.Rueckruf_am__c.date();
                     if (existing == null) {
                         toInsert.add(new Task(
                             Subject      = SUBJECT_PREFIX + opp.Name,

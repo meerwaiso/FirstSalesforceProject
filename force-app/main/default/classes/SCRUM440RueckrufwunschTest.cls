@@ -55,7 +55,7 @@ private class SCRUM440RueckrufwunschTest {
         System.assertEquals('Not Started', t.Status, 'AC3: new Task Not Started');
         System.assertEquals(o.Id, t.WhatId, 'AC3: Task linked via WhatId');
         System.assertEquals(o.OwnerId, t.OwnerId, 'AC3: Task owned by the Opportunity owner');
-        System.assertEquals(futureDate().dateValue(), t.ActivityDate, 'AC3: due date = date(Rueckruf_am)');
+        System.assertEquals(futureDate().date(), t.ActivityDate, 'AC3: due date = date(Rueckruf_am)');
     }
 
     /** AC4: change the date while an open Task exists -> that Task updated, no second. */
