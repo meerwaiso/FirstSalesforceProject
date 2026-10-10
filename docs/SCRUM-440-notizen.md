@@ -1,0 +1,17 @@
+# SCRUM-440 — Architect-Notizen (hard findings, one line each)
+
+- Surveyed: `git fetch origin`, origin/master = eac7cee (2026-10-06). Worktree `feature/SCRUM-440-rueckrufwunsch` off origin/master.
+- Opportunity custom fields on origin/master: Days_Close_Date_Overdue__c, Is_Close_Date_Overdue__c, Is_Overdue__c, Loss_Reason__c, TestFeld__c, Value_Tier__c — NO name collision with Rückruf fields.
+- Opportunity describe (Test-Org, `sf sobject describe --sobject Opportunity`): no Rueckruf*/Callback* field exists in org.
+- Task standard fields (Test-Org, `sf api request rest /services/data/v68.0/sobjects/Task/describe`): Subject (combobox), Status (picklist: Not Started / In Progress / Completed / Waiting on someone else / Deferred), Priority (High/Normal/Low), ActivityDate, OwnerId, WhatId, IsClosed. **Task has NO DueDate field** — `SELECT Id,DueDate FROM Task` → "No such column 'DueDate' on entity 'Task'". Due date = ActivityDate.
+- **Task has NO "Abgebrochen" status** — org picklist is the 5 standard values. PO demands "Abgebrochen" → open question for PO (see design §6).
+- House pattern for Task creation: SCRUM-294 ChurnDetectionService (commit 7457838, no longer on master but pattern valid): `new Task(WhatId: acc.Id, OwnerId: acc.OwnerId, Subject: ..., Priority: 'High', Status: 'In Progress', ActivityDate: dueDate)` + dedup via `SELECT WhatId FROM Task WHERE WhatId IN :ids AND IsClosed = false AND Subject LIKE ...`.
+- Opportunity trigger house pattern: ONE trigger per object — `OpportunityOverdueReset.trigger` already covers before insert/update + after insert/update/delete and dispatches to Handler classes (SCRUM-319/381/384/416). SCRUM-440 adds a Handler call there, NOT a second trigger.
+- ValRule house pattern: objects/Opportunity/validationRules/*.validationRule-meta.xml (SCRUM-381 LossReason_PflichtBeiClosedLost, SCRUM-359 pair DatumPflicht+KeineZukunft on Contact). Checkbox+date pair = exactly the SCRUM-359 shape.
+- **DateTime vs TODAY()**: ValRule needs "future" for a DateTime. Contact/ConsentDate__c is Date. For DateTime compare use `Rückruf_am__c <= NOW()` (NOW() returns DateTime; comparison of DateTime > NOW() is valid in formulas — to be deploy-validated by Developer; fallback if rejected: helper formula field or Apex guard).
+- FLS house pattern: field-only PS (SCRUM430_RueckrufZeitfenster, SCRUM381) — object CRUD comes from existing profiles; PS carries ONLY fieldPermissions.
+- PS with objectPermissions exists in house (SCRUM410 CustomerTransfer__c) but only for a CUSTOM object the automation creates. Task is a standard object; CRUD on Task for the automation runs as system context in the trigger — but Tester needs a negative-access test: Vertriebs/Vertriebsleitung need Read on Task per PO note.
+- Manifest house pattern: manifest/scrNNN-phase1-fields.xml, phase2-apex-ps.xml, phase3-layout.xml + scrNNN-apextests.xml (see scr436/437).
+- Layout: force-app/main/default/layouts/Opportunity-Opportunity Layout.layout-meta.xml exists; add both fields as Edit layoutItems (house: Loss_Reason__c, Is_Overdue__c sit there). Lightning FlexiPages live in Org → Org step for devops (house finding from SCRUM-378/381).
+- Test-Org default org = Test-Org (alias), apiVersion 68.0. Architect deploys nothing.
+- Sharing: Task is a standard object, OWD sharing = Full (default, unchanged). Owner sees own Task via default owner-access; Teamleitung visibility depends on role OWS access — Org read-back step, not source.
