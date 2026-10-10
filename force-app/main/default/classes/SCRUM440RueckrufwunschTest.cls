@@ -63,9 +63,16 @@ private class SCRUM440RueckrufwunschTest {
     @isTest
     static void checkAndFutureDate_createsOneTask() {
         Id acc = newAccountId('AC3');
-        Opportunity o = newOpp(acc, 'V440 ac3');   // setup, checkbox off, outside runAs
         User su = prepareReader('ac3');
         System.runAs(su) {
+            // Opportunity created BY the reader, so the auto-Task (OwnerId = CreatedById)
+            // is owned by su and su can update it later (real scenario: the editor owns it).
+            Opportunity o = new Opportunity(
+                Name = 'V440 ac3', AccountId = acc, StageName = 'Prospecting',
+                CloseDate = Date.today().addMonths(3)
+            );
+            insert o;
+
             o.Rueckruf_desired__c = true;
             o.Rueckruf_am__c = futureDate();
             update o;
@@ -89,9 +96,14 @@ private class SCRUM440RueckrufwunschTest {
     @isTest
     static void changeDate_updatesExistingTaskNoDuplicate() {
         Id acc = newAccountId('AC4');
-        Opportunity o = newOpp(acc, 'V440 ac4');   // setup, checkbox off, outside runAs
         User su = prepareReader('ac4');
         System.runAs(su) {
+            Opportunity o = new Opportunity(
+                Name = 'V440 ac4', AccountId = acc, StageName = 'Prospecting',
+                CloseDate = Date.today().addMonths(3)
+            );
+            insert o;
+
             o.Rueckruf_desired__c = true;
             o.Rueckruf_am__c = futureDate();
             update o;
@@ -115,9 +127,14 @@ private class SCRUM440RueckrufwunschTest {
     @isTest
     static void uncheck_defersOpenTask() {
         Id acc = newAccountId('AC5');
-        Opportunity o = newOpp(acc, 'V440 ac5');   // setup, checkbox off, outside runAs
         User su = prepareReader('ac5');
         System.runAs(su) {
+            Opportunity o = new Opportunity(
+                Name = 'V440 ac5', AccountId = acc, StageName = 'Prospecting',
+                CloseDate = Date.today().addMonths(3)
+            );
+            insert o;
+
             o.Rueckruf_desired__c = true;
             o.Rueckruf_am__c = futureDate();
             update o;
