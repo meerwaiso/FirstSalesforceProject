@@ -164,30 +164,30 @@ private class SCRUM440RueckrufwunschTest {
     @isTest
     static void bulk200_createsOneTaskEach() {
         User su = prepareReader('bulk');   // setup DML (User + PSA) FIRST
-        Id acc;
-        System.runAs(su) {
-            Account a = new Account(Name = 'V440 Bulk');
-            insert a;
-            acc = a.Id;
-        }
         // EINEM Multi-Record-Insert (house SCRUM-437): 200 separate inserts would
         // each fire the pre-existing rollup handler's per-record SOQL and blow the
         // 100-query governor limit in the SETUP, not in our handler.
         List<Opportunity> opps = new List<Opportunity>();
         for (Integer i = 0; i < 200; i++) {
             opps.add(new Opportunity(
-                Name = 'V440 bulk-' + i, AccountId = acc, StageName = 'Prospecting',
+                Name = 'V440 bulk-' + i, AccountId = null, StageName = 'Prospecting',
                 CloseDate = Date.today().addMonths(3)
             ));
         }
-        insert opps;   // setup Account already inserted; Opportunity DML follows
-
-        Set<Id> oppIds = new Set<Id>();
-        for (Opportunity o : opps) {
-            oppIds.add(o.Id);
-        }
 
         System.runAs(su) {
+            Account a = new Account(Name = 'V440 Bulk');
+            insert a;
+            for (Opportunity o : opps) {
+                o.AccountId = a.Id;
+            }
+            insert opps;   // Opportunity DML inside runAs, after setup (house order)
+
+            Set<Id> oppIds = new Set<Id>();
+            for (Opportunity o : opps) {
+                oppIds.add(o.Id);
+            }
+
             // Old state (checkbox off) captured fresh, so the handler sees false->true.
             Map<Id, Opportunity> beforeMap = new Map<Id, Opportunity>();
             for (Opportunity o : [SELECT Id, Name, Rueckruf_desired__c, Rueckruf_am__c, CreatedById
