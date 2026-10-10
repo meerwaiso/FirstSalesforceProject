@@ -4,6 +4,7 @@
     <description>SCRUM-440: Rueckruf requested by the customer on this Opportunity. Paired with Rueckruf_am__c (ValRule pair). FLS default stays OFF — reachable only via Permission Set SCRUM440_Rueckrufwunsch.</description>
     <externalId>false</externalId>
     <label>Rückruf gewünscht</label>
+    <defaultValue>false</defaultValue>
     <required>false</required>
     <trackFeedHistory>false</trackFeedHistory>
     <type>Checkbox</type>
