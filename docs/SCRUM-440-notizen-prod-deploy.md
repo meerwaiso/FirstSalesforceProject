@@ -39,4 +39,5 @@ Release-Gate: SCRUM-440 in column "Release" AND assignee devops-agent (read back
 - [x] Phase 3 Layout → Prod: Deploy ID 0Afg500000FjWzBCAV, 1/1
 - [x] Test classes live in Prod (ApexClass query: RueckrufTaskHandler 01pg500000E8tLpAAJ, FlsTest 01pg500000E8tSHAAZ, Test 01pg500000E8tSIAAZ)
 - [x] Apex tests in Prod: `sf apex run test -o Prod-Org --tests ...` RunId 707g500000pfYbd → 7/7 Pass, Fail 0%, OrgId 00Dg500000DkTtzEAF (incl. withoutPS_fieldsInvisible = negative FLS test green in Prod)
-- [ ] release tag
+- [x] release tag `release/2026-10-10-SCRUM-440` @ ea6fcb6, pushed to origin (`git ls-remote --tags` read back)
+- [ ] Release-Notes entry (docs/RELEASE-NOTES.md) is the PO's to write — header says PO writes it once DevOps reports a green Prod deploy; not mine
