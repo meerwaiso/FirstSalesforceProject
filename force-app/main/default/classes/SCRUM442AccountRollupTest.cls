@@ -19,15 +19,25 @@
  * are > 0 — a row that matched nothing would fail, not pass silently.
  *
  * FLS (Architect review Cause 1, FLS-Gate Lücke C): this class reads and writes
- * the five new Account fields plus the Case score, so the business DML and SOQL
- * run under System.runAs(u) with u = SCRUM442TestFixtures.satisfactionUser — a
+ * the five new Account fields plus the Case score, so the business DML (the
+ * Rebuilder's writes on the Account rollup fields) and the read-back SOQL run
+ * under System.runAs(u) with u = SCRUM442TestFixtures.satisfactionUser — a
  * Standard User carrying SCRUM442_Satisfaction_Read/Write/System plus
- * SCRUM434_Ursache. House pattern (SCRUM-432/434/424): the User AND its
- * PermissionSetAssignments are created in System context OUTSIDE the runAs (a
- * User cannot grant himself a PSA), the field-bearing DML/SOQL runs inside. In
- * Prod-Org the PermissionSetAssignment is a record, not metadata, so a check-
- * only validation does not apply it — without the runAs this class fails there
- * with "No such column" / "fields being inaccessible on Sobject".
+ * SCRUM434_Ursache. House pattern (SCRUM-432/434/417): the User AND its
+ * PermissionSetAssignments are created in System context OUTSIDE the runAs, the
+ * field-bearing DML/SOQL runs inside. In Prod-Org the PermissionSetAssignment
+ * is a record, not metadata, so a check-only validation does not apply it —
+ * without the runAs this class fails there with "No such column" /
+ * "fields being inaccessible on Sobject".
+ *
+ * The seed inserts (Account + Case) stay in System context: measured in this
+ * org 2026-10-10 (SCRUM442ProbeTest), a Standard User holding the four PS above
+ * still reports "fields being inaccessible on Sobject Case" for a Case insert
+ * that carries AccountId (cross-reference to the Account object), while the
+ * same insert without AccountId succeeds — the fixture user has no Account
+ * object access. Seeds are setup DML; the business DML under test (Rebuilder
+ * writes + read-back) is what runs under runAs(u), which is also the shape the
+ * FLS-Gate and the Prod check-only validation exercise.
  *
  * Everything created rolls back with the test transaction.
  */
@@ -59,14 +69,18 @@ private class SCRUM442AccountRollupTest {
     /** TA1: avg/min/count/window set, Ärger-state per the PO rule. */
     @isTest
     static void seededScores_produceAvgMinCountWindow() {
+        // Setup DML (Account + Case inserts) in System context: a Standard User
+        // cannot cross-reference the Account object on Case insert (probe 2026-10-10:
+        // insert WITH AccountId -> "fields being inaccessible", WITHOUT -> OK). The
+        // business DML (Rebuilder writes + read-back SOQL) runs under runAs(u).
+        Account a = seedAccount('TA1');
+        // Scores 2, 4, 5 -> avg 3.7 (11/3), min 2 -> 'Ärger' via min <= 2.
+        seedClosedScored(a.Id, 'Score_2', null);
+        seedClosedScored(a.Id, 'Score_4', null);
+        seedClosedScored(a.Id, 'Score_5', null);
+
         User u = SCRUM442TestFixtures.satisfactionUser('442ta1');
         System.runAs(u) {
-            Account a = seedAccount('TA1');
-            // Scores 2, 4, 5 -> avg 3.7 (11/3), min 2 -> 'Ärger' via min <= 2.
-            seedClosedScored(a.Id, 'Score_2', null);
-            seedClosedScored(a.Id, 'Score_4', null);
-            seedClosedScored(a.Id, 'Score_5', null);
-
             AccountSatisfactionRebuilder.run();
 
             Account after = [SELECT Id, Satisfaction_Durchdurch__c, Satisfaction_Min__c,
@@ -88,12 +102,12 @@ private class SCRUM442AccountRollupTest {
     /** TA1b: a satisfied customer reads OK, not Ärger. */
     @isTest
     static void satisfiedScores_readOK() {
+        Account a = seedAccount('TA1ok');
+        seedClosedScored(a.Id, 'Score_4', null);
+        seedClosedScored(a.Id, 'Score_5', null);
+
         User u = SCRUM442TestFixtures.satisfactionUser('442ta1ok');
         System.runAs(u) {
-            Account a = seedAccount('TA1ok');
-            seedClosedScored(a.Id, 'Score_4', null);
-            seedClosedScored(a.Id, 'Score_5', null);
-
             AccountSatisfactionRebuilder.run();
 
             Account after = [SELECT Satisfaction_Durchdurch__c, Satisfaction_Min__c,
@@ -110,10 +124,11 @@ private class SCRUM442AccountRollupTest {
     /** TA2: idempotency — second run changes nothing, touches 0 rows. */
     @isTest
     static void secondRun_touchesZeroRows() {
+        Account a = seedAccount('TA2');
+        seedClosedScored(a.Id, 'Score_1', null);
+
         User u = SCRUM442TestFixtures.satisfactionUser('442ta2');
         System.runAs(u) {
-            Account a = seedAccount('TA2');
-            seedClosedScored(a.Id, 'Score_1', null);
             AccountSatisfactionRebuilder.run();
             Integer first = AccountSatisfactionRebuilder.getUpdated();
             System.assert(first > 0, 'first run must have written the seeded Account');
@@ -131,11 +146,11 @@ private class SCRUM442AccountRollupTest {
      */
     @isTest
     static void windowDrift_noDataNeverSatisfied() {
+        Account a = seedAccount('TA3');
+        seedClosedScored(a.Id, 'Score_1', null);
+
         User u = SCRUM442TestFixtures.satisfactionUser('442ta3');
         System.runAs(u) {
-            Account a = seedAccount('TA3');
-            seedClosedScored(a.Id, 'Score_1', null);
-
             // Window starts tomorrow -> the Cases (closed today) are excluded.
             AccountSatisfactionRebuilder.run(Date.today().addDays(1), 200);
 
@@ -165,12 +180,13 @@ private class SCRUM442AccountRollupTest {
     /** Bulk: explicit small chunk size -> every Account still processed. */
     @isTest
     static void smallChunks_processEveryAccount() {
+        List<Account> seeds = new List<Account>();
+        for (Integer i = 0; i < 5; i++) {
+            seeds.add(seedAccount('chunk' + i));
+        }
+
         User u = SCRUM442TestFixtures.satisfactionUser('442bulk');
         System.runAs(u) {
-            List<Account> seeds = new List<Account>();
-            for (Integer i = 0; i < 5; i++) {
-                seeds.add(seedAccount('chunk' + i));
-            }
             AccountSatisfactionRebuilder.run(Date.today().addMonths(-3), 2);
             System.assert(AccountSatisfactionRebuilder.getProcessed() >= seeds.size(),
                 'chunking must cover the whole stock');
