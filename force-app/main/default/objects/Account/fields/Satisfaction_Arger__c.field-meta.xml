@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Satisfaction_Arger__c</fullName>
+    <label>Status ärger?</label>
+    <description>Three-state AErger-Indicator at the customer (SCRUM-442, AC5). "Kein Daten" if no closed Case in the 3-month window (PO-Decision: must NOT read as satisfied); "AErger" if the 3-month average is below 3.0 OR at least one Case with score 1 or 2 in the window (min &lt;= 2); else "OK". formulaTreatBlanksAs is BlankAsNull deliberately — BlankAsZero would turn "no data" into 0, which is &lt; 3 and would flag every customer without closed Cases as AErger. House shape SCRUM-398 Eskalationsstufe__c / SCRUM-382 Customer_Since_Days__c.</description>
+    <formula>IF(ISBLANK(Satisfaction_Durchdurch__c), "Kein Daten", IF(OR(Satisfaction_Durchdurch__c &lt; 3, Satisfaction_Min__c &lt;= 2), "Ärger", "OK"))</formula>
+    <formulaTreatBlanksAs>BlankAsNull</formulaTreatBlanksAs>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+</CustomField>

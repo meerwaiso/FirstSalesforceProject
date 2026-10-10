@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Satisfaction_Fenster_Start__c</fullName>
+    <label>Ø-Fenster seit</label>
+    <description>Start of the rolling 3-month window the satisfaction average was measured over = today minus 3 calendar months (PO-Decision, SCRUM-442). AC6 demands the period be visible at the overview. System-maintained by AccountSatisfactionRebuilder; von Hand nicht änderbar.</description>
+    <type>Date</type>
+    <required>false</required>
+    <unique>false</unique>
+    <externalId>false</externalId>
+    <trackTrending>false</trackTrending>
+</CustomField>
