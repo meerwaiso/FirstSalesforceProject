@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-442 AC6: ÜBERVIEW der dissatisfied Kunden (AccountList, org-weit).
+     Grouping ACCOUNT.NAME (house: Betreuungslast_nach_Firma, deployed green —
+     the ONLY cross-object token form verified in deployed reports; the CASES.*
+     form is NOT found in any deployed report -> avoided, SCRUM-432 finding).
+     Columns: the 5 system-maintained Account.Satisfaction_* fields (this
+     ticket's own custom fields, resolve plainly). Filter: Satisfaction_Arger__c
+     equals 'Ärger' — the three-state indicator (AC5) is the filter, so the
+     overview lists EXACTLY the dissatisfied customers (AC6), never 'OK', never
+     'Kein Daten'. Sort worst first = sortColumn Durchdurch asc (house
+     Groesste_Einbrueche sortColumn). timeFrameFilter INTERVAL_LAST90 on
+     CLOSED_DATE — token VERIFIED in the deployed repo report Faelle_Nach_Ursache
+     (SCRUM-434, deployed green); INTERVAL_LAST3MONTHS exists nowhere in repo
+     or CLI registry. The Rebuilder window (today-3mon) is the source of truth;
+     the report window is the same 90 days, stated in the description.
+     Report-level sharing/folder placement = Org step (@devops-agent, design
+     §11). -->
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns>
+        <field>Account.Satisfaction_Durchdurch__c</field>
+    </columns>
+    <columns>
+        <field>Account.Satisfaction_Min__c</field>
+    </columns>
+    <columns>
+        <field>Account.Satisfaction_Anzahl__c</field>
+    </columns>
+    <columns>
+        <field>Account.Satisfaction_Fenster_Start__c</field>
+    </columns>
+    <columns>
+        <field>Account.Satisfaction_Arger__c</field>
+    </columns>
+    <description>SCRUM-442 AC6: genaut die dissatisfied Kunden (Arger-Indikator = AErger, i.e. Durchdurch &lt; 3.0 ODER Min &lt;= 2) over the last 90 days (CLOSED_DATE; the Rebuilder window is today-3mon, stated in Satisfaction_Fenster_Start__c). Zeigt: Durchdurch, Min, Anzahl, Fenster-Start, Indikator. Worst first (Durchdurch asc).</description>
+    <filter>
+        <criteriaItems>
+            <column>Account.Satisfaction_Arger__c</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>false</isUnlocked>
+            <operator>equals</operator>
+            <value>&#196;rger</value>
+        </criteriaItems>
+        <language>en_US</language>
+    </filter>
+    <format>Summary</format>
+    <groupingsDown>
+        <dateGranularity>Day</dateGranularity>
+        <field>ACCOUNT.NAME</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <name>Miserable_Kunde_Satisfaction</name>
+    <reportType>AccountList</reportType>
+    <scope>organization</scope>
+    <showDetails>true</showDetails>
+    <showGrandTotal>true</showGrandTotal>
+    <showSubTotals>true</showSubTotals>
+    <sortColumn>Satisfaction_Durchdurch__c</sortColumn>
+    <sortOrder>Asc</sortOrder>
+    <timeFrameFilter>
+        <dateColumn>CLOSED_DATE</dateColumn>
+        <interval>INTERVAL_LAST90</interval>
+    </timeFrameFilter>
+</Report>

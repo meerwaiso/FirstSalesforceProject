@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Customer_Satisfaction_PflichtBeiClosed</fullName>
+    <active>true</active>
+    <description>SCRUM-442 AC1: A closed Case (IsClosed=true) without a Customer_Satisfaction__c score is hard-blocked at save — on EVERY closing path (console UI, REST/CLI, queue paths SCRUM-421/422, Apex, data import), because a ValidationRule is declarative, not path-dependent. While the Case is open the field stays voluntary (AC3-shape). House: SCRUM-434 Ursache_PflichtBeiGeschlosed (deployed green) — same OR(IsClosed, ISPICKVAL) shape covers the Status-based closing and the IsClosed flag alike.</description>
+    <errorConditionFormula>AND(OR(IsClosed, ISPICKVAL(Status, 'Closed')), ISBLANK(TEXT(Customer_Satisfaction__c)))</errorConditionFormula>
+    <errorMessage>Bitte wählen eine Kundansatisfaction (1–5) für den geschlossenen Fall, bevor Sie speichern. Solange der Fall offen ist, ist das Feld freiwillig.</errorMessage>
+</ValidationRule>

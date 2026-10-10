@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Customer_Satisfaction__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM442_Satisfaction_Write</label>
+    <description>SCRUM-442 Write-PS: Case.Customer_Satisfaction__c only, readable + editable. Assigned to Service colleagues (the ones closing Cases) ONLY. PO-table: Service = Create/Read/Edit yes, Delete no — object-level delete stays out of any PS. Sales staff never get this PS (AC7/AC8: they see the score, never change it). House: SCRUM440_Rueckrufwunsch shape (field-only, no objectPermissions).</description>
+</PermissionSet>

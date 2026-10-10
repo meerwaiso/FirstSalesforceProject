@@ -412,6 +412,23 @@
         </layoutColumns>
         <style>TwoColumnsLeftToRight</style>
     </layoutSections>
+    <!-- SCRUM-442: Kundansatisfaction — die Rating beim Schliessen. Read-only
+         in der Layout (AC7/AC8: die Rating is written by Service staff via
+         FLS, never offered as a free edit field here). Own Section before
+         "System Information" — house SCRUM-434 Rückschau / SCRUM-438 SLA. -->
+    <layoutSections>
+        <customLabel>true</customLabel>
+        <detailHeading>true</detailHeading>
+        <editHeading>true</editHeading>
+        <label>Kundansatisfaction</label>
+        <layoutColumns>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Customer_Satisfaction__c</field>
+            </layoutItems>
+        </layoutColumns>
+        <style>OneColumn</style>
+    </layoutSections>
     <layoutSections>
         <customLabel>false</customLabel>
         <detailHeading>false</detailHeading>
