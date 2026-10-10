@@ -77,10 +77,14 @@ test.afterAll(() => {
 });
 
 // A future date well beyond NOW() so the ValRule (<= NOW()) passes.
-const FUTURE_DATE = '12/25/2027';   // MM/DD/YYYY, verified accepted
+// The org's locale is German: the datetime input ONLY accepts DD.MM.YYYY.
+// Verified 2026-10-10: US "12/25/2027" sets the DOM .value but never enters the
+// Aura edit model (save commits nothing, no error); "25.12.2027" commits.
+const FUTURE_DATE = '25.12.2027';   // DD.MM.YYYY, verified accepted
+const FUTURE_TIME = '14:30';        // timepicker option, 15-min steps
 
-/** Enter inline edit and set checkbox + datetime (date text; time combobox defaults to 00:00). */
-async function setCallback(page: Page, checked: boolean, date: string | null) {
+/** Enter inline edit and set checkbox + datetime (date text + time combobox option). */
+async function setCallback(page: Page, checked: boolean, date: string | null, time: string | null) {
   const editBtn = page.getByRole('button', { name: `Edit ${OPP_LABEL}` });
   await expect(editBtn).toBeVisible({ timeout: 15000 });
   await editBtn.click();
@@ -94,6 +98,28 @@ async function setCallback(page: Page, checked: boolean, date: string | null) {
     const ins = await page.locator(`input[name="${DT_API}"]`).all();
     await expect(ins.length, 'datetime renders as date-text + time-combobox (2 inputs)').toBe(2);
     await ins[0].fill(date);
+    if (time) {
+      // The time combobox needs an OPTION clicked for the datetime to commit.
+      // Options are lightning-base-combobox-item[role=option] with the value in
+      // data-value (e.g. "14:30:00.000", 15-min steps) — textContent is empty.
+      // Scope to the combobox's own .slds-combobox wrapper (slds-timepicker) so
+      // we never grab another combobox's options.
+      const combo = ins[1];
+      await combo.click();
+      await page.waitForTimeout(800);
+      const optHandle = await combo.evaluateHandle((el, want) => {
+        const wrap = el.closest('.slds-combobox');
+        if (!wrap) throw new Error('datetime time-combobox has no .slds-combobox wrapper');
+        const opts = wrap.querySelectorAll('[role="option"]');
+        for (const o of opts) {
+          const dv = o.getAttribute('data-value') || '';
+          if (dv.startsWith(want)) return o;
+        }
+        throw new Error(`no time option "${want}" in the datetime timepicker`);
+      }, time);
+      await optHandle.click();
+      await page.waitForTimeout(600);
+    }
   }
 }
 
@@ -155,14 +181,14 @@ test.describe('[SCRUM-440] AC2 — Save-Rejection', () => {
 test.describe('[SCRUM-440] AC3 — Save & auto-Task', () => {
   test('checked + valid future date → persists (SOQL) + one open callback Task', async ({ page }) => {
     await openRecordDetails(page, `/lightning/r/Opportunity/${oppId}/view`);
-    await setCallback(page, true, FUTURE_DATE);
+    await setCallback(page, true, FUTURE_DATE, '14:30');
     await saveInlineEdit(page);
     await page.waitForTimeout(4000);
 
     // Persisted in the org (SOQL read-back)
     const org = soql(`SELECT ${CB_API},${DT_API} FROM Opportunity WHERE Id='${oppId}'`).records[0];
     expect(org[CB_API], 'AC3: checkbox persisted true').toBe(true);
-    expect(org[DT_API], 'AC3: future date persisted (not null)').notToBe(null);
+    expect(org[DT_API], 'AC3: future date persisted (not null)').toBeTruthy();
 
     // The after-update handler auto-created exactly one open callback Task
     const tasks = soql(`SELECT Id,Subject,Status,Priority,ActivityDate FROM Task WHERE WhatId='${oppId}' AND Subject LIKE 'Rückruf:%' AND IsClosed=false`);
