@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-442: the shared fixture helper ALONE. Deploying it in the same batch
+     as its consumers compiles the consumers against the OLD live version
+     (measured 2026-10-11: "Method does not exist ... existingCloser(String)").
+     Consumers deploy in a SECOND call, after this one landed. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM442TestFixtures</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>
