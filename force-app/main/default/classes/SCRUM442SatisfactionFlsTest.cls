@@ -90,9 +90,11 @@ private class SCRUM442SatisfactionFlsTest {
     /** AC7 real round-trip: a Sales-shaped user refuses to write the score. */
     @isTest
     static void salesShape_writeRefusedValueUnchanged() {
-        // Setup OUTSIDE runAs. MIXED_DML (CI RunLocalTests, review 3 Cause E):
-        // the Case is a SETUP record, User/PermissionSetAssignment are not —
-        // setup DML first, then the fixture user, then business DML in runAs.
+        // MIXED_DML (review 4 Cause E, measured direction): the fixture User and
+        // its PermissionSetAssignment come FIRST, the Case seed after — the
+        // reverse order throws `... PermissionSetAssignment, original object:
+        // Case`. Same shape as ac1..ac5 of this class and as the RollupTest.
+        User u = grantPS(mkTestUser('salesrt1'), 'SCRUM442_Satisfaction_Read');
         Case seed = new Case(Subject = 'V442 fls rt', Status = 'Working');
         insert seed;
         Id caseId = seed.Id;
@@ -100,7 +102,6 @@ private class SCRUM442SatisfactionFlsTest {
         seed.Ursache__c = 'TechnischerFehler';
         seed.Customer_Satisfaction__c = 'Score_4';
         update seed;
-        User u = grantPS(mkTestUser('salesrt1'), 'SCRUM442_Satisfaction_Read');
 
         DmlException caught = null;
         System.runAs(u) {

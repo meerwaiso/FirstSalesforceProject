@@ -18,26 +18,29 @@
  * criterion below is asserted against SEEDED records and the asserted counts
  * are > 0 — a row that matched nothing would fail, not pass silently.
  *
- * FLS (Architect review Cause 1, FLS-Gate Lücke C): this class reads and writes
- * the five new Account fields plus the Case score, so the business DML (the
- * Rebuilder's writes on the Account rollup fields) and the read-back SOQL run
- * under System.runAs(u) with u = SCRUM442TestFixtures.satisfactionUser — a
- * Standard User carrying SCRUM442_Satisfaction_Read/Write/System plus
- * SCRUM434_Ursache. House pattern (SCRUM-432/434/417): the User AND its
- * PermissionSetAssignments are created in System context OUTSIDE the runAs, the
- * field-bearing DML/SOQL runs inside. In Prod-Org the PermissionSetAssignment
- * is a record, not metadata, so a check-only validation does not apply it —
- * without the runAs this class fails there with "No such column" /
- * "fields being inaccessible on Sobject".
+ * MIXED_DML SHAPE (Architect review 4, Cause E — measured, not assumed):
+ * `User` is a setup object, `PermissionSetAssignment` is not. The direction that
+ * is GREEN in this org is the one SCRUM442SatisfactionTest ac1..ac5 already
+ * proves: insert the fixture User and its PermissionSetAssignments FIRST, then
+ * the Account/Case seeds, then the business DML inside one System.runAs(u)
+ * block. The reverse (seeds first, PSA insert after) throws
+ * `MIXED_DML_OPERATION ... DML operation on setup object is not permitted
+ * after you have updated a non-setup object ...: PermissionSetAssignment,
+ * original object: Account` — that is exactly the error the previous head
+ * produced in CI RunLocalTests. The AC5/AC6 rollup proof and the FLS-negative
+ * proof (SCRUM442SatisfactionFlsTest) live in DIFFERENT classes = different
+ * transactions, as the Architect required.
  *
  * The seed inserts (Account + Case) stay in System context: measured in this
- * org 2026-10-10 (SCRUM442ProbeTest), a Standard User holding the four PS above
- * still reports "fields being inaccessible on Sobject Case" for a Case insert
- * that carries AccountId (cross-reference to the Account object), while the
- * same insert without AccountId succeeds — the fixture user has no Account
+ * org 2026-10-10 (SCRUM442ProbeTest), a Standard User holding the four PS
+ * above still reports "fields being inaccessible on Sobject Case" for a Case
+ * insert that carries AccountId (cross-reference to the Account object), while
+ * the same insert without AccountId succeeds — the fixture user has no Account
  * object access. Seeds are setup DML; the business DML under test (Rebuilder
  * writes + read-back) is what runs under runAs(u), which is also the shape the
- * FLS-Gate and the Prod check-only validation exercise.
+ * FLS-Gate and the Prod check-only validation exercise. The fixture user
+ * carries SCRUM442_TestObjectAccess (test-local Case+Account CRUD) for exactly
+ * that Rebuilder read-under-runAs; SCRUM442_Satisfaction_Read is NOT widened.
  *
  * Everything created rolls back with the test transaction.
  */
@@ -69,21 +72,14 @@ private class SCRUM442AccountRollupTest {
     /** TA1: avg/min/count/window set, Ärger-state per the PO rule. */
     @isTest
     static void seededScores_produceAvgMinCountWindow() {
-        // Seeds in System context (setup records first — legal MIXED_DML order).
-        // A Standard User cannot cross-reference the Account object on Case
-        // insert (probe 2026-10-10); the business DML (Rebuilder writes +
-        // read-back SOQL) runs under runAs(u) below.
+        // Fixture user FIRST (see the MIXED_DML note at the top of the class),
+        // then the Account/Case seeds in System context, then the business DML.
+        User u = SCRUM442TestFixtures.satisfactionUser('442ta1');
         Account a = seedAccount('TA1');
         // Scores 2, 4, 5 -> avg 3.7 (11/3), min 2 -> 'Ärger' via min <= 2.
         seedClosedScored(a.Id, 'Score_2', null);
         seedClosedScored(a.Id, 'Score_4', null);
         seedClosedScored(a.Id, 'Score_5', null);
-        // SCRUM-442 Cause E (review 3): setup objects (Account/Case) are
-        // SETUP records, User/PermissionSetAssignment are not — one transaction
-        // mixing both orders is MIXED_DML in EITHER order (CI RunLocalTests). The
-        // legal shape is setup DML first, then the fixture user, then the business
-        // DML inside one runAs block (house SCRUM-438: context separation, not hoisting).
-        User u = SCRUM442TestFixtures.satisfactionUser('442ta1');
         System.runAs(u) {
             AccountSatisfactionRebuilder.run();
 
@@ -106,15 +102,10 @@ private class SCRUM442AccountRollupTest {
     /** TA1b: a satisfied customer reads OK, not Ärger. */
     @isTest
     static void satisfiedScores_readOK() {
+        User u = SCRUM442TestFixtures.satisfactionUser('442ta1ok');
         Account a = seedAccount('TA1ok');
         seedClosedScored(a.Id, 'Score_4', null);
         seedClosedScored(a.Id, 'Score_5', null);
-        // SCRUM-442 Cause E (review 3): setup objects (Account/Case) are
-        // SETUP records, User/PermissionSetAssignment are not — one transaction
-        // mixing both orders is MIXED_DML in EITHER order (CI RunLocalTests). The
-        // legal shape is setup DML first, then the fixture user, then the business
-        // DML inside one runAs block (house SCRUM-438: context separation, not hoisting).
-        User u = SCRUM442TestFixtures.satisfactionUser('442ta1ok');
         System.runAs(u) {
             AccountSatisfactionRebuilder.run();
 
@@ -132,14 +123,9 @@ private class SCRUM442AccountRollupTest {
     /** TA2: idempotency — second run changes nothing, touches 0 rows. */
     @isTest
     static void secondRun_touchesZeroRows() {
+        User u = SCRUM442TestFixtures.satisfactionUser('442ta2');
         Account a = seedAccount('TA2');
         seedClosedScored(a.Id, 'Score_1', null);
-        // SCRUM-442 Cause E (review 3): setup objects (Account/Case) are
-        // SETUP records, User/PermissionSetAssignment are not — one transaction
-        // mixing both orders is MIXED_DML in EITHER order (CI RunLocalTests). The
-        // legal shape is setup DML first, then the fixture user, then the business
-        // DML inside one runAs block (house SCRUM-438: context separation, not hoisting).
-        User u = SCRUM442TestFixtures.satisfactionUser('442ta2');
         System.runAs(u) {
             AccountSatisfactionRebuilder.run();
             Integer first = AccountSatisfactionRebuilder.getUpdated();
@@ -158,14 +144,9 @@ private class SCRUM442AccountRollupTest {
      */
     @isTest
     static void windowDrift_noDataNeverSatisfied() {
+        User u = SCRUM442TestFixtures.satisfactionUser('442ta3');
         Account a = seedAccount('TA3');
         seedClosedScored(a.Id, 'Score_1', null);
-        // SCRUM-442 Cause E (review 3): setup objects (Account/Case) are
-        // SETUP records, User/PermissionSetAssignment are not — one transaction
-        // mixing both orders is MIXED_DML in EITHER order (CI RunLocalTests). The
-        // legal shape is setup DML first, then the fixture user, then the business
-        // DML inside one runAs block (house SCRUM-438: context separation, not hoisting).
-        User u = SCRUM442TestFixtures.satisfactionUser('442ta3');
         System.runAs(u) {
             // Window starts a month AFTER today -> the Cases (closed today) are
             // unambiguously out of the window. NOT tomorrow (+1 day): a Date bind
@@ -200,16 +181,11 @@ private class SCRUM442AccountRollupTest {
     /** Bulk: explicit small chunk size -> every Account still processed. */
     @isTest
     static void smallChunks_processEveryAccount() {
-                List<Account> seeds = new List<Account>();
+        User u = SCRUM442TestFixtures.satisfactionUser('442bulk');
+        List<Account> seeds = new List<Account>();
         for (Integer i = 0; i < 5; i++) {
             seeds.add(seedAccount('chunk' + i));
         }
-        // SCRUM-442 Cause E (review 3): setup objects (Account/Case) are
-        // SETUP records, User/PermissionSetAssignment are not — one transaction
-        // mixing both orders is MIXED_DML in EITHER order (CI RunLocalTests). The
-        // legal shape is setup DML first, then the fixture user, then the business
-        // DML inside one runAs block (house SCRUM-438: context separation, not hoisting).
-        User u = SCRUM442TestFixtures.satisfactionUser('442bulk');
         System.runAs(u) {
             AccountSatisfactionRebuilder.run(Date.today().addMonths(-3), 2);
             System.assert(AccountSatisfactionRebuilder.getProcessed() >= seeds.size(),
