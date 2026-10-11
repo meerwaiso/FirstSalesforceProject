@@ -1,43 +1,46 @@
 import { test, expect, type Page } from '@playwright/test';
 import { execSync } from 'node:child_process';
-import { openRecordDetails, saveInlineEdit } from './record-page';
+import { openRecordDetails } from './record-page';
 
 /**
  * [SCRUM-442] E2E: Kundansatisfaction — Rating at closing, follow-up Task,
  * Account overview, Sales cannot change a rating.
  *
- * Covers the UI side the Apex tests cannot:
- *   AC1 — closing a Case WITHOUT a score is REJECTED in the UI with the exact
- *          ValRule message; SOQL read-back: the Case is still open.
- *   AC2 — closing WITH score 4 persists score + CloseDate (SOQL read-back).
- *   AC3 — score 2 -> exactly one follow-up Task (SOQL: Subject prefix,
- *          OwnerId = Case owner, ActivityDate = 2nd Werktag, Not Started,
- *          High) AND the Task is visible in the rep's To-Do list (house AC3-
- *          shape SCRUM-440: SOQL proves the Task, UI proves it is visible).
- *   AC4 — reopen + reclose with a low score -> Task count stays 1 (SOQL).
- *   AC5 — the Account detail page renders the Kundansatisfaction section:
- *          Durchdurch / Min / Anzahl / Fenster / Indikator (three states).
- *   AC6 — the Report Miserable_Kunde_Satisfaction lists EXACTLY the
- *          dissatisfied customers: row count == SOQL count of Accounts whose
- *          AErger-indicator is 'Ärger' (NON-ZERO guard, AGENTS.md zero-rule).
- *   AC7/AC8 — a Sales-shaped user (no Write-PS) is NOT offered the score on
- *          the closing form (no Edit button / no input for the field) and a
- *          write attempt is refused.
+ * LOCATORS: every locator below was VERIFIED by the Tester in this session
+ * (probe scripts probe442aq/aw/bs/bt/bq on Case 500WU00002vEBUnYAO,
+ * Account 001WU00002GEhiqYAD, Report 00OWU00000QqteB2AR, 2026-10-11):
+ *   - Details tab:            getByRole('tab', { name: 'Details' })  (house helper)
+ *   - Edit entry:             getByRole('button', { name: 'Edit Kundansatisfaction' })
+ *   - Picklist combobox:      getByRole('combobox', { name: 'Kundansatisfaction' })
+ *                             -> click opens the option overlay
+ *   - Options:                getByRole('option') — names carry an EN-DASH (U+2013):
+ *                             "--None--", "1 – sehr dissatisfied", "2 – dissatisfied",
+ *                             "3 – neutral", "4 – satisfied", "5 – sehr satisfied"
+ *                             (NOT input[name="Customer_Satisfaction__c"] — the
+ *                             Developer's UNVERIFIED form; there is no such input)
+ *   - Score readable on page: getByText('2 – dissatisfied', { exact: true }) count 1
+ *   - Account labels (org-verified FieldDefinition.Labels):
+ *     "Status ärger?", "Satisfaction Ø (3 Monate)", "Satisfaction min (3 Monate)",
+ *     "Cases in Ø-Fenster", "Ø-Fenster seit" — all getByText exact, count 1, visible
+ *   - Task visible:           /lightning/r/Task/<id>/view, getByText(/Nachbetreuung/)
+ *   - Report:                 /lightning/r/Report/00OWU00000QqteB2AR/view,
+ *                             frame url contains 'lightningReportApp' (house SCRUM-434)
  *
- * LOCATOR STATUS (honesty line for the Tester): the locator probe
- * (scripts/probe-locators.js) could NOT render a Case page in this session —
- * the storage-state landed on the login page. The locators below reuse ONLY
- * forms verified in deployed house specs:
- *   - record-page helpers (openRecordDetails, saveInlineEdit) — SCRUM-440
- *   - field input by API name: input[name="<Field>"] — SCRUM-440
- *   - Edit-<Label> button — SCRUM-440
- *   - Report iframe 'lightningReportApp' + filter panel — SCRUM-434
- *   - German locale: dates DD.MM.YYYY — SCRUM-440 note
- * The Tester MUST re-probe before running (npm run probe "/lightning/r/Case/<seeded>/view" satisfaction)
- * and fix any locator that the probe reports differently — do not trust this
- * file's picklist-edit mechanics (a Picklist in inline edit renders as a
- * lightning-base-combobox; the option-click pattern of SCRUM-440's datetime
- * combobox is the closest house form, marked UNVERIFIED here).
+ * ORG QUIRKS the Tester could NOT work around (stated, not hidden):
+ *   1. The Status picklist on the Lightning record page offers only
+ *      --None--/New/Working/Escalated — "Closed" is NOT offered (verified: option
+ *      enumeration probe442aq/ai/am; SCRUM-434 tester notes confirm 2026-09-30).
+ *      The "Close" action button exists (getByText('Close', exact) count 1) but
+ *      renders with vis:false and is not clickable (probe442bt/bf). => The UI
+ *      closing path is NOT reachable from the record page in this org state.
+ *      AC1/AC2 closing is therefore exercised on the REST/CLI path (which the
+ *      AC explicitly demands: "every closing path") plus the Apex System.runAs
+ *      tests. The picklist-edit mechanics the Developer flagged UNVERIFIED ARE
+ *      covered end-to-end here (entry, save, post-save persistence).
+ *   2. A second licensed browser user for the AC7/AC8 UI session does not exist
+ *      (2/2 licences held by System Administrators). AC7/AC8 are proven by the
+ *      Apex System.runAs tests (withoutPS_scoreInvisible,
+ *      salesShape_writeRefusedValueUnchanged, readPS_readableNotUpdateable).
  *
  * Seeds are created via sf CLI (house SCRUM-440/430) and deleted in afterAll.
  */
@@ -48,6 +51,7 @@ const API = 'Customer_Satisfaction__c';
 const REJECT_MSG =
   'Bitte wählen eine Kundansatisfaction (1–5) für den geschlossenen Fall, bevor Sie speichern. Solange der Fall offen ist, ist das Feld freiwillig.';
 const TASK_PREFIX = 'Nachbetreuung: ';
+const REPORT_NAME = 'Miserable_Kunde_Satisfaction';
 
 function cli(args: string): string {
   return execSync(`FORCE_COLOR=0 NO_COLOR=1 sf ${args}`, {
@@ -57,179 +61,212 @@ function cli(args: string): string {
 }
 function sfJson(args: string): any {
   const raw = cli(args);
-  return JSON.parse(raw.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, '').slice(
-    raw.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, '').indexOf('{'),
-    raw.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, '').lastIndexOf('}') + 1,
-  ));
+  const clean = raw.replace(/\u001b\[[0-9;]*[a-zA-Z]/g, '');
+  return JSON.parse(clean.slice(clean.indexOf('{'), clean.lastIndexOf('}') + 1));
 }
 function soql(q: string): any {
-  return sfJson(`data query -q "${q}" --target-org ${ORG} --json`).result;
+  return sfJson(`data query -o ${ORG} --json -q "${q}"`).result;
 }
 
-let caseId: string;
 let accId: string;
+let caseId: string;
 const TAG = 'TEST-SCRUM442-E2E-' + Date.now().toString(36).toUpperCase();
 
 test.beforeAll(() => {
-  // A real Account exists in the org (187 measured); we seed our OWN Account
-  // so the AC5/AC6 assertions are non-zero and rollback-safe.
   const accOut = sfJson(
-    `data create record -s Account -v "Name='${TAG}'" --target-org ${ORG} --json`,
+    `data create record -s Account -v "Name='${TAG}'" -o ${ORG} --json`,
   );
-  accId = String(accOut?.result?.id ?? accOut?.id);
-  if (!accId || accId === 'undefined') throw new Error('Account-Create failed');
+  accId = String(accOut?.result?.id ?? '');
+  if (!accId) throw new Error('Account-Create failed');
 
   const caseOut = sfJson(
-    `data create record -s Case -v "Subject='${TAG} cable broken' Status='Working' AccountId='${accId}'" --target-org ${ORG} --json`,
+    `data create record -s Case -v "Subject='${TAG} cable broken' Status='Working' Origin='Phone' AccountId='${accId}'" -o ${ORG} --json`,
   );
-  caseId = String(caseOut?.result?.id ?? caseOut?.id);
-  if (!caseId || caseId === 'undefined') throw new Error('Case-Create failed');
+  caseId = String(caseOut?.result?.id ?? '');
+  if (!caseId) throw new Error('Case-Create failed');
 });
 
 test.afterAll(() => {
-  if (caseId) cli(`data delete record -s Case -i ${caseId} --target-org ${ORG} --json`);
-  if (accId) cli(`data delete record -s Account -i ${accId} --target-org ${ORG} --json`);
+  if (caseId) cli(`data delete record -s Case -i ${caseId} -o ${ORG} --json`);
+  if (accId) cli(`data delete record -s Account -i ${accId} -o ${ORG} --json`);
 });
 
-// ── AC1: closing without a score is refused, Case stays open ───────────
+// ── AC1: closing WITHOUT a score is refused, Case stays open ───────────
 test.describe('[SCRUM-442] AC1 — Schliessen ohne Rating refused', () => {
-test('close without score → exact ValRule message, Case still open', async ({ page }) => {
-  await openRecordDetails(page, `/lightning/r/Case/${caseId}/view`);
-
-  // Enter the closing edit via the Status field (house: Edit <Label> button).
-  const editBtn = page.getByRole('button', { name: /Edit (Status|Case Status)/i }).first();
-  await expect(editBtn, 'no Status edit entry on the Details tab').toBeVisible({ timeout: 15000 });
-  await editBtn.click();
-  await page.waitForTimeout(1500);
-
-  const statusInput = page.locator('input[name="Status"]').first();
-  await expect(statusInput).toBeVisible({ timeout: 10000 });
-  // Picklist edit: set the option 'Closed' via the combobox option pattern.
-  // UNVERIFIED picklist mechanics — Tester re-probes (see header).
-  await statusInput.fill('Closed');
-
-  await saveInlineEdit(page);
-  await page.waitForTimeout(3000);
-
-  const bodyText = await page.evaluate(() => document.body.innerText);
-  expect(bodyText, `save not rejected with the exact message "${REJECT_MSG}"`).toContain(REJECT_MSG);
-
-  const org = soql(`SELECT Id,Status,IsClosed,${API} FROM Case WHERE Id='${caseId}'`).records[0];
-  expect(org.IsClosed, 'AC1: refused closing must not close the Case').toBe(false);
-  expect(org.Status, 'AC1: Status untouched after refusal').not.toBe('Closed');
-  expect(org[API], 'AC1: no score invented by the refused save').toBe(null);
-});
-});
-
-// ── AC2: closing WITH score 4 persists score + CloseDate ───────────────
-test.describe('[SCRUM-442] AC2 — Rating stored with CloseDate', () => {
-test('close with score 4 → score + CloseDate persist (SOQL)', async ({ page }) => {
-  await openRecordDetails(page, `/lightning/r/Case/${caseId}/view`);
-
-  const editBtn = page.getByRole('button', { name: `Edit ${SCORE_LABEL}` }).first();
-  await expect(editBtn, 'score not offered on the closing form (layout/PS)').toBeVisible({ timeout: 15000 });
-  await editBtn.click();
-  await page.waitForTimeout(1500);
-
-  const scoreInput = page.locator(`input[name="${API}"]`).first();
-  await expect(scoreInput).toBeVisible({ timeout: 10000 });
-  // UNVERIFIED picklist mechanics — see header; house datetime combobox
-  // pattern is the closest verified form.
-  await scoreInput.fill('4');
-
-  const statusInput = page.locator('input[name="Status"]').first();
-  await statusInput.fill('Closed');
-
-  await saveInlineEdit(page);
-  await page.waitForTimeout(4000);
-
-  const org = soql(`SELECT Status,IsClosed,CloseDate,${API} FROM Case WHERE Id='${caseId}'`).records[0];
-  expect(org.IsClosed, 'AC2: closed').toBe(true);
-  expect(org[API], 'AC2: score 4 stored').toBe('Score_4');
-  expect(org.CloseDate, 'AC2: CloseDate set together with the score').toBeTruthy();
-});
-});
-
-// ── AC3: low score → one follow-up Task, visible in the rep's To-Do ────
-test.describe('[SCRUM-442] AC3 — follow-up Task after low score', () => {
-test('score 2 on closing → exactly one Task (SOQL) + visible', async ({ page }) => {
-  // The Case is already closed with Score_4 (AC2 test). Re-close path is AC4;
-  // here we seed a SECOND Case via CLI with a low score directly (house:
-  // SOQL proves the handler, UI proves visibility — SCRUM-440 AC3 shape).
-  const out = sfJson(
-    `data create record -s Case -v "Subject='${TAG} low score' Status='Closed' Customer_Satisfaction__c='Score_2' AccountId='${accId}'" --target-org ${ORG} --json`,
-  );
-  const lowId = String(out?.result?.id ?? out?.id);
-  if (!lowId || lowId === 'undefined') throw new Error('low-score Case create failed');
-
-  const tasks = soql(`SELECT Id,Subject,Status,Priority,ActivityDate,OwnerId FROM Task WHERE WhatId='${lowId}' AND Subject LIKE '${TASK_PREFIX}%'`);
-  expect(tasks.totalSize, 'AC3: exactly one follow-up Task').toBe(1);
-  const t = tasks.records[0];
-  expect(t.Subject, 'AC3: byte-exact prefix').toMatch(new RegExp('^' + TASK_PREFIX));
-  expect(t.Status, 'AC3: Not Started').toBe('Not Started');
-  expect(t.Priority, 'AC3: High').toBe('High');
-
-  // Visibility in the owner's To-Do list (house SCRUM-440 AC3: the Task is
-  // visible in the rep's To-Do, not an email).
-  await page.goto(`/lightning/To-Do/list`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  const header = page.locator('div.slds-global-header, one-appnav').first();
-  await expect(header).toBeVisible({ timeout: 30000 });
-  const bodyText = await page.evaluate(() => document.body.innerText);
-  expect(bodyText, 'AC3: follow-up Task not in the To-Do list').toContain(TASK_PREFIX + TAG + ' low score');
-
-  cli(`data delete record -s Case -i ${lowId} --target-org ${ORG} --json`);
-});
-});
-
-// ── AC4: reopen + reclose → still exactly one Task ─────────────────────
-test.describe('[SCRUM-442] AC4 — no second reminder', () => {
-test('reclose with low score → Task count stays 1 (SOQL)', async ({ page }) => {
-  const before = soql(`SELECT Id FROM Task WHERE WhatId='${caseId}' AND Subject LIKE '${TASK_PREFIX}%'`);
-  // AC2 closed with Score_4 → no Task yet; close again with a low score via
-  // CLI (the UI path is AC1/AC2; the idempotency is path-independent).
-  sfJson(`data update record -s Case -i ${caseId} -v "Status='Closed' Customer_Satisfaction__c='Score_1'" --target-org ${ORG} --json`);
-  const after = soql(`SELECT Id,Subject FROM Task WHERE WhatId='${caseId}' AND Subject LIKE '${TASK_PREFIX}%'`);
-  expect(after.totalSize, 'AC4: one Task after the FIRST low closing').toBeLessThanOrEqual(1);
-  // Second reclose must not add a second one:
-  sfJson(`data update record -s Case -i ${caseId} -v "Status='Closed' Customer_Satisfaction__c='Score_2'" --target-org ${ORG} --json`);
-  const after2 = soql(`SELECT Id FROM Task WHERE WhatId='${caseId}' AND Subject LIKE '${TASK_PREFIX}%'`);
-  expect(after2.totalSize, 'AC4: closed twice → still exactly ONE Task').toBe(after.totalSize);
-  expect(after2.totalSize, 'AC4: NON-ZERO (the obligation exists)').toBe(1);
-  void before;
-});
-});
-
-// ── AC5: Account overview renders the three-state indicator ────────────
-test.describe('[SCRUM-442] AC5 — Account overview', () => {
-test('Account detail page shows the Kundansatisfaction section', async ({ page }) => {
-  // The Rebuilder must have run for the fields to carry values; the nightly
-  // CRON is an Org step (@devops-agent). Until then the section renders with
-  // empty values — the SECTION and its labels are the layout artefact, and
-  // the values are proven by the Apex tests. Assert labels, not values.
-  await openRecordDetails(page, `/lightning/r/Account/${accId}/view`);
-  for (const label of ['Status ärger?', 'Satisfaction Durchdurch', 'Satisfaction Min', 'Satisfaction Anzahl', 'Satisfaction Fenster Start']) {
-    await expect(
-      page.getByText(label, { exact: true }).first(),
-      `layout label "${label}" missing on the Account Details tab`,
-    ).toBeVisible({ timeout: 15000 });
-  }
-});
-});
-
-// ── AC6: Report lists EXACTLY the dissatisfied customers (non-zero) ────
-test.describe('[SCRUM-442] AC6 — overview Report', () => {
-test('Report rows == SOQL count of AErger-Accounts, non-zero', async ({ page }) => {
-  const q = soql(`SELECT Id,Satisfaction_Arger__c FROM Account WHERE Satisfaction_Arger__c='Ärger'`);
-  // NON-ZERO guard: seed guarantees at least one (the AC3 Case scored 2 on
-  // accId — but only after the Rebuilder ran; if 0, the test says so loudly).
-  if (q.totalSize === 0) {
-    throw new Error(
-      'AC6 UNTESTED: 0 Accounts with AErger-indicator — the Rebuilder/CRON has not run in this Org yet (AGENTS.md zero-rule: a criterion matching zero records is not PASS)',
+  test('REST/CLI closing without score → exact ValRule message, Case still open', async ({ page }) => {
+    void page;
+    const upd = sfJson(
+      `data update record -s Case -i ${caseId} -v "Status='Closed'" -o ${ORG} --json`,
     );
-  }
-  await page.goto('/lightning/preview?name=Miserable_Kunde_Satisfaction', { waitUntil: 'domcontentloaded', timeout: 60000 });
-  const frame = page.frameLocator('iframe:has(.slds-popover-menu), #lightningReportApp').first();
-  const rows = await frame.locator('tr.slds-table-row, .slds-grid').count();
-  expect(rows, 'AC6: report rows vs SOQL ground truth').toBeGreaterThan(0);
+    const refused = upd?.result?.success !== true;
+    expect(refused, 'AC1: closing without a score must be refused').toBe(true);
+    const errs: string[] = (upd?.result?.errors ?? upd?.data ?? []).map((e: any) => String(e?.message ?? e));
+    expect(
+      errs.some((m) => m.includes(REJECT_MSG)),
+      `AC1: refusal must carry the exact message "${REJECT_MSG}"`,
+    ).toBe(true);
+
+    const org = soql(`SELECT Id,Status,IsClosed,${API} FROM Case WHERE Id='${caseId}'`).records[0];
+    expect(org.IsClosed, 'AC1: refused closing must not close the Case').toBe(false);
+    expect(org.Status, 'AC1: Status untouched after refusal').not.toBe('Closed');
+    expect(org[API], 'AC1: no score invented by the refused save').toBe(null);
+  });
 });
+
+// ── AC2: the score is entered via the picklist combobox and PERSISTS ───
+test.describe('[SCRUM-442] AC2 — Rating entered + stored', () => {
+  test('combobox edit sets score 4, save persists, value readable', async ({ page }) => {
+    await openRecordDetails(page, `/lightning/r/Case/${caseId}/view`);
+
+    // Verified locator: the Edit entry for the picklist field.
+    const editBtn = page.getByRole('button', { name: `Edit ${SCORE_LABEL}` });
+    await expect(editBtn, 'score not offered on the record page (layout/PS)').toBeVisible({ timeout: 15000 });
+    await editBtn.first().click();
+    await page.waitForTimeout(2000);
+
+    // Verified locator: BUTTON[role=combobox] carrying the field's aria-label.
+    const cb = page.getByRole('combobox', { name: SCORE_LABEL, exact: true }).first();
+    await expect(cb, 'no Kundansatisfaction combobox in edit mode').toBeVisible({ timeout: 15000 });
+    await cb.click();
+    await page.waitForTimeout(2500);
+
+    // Verified: options are role=option with EN-DASH names.
+    const opt = page.getByRole('option', { name: '4 – satisfied', exact: true }).first();
+    await expect(opt, 'option "4 – satisfied" not offered').toBeVisible({ timeout: 15000 });
+    await opt.click();
+    await page.waitForTimeout(2000);
+
+    // The combobox now carries the chosen value (ariaSnapshot read-back).
+    const snap = (await cb.ariaSnapshot() || '').replace(/\s+/g, ' ');
+    expect(snap, 'combobox did not commit the chosen option').toContain('4 – satisfied');
+
+    // Save (house saveInlineEdit semantics: Save or Save & New).
+    const save = page.getByRole('button', { name: 'Save' }).first();
+    const saveNew = page.getByRole('button', { name: 'Save & New' }).first();
+    const useSave = await save.isVisible({ timeout: 5000 }).catch(() => false);
+    await expect(useSave || await saveNew.isVisible().catch(() => false), 'no Save button after the picklist edit').toBe(true);
+    await (useSave ? save : saveNew).click();
+    await page.waitForTimeout(4000);
+
+    // Persisted in the org — the post-save read-back the AC demands.
+    const org = soql(`SELECT ${API} FROM Case WHERE Id='${caseId}'`).records[0];
+    expect(org[API], 'AC2: score 4 persisted after save').toBe('Score_4');
+
+    // Readable in the UI as the label text (verified locator).
+    const readable = page.getByText('4 – satisfied', { exact: true }).first();
+    await expect(readable, 'AC2: score not readable on the Case page after save').toBeVisible({ timeout: 15000 });
+  });
+});
+
+// ── AC3: low score on closing → exactly one follow-up Task, visible ────
+test.describe('[SCRUM-442] AC3 — follow-up Task after low score', () => {
+  test('closed with score 2 → one Task (SOQL) + visible on its record page', async ({ page }) => {
+    // The UI closing path is not reachable (org quirk 1, see header); the
+    // closing is done on the REST path, the Task is then proven in the org
+    // AND in the UI (house SCRUM-440 AC3 shape: SOQL proves, UI proves visibility).
+    const closed = sfJson(
+      `data update record -s Case -i ${caseId} -v "Status='Closed' ${API}='Score_2' Ursache__c='Out_of_hours'" -o ${ORG} --json`,
+    );
+    expect(closed?.result?.success, 'AC3 precondition: closing with score must succeed').toBe(true);
+
+    const tasks = soql(`SELECT Id,Subject,Status,Priority,ActivityDate,OwnerId FROM Task WHERE WhatId='${caseId}' AND Subject LIKE '${TASK_PREFIX}%'`);
+    expect(tasks.totalSize, 'AC3: exactly one follow-up Task').toBe(1);
+    const t = tasks.records[0];
+    expect(t.Subject, 'AC3: byte-exact prefix').toMatch(new RegExp('^' + TASK_PREFIX));
+    expect(t.Status, 'AC3: Not Started').toBe('Not Started');
+    expect(t.Priority, 'AC3: High').toBe('High');
+    const owner = soql(`SELECT Id FROM Case WHERE Id='${caseId}'`).records[0];
+    expect(t.OwnerId, 'AC3: Task owned by the Case owner (the rep)').toBe(owner.OwnerId);
+
+    // Visibility in the UI: the Task renders on its own record page.
+    await page.goto(`/lightning/r/Task/${t.Id}/view`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.locator('div.slds-global-header, one-appnav').first().waitFor({ state: 'visible', timeout: 60000 });
+    await page.waitForTimeout(3000);
+    const seen = page.getByText(TASK_PREFIX, { exact: false }).first();
+    await expect(seen, 'AC3: follow-up Task not visible in the UI').toBeVisible({ timeout: 15000 });
+  });
+});
+
+// ── AC4: reopen + reclose → still exactly ONE Task ─────────────────────
+test.describe('[SCRUM-442] AC4 — no second reminder', () => {
+  test('reopen then reclose with low score → Task count stays 1', async ({ page }) => {
+    void page;
+    const before = soql(`SELECT Id FROM Task WHERE WhatId='${caseId}' AND Subject LIKE '${TASK_PREFIX}%'`);
+    expect(before.totalSize, 'AC4 precondition: one Task already exists').toBe(1);
+
+    const reopen = sfJson(`data update record -s Case -i ${caseId} -v "Status='Escalated'" -o ${ORG} --json`);
+    expect(reopen?.result?.success, 'AC4: reopen succeeds').toBe(true);
+    const reclose = sfJson(
+      `data update record -s Case -i ${caseId} -v "Status='Closed' ${API}='Score_1' Ursache__c='Out_of_hours'" -o ${ORG} --json`,
+    );
+    expect(reclose?.result?.success, 'AC4: reclose with low score succeeds').toBe(true);
+
+    const after = soql(`SELECT Id,Subject FROM Task WHERE WhatId='${caseId}' AND Subject LIKE '${TASK_PREFIX}%'`);
+    expect(after.totalSize, 'AC4: closed twice → still exactly ONE Task').toBe(1);
+    const st = soql(`SELECT Status,IsClosed,ClosedDate,${API} FROM Case WHERE Id='${caseId}'`).records[0];
+    expect(st.IsClosed, 'AC4: Case closed again').toBe(true);
+    expect(st[API], 'AC4: new low score stored').toBe('Score_1');
+  });
+});
+
+// ── AC5: Account overview renders the satisfaction section ─────────────
+test.describe('[SCRUM-442] AC5 — Account overview', () => {
+  test('Account detail page shows the section with values (non-zero)', async ({ page }) => {
+    // The Rebuilder must have run for the rollups to carry values.
+    sfJson(`apex run -o ${ORG} -f scratch/SCRUM442-rebuilder-driver.cls --json`);
+
+    await openRecordDetails(page, `/lightning/r/Account/${accId}/view`);
+
+    // Verified labels (FieldDefinition.Label read back from the org).
+    for (const label of ['Status ärger?', 'Satisfaction Ø (3 Monate)', 'Satisfaction min (3 Monate)', 'Cases in Ø-Fenster', 'Ø-Fenster seit']) {
+      await expect(
+        page.getByText(label, { exact: true }).first(),
+        `layout label "${label}" missing on the Account Details tab`,
+      ).toBeVisible({ timeout: 15000 });
+    }
+
+    // NON-ZERO: the indicator and the average carry real values for this Account.
+    const roll = soql(`SELECT Satisfaction_Arger__c,Satisfaction_Durchdurch__c,Satisfaction_Min__c,Satisfaction_Anzahl__c FROM Account WHERE Id='${accId}'`).records[0];
+    expect(roll.Satisfaction_Arger__c !== null, 'AC5: indicator carries a value (not null)').toBe(true);
+    expect(roll.Satisfaction_Anzahl__c, 'AC5: NON-ZERO — at least one scored Case in the window').toBeGreaterThan(0);
+    expect(roll.Satisfaction_Durchdurch__c !== null, 'AC5: average computed').toBe(true);
+    expect(roll.Satisfaction_Arger__c, 'AC5: a score of 1/2 makes the customer AErger').toBe('Ärger');
+
+    // The indicator value is rendered in the UI next to its label.
+    await expect(
+      page.getByText('Ärger', { exact: true }).first(),
+      'AC5: indicator value "Ärger" not visible on the Account page',
+    ).toBeVisible({ timeout: 15000 });
+  });
+});
+
+// ── AC6: overview Report lists EXACTLY the dissatisfied customers ─────
+test.describe('[SCRUM-442] AC6 — overview Report', () => {
+  test('Report rows == SOQL count of AErger-Accounts, non-zero', async ({ page }) => {
+    // Ground truth from the org: Accounts flagged AErger whose window is inside
+    // the report's INTERVAL_LAST90 on Satisfaction_Fenster_Start__c.
+    const gt = soql(`SELECT Id,Name FROM Account WHERE Satisfaction_Arger__c='Ärger'`);
+    expect(gt.totalSize, 'AC6: NON-ZERO ground truth — at least one dissatisfied customer exists').toBeGreaterThan(0);
+
+    const reportId = sfJson(
+      `data query -o ${ORG} --use-tooling-api --json -q "SELECT Id,Name FROM Report WHERE Name='${REPORT_NAME}'"`,
+    );
+    const rid = String((reportId?.result?.records ?? [])[0]?.Id ?? '');
+    expect(rid !== '', 'AC6: the Report is deployed in the org').toBe(true);
+
+    await page.goto(`/lightning/r/Report/${rid}/view`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    let frame: any = null;
+    const deadline = Date.now() + 90000;
+    while (!frame) {
+      frame = page.frames().find((fr) => fr.url().includes('lightningReportApp'));
+      if (frame) break;
+      if (Date.now() > deadline) throw new Error('Report-Frame (lightningReportApp) not found');
+      await page.waitForTimeout(1500);
+    }
+    await frame.waitForTimeout(12000);
+
+    const rows = await frame.locator('tbody tr').count();
+    expect(rows, `AC6: Report rows (${rows}) must equal the org count (${gt.totalSize})`).toBe(gt.totalSize);
+    expect(rows, 'AC6: NON-ZERO — the overview must actually list the customer').toBeGreaterThan(0);
+  });
 });
