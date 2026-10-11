@@ -92,7 +92,7 @@ test.afterAll(() => {
 });
 
 // ── AC1: closing without a score is refused, Case stays open ───────────
-test.describe('[SCRUM-442] AC1 — Schliessen ohne Rating refused');
+test.describe('[SCRUM-442] AC1 — Schliessen ohne Rating refused', () => {
 test('close without score → exact ValRule message, Case still open', async ({ page }) => {
   await openRecordDetails(page, `/lightning/r/Case/${caseId}/view`);
 
@@ -119,9 +119,10 @@ test('close without score → exact ValRule message, Case still open', async ({ 
   expect(org.Status, 'AC1: Status untouched after refusal').not.toBe('Closed');
   expect(org[API], 'AC1: no score invented by the refused save').toBe(null);
 });
+});
 
 // ── AC2: closing WITH score 4 persists score + CloseDate ───────────────
-test.describe('[SCRUM-442] AC2 — Rating stored with CloseDate');
+test.describe('[SCRUM-442] AC2 — Rating stored with CloseDate', () => {
 test('close with score 4 → score + CloseDate persist (SOQL)', async ({ page }) => {
   await openRecordDetails(page, `/lightning/r/Case/${caseId}/view`);
 
@@ -147,9 +148,10 @@ test('close with score 4 → score + CloseDate persist (SOQL)', async ({ page })
   expect(org[API], 'AC2: score 4 stored').toBe('Score_4');
   expect(org.CloseDate, 'AC2: CloseDate set together with the score').toBeTruthy();
 });
+});
 
 // ── AC3: low score → one follow-up Task, visible in the rep's To-Do ────
-test.describe('[SCRUM-442] AC3 — follow-up Task after low score');
+test.describe('[SCRUM-442] AC3 — follow-up Task after low score', () => {
 test('score 2 on closing → exactly one Task (SOQL) + visible', async ({ page }) => {
   // The Case is already closed with Score_4 (AC2 test). Re-close path is AC4;
   // here we seed a SECOND Case via CLI with a low score directly (house:
@@ -177,9 +179,10 @@ test('score 2 on closing → exactly one Task (SOQL) + visible', async ({ page }
 
   cli(`data delete record -s Case -i ${lowId} --target-org ${ORG} --json`);
 });
+});
 
 // ── AC4: reopen + reclose → still exactly one Task ─────────────────────
-test.describe('[SCRUM-442] AC4 — no second reminder');
+test.describe('[SCRUM-442] AC4 — no second reminder', () => {
 test('reclose with low score → Task count stays 1 (SOQL)', async ({ page }) => {
   const before = soql(`SELECT Id FROM Task WHERE WhatId='${caseId}' AND Subject LIKE '${TASK_PREFIX}%'`);
   // AC2 closed with Score_4 → no Task yet; close again with a low score via
@@ -194,9 +197,10 @@ test('reclose with low score → Task count stays 1 (SOQL)', async ({ page }) =>
   expect(after2.totalSize, 'AC4: NON-ZERO (the obligation exists)').toBe(1);
   void before;
 });
+});
 
 // ── AC5: Account overview renders the three-state indicator ────────────
-test.describe('[SCRUM-442] AC5 — Account overview');
+test.describe('[SCRUM-442] AC5 — Account overview', () => {
 test('Account detail page shows the Kundansatisfaction section', async ({ page }) => {
   // The Rebuilder must have run for the fields to carry values; the nightly
   // CRON is an Org step (@devops-agent). Until then the section renders with
@@ -210,9 +214,10 @@ test('Account detail page shows the Kundansatisfaction section', async ({ page }
     ).toBeVisible({ timeout: 15000 });
   }
 });
+});
 
 // ── AC6: Report lists EXACTLY the dissatisfied customers (non-zero) ────
-test.describe('[SCRUM-442] AC6 — overview Report');
+test.describe('[SCRUM-442] AC6 — overview Report', () => {
 test('Report rows == SOQL count of AErger-Accounts, non-zero', async ({ page }) => {
   const q = soql(`SELECT Id,Satisfaction_Arger__c FROM Account WHERE Satisfaction_Arger__c='Ärger'`);
   // NON-ZERO guard: seed guarantees at least one (the AC3 Case scored 2 on
@@ -226,4 +231,5 @@ test('Report rows == SOQL count of AErger-Accounts, non-zero', async ({ page }) 
   const frame = page.frameLocator('iframe:has(.slds-popover-menu), #lightningReportApp').first();
   const rows = await frame.locator('tr.slds-table-row, .slds-grid').count();
   expect(rows, 'AC6: report rows vs SOQL ground truth').toBeGreaterThan(0);
+});
 });
