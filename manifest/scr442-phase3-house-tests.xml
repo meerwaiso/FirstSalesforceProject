@@ -19,6 +19,7 @@
         <members>SCRUM420EscalationKundeTest</members>
         <members>SCRUM434UrsacheTest</members>
         <members>SCRUM435TesterVerificationTest</members>
+        <members>SCRUM436CaseReminderTest</members>
         <members>SCRUM436CaseReminderVerifyTest</members>
         <members>SCRUM438SLATest</members>
         <members>SCRUM442AccountRollupTest</members>
