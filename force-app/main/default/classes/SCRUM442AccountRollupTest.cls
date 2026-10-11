@@ -18,24 +18,26 @@
  * criterion below is asserted against SEEDED records and the asserted counts
  * are > 0 — a row that matched nothing would fail, not pass silently.
  *
- * MIXED_DML SHAPE (Architect review 4, Cause E — measured, not assumed):
+ * MIXED_DML SHAPE (Architect review 4, Cause E — measured to exhaustion):
  * `User` is a setup object, `PermissionSetAssignment` is not. Measured in CI
- * RunLocalTests on head 17db169: BOTH orders of "seeds vs PSA insert" throw
- * (`... PermissionSetAssignment, original object: Account` with seeds first;
- * `... Account, original object: PermissionSetAssignment` with PSA first and
- * System-context seeds after). The only green shape is the one SCRUM442SatisfactionTest
- * ac1..ac5 already proves: insert the fixture User and its PSAs FIRST, then do
- * ALL Account/Case DML inside the SAME System.runAs(u) block — no System-context
- * setup DML after the PSA. The AC5/AC6 rollup proof and the FLS-negative proof
- * (SCRUM442SatisfactionFlsTest) live in DIFFERENT classes = different
- * transactions, as the Architect required.
+ * RunLocalTests on heads 17db169 and 9689e11: BOTH orders of "Account/Case
+ * DML vs PSA insert" throw in one transaction —
+ *   seeds first  -> "... PermissionSetAssignment, original object: Account"
+ *   PSA first    -> "... Account, original object: PermissionSetAssignment"
+ * Case DML alone MAY follow a PSA insert (that is what SCRUM442SatisfactionTest
+ * ac1..ac5 prove). Account DML may not share the transaction at all. So the
+ * AC5/AC6 rollup proof — which needs an Account — runs as an org user that ALREADY
+ * carries the granting PS (a READ of PermissionSetAssignment, no PSA DML), and
+ * the FLS-negative proof lives in the separate SCRUM442SatisfactionFlsTest
+ * transaction. That is the Architect's requirement "rollup proof and FLS-negative
+ * proof are different transactions", realised at the transaction level.
  *
- * The Case seeds carry AccountId (cross-reference to the seeded Account): the
- * probe on 2026-10-10 measured that a Standard User WITHOUT object-level access
- * reports "fields being inaccessible on Sobject Case" for such an insert; the
- * fixture user carries SCRUM442_TestObjectAccess (test-local Case+Account CRUD)
- * so the cross-reference resolves under runAs. SCRUM442_Satisfaction_Read is
- * NOT widened — the released Sales scope stays as designed.
+ * The Case seeds carry AccountId via an UPDATE after the insert: measured 2026-10-10
+ * (SCRUM442ProbeTest) a Standard User under runAs reports "fields being inaccessible
+ * on Sobject Case" for an INSERT that carries AccountId (cross-object to Account),
+ * while the same insert without it succeeds. SCRUM442_TestObjectAccess (test-local
+ * Case+Account CRUD) resolves the cross-reference on the update. SCRUM442_Satisfaction_Read
+ * is NOT widened — the released Sales scope stays as designed.
  *
  * Everything created rolls back with the test transaction.
  */
@@ -70,12 +72,20 @@ private class SCRUM442AccountRollupTest {
         return c;
     }
 
+    private static User closer() {
+        User u = SCRUM442TestFixtures.existingCloser('SCRUM442_Satisfaction_Write');
+        System.assertNotEquals(null, u,
+            'Cause E (measured): Account DML and PermissionSetAssignment DML cannot share one '
+            + 'transaction in EITHER order, so this class runs as an org user that already '
+            + 'carries SCRUM442_Satisfaction_Write. No such user -> the AC5/AC6 rollup proof '
+            + 'is NOT exercisable (fail, never pass vacuously).');
+        return u;
+    }
+
     /** TA1: avg/min/count/window set, Ärger-state per the PO rule. */
     @isTest
     static void seededScores_produceAvgMinCountWindow() {
-        // Fixture user FIRST (see the MIXED_DML note at the top of the class),
-        // then the Account/Case seeds in System context, then the business DML.
-        User u = SCRUM442TestFixtures.satisfactionUser('442ta1');
+        User u = closer();
         System.runAs(u) {
             Account a = seedAccount('TA1');
             // Scores 2, 4, 5 -> avg 3.7 (11/3), min 2 -> 'Ärger' via min <= 2.
@@ -103,7 +113,7 @@ private class SCRUM442AccountRollupTest {
     /** TA1b: a satisfied customer reads OK, not Ärger. */
     @isTest
     static void satisfiedScores_readOK() {
-        User u = SCRUM442TestFixtures.satisfactionUser('442ta1ok');
+        User u = closer();
         System.runAs(u) {
             Account a = seedAccount('TA1ok');
             seedClosedScored(a.Id, 'Score_4', null);
@@ -124,7 +134,7 @@ private class SCRUM442AccountRollupTest {
     /** TA2: idempotency — second run changes nothing, touches 0 rows. */
     @isTest
     static void secondRun_touchesZeroRows() {
-        User u = SCRUM442TestFixtures.satisfactionUser('442ta2');
+        User u = closer();
         System.runAs(u) {
             Account a = seedAccount('TA2');
             seedClosedScored(a.Id, 'Score_1', null);
@@ -145,7 +155,7 @@ private class SCRUM442AccountRollupTest {
      */
     @isTest
     static void windowDrift_noDataNeverSatisfied() {
-        User u = SCRUM442TestFixtures.satisfactionUser('442ta3');
+        User u = closer();
         System.runAs(u) {
             Account a = seedAccount('TA3');
             seedClosedScored(a.Id, 'Score_1', null);
@@ -182,7 +192,7 @@ private class SCRUM442AccountRollupTest {
     /** Bulk: explicit small chunk size -> every Account still processed. */
     @isTest
     static void smallChunks_processEveryAccount() {
-        User u = SCRUM442TestFixtures.satisfactionUser('442bulk');
+        User u = closer();
         List<Account> seeds = new List<Account>();
         System.runAs(u) {
             for (Integer i = 0; i < 5; i++) {

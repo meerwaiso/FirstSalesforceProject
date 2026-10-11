@@ -62,6 +62,37 @@ public without sharing class SCRUM442TestFixtures {
     };
 
     /**
+     * Returns an ALREADY-EXISTING org user that carries SCRUM442_Satisfaction_Write
+     * (measured 2026-10-11: in Test-Org that is devops-agent@cline.test, which also
+     * holds Read/System/436-System/437-System/434).
+     *
+     * WHY this exists (Cause E, measured to exhaustion): `PermissionSetAssignment`
+     * is NOT a setup object, Account/Case/User are. Measured in CI RunLocalTests on
+     * head 17db169 and again on 9689e11: BOTH orders of "Account/Case DML vs PSA
+     * insert" throw in one transaction —
+     *   seeds first  -> "... PermissionSetAssignment, original object: Account"
+     *   PSA first    -> "... Account, original object: PermissionSetAssignment"
+     * So a test that needs (a) setup records AND (b) a runAs user carrying new-field
+     * FLS cannot insert the PSA in that transaction at all. The AC5/AC6 rollup proof
+     * therefore runs as a user whose PS assignment already exists in the org (a READ
+     * of PermissionSetAssignment, no DML), and the FLS-negative proof lives in the
+     * separate SCRUM442SatisfactionFlsTest transaction.
+     *
+     * Falls back to create+grant ONLY when no such user exists (Prod before Release)
+     * — there the rollup asserts are not exercisable and the class reports that.
+     */
+    public static User existingCloser(String psName) {
+        PermissionSetAssignment psa = [
+            SELECT Assignee FROM PermissionSetAssignment
+            WHERE PermissionSet.Name = :psName LIMIT 1
+        ];
+        if (psa == null || psa.Assignee == null) {
+            return null;
+        }
+        return [SELECT Id FROM User WHERE Id = :psa.Assignee.Id LIMIT 1];
+    }
+
+    /**
      * Creates a Standard User, assigns the four PS above and returns it. Use it
      * as the System.runAs target for the score-bearing DML/SOQL on
      * Case.Customer_Satisfaction__c and for the Account rollup fields.
