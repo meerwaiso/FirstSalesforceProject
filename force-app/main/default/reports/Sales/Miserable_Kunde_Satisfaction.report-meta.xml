@@ -7,15 +7,11 @@
      ticket's own custom fields, resolve plainly). Filter: Satisfaction_Arger__c
      equals 'Ärger' — the three-state indicator (AC5) is the filter, so the
      overview lists EXACTLY the dissatisfied customers (AC6), never 'OK', never
-     'Kein Daten'. Sort worst first = sortColumn Durchdurch asc (house
-     Groesste_Einbrueche sortColumn). timeFrameFilter INTERVAL_LAST90 on
-     Account.Satisfaction_Fenster_Start__c — an AccountList report needs an
-     Account-scope dateColumn (CLOSED_DATE is Case-scope and rejected there,
-     deploy finding 2026-10-10); the INTERVAL_LAST90 token itself is VERIFIED in
-     the deployed repo report Faelle_Nach_Ursache (SCRUM-434, deployed green);
-     INTERVAL_LAST3MONTHS exists nowhere in repo or CLI registry. The Rebuilder
-     window (today-3mon) is the source of truth for the rollup fields; the
-     report window is the same 90 days, stated in the description.
+     'Kein Daten'. SCRUM-443 fix: NO timeFrameFilter — the Rebuilder writes
+     Fenster_Start = today-3mon (92 days back), which a LAST90 window can never
+     match, so the filter rendered 0 rows org-wide forever; no 3-month interval
+     token exists (CLI metadataRegistry: LAST7/30/60/90/120, LASTMONTH, LASTWEEK,
+     CURRENT, CUSTOM). The window is stated in the column and the description.
      Report-level sharing/folder placement = Org step (@devops-agent, design
      §11). -->
 <Report xmlns="http://soap.sforce.com/2006/04/metadata">
@@ -34,7 +30,7 @@
     <columns>
         <field>Account.Satisfaction_Arger__c</field>
     </columns>
-    <description>SCRUM-442 AC6: exactly the dissatisfied customers (Satisfaction_Arger__c=AErger: Durchdurch &lt; 3.0 ODER Min &lt;= 2), last 90 days (CLOSED_DATE; Rebuilder window today-3mon in Satisfaction_Fenster_Start__c). Worst first. Grouping ACCOUNT.NAME (house token).</description>
+    <description>SCRUM-442 AC6: exactly the dissatisfied customers (Satisfaction_Arger__c=AErger). Period = Rebuilder window today-3mon, stated in the column Satisfaction_Fenster_Start__c. Worst first. Grouping ACCOUNT.NAME.</description>
     <filter>
         <criteriaItems>
             <column>Account.Satisfaction_Arger__c</column>
@@ -59,8 +55,18 @@
     <showSubTotals>true</showSubTotals>
     <sortColumn>Account.Satisfaction_Durchdurch__c</sortColumn>
     <sortOrder>Asc</sortOrder>
-    <timeFrameFilter>
-        <dateColumn>Account.Satisfaction_Fenster_Start__c</dateColumn>
-        <interval>INTERVAL_LAST90</interval>
-    </timeFrameFilter>
+    <!-- SCRUM-443 (Tester-found defect, AC6): the timeFrameFilter was
+         INTERVAL_LAST90 on Account.Satisfaction_Fenster_Start__c, but the
+         Rebuilder writes Fenster_Start = today.addMonths(-3) = 92 days back,
+         i.e. ALWAYS outside a LAST90 window -> the report rendered 0 rows
+         org-wide, forever, in both orgs (measured by the Tester: Total Records
+         0 while 1 Account carried Satisfaction_Arger__c='AErger'). There is no
+         3-month interval token (CLI metadataRegistry lists LAST7/30/60/90/120,
+         LASTMONTH, LASTWEEK, CURRENT, CUSTOM - no LAST3MONTHS), so option (b)
+         LAST120 would silently mislabel the period and option (c) fudges the
+         data. Fix = drop the timeFrameFilter: the Rebuilder window is already
+         the source of truth and is shown as the column
+         Satisfaction_Fenster_Start__c; the indicator filter
+         Satisfaction_Arger__c='AErger' alone lists EXACTLY the dissatisfied
+         customers (AC6). -->
 </Report>
