@@ -51,11 +51,17 @@ private class SCRUM442AccountRollupTest {
     /** A closed Case carrying a score, closed `daysAgo` days before today. */
     private static Case seedClosedScored(Id accId, String score, Integer daysAgo) {
         Case c = new Case(Subject = 'V442 rollup',
-                          AccountId = accId,
                           Status = 'Closed',
                           Ursache__c = 'TechnischerFehler',
                           Customer_Satisfaction__c = score);
         insert c;
+        // The AccountId lookup is set by an UPDATE, not by the insert: measured
+        // 2026-10-10 (SCRUM442ProbeTest) a Standard User under runAs reports
+        // "fields being inaccessible on Sobject Case" for an INSERT that carries
+        // AccountId (cross-object to Account), while the same insert without it
+        // succeeds. The update below runs under the same runAs user and carries
+        // SCRUM442_TestObjectAccess, so the cross-reference resolves there.
+        update new Case(Id = c.Id, AccountId = accId);
         if (daysAgo != null && daysAgo > 0) {
             // CloseDate is read-only and follows the closing; backdating the
             // window position is done via the injected window start instead
