@@ -235,12 +235,12 @@ private class SCRUM442SatisfactionTest {
         // `... PermissionSetAssignment, original object: Case`.
         User u = prepareCloser('bulk');
         List<Case> seed = new List<Case>();
+        List<Id> ids = new List<Id>();
         System.runAs(u) {
             for (Integer i = 0; i < 200; i++) {
                 seed.add(new Case(Subject = 'V442 bulk ' + i, Status = 'Working'));
             }
             insert seed;
-            List<Id> ids = new List<Id>();
             for (Case c : seed) {
                 ids.add(c.Id);
             }
