@@ -27,24 +27,35 @@
 @isTest
 private class SCRUM418CaseReactionTest {
 
+    /** The fixture user that closed the Case (see newClosed); every later
+     * Case DML of the test runs under it — one context, no MIXED_DML. */
+    private static User closer = null;
+
     private static Case read(Id id) {
         return [SELECT Id, Status, Reactivation_Count__c, Last_Reactivation__c
                 FROM Case WHERE Id = :id LIMIT 1];
     }
 
-    /** Geschlossenen Fall anlegen (Status=Closed). Count startet auf 0 (defaultValue). */
+    /** Geschlossenen Fall anlegen (Status=Closed). Count startet auf 0 (defaultValue).
+     * MIXED_DML (CI RunLocalTests, SCRUM-442 Cause B): the fixture User + its
+     * PermissionSetAssignment (setup DML) must come STRICTLY before any non-setup
+     * DML, and ALL later Case DML of the test runs under that same user — one
+     * savepoint, one context (house SCRUM-434/438 pattern). */
     private static Id newClosed(String tag) {
         Case c = new Case(Ursache__c = 'HowToAnfrage', Subject = 'V418 ' + tag, Customer_Satisfaction__c = 'Score_4', Status = 'Closed');
-        // SCRUM-434 Lücke C: Ursache__c unter runAs(PS-User).
-        System.runAs(SCRUM442TestFixtures.satisfactionUser('418' + tag)) { insert c; }
+        // Setup (User + PSA) FIRST, then the Case insert under that user.
+        closer = SCRUM442TestFixtures.satisfactionUser('418' + tag);
+        System.runAs(closer) { insert c; }
         return c.Id;
     }
 
-    /** Status setzen + speichern (ein User-Update; der Trigger zählt). */
+    /** Status setzen + speichern UNTER dem closer (same context as newClosed). */
     private static void setStatus(Id id, String status) {
-        Case c = read(id);
-        c.Status = status;
-        update c;
+        System.runAs(closer) {
+            Case c = read(id);
+            c.Status = status;
+            update c;
+        }
     }
 
     /** AK3: Neuer Fall → Zahl 0, letztes Datum leer. */
@@ -140,10 +151,13 @@ private class SCRUM418CaseReactionTest {
         // Reopens im externen Pfad. Eine echte Zweitreaktivierung (mit
         // Closed-Phase dazwischen) liegt im Menschen-Zeitabstand. Apex
         // kann nicht schlafen → Fenster per Backdaten ablaufen lassen.
-        Case c = read(id);
-        c.Last_Reactivation__c = System.now()
-            - (CaseReactionHandler.REACTIVATION_GRACE_SECONDS + 1) * 1000;
-        update c;
+        Case c;
+        System.runAs(closer) {
+            c = read(id);
+            c.Last_Reactivation__c = System.now()
+                - (CaseReactionHandler.REACTIVATION_GRACE_SECONDS + 1) * 1000;
+            update c;
+        }
 
         setStatus(id, 'Escalated');
         Case r = read(id);

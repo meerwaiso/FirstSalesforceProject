@@ -2,7 +2,7 @@
 <ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Customer_Satisfaction_PflichtBeiClosed</fullName>
     <active>true</active>
-    <description>SCRUM-442 AC1: a closed Case without Customer_Satisfaction__c is hard-blocked at save on EVERY path (UI, REST/CLI, queue, Apex, import) — declarative, not path-dependent. Open Cases stay voluntary. House SCRUM-434 shape OR(IsClosed, ISPICKVAL).</description>
-    <errorConditionFormula>AND(OR(IsClosed, ISPICKVAL(Status, 'Closed')), ISBLANK(TEXT(Customer_Satisfaction__c)))</errorConditionFormula>
+    <description>SCRUM-442 AC1: closed Case without score is hard-blocked at save on every path; open Cases voluntary. House SCRUM-434 shape. Cause A (b): automated SCRUM-428 dedup closing exempt via NOT(Dedupliziert__c) — no human closer, no score can exist.</description>
+    <errorConditionFormula>AND(OR(IsClosed, ISPICKVAL(Status, 'Closed')), ISBLANK(TEXT(Customer_Satisfaction__c)), NOT(Dedupliziert__c))</errorConditionFormula>
     <errorMessage>Bitte wählen eine Kundansatisfaction (1–5) für den geschlossenen Fall, bevor Sie speichern. Solange der Fall offen ist, ist das Feld freiwillig.</errorMessage>
 </ValidationRule>

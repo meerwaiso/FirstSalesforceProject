@@ -73,13 +73,14 @@ private class SCRUM442AccountRollupTest {
         // cannot cross-reference the Account object on Case insert (probe 2026-10-10:
         // insert WITH AccountId -> "fields being inaccessible", WITHOUT -> OK). The
         // business DML (Rebuilder writes + read-back SOQL) runs under runAs(u).
+        // Setup DML FIRST (User + PSA before any non-setup DML — the CI RunLocalTests
+        // enforces MIXED_DML across the whole transaction): fixture user, then seeds.
+        User u = SCRUM442TestFixtures.satisfactionUser('442ta1');
         Account a = seedAccount('TA1');
         // Scores 2, 4, 5 -> avg 3.7 (11/3), min 2 -> 'Ärger' via min <= 2.
         seedClosedScored(a.Id, 'Score_2', null);
         seedClosedScored(a.Id, 'Score_4', null);
         seedClosedScored(a.Id, 'Score_5', null);
-
-        User u = SCRUM442TestFixtures.satisfactionUser('442ta1');
         System.runAs(u) {
             AccountSatisfactionRebuilder.run();
 
@@ -102,11 +103,10 @@ private class SCRUM442AccountRollupTest {
     /** TA1b: a satisfied customer reads OK, not Ärger. */
     @isTest
     static void satisfiedScores_readOK() {
+        User u = SCRUM442TestFixtures.satisfactionUser('442ta1ok');
         Account a = seedAccount('TA1ok');
         seedClosedScored(a.Id, 'Score_4', null);
         seedClosedScored(a.Id, 'Score_5', null);
-
-        User u = SCRUM442TestFixtures.satisfactionUser('442ta1ok');
         System.runAs(u) {
             AccountSatisfactionRebuilder.run();
 
@@ -124,10 +124,9 @@ private class SCRUM442AccountRollupTest {
     /** TA2: idempotency — second run changes nothing, touches 0 rows. */
     @isTest
     static void secondRun_touchesZeroRows() {
+        User u = SCRUM442TestFixtures.satisfactionUser('442ta2');
         Account a = seedAccount('TA2');
         seedClosedScored(a.Id, 'Score_1', null);
-
-        User u = SCRUM442TestFixtures.satisfactionUser('442ta2');
         System.runAs(u) {
             AccountSatisfactionRebuilder.run();
             Integer first = AccountSatisfactionRebuilder.getUpdated();
@@ -146,13 +145,16 @@ private class SCRUM442AccountRollupTest {
      */
     @isTest
     static void windowDrift_noDataNeverSatisfied() {
+        User u = SCRUM442TestFixtures.satisfactionUser('442ta3');
         Account a = seedAccount('TA3');
         seedClosedScored(a.Id, 'Score_1', null);
-
-        User u = SCRUM442TestFixtures.satisfactionUser('442ta3');
         System.runAs(u) {
-            // Window starts tomorrow -> the Cases (closed today) are excluded.
-            AccountSatisfactionRebuilder.run(Date.today().addDays(1), 200);
+            // Window starts a month AFTER today -> the Cases (closed today) are
+            // unambiguously out of the window. NOT tomorrow (+1 day): a Date bind
+            // is cast to midnight of that day and ClosedDate is a DATETIME in the
+            // org's timezone (SCRUM-417 lesson) — a one-day offset sits inside
+            // that timezone slop and the row is then counted, not drifted.
+            AccountSatisfactionRebuilder.run(Date.today().addMonths(1), 200);
 
             Account after = [SELECT Satisfaction_Durchdurch__c, Satisfaction_Min__c,
                                     Satisfaction_Anzahl__c, Satisfaction_Fenster_Start__c,
@@ -180,12 +182,11 @@ private class SCRUM442AccountRollupTest {
     /** Bulk: explicit small chunk size -> every Account still processed. */
     @isTest
     static void smallChunks_processEveryAccount() {
+        User u = SCRUM442TestFixtures.satisfactionUser('442bulk');
         List<Account> seeds = new List<Account>();
         for (Integer i = 0; i < 5; i++) {
             seeds.add(seedAccount('chunk' + i));
         }
-
-        User u = SCRUM442TestFixtures.satisfactionUser('442bulk');
         System.runAs(u) {
             AccountSatisfactionRebuilder.run(Date.today().addMonths(-3), 2);
             System.assert(AccountSatisfactionRebuilder.getProcessed() >= seeds.size(),
