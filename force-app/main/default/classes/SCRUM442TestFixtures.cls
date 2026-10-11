@@ -82,14 +82,23 @@ public without sharing class SCRUM442TestFixtures {
      * — there the rollup asserts are not exercisable and the class reports that.
      */
     public static User existingCloser(String psName) {
-        PermissionSetAssignment psa = [
-            SELECT Assignee FROM PermissionSetAssignment
-            WHERE PermissionSet.Name = :psName LIMIT 1
-        ];
-        if (psa == null || psa.Assignee == null) {
+        PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = :psName LIMIT 1];
+        if (ps == null) {
             return null;
         }
-        return [SELECT Id FROM User WHERE Id = :psa.Assignee.Id LIMIT 1];
+        // House pattern (SCRUM424/434 fixtures): PermissionSetAssignment carries
+        // AssigneeId / PermissionSetId — there is no 'Assignee' column and no
+        // PermissionSet.Name join on that entity (measured compile error 2026-10-11).
+        Id assignee = null;
+        for (PermissionSetAssignment psa : [SELECT AssigneeId FROM PermissionSetAssignment
+                                            WHERE PermissionSetId = :ps.Id]) {
+            assignee = psa.AssigneeId;
+            break;
+        }
+        if (assignee == null) {
+            return null;
+        }
+        return [SELECT Id FROM User WHERE Id = :assignee LIMIT 1];
     }
 
     /**
