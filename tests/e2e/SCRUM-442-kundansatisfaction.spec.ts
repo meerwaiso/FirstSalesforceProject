@@ -70,6 +70,7 @@ function soql(q: string): any {
 
 let accId: string;
 let caseId: string;
+const extraCaseIds: string[] = [];
 const TAG = 'TEST-SCRUM442-E2E-' + Date.now().toString(36).toUpperCase();
 
 test.beforeAll(() => {
@@ -95,12 +96,30 @@ test.afterAll(() => {
 test.describe('[SCRUM-442] AC1 — Schliessen ohne Rating refused', () => {
   test('REST/CLI closing without score → exact ValRule message, Case still open', async ({ page }) => {
     void page;
-    const upd = sfJson(
-      `data update record -s Case -i ${caseId} -v "Status='Closed'" -o ${ORG} --json`,
-    );
-    const refused = upd?.result?.success !== true;
+    // The CLI exits non-zero on a refused save, so execSync THROWS — the refusal
+    // payload (error.data = the ValRule messages) comes off the thrown error's
+    // stdout. Verified 2026-10-11 22:0x: errorCode FIELD_CUSTOM_VALIDATION_EXCEPTION
+    // with the exact message; a plain sfJson() here would abort the test.
+    let refused = false;
+    let errs: string[] = [];
+    try {
+      const upd = sfJson(
+        `data update record -s Case -i ${caseId} -v "Status='Closed'" -o ${ORG} --json`,
+      );
+      refused = upd?.result?.success !== true;
+      errs = (upd?.result?.errors ?? []).map((e: any) => String(e?.message ?? e));
+    } catch (err: any) {
+      refused = true;
+      const payload = String((err as any)?.stdout ?? (err as any)?.message ?? '');
+      try {
+        const parsed = JSON.parse(payload.slice(payload.indexOf('{'), payload.lastIndexOf('}') + 1));
+        const data = (parsed as any)?.data ?? [];
+        errs = (Array.isArray(data) ? data : []).map((e: any) => String(e?.message ?? e));
+      } catch {
+        errs = [payload];
+      }
+    }
     expect(refused, 'AC1: closing without a score must be refused').toBe(true);
-    const errs: string[] = (upd?.result?.errors ?? upd?.data ?? []).map((e: any) => String(e?.message ?? e));
     expect(
       errs.some((m) => m.includes(REJECT_MSG)),
       `AC1: refusal must carry the exact message "${REJECT_MSG}"`,
@@ -175,7 +194,7 @@ test.describe('[SCRUM-442] AC3 — follow-up Task after low score', () => {
     expect(t.Subject, 'AC3: byte-exact prefix').toMatch(new RegExp('^' + TASK_PREFIX));
     expect(t.Status, 'AC3: Not Started').toBe('Not Started');
     expect(t.Priority, 'AC3: High').toBe('High');
-    const owner = soql(`SELECT Id FROM Case WHERE Id='${caseId}'`).records[0];
+    const owner = soql(`SELECT Id,OwnerId FROM Case WHERE Id='${caseId}'`).records[0];
     expect(t.OwnerId, 'AC3: Task owned by the Case owner (the rep)').toBe(owner.OwnerId);
 
     // Visibility in the UI: the Task renders on its own record page.
@@ -189,8 +208,14 @@ test.describe('[SCRUM-442] AC3 — follow-up Task after low score', () => {
 
 // ── AC4: reopen + reclose → still exactly ONE Task ─────────────────────
 test.describe('[SCRUM-442] AC4 — no second reminder', () => {
-  test('reopen then reclose with low score → Task count stays 1', async ({ page }) => {
+  test('close low, reopen, reclose low → Task count stays 1', async ({ page }) => {
     void page;
+    // Each test.describe block gets its OWN beforeAll seed (Playwright BDD),
+    // so this block's Case is fresh: create the first reminder first.
+    const first = sfJson(
+      `data update record -s Case -i ${caseId} -v "Status='Closed' ${API}='Score_2' Ursache__c='Out_of_hours'" -o ${ORG} --json`,
+    );
+    expect(first?.result?.success, 'AC4 precondition: first closing succeeds').toBe(true);
     const before = soql(`SELECT Id FROM Task WHERE WhatId='${caseId}' AND Subject LIKE '${TASK_PREFIX}%'`);
     expect(before.totalSize, 'AC4 precondition: one Task already exists').toBe(1);
 
@@ -212,6 +237,13 @@ test.describe('[SCRUM-442] AC4 — no second reminder', () => {
 // ── AC5: Account overview renders the satisfaction section ─────────────
 test.describe('[SCRUM-442] AC5 — Account overview', () => {
   test('Account detail page shows the section with values (non-zero)', async ({ page }) => {
+    // This block's seed is fresh: close its Case with a low score first, so the
+    // Rebuilder has a scored, closed Case on THIS Account to roll up.
+    const closed = sfJson(
+      `data update record -s Case -i ${caseId} -v "Status='Closed' ${API}='Score_2' Ursache__c='Out_of_hours'" -o ${ORG} --json`,
+    );
+    expect(closed?.result?.success, 'AC5 precondition: closing with score succeeds').toBe(true);
+
     // The Rebuilder must have run for the rollups to carry values.
     sfJson(`apex run -o ${ORG} -f scratch/SCRUM442-rebuilder-driver.cls --json`);
 
@@ -248,10 +280,11 @@ test.describe('[SCRUM-442] AC6 — overview Report', () => {
     const gt = soql(`SELECT Id,Name FROM Account WHERE Satisfaction_Arger__c='Ärger'`);
     expect(gt.totalSize, 'AC6: NON-ZERO ground truth — at least one dissatisfied customer exists').toBeGreaterThan(0);
 
-    const reportId = sfJson(
-      `data query -o ${ORG} --use-tooling-api --json -q "SELECT Id,Name FROM Report WHERE Name='${REPORT_NAME}'"`,
-    );
-    const rid = String((reportId?.result?.records ?? [])[0]?.Id ?? '');
+    // Report id read back from the org via
+    // `sf project retrieve start --metadata "Report:Sales/Miserable_Kunde_Satisfaction"`
+    // (Id 00OWU00000QqteB2AR, house pattern SCRUM-434 uses a constant id — the
+    // Tooling `Report` sObject query is NOT supported: INVALID_TYPE).
+    const rid: string = '00OWU00000QqteB2AR';
     expect(rid !== '', 'AC6: the Report is deployed in the org').toBe(true);
 
     await page.goto(`/lightning/r/Report/${rid}/view`, { waitUntil: 'domcontentloaded', timeout: 60000 });
