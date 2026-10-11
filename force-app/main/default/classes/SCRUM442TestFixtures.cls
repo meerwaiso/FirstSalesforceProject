@@ -47,7 +47,17 @@ public without sharing class SCRUM442TestFixtures {
         // gets "fields being inaccessible on Sobject Case". This is a TEST-
         // LOCAL set: SCRUM442_Satisfaction_Read serves Sales users and must
         // NOT be widened for a test's benefit (released scope).
-        'SCRUM442_TestObjectAccess'
+        'SCRUM442_TestObjectAccess',
+        // Closing a Case in THIS org fires the rules of SCRUM-436 (Reminder
+        // fields) and SCRUM-437 (ProblemSerie fields) as well: measured 2026-10-11,
+        // a seed insert carrying Customer_Satisfaction__c under a user holding
+        // only the 442/434 sets fails "fields being inaccessible on Sobject Case"
+        // — missing field FLS, not missing CRUD (house finding). A closer needs
+        // the FLS of EVERY rule that fires at its save, so the fixture user
+        // carries those two Read-sets too. Test-local grants; released scopes
+        // untouched.
+        'SCRUM436_CaseReminder',
+        'SCRUM437_ProblemSerie_Read'
     };
 
     /**
