@@ -113,6 +113,12 @@ Why not a Case field: AC4 ("not reminded several times for the same Case") and A
 
 **Blast-radius counting rule (added at review 3, 2026-10-11):** a ValidationRule on a standard object breaks *every* DML site that can leave a record in the blocked state — and that state is defined by **what the record ends up as when it is saved, not by how the source writes it**. A literal `Status = 'Closed'` scan undercounts: conditional assignments (`Status = round < 4 ? 'New' : 'Closed'`), a status set via a variable, and **helper methods that build the record** (e.g. `plantCase(...)`) all reach the blocked state without ever spelling it out. Count the sites by state, not by token; fix the helper, not only its call sites. Measured on this ticket: three bulk scenarios (SCRUM-365 ×2, SCRUM-436 via `plantCase`) failed only after the literal scan had been "closed".
 
+**Second application of the rule (review 5, head `b7c01401b`):** the same scan misses `SCRUM437ProblemSerieTest.ac5_offen_und_frischGegschlossen_ImPool`, which reaches the blocked state through a record-building helper that takes the status as an argument — `mkCase(acct, CAT_RECHNUNG, 'Closed')` followed by `insert closedCase`. The class carries no reference to the score field at all, so no field-name grep finds it. It is **released to Prod-Org** (`manifest/scrum437-prod-release.xml` on master), so the fix belongs to this ticket: set the score inside the builder when the status is Closed, and add the class to `manifest/scr442-phase3-house-tests.xml` — a fix that is not in a manifest is never exercised.
+
+**Exemption check before fixing:** `SCRUM428IngestTest` also reaches the blocked state, but sets `Dedupliziert__c = true`, so ADR-1b exempts it — correctly untouched. A candidate is only a defect if it reaches the blocked state *and* is not exempt.
+
+**Org facts verified read-only at review 5** (`sf data query` / `sf sobject describe` / `sf project retrieve start`, both orgs; the Architect deploys nowhere): Prod-Org has no `Customer_Satisfaction__c` (SOQL `No such column`, `describe` lists no satisfaction field, the rule "cannot be found", `PermissionSet LIKE 'SCRUM442%'` → 0 records). Test-Org has field and rule (same queries return the record). Test-Org: 46 closed Cases without a score, 0 with a score — AC5/AC6 match zero records and are therefore **untested, not met**.
+
 ---
 
 ## 4. ADR — Apex vs. Flow vs. declarative
