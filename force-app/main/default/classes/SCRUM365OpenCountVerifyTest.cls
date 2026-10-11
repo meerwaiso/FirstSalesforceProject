@@ -126,9 +126,12 @@ private class SCRUM365OpenCountVerifyTest {
         for (Integer k = 0; k < 10; k++) {
             for (Integer r = 0; r < 20; r++) {
                 // 12 offen + 8 geschlossen je Kontakt
+                // SCRUM-442 Cause D: r>=12 rows end up Closed — score at the
+                // STATE (rule fires on the saved state, not on the token).
                 batch.add(new Case(Ursache__c = 'HowToAnfrage', 
                     ContactId = cids.get(k),
                     Status = (r < 12) ? 'New' : 'Closed',
+                    Customer_Satisfaction__c = 'Score_4',
                     Subject = 'bulk-' + k + '-' + r
                 ));
             }

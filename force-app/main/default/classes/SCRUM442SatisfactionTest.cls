@@ -229,12 +229,15 @@ private class SCRUM442SatisfactionTest {
      */
     @isTest
     static void bulkTwoHundredClosings_oneTaskBatch() {
-        User u = prepareCloser('bulk');
+        // MIXED_DML (review 3 Cause E): setup records (the 200 Cases) first,
+        // then the fixture User + its PermissionSetAssignments, then the
+        // closings inside one runAs block.
         List<Case> seed = new List<Case>();
         for (Integer i = 0; i < 200; i++) {
             seed.add(new Case(Subject = 'V442 bulk ' + i, Status = 'Working'));
         }
         insert seed;
+        User u = prepareCloser('bulk');
         List<Id> ids = new List<Id>();
         for (Case c : seed) {
             ids.add(c.Id);

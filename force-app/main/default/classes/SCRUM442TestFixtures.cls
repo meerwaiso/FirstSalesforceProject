@@ -40,7 +40,14 @@ public without sharing class SCRUM442TestFixtures {
         'SCRUM442_Satisfaction_Write',
         'SCRUM442_Satisfaction_Read',
         'SCRUM442_Satisfaction_System',
-        'SCRUM434_Ursache'
+        'SCRUM434_Ursache',
+        // SCRUM-442 Cause E (review 3): object-level access for the fixture
+        // user — the Rebuilder's per-chunk query reaches Case FROM Account
+        // under runAs; a Standard User without Case/Account object access
+        // gets "fields being inaccessible on Sobject Case". This is a TEST-
+        // LOCAL set: SCRUM442_Satisfaction_Read serves Sales users and must
+        // NOT be widened for a test's benefit (released scope).
+        'SCRUM442_TestObjectAccess'
     };
 
     /**

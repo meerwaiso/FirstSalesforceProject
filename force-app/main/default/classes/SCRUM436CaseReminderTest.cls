@@ -67,6 +67,9 @@ private class SCRUM436CaseReminderTest {
             // Daher im SYSTEM-Modus pflanzen (volle FLS, Validierung erfüllt),
             // statt das Fremd-PS SCRUM434_Ursache an den Test-User zu hängen.
             c.Ursache__c = 'TechnischerFehler';
+            // SCRUM-442 Cause D: a Closed row needs the score too (helper
+            // fixed, not the call sites — blast radius counts by state).
+            c.Customer_Satisfaction__c = 'Score_4';
             insert c;               // SYSTEM-Modus
         } else {
             System.runAs(owner) { insert c; }

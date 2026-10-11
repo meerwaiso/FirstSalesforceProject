@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-442 Cause E (review 3): TEST-LOCAL object-level access for the fixture
+     user only. The Rebuilder's per-chunk query reaches Case FROM Account under
+     runAs; a Standard User without Case/Account object access gets "fields
+     being inaccessible on Sobject Case". Deliberately NOT SCRUM442_Satisfaction_Read
+     — that PS serves Sales users (AC7) and widening it would broaden a released
+     scope for a test's benefit. Assigned ONLY to the fixture users created by
+     SCRUM442TestFixtures (test-local, never to real users). -->
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SCRUM442_TestObjectAccess</fullName>
+    <description>Test-local object-level CRUD on Case and Account for the SCRUM-442 fixture user. Never assigned to real users.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM-442 Test Object Access (fixture users only)</label>
+    <objectPermissions>
+        <allowCreate>true</allowCreate>
+        <allowDelete>true</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Case</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+    <objectPermissions>
+        <allowCreate>true</allowCreate>
+        <allowDelete>true</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Account</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+</PermissionSet>
