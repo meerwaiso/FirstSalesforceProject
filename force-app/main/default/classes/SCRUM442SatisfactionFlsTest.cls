@@ -95,20 +95,20 @@ private class SCRUM442SatisfactionFlsTest {
         // reverse order throws `... PermissionSetAssignment, original object:
         // Case`. Same shape as ac1..ac5 of this class and as the RollupTest.
         User u = grantPS(mkTestUser('salesrt1'), 'SCRUM442_Satisfaction_Read');
-        Case seed = new Case(Subject = 'V442 fls rt', Status = 'Working');
-        insert seed;
-        Id caseId = seed.Id;
-        seed.Status = 'Closed';
-        seed.Ursache__c = 'TechnischerFehler';
-        seed.Customer_Satisfaction__c = 'Score_4';
-        update seed;
-
+        grantPS(u, 'SCRUM434_Ursache'); // Ursache-FLS present, so the ONLY
+        // missing grant is Edit on the score — the refusal below is about the
+        // score, not about the SCRUM-434 field (falsifiable per AC7).
+        Id caseId = null;
         DmlException caught = null;
         System.runAs(u) {
+            Case seed = new Case(Subject = 'V442 fls rt', Status = 'Working');
+            insert seed;
+            caseId = seed.Id;
             try {
-                Case c = [SELECT Id, Customer_Satisfaction__c FROM Case WHERE Id = :caseId LIMIT 1];
-                c.Customer_Satisfaction__c = 'Score_1';
-                update c;
+                seed.Status = 'Closed';
+                seed.Ursache__c = 'TechnischerFehler';
+                seed.Customer_Satisfaction__c = 'Score_4';
+                update seed;
             } catch (DmlException e) {
                 caught = e;
             }
@@ -116,9 +116,13 @@ private class SCRUM442SatisfactionFlsTest {
         System.assert(caught != null,
             'AC7: the Sales-shaped user must not be able to change the score.');
 
-        Case after = [SELECT Id, Customer_Satisfaction__c FROM Case WHERE Id = :caseId LIMIT 1];
-        System.assertEquals('Score_4', String.valueOf(after.Customer_Satisfaction__c),
-            'AC7: the score still shows the value the Service colleague gave.');
+        Case after = [SELECT Id, Status, IsClosed, Customer_Satisfaction__c
+                      FROM Case WHERE Id = :caseId LIMIT 1];
+        System.assertNotEquals('Closed', String.valueOf(after.Status),
+            'AC7: the closing was refused — the Case is still open.');
+        System.assertEquals(false, after.IsClosed, 'AC7: IsClosed untouched.');
+        System.assertEquals(null, after.Customer_Satisfaction__c,
+            'AC7: no score was written by the refused save.');
     }
 
     /** AC2/AC8 positive: with the Write-PS the Service shape reads + writes. */
