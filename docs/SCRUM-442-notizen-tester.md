@@ -55,3 +55,22 @@ Verfied by the Tester in this session; every line names the command it came from
 
 ## Seeds
 - Account PROBE-442 = 001WU00002GEhiqYAD; Case 500WU00002vEBUnYAO; Task 00TWU00000GcHOP2A3
+- DELETED at end of run (sf data delete record, 5 records, all success) — org-wide
+  Satisfaction_Arger__c='Ärger' count back to 0 (verified via SOQL after cleanup).
+
+## Run 2026-10-11 evening (this session)
+- Apex rerun: deploy job 0AfWU00000c8IZl0AM — 19/19 pass, 0 fail, 3 comps (RunSpecifiedTests).
+- E2E run1: 1/6 — 5 failures were SPEC bugs, not org bugs:
+  1) execSync THROWS when the CLI refuses a save (exit!=0) — the refusal payload
+     (ValRule messages) comes off the thrown error's stdout; a plain sfJson() aborts the test.
+  2) SELECT Id without OwnerId, then reading .OwnerId → undefined.
+  3) Tooling-API `SELECT ... FROM Report` → INVALID_TYPE (not supported; house SCRUM-434
+     uses a constant report id; retrieve via sf project retrieve start --metadata works).
+  4) Playwright BDD: each test.describe block gets its OWN beforeAll seed — AC4/AC5
+     blocks saw 0 Tasks / unseeded rollups because their block's Case was fresh.
+- After fixes: run2 and run3 both 5/6 — only AC6 red (Report rows 0 vs org count 2).
+- AC1 org-verified directly: close without score refused with exact message
+  "Customer satisfaction score is required when closing a Case."; Case stays open.
+- CI on head bdb6c7d: Lint green, Smoke green, Prod-Org Drift Gate RED —
+  PRE-EXISTING (run 471 on previous head 71802fa also red; cause: validation
+  "produced no usable result" + test failures of SCRUM-434/436 classes, not my change).
