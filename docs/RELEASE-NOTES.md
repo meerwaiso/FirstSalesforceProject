@@ -16,6 +16,58 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 12.10.2026 — Kundansatisfaction mandatory at closing + Aergersignal at the customer (SCRUM-442)
+
+**Was sich aendert**
+- Schliessenem Servicefall now requires a **Kundansatisfaction from 1 to 5**
+  (1 = very dissatisfied, 5 = very satisfied). A Case cannot be closed without it —
+  the save is refused and the Case remains open. This also holds for **every** closing
+  path (console, REST/CLI, queue paths), not just the UI.
+- A score of **1 or 2** counts as dissatisfied. The responsible customer representative
+  then receives an **automatic reminder** to contact the customer, due within **2 working
+  days** of the closing — on the record page, not via an email that could get lost.
+  A Case that is reopened and closed again reminds **only once**, never twice.
+- At the customer himself, the Sales department now sees the **average satisfaction over
+  the last 3 months** and an up-front indicator: `OK`, `Ärger` or `Kein Daten`.
+  `Ärger` = average below 3.0 **or** at least one score 1/2 in that window. A customer
+  without any closed Case in the window shows `Kein Daten` — never a fake "satisfied".
+- The Sales management gets an **overview of exactly the dissatisfied customers**
+  (Report `Miserable_Kunde_Satisfaction`), showing customer, score and the period it
+  was measured over.
+- **Sales can see the satisfaction, but cannot change it.** Only Service colleagues
+  record a score. The score is never shown to the customer himself, to an external
+  party, or on a public page.
+
+**Wo man es sieht**
+- On the Case: field `Customer_Satisfaction__c` (1–5) plus the reminder Task.
+- On the Account: `Satisfaction Ø (3 Monate)`, `Satisfaction min (3 Monate)`,
+  `Ø-Fenster seit`, `Cases in Ø-Fenster`, `Status ärger?` — in the Account layout.
+- Report `Sales/Miserable_Kunde_Satisfaction` for the department overview.
+
+**What is deliberately not in here**
+- No email surveys to customers, no management analytics (stated out of scope).
+- **Old closed Cases keep no score.** 23 Cases in Prod were closed before this release
+  and carry none. The rule that a closed Case must carry a score now also blocks *editing*
+  those old Cases (owner change, priority change, related-record edit). Backfilling old
+  Cases is **not** part of this story — if the staff must edit old closed Cases, that needs
+  a new story. Flag it to the requester: business consequence, not a defect.
+- The Prod org starts with **no satisfaction data at all** (0 closed Cases with a score).
+  The overview is empty until the first Case is closed with a score — agreed behaviour,
+  not a failure.
+
+**Beleg (Deploy-IDs, own read-backs)**
+- Prod-Org deploy 2026-10-12, 6 phases: `0Afg500000FlxKACAZ` (6 CustomFields),
+  `0Afg500000Fm23hCAB` (Validation Rule + 3 Permission Sets + 2 Layouts + 3 Apex + Trigger),
+  `0Afg500000Fltq2CAB` (5 Account fields + Report).
+- Prod Apex tests: run `707g500000qJpWr`, 19/19, Pass Rate 100 % — incl. the negative
+  permission tests (field invisible without the Permission Set, write refused for the
+  Sales shape).
+- PO read-backs in Prod-Org (2026-10-12): field present as Picklist; all 5 Account fields
+  present; Validation Rule `Case.Customer_Satisfaction_PflichtBeiClosed` Created;
+  Report present; **6 Permission Set assignments = 3 Permission Sets × 2 users** —
+  the deployed-but-assigned-to-nobody trap is not present.
+- Tag `release/2026-10-12-SCRUM-442` → master commit `f1d3ba1` (verified on the remote).
+
 ## 10.10.2026 — Rückrufwunsch bei Opportunities festhalten (SCRUM-440)
 
 **Was sich aendert**
