@@ -300,8 +300,8 @@ private class SCRUM445DiscountApprovalTest {
     // ---------- Notification: both execute() paths (empty map + populated map) ----------
     @isTest
     static void notification_executeBothPaths() {
-        // Direct call of the Queueable (no async enqueue) so both branches are measurable.
-        new DiscountApprovalNotification(new Map<Id, Id>()).execute(new QueueableContext());
+        // Direct call of the Queueable body (no async enqueue) so both branches are measurable.
+        DiscountApprovalNotification.notify(new Map<Id, Id>());
         User rep = orgUser('devops-agent@cline.test');
         User mgr = orgUser('meerwais.osmani@resourceful-bear-6f1u4j.com');
         Id acc = accountId('notif');
@@ -313,7 +313,7 @@ private class SCRUM445DiscountApprovalTest {
         }
         Map<Id, Id> m = new Map<Id, Id>();
         m.put(oppId, mgr.Id);
-        new DiscountApprovalNotification(m).execute(new QueueableContext());
+        DiscountApprovalNotification.notify(m);
         System.assertNotEquals(null, oppId, 'Notification: the seeded Opportunity exists.');
     }
 
