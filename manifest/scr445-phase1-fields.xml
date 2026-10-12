@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-445 Phase 1: die 8 NEUEN Opportunity-Felder + die Mapping-Objekt
+     DiscountApprovalManager__c mit seinen 2 Felder — ALONE, nothing references
+     them yet (house scr442-phase1-fields.xml / scr410-phase1-object.xml:
+     CustomField first; a CMOM deploys together with its fields). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>DiscountApprovalManager__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>Opportunity.Discount_in_Pct__c</members>
+        <members>Opportunity.Discount_Approval__c</members>
+        <members>Opportunity.Approval_Requested_On__c</members>
+        <members>Opportunity.Approved_Discount_Value__c</members>
+        <members>Opportunity.Approval_Decided_By__c</members>
+        <members>Opportunity.Approval_Decided_On__c</members>
+        <members>Opportunity.Rejection_Reason__c</members>
+        <members>Opportunity.Approval_Waiting_Days__c</members>
+        <members>DiscountApprovalManager__c.Rep__c</members>
+        <members>DiscountApprovalManager__c.Manager__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>

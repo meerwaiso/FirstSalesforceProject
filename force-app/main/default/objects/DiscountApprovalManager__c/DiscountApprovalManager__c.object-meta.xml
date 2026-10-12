@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Direct Manager (Discount Approval)</label>
+    <pluralLabel>Direct Manager mappings</pluralLabel>
+    <sharingModel>ReadWrite</sharingModel>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <nameField>
+        <displayFormat>DM-{0000}</displayFormat>
+        <label>Mapping No.</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <description>SCRUM-445: Mapping of a sales rep to their direct manager. The role hierarchy is not usable here (measured: UserRole has 18 standard roles, every ForecastUserId null), so the direct manager is derived from this mapping object. Sales management maintains one record per rep; DiscountApprovalTrigger resolves Opportunity.OwnerId -> Rep__c -> Manager__c.</description>
+</CustomObject>

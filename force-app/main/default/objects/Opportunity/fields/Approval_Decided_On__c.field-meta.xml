@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Approval_Decided_On__c</fullName>
+    <label>Decided on</label>
+    <description>SCRUM-445: System.now() at the moment the discount approval was Approved or Rejected. System-set, read-only everywhere.</description>
+    <externalId>false</externalId>
+    <required>false</required>
+    <type>DateTime</type>
+</CustomField>

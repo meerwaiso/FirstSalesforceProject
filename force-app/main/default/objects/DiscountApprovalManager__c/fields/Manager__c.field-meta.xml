@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Manager__c</fullName>
+    <label>Direct manager</label>
+    <description>SCRUM-445: The direct manager of the rep — the User who must approve a discount above 15 % before the Opportunity may be closed as Won.</description>
+    <referenceTo>User</referenceTo>
+    <relationshipLabel>Direct-manager mappings (manager)</relationshipLabel>
+    <relationshipName>DirectManagerManagers</relationshipName>
+    <required>false</required>
+    <type>Lookup</type>
+</CustomField>
