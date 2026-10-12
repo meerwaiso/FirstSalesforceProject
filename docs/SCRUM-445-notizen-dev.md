@@ -48,3 +48,23 @@
   the field names the mapped manager — acceptable per design ("who decided, so the rep can see how
   it was decided"), flag if the PO wants the acting user verbatim.
 - ListView `Discount_Approval_Waiting` deployed as component; App Builder placement is Org-Setup.
+
+## Final state (2026-12.10., end of implementation)
+- Test run 707WU00001NO8nZ: 15/15 green (SCRUM445DiscountApprovalTest + SCRUM445DiscountFlsTest).
+- Coverage: DiscountApprovalHandler 95 % (82/86), DiscountApprovalTrigger 100 % (4/4),
+  DiscountApprovalNotification 76 % (26/34) — the uncovered lines are comments, closing
+  braces and the FeedItem insert inside `if (!Test.isRunningTest())`, which cannot execute
+  in a test run. The FeedItem path is for the Tester's Playwright E2E to verify.
+- MIXED_DML measured both directions: a PermissionSetAssignment insert is SETUP-class DML,
+  the CMOM DiscountApprovalManager__c insert is NOT — neither order works in one transaction
+  (house SCRUM-442 Cause E). Mapping tests therefore use orgUser(): the CLI user
+  devops-agent@cline.test and the human account meerwais.osmani@resourceful-bear-6f1u4j.com
+  already carry all 6 SCRUM445 PSs; the test reads PermissionSetAssignment, no PSA DML.
+- `QueueableContext` cannot be constructed ("Type cannot be constructed") — the Queueable
+  body was extracted into `DiscountApprovalNotification.notify()` so both paths are coverable.
+- PS read-back: 12 rows = 6 PSs x both users (query PermissionSetAssignment AssigneeId/
+  PermissionSetId + PermissionSet Name join in code; no name column on the assignment entity).
+- Field read-back through the CLI session: Pending rows show Discount_in_Pct__c,
+  Approval_Requested_On__c, Approval_Waiting_Days__c — FLS live, not just deployed.
+- Probe cleanup: all 17 Probe445* Opportunities deleted; 0 records > 25 % remain in Test-Org.
+  (Probe inserts ran in System context, which bypasses ValRules — that is why they existed.)
