@@ -74,3 +74,21 @@ Verfied by the Tester in this session; every line names the command it came from
 - CI on head bdb6c7d: Lint green, Smoke green, Prod-Org Drift Gate RED —
   PRE-EXISTING (run 471 on previous head 71802fa also red; cause: validation
   "produced no usable result" + test failures of SCRUM-434/436 classes, not my change).
+
+## Re-test after SCRUM-443 fix (2026-10-12)
+- Developer fix (option a): timeFrameFilter removed; org stores platform default
+  DUE_DATE/INTERVAL_CUSTOM (read back via sf project retrieve start) — the
+  LAST90 restriction is gone, INTERVAL_CUSTOM without bounds = no restriction.
+- AC6 needed a self-contained seed: block-local Account+Case closed Score_2 +
+  Rebuilder driver -> org-wide AErger count 2 (PROBE443-A/B), report Total(2).
+- Report DOM structure (scratch/probe-report-rows.js, 2026-10-12): 6 tbody tr
+  for 2 Accounts = header + 2 group rows + 2 Subtotal + "Total(2)". Group rows'
+  LAST cell is the indicator text, not a count -> house SCRUM-434 numeric reader
+  skips them; names come off the FIRST cell ("NAME, unchecked, Select row...").
+  Spec now reads the Total row as the record count + asserts seeded name present
+  and 3 non-dissatisfied (Kein Daten) accounts absent.
+- Seeds now tracked in `seeds[]` and deleted in afterAll (Task by WhatId, then
+  Case, then Account) — earlier runs leaked one Account per test.describe block.
+- Final run: smoke 2/2 (12s), spec 6/6 green (1.6m). PROBE443 seeds deleted,
+  org-wide AErger count back to 0.
+- Apex NOT re-run this round: no Apex class changed, budget 441/500 last 24h.
