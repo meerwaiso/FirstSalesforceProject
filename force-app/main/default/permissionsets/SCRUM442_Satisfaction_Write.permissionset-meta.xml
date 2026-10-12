@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Case.Customer_Satisfaction__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM442_Satisfaction_Write</label>
+    <description>SCRUM-442 Write-PS: Case.Customer_Satisfaction__c readable+editable, Service colleagues ONLY. Sales never get it (AC7/AC8). No object-CRUD (house SCRUM440_Rueckrufwunsch shape).</description>
+</PermissionSet>

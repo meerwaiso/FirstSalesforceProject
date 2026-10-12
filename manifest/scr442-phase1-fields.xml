@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-442 Phase 1: die 6 NEUEN Fields ALONE (house scr440-phase1-fields.xml
+     / memory: CustomField ALONE first — ValRule, PS, Layout, Report reference
+     them and would fail without them). Includes the formula field
+     Satisfaction_Arger__c (references only the 4 system fields of the same
+     phase — deploy order inside one manifest is resolved by the tool). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Case.Customer_Satisfaction__c</members>
+        <members>Account.Satisfaction_Durchdurch__c</members>
+        <members>Account.Satisfaction_Min__c</members>
+        <members>Account.Satisfaction_Fenster_Start__c</members>
+        <members>Account.Satisfaction_Anzahl__c</members>
+        <members>Account.Satisfaction_Arger__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>

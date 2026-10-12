@@ -29,15 +29,24 @@
 @isTest
 private class SCRUM419ReentryRegressionTest {
 
+    /** The fixture user that closed the Case (see newClosed); every later
+     * Case DML of the test runs under it — one context, no MIXED_DML. */
+    private static User closer = null;
+
     private static Case read(Id id) {
         return [SELECT Id, Status, Reactivation_Count__c, Last_Reactivation__c
                 FROM Case WHERE Id = :id LIMIT 1];
     }
 
+    /** MIXED_DML (CI RunLocalTests, SCRUM-442 Cause B): the fixture User + its
+     * PermissionSetAssignment (setup DML) must come STRICTLY before any non-setup
+     * DML, and ALL later Case DML of the test runs under that SAME user — one
+     * context for the whole test (house SCRUM-434/438 pattern). The closer is
+     * kept in `closer` so setStatus/read stay in that context. */
     private static Id newClosed(String tag) {
-        Case c = new Case(Ursache__c = 'HowToAnfrage', Subject = 'V419 ' + tag, Status = 'Closed');
-        // SCRUM-434 Lücke C: Ursache__c unter runAs(PS-User).
-        System.runAs(SCRUM434TestFixtures.ursacheUser('419' + tag)) { insert c; }
+        Case c = new Case(Ursache__c = 'HowToAnfrage', Subject = 'V419 ' + tag, Customer_Satisfaction__c = 'Score_4', Status = 'Closed');
+        closer = SCRUM442TestFixtures.satisfactionUser('419' + tag);
+        System.runAs(closer) { insert c; }
         return c.Id;
     }
 
@@ -51,9 +60,12 @@ private class SCRUM419ReentryRegressionTest {
         Id id = newClosed('direct');
         System.assertEquals(0, read(id).Reactivation_Count__c, 'Start: 0');
 
-        Case target = read(id);
-        target.Status = 'New';
-        update target; // user-Update: Closed → New (zählt über den Trigger)
+        Case target;
+        System.runAs(closer) {
+            target = read(id);
+            target.Status = 'New';
+            update target; // user-Update: Closed → New (zählt über den Trigger)
+        }
 
         System.assertEquals(1, read(id).Reactivation_Count__c,
             'Ein Reopen → genau 1 (kein Doppler über re-entrant Trigger-Lauf)');
@@ -69,10 +81,14 @@ private class SCRUM419ReentryRegressionTest {
     @isTest
     static void flagTrue_suppressesTriggerCounting() {
         Id id = newClosed('flagged');
-        // Manuell öffnen (zählt korrekt: Flag ist false).
-        Case c = read(id);
-        c.Status = 'New';
-        update c;
+        // Manuell öffnen (zählt korrekt: Flag ist false). UNTER dem closer —
+        // same context as the newClosed insert (MIXED_DML, CI RunLocalTests).
+        Case c;
+        System.runAs(closer) {
+            c = read(id);
+            c.Status = 'New';
+            update c;
+        }
         System.assertEquals(1, read(id).Reactivation_Count__c, 'Voraussetzung: 1 Reopen');
 
         // Jetzt Flag setzen (simuliert: handler-DML läuft) und über ein
@@ -81,9 +97,11 @@ private class SCRUM419ReentryRegressionTest {
         // zweimal gezählt. Der Flag-Gate lässt ihn raus.
         CaseReactionHandler.isRecomputing = true;
         try {
-            c = read(id);
-            c.Status = 'Working'; // Status-Wechsel während Flag=true
-            update c;
+            System.runAs(closer) {
+                c = read(id);
+                c.Status = 'Working'; // Status-Wechsel während Flag=true
+                update c;
+            }
         } finally {
             CaseReactionHandler.isRecomputing = false;
         }
@@ -103,30 +121,36 @@ private class SCRUM419ReentryRegressionTest {
     static void flagFalse_afterRecompute_subsequentReopensStillCount() {
         Id id = newClosed('followup');
 
-        // 1. Reopen über den normalen Trigger-Pfad.
-        Case c = read(id);
-        c.Status = 'New';
-        update c;
-        System.assertEquals(1, read(id).Reactivation_Count__c, '1. Reopen → 1');
+        // ALL Case DML of this test runs under the closer (MIXED_DML, CI
+        // RunLocalTests): one context from the newClosed insert to the last update.
+        Case r;
+        System.runAs(closer) {
+            // 1. Reopen über den normalen Trigger-Pfad.
+            Case c = read(id);
+            c.Status = 'New';
+            update c;
+            System.assertEquals(1, read(id).Reactivation_Count__c, '1. Reopen → 1');
 
-        // Schließen (zählt nicht).
-        c = read(id);
-        c.Ursache__c = 'HowToAnfrage';
-        c.Status = 'Closed';
-        update c;
-        System.assertEquals(1, read(id).Reactivation_Count__c, 'Schließen → bleibt 1');
+            // Schließen (zählt nicht).
+            c = read(id);
+            c.Ursache__c = 'HowToAnfrage';
+            c.Status = 'Closed';
+            c.Customer_Satisfaction__c = 'Score_4';
+            update c;
+            System.assertEquals(1, read(id).Reactivation_Count__c, 'Schließen → bleibt 1');
 
-        // Grace-Fenster ablaufen lassen (Apex kann nicht schlafen).
-        c = read(id);
-        c.Last_Reactivation__c = System.now()
-            - (CaseReactionHandler.REACTIVATION_GRACE_SECONDS + 1) * 1000;
-        update c;
+            // Grace-Fenster ablaufen lassen (Apex kann nicht schlafen).
+            c = read(id);
+            c.Last_Reactivation__c = System.now()
+                - (CaseReactionHandler.REACTIVATION_GRACE_SECONDS + 1) * 1000;
+            update c;
 
-        // 2. Reopen (separater DML — Flag false, Fenster abgelaufen).
-        c = read(id);
-        c.Status = 'New';
-        update c;
-        Case r = read(id);
+            // 2. Reopen (separater DML — Flag false, Fenster abgelaufen).
+            c = read(id);
+            c.Status = 'New';
+            update c;
+            r = read(id);
+        }
         System.assertEquals(2, r.Reactivation_Count__c,
             '2. Reopen nach abgelaufenem Fenster → 2 (kein Lockout)');
     }
@@ -143,18 +167,21 @@ private class SCRUM419ReentryRegressionTest {
         Id id = newClosed('grace');
         System.assertEquals(0, read(id).Reactivation_Count__c, 'Start: 0');
 
-        // 1. Feuerung: Closed → New (zählt).
-        Case c = read(id);
-        c.Status = 'New';
-        update c;
-        System.assertEquals(1, read(id).Reactivation_Count__c, '1. Feuerung → 1');
+        Case reopen;
+        System.runAs(closer) {
+            // 1. Feuerung: Closed → New (zählt).
+            Case c = read(id);
+            c.Status = 'New';
+            update c;
+            System.assertEquals(1, read(id).Reactivation_Count__c, '1. Feuerung → 1');
 
-        // 2. Feuerung desselben Reopens (sequentiell, <5 s): der Handler
-        // liest Last_Reactivation__c aus dem 1. Lauf → Grace-Fenster →
-        // wird NICHT erneut gezählt. Direkter recompute-Aufruf simuliert
-        // den 2. ExecutionContext.
-        Case reopen = read(id);
-        CaseReactionHandler.recompute(new List<Case>{reopen});
+            // 2. Feuerung desselben Reopens (sequentiell, <5 s): der Handler
+            // liest Last_Reactivation__c aus dem 1. Lauf → Grace-Fenster →
+            // wird NICHT erneut gezählt. Direkter recompute-Aufruf simuliert
+            // den 2. ExecutionContext.
+            reopen = read(id);
+            CaseReactionHandler.recompute(new List<Case>{reopen});
+        }
         System.assertEquals(1, read(id).Reactivation_Count__c,
             '2. Feuerung innerhalb des Fensters → bleibt 1');
     }

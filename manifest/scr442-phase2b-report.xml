@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-442: Report together with the fields it references (the deploy
+     resolves CustomField names inside the package — house release-scr431-
+     combined.xml deploys fields + report in ONE manifest). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Account.Satisfaction_Durchdurch__c</members>
+        <members>Account.Satisfaction_Min__c</members>
+        <members>Account.Satisfaction_Anzahl__c</members>
+        <members>Account.Satisfaction_Fenster_Start__c</members>
+        <members>Account.Satisfaction_Arger__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Sales/Miserable_Kunde_Satisfaction</members>
+        <name>Report</name>
+    </types>
+    <version>67.0</version>
+</Package>

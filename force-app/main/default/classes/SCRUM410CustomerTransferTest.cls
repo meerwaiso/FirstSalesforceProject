@@ -94,6 +94,7 @@ private class SCRUM410CustomerTransferTest {
         // Hausmuster SCRUM418: ursacheUser() + System.runAs{insert} ohne MIXED_DML.
         // fromUser muss Owner der Cases SEIN (cross-ref-Access im Prod checkOnly).
         SCRUM434TestFixtures.grantUrsacheToUser(fromUser);
+        SCRUM442TestFixtures.grantPsToUser(fromUser);
         System.runAs(fromUser) {
             List<Account> acctList = new List<Account>();
             for (Integer i = 0; i < ACCOUNTS; i++) {
@@ -126,7 +127,7 @@ private class SCRUM410CustomerTransferTest {
             }
             for (Integer i = 0; i < CLOSED_CASES; i++) {
                 cases.add(new Case(Ursache__c = 'HowToAnfrage',
-                    Status = 'Closed',
+                    Customer_Satisfaction__c = 'Score_4', Status = 'Closed',
                     Subject = 'SCRUM410 zu ' + i,
                     Priority = 'Low',
                     OwnerId = fromUser.Id
@@ -159,7 +160,8 @@ private class SCRUM410CustomerTransferTest {
     }
 
     private static void seedSmall() {
-        SCRUM434TestFixtures.grantUrsacheToUser(fromUser); // setup DML (PSA) vor runAs
+        SCRUM434TestFixtures.grantUrsacheToUser(fromUser);
+        SCRUM442TestFixtures.grantPsToUser(fromUser); // setup DML (PSA) vor runAs
         System.runAs(fromUser) {
             List<Account> acctList = new List<Account>();
             for (Integer i = 0; i < 5; i++) {
@@ -223,8 +225,8 @@ private class SCRUM410CustomerTransferTest {
         // Savepoint-Grenze, die sie vom PSA-Setup-DML (seedSmall) trennt. Top-level
         // `insert won` nach seedSmall wäre MIXED_DML (Opportunity + PermissionSetAssignment).
         List<Case> closed = new List<Case>();
-        closed.add(new Case(Ursache__c = 'HowToAnfrage', Status = 'Closed', Subject = 'ac1-closed', OwnerId = fromUser.Id));
-        closed.add(new Case(Ursache__c = 'HowToAnfrage', Status = 'Closed', Subject = 'ac1-closed-2', OwnerId = fromUser.Id));
+        closed.add(new Case(Ursache__c = 'HowToAnfrage', Customer_Satisfaction__c = 'Score_4', Status = 'Closed', Subject = 'ac1-closed', OwnerId = fromUser.Id));
+        closed.add(new Case(Ursache__c = 'HowToAnfrage', Customer_Satisfaction__c = 'Score_4', Status = 'Closed', Subject = 'ac1-closed-2', OwnerId = fromUser.Id));
         Opportunity won = new Opportunity(
             Name = 'ac1-won',
             StageName = 'Closed Won',

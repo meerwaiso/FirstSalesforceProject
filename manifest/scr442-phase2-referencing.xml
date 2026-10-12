@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-442 Phase 2: everything that REFERENCES the Phase-1 fields —
+     ValRule, 3 PS, both Layouts, Apex (Handler/Rebuilder/Scheduler), Trigger,
+     Report. House scr436-phase2-referencing.xml / scr440-phase2-apex-ps.xml. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Case.Customer_Satisfaction_PflichtBeiClosed</members>
+        <name>ValidationRule</name>
+    </types>
+    <types>
+        <members>SCRUM442_Satisfaction_Read</members>
+        <members>SCRUM442_Satisfaction_Write</members>
+        <members>SCRUM442_Satisfaction_System</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Case-Case Layout</members>
+        <members>Account-Account Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>SatisfactionTaskHandler</members>
+        <members>AccountSatisfactionRebuilder</members>
+        <members>AccountSatisfactionScheduler</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>CaseSatisfactionTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <version>67.0</version>
+</Package>

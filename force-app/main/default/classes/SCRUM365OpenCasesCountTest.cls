@@ -66,6 +66,7 @@ private class SCRUM365OpenCasesCountTest {
 
         c.Ursache__c = 'HowToAnfrage';
         c.Status = 'Closed';
+        c.Customer_Satisfaction__c = 'Score_4';
         update c;
         System.assertEquals(0, countOf(a), 'geschlossener Fall => 0');
 
@@ -165,9 +166,13 @@ private class SCRUM365OpenCasesCountTest {
         List<Case> bigBatch = new List<Case>();
         for (Integer round = 0; round < 8; round++) {
             for (Integer k = 0; k < ids.size(); k++) {
+                // SCRUM-442 Cause D: rows with round>=4 end up Closed — the
+                // ValidationRule fires on the STATE at save, so the score
+                // belongs here (blast radius counted by state, not token).
                 bigBatch.add(new Case(Ursache__c = 'HowToAnfrage', 
                     ContactId = ids.get(k),
                     Status = round < 4 ? 'New' : 'Closed',
+                    Customer_Satisfaction__c = 'Score_4',
                     Subject = 'bulk ' + round + '-' + k
                 ));
             }

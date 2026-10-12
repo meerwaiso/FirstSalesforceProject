@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-443 (Tester-found defect, AC6): Report Miserable_Kunde_Satisfaction
+     rendered 0 rows org-wide — timeFrameFilter INTERVAL_LAST90 can never match the
+     Rebuilder window (Fenster_Start = today-3mon = 92 days back). Fix: timeFrameFilter
+     removed (option a). The five Account.Satisfaction_* fields are already live in
+     Test-Org; the Report deploys ALONE. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Sales/Miserable_Kunde_Satisfaction</members>
+        <name>Report</name>
+    </types>
+    <version>67.0</version>
+</Package>

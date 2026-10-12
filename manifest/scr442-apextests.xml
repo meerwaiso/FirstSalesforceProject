@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-442: Apex-Test-Klassen (separates Manifest, house scr440-apextests.xml).
+     Test-Klassen deployen OHNE Test-Level. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM442SatisfactionTest</members>
+        <members>SCRUM442SatisfactionFlsTest</members>
+        <members>SCRUM442AccountRollupTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

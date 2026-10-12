@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Satisfaction_Min__c</fullName>
+    <label>Satisfaction min (3 Monate)</label>
+    <description>Minimum Customer_Satisfaction__c (1-5) over the same rolling 3-month window as Satisfaction_Durchdurch__c (SCRUM-442). null = no data. Expresses the PO-rule "at least one Case with score 1 or 2 in the window". System-maintained by AccountSatisfactionRebuilder; von Hand nicht änderbar.</description>
+    <type>Number</type>
+    <precision>1</precision>
+    <scale>0</scale>
+    <required>false</required>
+    <unique>false</unique>
+    <externalId>false</externalId>
+    <trackTrending>false</trackTrending>
+</CustomField>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Customer_Satisfaction__c</fullName>
+    <label>Kundansatisfaction</label>
+    <description>Kundansatisfaction-Score 1-5 beim Schliessen eines Service-Case (SCRUM-442). 1 = sehr dissatisfied, 5 = sehr satisfied. Pflicht beim Schliessen via ValidationRule Customer_Satisfaction_PflichtBeiClosed (NOT via required-Flag: open Cases stay voluntary). Picklist, not Number (ADR-2): platform rejects 0/6/3.5. Internal, subjective evaluation — sensitive, never to the customer or an external party.</description>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value><fullName>Score_1</fullName><default>false</default><label>1 – sehr dissatisfied</label></value>
+            <value><fullName>Score_2</fullName><default>false</default><label>2 – dissatisfied</label></value>
+            <value><fullName>Score_3</fullName><default>false</default><label>3 – neutral</label></value>
+            <value><fullName>Score_4</fullName><default>false</default><label>4 – satisfied</label></value>
+            <value><fullName>Score_5</fullName><default>false</default><label>5 – sehr satisfied</label></value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

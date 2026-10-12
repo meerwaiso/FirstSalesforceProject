@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Satisfaction_Arger__c</fullName>
+    <label>Status ärger?</label>
+    <description>Three-state AErger-Indicator at the customer (SCRUM-442, AC5). "Kein Daten" if no closed Case in the 3-month window (PO-Decision: must NOT read as satisfied); "AErger" if the 3-month average is below 3.0 OR at least one Case with score 1 or 2 in the window (min &lt;= 2); else "OK". The no-data branch keys on Satisfaction_Anzahl__c = 0, NOT ISBLANK(avg): the platform enum TreatBlanksAs has NO BlankAsNull (deploy-validate rejected it; valid: BlankAsZero/BlankAsBlank/#N/A) and under BlankAsZero a blank avg reads 0 &lt; 3 — which would flag every customer without closed Cases as AErger. The Rebuilder always writes the count, so count=0 is equivalent to no data, and the avg/min branch is never reached with blanks. House shape SCRUM-398 Eskalationsstufe__c (BlankAsZero, deployed green).</description>
+    <formula>IF(Satisfaction_Anzahl__c = 0, "Kein Daten", IF(OR(Satisfaction_Durchdurch__c &lt; 3, Satisfaction_Min__c &lt;= 2), "Ärger", "OK"))</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+</CustomField>

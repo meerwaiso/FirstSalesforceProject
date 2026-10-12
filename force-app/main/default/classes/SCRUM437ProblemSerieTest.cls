@@ -46,6 +46,15 @@ private class SCRUM437ProblemSerieTest {
         Case c = new Case(AccountId = acct, Problemkategorie__c = cat, Status = status);
         if (status == 'Closed') {
             c.Ursache__c = 'TechnischerFehler';
+            // SCRUM-442 (Architect review 5, Cause G): the ValRule
+            // Customer_Satisfaction_PflichtBeiClosed rejects EVERY save that ends
+            // Closed without a score 1-5 — also for this released 437 class, whose
+            // closing hides in this builder (a literal Status = 'Closed' grep never
+            // found it). Score set HERE, not at the call sites.
+            // 'Score_4' on purpose: outside LOW_SCORES (Score_1/Score_2), so the
+            // SCRUM-442 CaseSatisfactionTrigger creates no Nachbetreuung Task and
+            // the 437 assertions keep their original meaning.
+            c.Customer_Satisfaction__c = 'Score_4';
         }
         return c;
     }

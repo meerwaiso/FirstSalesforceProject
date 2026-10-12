@@ -86,7 +86,7 @@ private class SCRUM436CaseReminderVerifyTest {
         Case c = new Case(
             Subject   = 'V436_Closed_' + String.valueOf(System.now().getTime()),
             Origin    = 'Phone',
-            Status    = 'Closed',
+            Customer_Satisfaction__c = 'Score_4', Status    = 'Closed',
             Priority  = 'Medium',
             Last_Relevant_Update__c = lru
         );

@@ -197,6 +197,41 @@
         </layoutColumns>
         <style>TwoColumnsLeftToRight</style>
     </layoutSections>
+    <!-- SCRUM-442: Kundansatisfaction — Account-Übersicht (AC5/AC6). Alle
+         five fields are system-maintained (Rebuilder) or a platform formula,
+         so every one is behavior=Readonly here — house SCRUM-431 Wartungsvertrag
+         / SCRUM-436 Kundenreaktivierung. Own Section before System Information. -->
+    <layoutSections>
+        <customLabel>true</customLabel>
+        <detailHeading>true</detailHeading>
+        <editHeading>true</editHeading>
+        <label>Kundansatisfaction</label>
+        <layoutColumns>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Satisfaction_Durchdurch__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Satisfaction_Min__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Satisfaction_Anzahl__c</field>
+            </layoutItems>
+        </layoutColumns>
+        <layoutColumns>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Satisfaction_Fenster_Start__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Satisfaction_Arger__c</field>
+            </layoutItems>
+        </layoutColumns>
+        <style>TwoColumnsLeftToRight</style>
+    </layoutSections>
     <layoutSections>
         <customLabel>false</customLabel>
         <detailHeading>false</detailHeading>

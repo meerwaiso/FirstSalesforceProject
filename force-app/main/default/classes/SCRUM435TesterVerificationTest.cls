@@ -129,6 +129,7 @@ private class SCRUM435TesterVerificationTest {
     insert c;
 
     c.Status = 'Closed'; // bewusst OHNE Ursache__c
+    c.Customer_Satisfaction__c = 'Score_4';
     try {
       update c;
       System.assert(

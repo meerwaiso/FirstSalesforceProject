@@ -333,7 +333,7 @@ private class SCRUM438SLATest {
                 Subject  = 'SCR438 closed ' + i,
                 Origin   = 'Phone',
                 Priority = 'High',
-                Status   = 'Closed',
+                Customer_Satisfaction__c = 'Score_4', Status   = 'Closed',
                 Ursache__c = 'HowToAnfrage'));
         }
 
