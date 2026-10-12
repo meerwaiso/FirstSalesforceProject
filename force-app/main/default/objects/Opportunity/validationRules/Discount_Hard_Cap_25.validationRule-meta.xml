@@ -3,6 +3,6 @@
     <fullName>Discount_Hard_Cap_25</fullName>
     <active>true</active>
     <description>SCRUM-445: Hard cap — a discount above 25 % is never allowed, even with approval. Every save (insert/update) that leaves Discount_in_Pct__c &gt; 25 is refused.</description>
-    <errorConditionFormula>Discount_in_Pct__c &gt; 25</errorConditionFormula>
+    <errorConditionFormula>Discount_in_Pct__c &gt; 0.25</errorConditionFormula>
     <errorMessage>Discount ueber 25 % is never allowed (hard cap SCRUM-445).</errorMessage>
 </ValidationRule>

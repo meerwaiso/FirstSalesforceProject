@@ -16,6 +16,12 @@ public with sharing class DiscountApprovalNotification implements Queueable {
     }
 
     public void execute(QueueableContext ctx) {
+        notify(oppToManager);
+    }
+
+    /** Body extracted so a test can cover both paths without an async enqueue
+     * (QueueableContext cannot be constructed — measured 2026-10-12). */
+    public static void notify(Map<Id, Id> oppToManager) {
         if (oppToManager.isEmpty()) {
             return;
         }

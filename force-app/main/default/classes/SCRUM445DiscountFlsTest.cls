@@ -32,13 +32,17 @@ private class SCRUM445DiscountFlsTest {
             TimeZoneSidKey    = 'America/Los_Angeles'
         );
         insert u;
-        if (psNames != null) {
-            for (String psName : psNames) {
-                PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = :psName LIMIT 1];
-                insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);
-            }
-        }
         return u;
+    }
+
+    /** PSA inserts AFTER the CMOM mapping insert: PSA is non-setup DML and may not
+     * precede a non-setup insert (measured MIXED_DML, house SCRUM-442 Cause E). */
+    private static void grantPS(User u, String[] psNames) {
+        if (psNames == null) { return; }
+        for (String psName : psNames) {
+            PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = :psName LIMIT 1];
+            insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);
+        }
     }
 
     // ---- Vorbedingung: Standard-User has object-level Opportunity access ----
@@ -73,7 +77,8 @@ private class SCRUM445DiscountFlsTest {
     // ---- AC11: with the Read-PS only the rep SEES but cannot CHANGE anything ----
     @isTest
     static void readPS_readableNotUpdateable() {
-        User viewer = mkUser('view', new String[] { 'SCRUM445_Discount_Read' });
+        User viewer = mkUser('view', null);
+        grantPS(viewer, new String[] { 'SCRUM445_Discount_Read' });
         Boolean accessible;
         Boolean discountUpdateable;
         Boolean approvalUpdateable;
@@ -92,14 +97,18 @@ private class SCRUM445DiscountFlsTest {
     // ---- SECURITY: even Owner+Read, a rep cannot set Approved ----
     @isTest
     static void ownerRep_cannotSetApproved() {
-        User rep = mkUser('ownerrep', new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner' });
+        User rep = mkUser('ownerrep', null);
+        grantPS(rep, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess' });
         Id acc = null;
-        Account a = new Account(Name = 'V445 fls');
-        insert a;
-        acc = a.Id;
         Id oppId = null;
         Boolean selfApproved = false;
         System.runAs(rep) {
+            // house SCRUM-440: Account insert INSIDE runAs, before the Opportunity
+
+            Account a = new Account(Name = 'V445 fls');
+
+            insert a;
+            acc = a.Id;
             Opportunity o = new Opportunity(
                 Name = 'AC12 self-approve', AccountId = acc, StageName = 'Prospecting',
                 CloseDate = Date.today().addMonths(3), Discount_in_Pct__c = 20
@@ -124,12 +133,17 @@ private class SCRUM445DiscountFlsTest {
     // ---- AC12a: the owner (Owner-PS) changes the discount ----
     @isTest
     static void ac12a_ownerEditsDiscount() {
-        User owner = mkUser('own', new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner' });
-        Account a = new Account(Name = 'V445 ac12a');
-        insert a;
-        Id acc = a.Id;
+        User owner = mkUser('own', null);
+        grantPS(owner, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess' });
+        Id acc = null;
         Id oppId = null;
         System.runAs(owner) {
+            // house SCRUM-440: Account insert INSIDE runAs, before the Opportunity
+
+            Account a = new Account(Name = 'V445 ac12a');
+
+            insert a;
+            acc = a.Id;
             Opportunity o = new Opportunity(
                 Name = 'AC12a owner edit', AccountId = acc, StageName = 'Prospecting',
                 CloseDate = Date.today().addMonths(3)
@@ -151,13 +165,18 @@ private class SCRUM445DiscountFlsTest {
     // own runAs — MIXED_DML rule SCRUM-442: one user per transaction) ----
     @isTest
     static void ac12b_managerShapeSetsApproved() {
-        User mgmt = mkUser('mgmt', new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_Discount_Manager' });
-        Account a = new Account(Name = 'V445 ac12b');
-        insert a;
-        Id acc = a.Id;
+        User mgmt = mkUser('mgmt', null);
+        grantPS(mgmt, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_Discount_Manager', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess' });
+        Id acc = null;
         Id oppId = null;
         Boolean approved = false;
         System.runAs(mgmt) {
+            // house SCRUM-440: Account insert INSIDE runAs, before the Opportunity
+
+            Account a = new Account(Name = 'V445 ac12b');
+
+            insert a;
+            acc = a.Id;
             Opportunity o = new Opportunity(
                 Name = 'AC12b manager approves', AccountId = acc, StageName = 'Prospecting',
                 CloseDate = Date.today().addMonths(3), Discount_in_Pct__c = 20

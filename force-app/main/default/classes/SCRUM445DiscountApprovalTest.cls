@@ -42,13 +42,45 @@ private class SCRUM445DiscountApprovalTest {
             TimeZoneSidKey    = 'America/Los_Angeles'
         );
         insert u;
-        if (psNames != null) {
-            for (String psName : psNames) {
-                PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = :psName LIMIT 1];
-                insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);
-            }
-        }
         return u;
+    }
+
+    /** PSA inserts AFTER the CMOM mapping insert: PSA is non-setup DML and may not
+     * precede a non-setup insert (measured MIXED_DML, house SCRUM-442 Cause E). */
+    /** House SCRUM442TestFixtures.existingCloser: an org user that ALREADY carries the
+     * PS (read of PermissionSetAssignment, no PSA DML). Needed for the CMOM-mapping
+     * methods: a CMOM insert is non-setup DML and cannot share a transaction with a
+     * PSA insert in EITHER order (measured, house SCRUM-442 Cause E). */
+    private static User existingUser(String psName) {
+        PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = :psName LIMIT 1];
+        Id assignee = null;
+        for (PermissionSetAssignment psa : [SELECT AssigneeId FROM PermissionSetAssignment
+                                            WHERE PermissionSetId = :ps.Id]) {
+            assignee = psa.AssigneeId;
+            break;
+        }
+        System.assertNotEquals(null, assignee,
+            'No org user carries ' + psName + ' — the mapping proof is not exercisable (fail, never pass vacuously).');
+        return [SELECT Id FROM User WHERE Id = :assignee LIMIT 1][0];
+    }
+
+    /** House SCRUM442TestFixtures.existingCloser, by username: an org user that ALREADY
+     * carries the PSs (read of PermissionSetAssignment, no PSA DML). The CMOM mapping
+     * insert is non-setup DML and cannot share a transaction with a PSA insert in EITHER
+     * order (measured both directions 2026-10-12, house SCRUM-442 Cause E) — so the
+     * mapping methods run as the two org users that already hold all SCRUM445 PSs. */
+    private static User orgUser(String username) {
+        User u = [SELECT Id FROM User WHERE Username = :username LIMIT 1];
+        System.assertNotEquals(null, u, 'Org user ' + username + ' missing — mapping proof not exercisable.');
+        return u;
+    }
+
+    private static void grantPS(User u, String[] psNames) {
+        if (psNames == null) { return; }
+        for (String psName : psNames) {
+            PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = :psName LIMIT 1];
+            insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);
+        }
     }
 
     private static void mapRep(User rep, User manager) {
@@ -71,11 +103,13 @@ private class SCRUM445DiscountApprovalTest {
     // ---------- AC2: at/below the threshold closes without approval ----------
     @isTest
     static void ac2_belowThreshold_closesWithoutApproval() {
-        User rep = mkUser('ac2', new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner' });
-        Id acc = accountId('ac2');
+        User rep = mkUser('ac2', null);
+        grantPS(rep, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess' });
         Id oppId = null;
         Boolean closed = false;
         System.runAs(rep) {
+            // house SCRUM-440: Account insert INSIDE runAs, immediately before the Opportunity
+            Id acc = accountId('ac2');
             Opportunity o = mkOpp(acc, 'AC2 low discount', 10);
             oppId = o.Id;
             o.StageName = 'Closed Won';
@@ -94,11 +128,12 @@ private class SCRUM445DiscountApprovalTest {
     // ---------- AC3: above the threshold, closing as Won is blocked ----------
     @isTest
     static void ac3_aboveThreshold_blockedWhilePending() {
-        User rep = mkUser('ac3', new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner' });
-        User mgr = mkUser('ac3mgr', (String[]) null);
+        // MIXED_DML measured: PSA insert is setup-class DML, the CMOM insert is not —
+        // so setup (User, PSA, Account) strictly first, then CMOM, then business DML.
+        User rep = orgUser('devops-agent@cline.test');
+        User mgr = orgUser('meerwais.osmani@resourceful-bear-6f1u4j.com');
         Id acc = accountId('ac3');
         mapRep(rep, mgr);
-
         Id oppId = null;
         DmlException caught = null;
         System.runAs(rep) {
@@ -126,11 +161,13 @@ private class SCRUM445DiscountApprovalTest {
     @isTest
     static void ac5_approved_then_closeWon() {
         // sales-management shape: may edit the discount AND the approval state.
-        User mgmt = mkUser('ac5', new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_Discount_Manager' });
-        Id acc = accountId('ac5');
+        User mgmt = mkUser('ac5', null);
         Id oppId = null;
         Boolean closed = false;
+        grantPS(mgmt, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_Discount_Manager', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess' });
         System.runAs(mgmt) {
+            // house SCRUM-440: Account insert INSIDE runAs, immediately before the Opportunity
+            Id acc = accountId('ac5');
             Opportunity o = mkOpp(acc, 'AC5 approved', 20);
             oppId = o.Id;
             o.Discount_Approval__c = 'Approved';
@@ -153,10 +190,12 @@ private class SCRUM445DiscountApprovalTest {
     // ---------- AC7: raising above the approved value invalidates ----------
     @isTest
     static void ac7_raiseInvalidatesApproval() {
-        User mgmt = mkUser('ac7', new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_Discount_Manager' });
-        Id acc = accountId('ac7');
+        User mgmt = mkUser('ac7', null);
         Id oppId = null;
+        grantPS(mgmt, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_Discount_Manager', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess' });
         System.runAs(mgmt) {
+            // house SCRUM-440: Account insert INSIDE runAs, immediately before the Opportunity
+            Id acc = accountId('ac7');
             Opportunity o = mkOpp(acc, 'AC7 raise', 20);
             oppId = o.Id;
             o.Discount_Approval__c = 'Approved';
@@ -178,11 +217,13 @@ private class SCRUM445DiscountApprovalTest {
     // ---------- AC8: lowering keeps the approval, closing passes ----------
     @isTest
     static void ac8_loweringKeepsApproval() {
-        User mgmt = mkUser('ac8', new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_Discount_Manager' });
-        Id acc = accountId('ac8');
+        User mgmt = mkUser('ac8', null);
         Id oppId = null;
         Boolean closed = false;
+        grantPS(mgmt, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_Discount_Manager', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess' });
         System.runAs(mgmt) {
+            // house SCRUM-440: Account insert INSIDE runAs, immediately before the Opportunity
+            Id acc = accountId('ac8');
             Opportunity o = mkOpp(acc, 'AC8 lower', 20);
             oppId = o.Id;
             o.Discount_Approval__c = 'Approved';
@@ -207,11 +248,13 @@ private class SCRUM445DiscountApprovalTest {
     // ---------- AC9: hard cap 25 % ----------
     @isTest
     static void ac9_hardCap_refusesAbove25() {
-        User mgmt = mkUser('ac9', new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner' });
-        Id acc = accountId('ac9');
+        User mgmt = mkUser('ac9', null);
         Id oppId = null;
         DmlException caught = null;
+        grantPS(mgmt, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess' });
         System.runAs(mgmt) {
+            // house SCRUM-440: Account insert INSIDE runAs, immediately before the Opportunity
+            Id acc = accountId('ac9');
             Opportunity o = mkOpp(acc, 'AC9 cap', 10);
             oppId = o.Id;
             o.Discount_in_Pct__c = 30;
@@ -229,8 +272,8 @@ private class SCRUM445DiscountApprovalTest {
     // ---------- AC10: waiting list predicate + duration ----------
     @isTest
     static void ac10_waitingList_hasDuration() {
-        User rep = mkUser('ac10', new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner' });
-        User mgr = mkUser('ac10mgr', (String[]) null);
+        User rep = orgUser('devops-agent@cline.test');
+        User mgr = orgUser('meerwais.osmani@resourceful-bear-6f1u4j.com');
         Id acc = accountId('ac10');
         mapRep(rep, mgr);
         Integer created = 0;
@@ -254,18 +297,44 @@ private class SCRUM445DiscountApprovalTest {
         }
     }
 
+    // ---------- Notification: both execute() paths (empty map + populated map) ----------
+    @isTest
+    static void notification_executeBothPaths() {
+        // Direct call of the Queueable (no async enqueue) so both branches are measurable.
+        new DiscountApprovalNotification(new Map<Id, Id>()).execute(new QueueableContext());
+        User rep = orgUser('devops-agent@cline.test');
+        User mgr = orgUser('meerwais.osmani@resourceful-bear-6f1u4j.com');
+        Id acc = accountId('notif');
+        mapRep(rep, mgr);
+        Id oppId = null;
+        System.runAs(rep) {
+            Opportunity o = mkOpp(acc, 'NOTIF feed', 20);
+            oppId = o.Id;
+        }
+        Map<Id, Id> m = new Map<Id, Id>();
+        m.put(oppId, mgr.Id);
+        new DiscountApprovalNotification(m).execute(new QueueableContext());
+        System.assertNotEquals(null, oppId, 'Notification: the seeded Opportunity exists.');
+    }
+
     // ---------- Bulk: 200 saves -> 1 mapping SOQL + 1 enqueueJob ----------
     @isTest
     static void bulk_200_updates_oneSoqlOneEnqueue() {
-        User rep = mkUser('bulk', new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner' });
-        User mgr = mkUser('bulkmgr', (String[]) null);
+        User rep = orgUser('devops-agent@cline.test');
+        User mgr = orgUser('meerwais.osmani@resourceful-bear-6f1u4j.com');
         Id acc = accountId('bulk');
         mapRep(rep, mgr);
-        List<Opportunity> seed = new List<Opportunity>();
         System.runAs(rep) {
+            // ONE bulk insert for the 200 seed records: the foreign OpportunityOverdueReset
+            // rollup is bulkified (one recompute per DML batch), per-record inserts would
+            // blow the 100-SOQL budget in setup, not in the asserted update.
+            List<Opportunity> seed = new List<Opportunity>();
             for (Integer i = 0; i < 200; i++) {
-                seed.add(mkOpp(acc, 'BULK ' + i, 10));
+                seed.add(new Opportunity(
+                    Name = 'BULK ' + i, AccountId = acc, StageName = 'Prospecting',
+                    CloseDate = Date.today().addMonths(3), Discount_in_Pct__c = 10));
             }
+            insert seed;
             Integer before = DiscountApprovalHandler.mappingSoqlCount;
             Integer beforeEnq = DiscountApprovalHandler.enqueueCount;
             for (Opportunity o : seed) {
