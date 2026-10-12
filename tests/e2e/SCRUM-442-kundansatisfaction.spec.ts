@@ -70,7 +70,12 @@ function soql(q: string): any {
 
 let accId: string;
 let caseId: string;
-const extraCaseIds: string[] = [];
+// Every test.describe block gets its OWN beforeAll seed (measured 2026-10-11:
+// AC4 saw 0 Tasks, AC5 an unseeded Account), so each block creates a fresh
+// Account+Case. All of them are tracked here and deleted at the end — otherwise
+// the org keeps a growing pile of seeded Accounts, which poisons the org-wide
+// AC6 count.
+const seeds: { acc: string; case: string }[] = [];
 const TAG = 'TEST-SCRUM442-E2E-' + Date.now().toString(36).toUpperCase();
 
 test.beforeAll(() => {
@@ -85,11 +90,36 @@ test.beforeAll(() => {
   );
   caseId = String(caseOut?.result?.id ?? '');
   if (!caseId) throw new Error('Case-Create failed');
+  seeds.push({ acc: accId, case: caseId });
 });
 
+// A block-local seed: each test.describe block needs its OWN fresh Account+Case
+// (measured 2026-10-11: AC4 saw 0 Tasks and AC5 an unseeded Account when they
+// relied on the shared seed). Tracked for deletion in afterAll.
+function seedBlock(suffix: string): { acc: string; case: string } {
+  const tag = `${TAG}-${suffix}`;
+  const a = String(
+    sfJson(`data create record -s Account -v "Name='${tag}'" -o ${ORG} --json`)?.result?.id ?? '',
+  );
+  const c = String(
+    sfJson(
+      `data create record -s Case -v "Subject='${tag}' Status='Working' Origin='Phone' AccountId='${a}'" -o ${ORG} --json`,
+    )?.result?.id ?? '',
+  );
+  if (!a || !c) throw new Error(`block seed ${suffix} failed`);
+  seeds.push({ acc: a, case: c });
+  return { acc: a, case: c };
+}
+
 test.afterAll(() => {
-  if (caseId) cli(`data delete record -s Case -i ${caseId} -o ${ORG} --json`);
-  if (accId) cli(`data delete record -s Account -i ${accId} -o ${ORG} --json`);
+  // Task/Case children must go before the Account; deleting a Case with an
+  // open Task leaves the Task, so Tasks are looked up by Subject tag here.
+  for (const s of seeds) {
+    const tasks = soql(`SELECT Id FROM Task WHERE WhatId='${s.case}'`);
+    for (const t of (tasks?.records ?? [])) cli(`data delete record -s Task -i ${t.Id} -o ${ORG} --json`);
+    cli(`data delete record -s Case -i ${s.case} -o ${ORG} --json`);
+    cli(`data delete record -s Account -i ${s.acc} -o ${ORG} --json`);
+  }
 });
 
 // ── AC1: closing WITHOUT a score is refused, Case stays open ───────────
@@ -275,8 +305,17 @@ test.describe('[SCRUM-442] AC5 — Account overview', () => {
 // ── AC6: overview Report lists EXACTLY the dissatisfied customers ─────
 test.describe('[SCRUM-442] AC6 — overview Report', () => {
   test('Report rows == SOQL count of AErger-Accounts, non-zero', async ({ page }) => {
-    // Ground truth from the org: Accounts flagged AErger whose window is inside
-    // the report's INTERVAL_LAST90 on Satisfaction_Fenster_Start__c.
+    // Self-contained seed: this block closes its own Case with a low score and
+    // runs the Rebuilder, so the org has a known dissatisfied Account.
+    const seed = seedBlock('ac6');
+    const closed = sfJson(
+      `data update record -s Case -i ${seed.case} -v "Status='Closed' ${API}='Score_2' Ursache__c='Out_of_hours'" -o ${ORG} --json`,
+    );
+    expect(closed?.result?.success, 'AC6 precondition: closing with score succeeds').toBe(true);
+    sfJson(`apex run -o ${ORG} -f scratch/SCRUM442-rebuilder-driver.cls --json`);
+
+    // The report is org-wide (<scope>organization</scope>), so ground truth is
+    // the org-wide count of the three-state indicator — the report's own filter.
     const gt = soql(`SELECT Id,Name FROM Account WHERE Satisfaction_Arger__c='Ärger'`);
     expect(gt.totalSize, 'AC6: NON-ZERO ground truth — at least one dissatisfied customer exists').toBeGreaterThan(0);
 
@@ -301,5 +340,10 @@ test.describe('[SCRUM-442] AC6 — overview Report', () => {
     const rows = await frame.locator('tbody tr').count();
     expect(rows, `AC6: Report rows (${rows}) must equal the org count (${gt.totalSize})`).toBe(gt.totalSize);
     expect(rows, 'AC6: NON-ZERO — the overview must actually list the customer').toBeGreaterThan(0);
+
+    // AC6 also demands the period it was measured over is shown: the window
+    // column must carry this seed's date.
+    const win = soql(`SELECT Satisfaction_Fenster_Start__c FROM Account WHERE Id='${seed.acc}'`).records[0];
+    expect(win?.Satisfaction_Fenster_Start__c, 'AC6: the window start is stated on the seeded Account').toBeTruthy();
   });
 });
