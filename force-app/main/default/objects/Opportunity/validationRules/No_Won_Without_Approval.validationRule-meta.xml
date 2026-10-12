@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>No_Won_Without_Approval</fullName>
+    <active>true</active>
+    <description>SCRUM-445: Closing as Closed Won is blocked while the discount is above 15 % and no approval covers it: no approval, Pending, Rejected, or a discount raised above the approved value all block. Blank Approved_Discount_Value__c counts as 0 (ISBLANK branch). Lowering the discount below the approved value passes (AC lowering-keeps).</description>
+    <errorConditionFormula>AND(ISPICKVAL(StageName, &quot;Closed Won&quot;), Discount_in_Pct__c &gt; 15, OR(ISBLANK(Discount_in_Pct__c), ISBLANK(Approved_Discount_Value__c), ISPICKVAL(Discount_Approval__c, &quot;Pending&quot;), ISPICKVAL(Discount_Approval__c, &quot;Rejected&quot;), Discount_in_Pct__c &gt; Approved_Discount_Value__c))</errorConditionFormula>
+    <errorMessage>Chance cannot be closed as Won: the discount is above 15 % and no approval by the direct manager covers it (waiting, rejected, or raised above the approved value).</errorMessage>
+</ValidationRule>

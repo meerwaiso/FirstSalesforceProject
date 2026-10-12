@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-445 Owner-PS: Discount_in_Pct__c editable — the owner of the Opportunity
+     and sales management only (AC edit-rights). -->
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SCRUM445_Discount_Owner</fullName>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Opportunity.Discount_in_Pct__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM445_Discount_Owner</label>
+    <description>SCRUM-445 Owner-PS: Discount_in_Pct__c editable+readable. Opportunity owners and sales management. Non-owner reps get SCRUM445_Discount_Read only (view rights AC).</description>
+</PermissionSet>
