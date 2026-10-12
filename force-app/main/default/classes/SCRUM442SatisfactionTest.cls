@@ -229,11 +229,22 @@ private class SCRUM442SatisfactionTest {
      */
     @isTest
     static void bulkTwoHundredClosings_oneTaskBatch() {
-        // MIXED_DML (review 4 Cause E, measured direction): the fixture User +
-        // its PermissionSetAssignments FIRST, then the 200 Case seeds, then the
-        // closings under runAs. The reverse order throws
-        // `... PermissionSetAssignment, original object: Case`.
-        User u = prepareCloser('bulk');
+        // MIXED_DML (Cause E, measured to exhaustion + CI run 38209713808):
+        // PermissionSetAssignment is NOT a setup object, and its DML may not
+        // share a transaction with Task DML — the trigger's Task inserts inside
+        // the 200 closings threw `MIXED_DML_OPERATION ... Task, original
+        // object: PermissionSetAssignment` in the full-suite window (green
+        // standalone only). So this method inserts NO User and NO PSA: it runs
+        // as an org user that ALREADY carries the granting PS (a READ of
+        // PermissionSetAssignment, zero PSA DML), same house shape as
+        // SCRUM442AccountRollupTest.existingCloser / SCRUM-438.
+        // Everything below — seeds, closings, the idempotency pass — runs under
+        // that SAME runAs user (CI RunLocalTests shape, SCRUM-442 rework 2).
+        User u = SCRUM442TestFixtures.existingCloser('SCRUM442_Satisfaction_Write');
+        System.assertNotEquals(null, u,
+            'Bulk: no org user carries SCRUM442_Satisfaction_Write — the bulk proof '
+            + 'is not exercisable without PSA DML in the transaction (fail, never vacuous).');
+
         List<Case> seed = new List<Case>();
         List<Id> ids = new List<Id>();
         System.runAs(u) {
@@ -254,25 +265,25 @@ private class SCRUM442SatisfactionTest {
                 closings.add(c);
             }
             update closings;
-        }
 
-        List<Task> made = [SELECT Id, Subject FROM Task
-                           WHERE Subject LIKE 'Nachbetreuung: V442 bulk %'];
-        System.assertEquals(200, made.size(),
-            'Bulk: one Task per low-score Case, created in one batch');
+            List<Task> made = [SELECT Id, Subject FROM Task
+                               WHERE Subject LIKE 'Nachbetreuung: V442 bulk %'];
+            System.assertEquals(200, made.size(),
+                'Bulk: one Task per low-score Case, created in one batch');
 
-        // Direct handler call over the same stock: idempotent, 0 new Tasks.
-        List<Case> reopened = [SELECT Id, Subject, Status, IsClosed, ClosedDate,
-                                      Customer_Satisfaction__c
-                               FROM Case WHERE Id IN :ids];
-        for (Case c : reopened) {
-            c.Status = 'Closed';
-            c.Ursache__c = 'TechnischerFehler';
-            c.Customer_Satisfaction__c = 'Score_2';
+            // Direct handler call over the same stock: idempotent, 0 new Tasks.
+            List<Case> reopened = [SELECT Id, Subject, Status, IsClosed, ClosedDate,
+                                          Customer_Satisfaction__c
+                                   FROM Case WHERE Id IN :ids];
+            for (Case c : reopened) {
+                c.Status = 'Closed';
+                c.Ursache__c = 'TechnischerFehler';
+                c.Customer_Satisfaction__c = 'Score_2';
+            }
+            SatisfactionTaskHandler.handle(reopened);
+            List<Task> after = [SELECT Id FROM Task WHERE Subject LIKE 'Nachbetreuung: V442 bulk %'];
+            System.assertEquals(200, after.size(),
+                'Bulk: the handler over an already-covered stock creates no duplicates');
         }
-        SatisfactionTaskHandler.handle(reopened);
-        List<Task> after = [SELECT Id FROM Task WHERE Subject LIKE 'Nachbetreuung: V442 bulk %'];
-        System.assertEquals(200, after.size(),
-            'Bulk: the handler over an already-covered stock creates no duplicates');
     }
 }
