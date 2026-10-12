@@ -337,9 +337,45 @@ test.describe('[SCRUM-442] AC6 — overview Report', () => {
     }
     await frame.waitForTimeout(12000);
 
-    const rows = await frame.locator('tbody tr').count();
-    expect(rows, `AC6: Report rows (${rows}) must equal the org count (${gt.totalSize})`).toBe(gt.totalSize);
-    expect(rows, 'AC6: NON-ZERO — the overview must actually list the customer').toBeGreaterThan(0);
+    // A Summary report with groupingDown + showSubTotals + showGrandTotal emits
+    // header, group, Subtotal and Total rows in ONE tbody — a bare `tbody tr`
+    // count over-counts (measured 2026-10-12: 6 DOM rows for 2 Accounts).
+    // Structure read by scratch/probe-report-rows.js:
+    //   #0 header | #1 group (first cell "NAME, unchecked, Select row...") |
+    //   Subtotal rows | last row "Total(2)".
+    // The group rows' LAST cell is the indicator text, not a count, so the
+    // house SCRUM-434 numeric reader skips them — names come off the FIRST cell.
+    const labels: string[] = [];
+    let totalRow = -1;
+    const trs = frame.locator('table tbody tr');
+    const n = await trs.count();
+    for (let i = 0; i < n; i++) {
+      const cells = trs.nth(i).locator('td, th');
+      const cnt = await cells.count();
+      if (cnt < 2) continue;
+      const first = ((await cells.nth(0).innerText().catch(() => '')) || '').trim();
+      const last = ((await cells.nth(cnt - 1).innerText().catch(() => '')) || '').trim().replace(/[^0-9]/g, '');
+      if (/^total\b/i.test(first)) totalRow = parseInt(last || first.replace(/[^0-9]/g, ''), 10);
+      labels.push(first.split(', uncheck')[0].split(', unchecked')[0].trim());
+    }
+
+    // EXACTLY the dissatisfied customers: the report's own record count equals
+    // the org-wide count of the filter field.
+    expect(totalRow, `AC6: report Total row (${totalRow}) must equal the org count (${gt.totalSize})`).toBe(gt.totalSize);
+    expect(totalRow, 'AC6: NON-ZERO — the overview must actually list the customer').toBeGreaterThan(0);
+
+    // The seeded dissatisfied customer is listed by name...
+    const seedName = `${TAG}-ac6`;
+    expect(labels.filter((k) => k.startsWith(seedName)).length,
+      'AC6: the seeded dissatisfied customer is listed').toBe(1);
+
+    // ...and a customer that is NOT dissatisfied is NOT listed (Kein Daten / OK
+    // exist in the org — verified via SOQL — so absence is a real check).
+    const notDissatisfied = soql(`SELECT Id,Name FROM Account WHERE Satisfaction_Arger__c='Kein Daten'`);
+    for (const rec of (notDissatisfied?.records ?? []).slice(0, 3)) {
+      expect(labels.filter((k) => k === rec.Name).length,
+        `AC6: ${rec.Name} is not dissatisfied and must not be listed`).toBe(0);
+    }
 
     // AC6 also demands the period it was measured over is shown: the window
     // column must carry this seed's date.
