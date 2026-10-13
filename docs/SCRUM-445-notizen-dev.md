@@ -120,3 +120,29 @@
   Notification byte-identical to the branch files (only a trailing newline differs).
 - Probe cleanup: SCRUM447Probe deleted from the org (ApexClass WHERE Name LIKE 'SCRUM447%'
   -> 0 rows) and its file/manifest removed from the tree.
+
+## Final measurement after the rework (2026-10-13 20:5x CEST, all read back from Test-Org)
+- SCRUM-446 CLOSED by measurement: `sf project retrieve start --metadata
+  "Layout:Opportunity-Opportunity Layout" -o Test-Org` -> 39 <field> entries, all 8 SCRUM-445
+  fields present. The Tester measured at 18:2x CEST, BEFORE the layout deploy (adba8f9, 19:41
+  CEST) — their 29-field reading was correct at that moment, not a wrong file.
+- Field labels carry the Tester's locator text: Discount_in_Pct__c label = "Discount in %".
+- SCRUM-447 end-to-end, insert path: `sf data create record ... Discount_in_Pct__c=20`
+  -> AsyncApexJob 707WU00001NXzyPYAT Completed/0 errors -> FeedItem 0D5WU00000fmyei0AA on the
+  mapped manager 005WU000017tBhRYAU, body names "TEST-447-FIX-A — 20.00 %". 1 job -> 1 FeedItem.
+- Second insert batch (TEST-447-BULK-A/B, 18:46Z): 2 jobs, 2 FeedItems — the Queueable is
+  reliable now, not 2 of 40.
+- lineFor() link guard: on a before-insert save the record has no Id yet, so the old code
+  rendered ".../null" in the notice body (measured on TEST-447-AC4-AFTER). Fixed: the link is
+  appended only when Id != null.
+- Deploy order lesson: the helper-first split was needed only for the CONSTRUCTOR SHAPE change
+  (1-arg -> 2-arg). The later lineFor() edit keeps the shape, so Notification + Handler + test
+  pair deploy in one batch (manifest/scr447-final.xml, job accepted, 17/17 green).
+- Apex test runs: 17/17 green on both the consumer deploy (0AfWU00000cBi4g0AC) and the final
+  batch. RunSpecifiedTests only — the full suite belongs to CI.
+- PS read-back unchanged and still complete: 14 PermissionSetAssignment rows = 7 SCRUM445 PSs
+  x both org users (005WU000017tBhRYAU CLI, 005WU000017tEKLYA2 human).
+- Field read-back through the CLI session (Pending rows): Discount_in_Pct__c,
+  Discount_Approval__c, Approval_Requested_On__c, Approval_Waiting_Days__c all render.
+- Cleanup: my 4 probe Opportunities (TEST-447-*) deleted; the 2 DiscountApprovalManager__c
+  mapping records (DM-0002/DM-0003) left in place — the Tester creates their own per story.
