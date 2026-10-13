@@ -18,6 +18,7 @@
         <members>SCRUM445_Discount_Manager</members>
         <members>SCRUM445_DirectManager_Map</members>
         <members>SCRUM445_DirectManager_Read</members>
+        <members>SCRUM445_Discount_Notice</members>
         <name>PermissionSet</name>
     </types>
     <types>

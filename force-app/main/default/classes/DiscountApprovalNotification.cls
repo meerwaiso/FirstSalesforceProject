@@ -59,14 +59,15 @@ public with sharing class DiscountApprovalNotification implements Queueable {
                 body += '\n\n\u2022 ' + o.Name + ' \u2014 ' + o.Discount_in_Pct__c + ' % \u2014 ' + orgUrl + '/' + o.Id;
             }
             if (!Test.isRunningTest()) {
-                try {
-                    FeedItem fi = new FeedItem();
-                    fi.ParentId = mgrId;
-                    fi.Body = body;
-                    insert fi;
-                } catch (Exception e) {
-                    System.debug('DiscountApprovalNotification: no feed item for manager ' + mgrId + ': ' + e.getMessage());
-                }
+                // SCRUM-447: no try/catch. The swallowed cause was the defect — a Queueable
+                // reported Completed / NumberOfErrors=0 while no FeedItem existed, so the
+                // failure was invisible. Without the catch the AsyncApexJob carries the error
+                // (NumberOfErrors=1, ExtendedStatus names the cause). A failing Queueable never
+                // rolls back the Opportunity save, so the save itself stays safe.
+                FeedItem fi = new FeedItem();
+                fi.ParentId = mgrId;
+                fi.Body = body;
+                insert fi;
             }
         }
         return byManager;
