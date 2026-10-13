@@ -92,3 +92,31 @@
 - grantPS (User insert then PermissionSetAssignment insert, both setup-class DML) verified
   green in 12 methods — no MIXED_DML between them; the earlier failures were PSA vs CMOM
   insert (non-setup), which is the documented Cause E, not a grantPS defect.
+
+## Rework for the Tester's Bugs SCRUM-446 / SCRUM-447 (2026-10-13 evening)
+- SCRUM-446 (layout): the branch DID carry the layout file — commit adba8f9 added all 8
+  fields, and the org read-back proves it is live: `sf project retrieve start --metadata
+  "Layout:Opportunity-Opportunity Layout" -o Test-Org` -> 39 <field> entries, all 8 SCRUM-445
+  fields present. The Tester's `git diff --stat origin/master...origin/feature/...` was EMPTY
+  because they diffed against an origin/master they had not fetched after our push; the
+  layout is in origin/feature/SCRUM-445-discount-approval at head 19bdceb.
+- SCRUM-447 (AC4 notification): root cause found by measurement, not theory. The ONLY
+  difference between the working direct notify() call and the failing enqueued job was the
+  SOQL re-read inside the Queueable — that query returned 0 rows in the Queueable context.
+  Fix: the handler renders the bullet lines where the records are already in hand
+  (`DiscountApprovalNotification.lineFor(o)`) and passes them into the job (2-arg
+  constructor); the Queueable does no SOQL at all.
+- SCRUM-447 second leg: the try/catch in notify() was the reason the failure stayed
+  invisible (Completed / NumberOfErrors=0, no FeedItem). Removed — a failing Queueable
+  now carries the cause in the AsyncApexJob (NumberOfErrors=1, ExtendedStatus) and never
+  rolls back the Opportunity save.
+- Deploy order (house rule, memory "helper ALONE first"): helper alone via
+  manifest/scr447-helper-first.xml (commit ad6ec31), THEN the consumer (Handler + test
+  pair) via manifest/scr447-consumers.xml. Consumer+helper in one batch would have compiled
+  the Handler against the OLD 1-arg Queueable.
+- Measured after the consumer deploy (job 0AfWU00000cBi4g0AC): RunSpecifiedTests
+  SCRUM445DiscountApprovalTest + SCRUM445DiscountFlsTest = 17/17 green.
+- Org read-back after deploy: `ApexClass:DiscountApproval*` retrieve — Handler and
+  Notification byte-identical to the branch files (only a trailing newline differs).
+- Probe cleanup: SCRUM447Probe deleted from the org (ApexClass WHERE Name LIKE 'SCRUM447%'
+  -> 0 rows) and its file/manifest removed from the tree.
