@@ -20,10 +20,14 @@ public with sharing class DiscountApprovalNotification implements Queueable {
     }
 
     /** Body extracted so a test can cover both paths without an async enqueue
-     * (QueueableContext cannot be constructed — measured 2026-10-12). */
-    public static void notify(Map<Id, Id> oppToManager) {
+     * (QueueableContext cannot be constructed — measured 2026-10-12).
+     * Returns the per-manager grouping so a test can assert the mapping resolved and
+     * the grouping is per manager (AC4); the FeedItem itself is test-guarded and is
+     * proven by the Playwright E2E spec. */
+    public static Map<Id, List<Opportunity>> notify(Map<Id, Id> oppToManager) {
+        Map<Id, List<Opportunity>> byManager = new Map<Id, List<Opportunity>>();
         if (oppToManager.isEmpty()) {
-            return;
+            return byManager;
         }
         Set<Id> oppIds = new Set<Id>();
         for (Id k : oppToManager.keySet()) {
@@ -33,7 +37,6 @@ public with sharing class DiscountApprovalNotification implements Queueable {
             SELECT Id, Name, Discount_in_Pct__c FROM Opportunity WHERE Id IN :oppIds
         ];
 
-        Map<Id, List<Opportunity>> byManager = new Map<Id, List<Opportunity>>();
         for (Opportunity o : opps) {
             Id mgr = oppToManager.get(o.Id);
             if (mgr == null) {
@@ -66,5 +69,6 @@ public with sharing class DiscountApprovalNotification implements Queueable {
                 }
             }
         }
+        return byManager;
     }
 }

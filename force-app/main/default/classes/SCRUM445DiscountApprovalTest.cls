@@ -297,24 +297,150 @@ private class SCRUM445DiscountApprovalTest {
         }
     }
 
-    // ---------- Notification: both execute() paths (empty map + populated map) ----------
+    // ---------- AC6: manager rejects with reason -> Closed Won stays blocked ----------
+    @isTest
+    static void ac6_rejectionBlocksClosedWon() {
+        User rep = orgUser('devops-agent@cline.test');
+        User mgr = orgUser('meerwais.osmani@resourceful-bear-6f1u4j.com');
+        Id acc = accountId('ac6');
+        mapRep(rep, mgr);
+        Id oppId = null;
+        DmlException caught = null;
+        System.runAs(rep) {
+            Opportunity o = mkOpp(acc, 'AC6 rejected discount', 20);
+            oppId = o.Id;
+        }
+        System.runAs(mgr) {
+            Opportunity o = [SELECT Id, StageName, Discount_Approval__c FROM Opportunity WHERE Id = :oppId LIMIT 1][0];
+            o.Discount_Approval__c = 'Rejected';
+            o.Rejection_Reason__c = 'Discount too high for this account';
+            update o;
+        }
+        System.runAs(rep) {
+            Opportunity o = [SELECT Id, StageName FROM Opportunity WHERE Id = :oppId LIMIT 1][0];
+            o.StageName = 'Closed Won';
+            try {
+                update o;
+            } catch (DmlException e) {
+                caught = e;
+            }
+        }
+        System.assert(caught != null, 'AC6: after a rejection the Closed Won save must still be refused.');
+        Opportunity after = [SELECT Id, StageName, Discount_Approval__c, Rejection_Reason__c,
+                                    Approval_Decided_By__c, Approval_Decided_On__c,
+                                    Approved_Discount_Value__c, Approval_Requested_On__c
+                            FROM Opportunity WHERE Id = :oppId LIMIT 1][0];
+        System.assertEquals('Prospecting', String.valueOf(after.StageName), 'AC6: the record stayed open.');
+        System.assertEquals('Rejected', String.valueOf(after.Discount_Approval__c), 'AC6: the rejection is recorded.');
+        System.assertEquals('Discount too high for this account', String.valueOf(after.Rejection_Reason__c),
+            'AC6: the manager reason is stored and readable by the rep.');
+        System.assertEquals(mgr.Id, after.Approval_Decided_By__c, 'AC6: the deciding manager is recorded.');
+        System.assertNotEquals(null, after.Approval_Decided_On__c, 'AC6: the decision timestamp is set.');
+        System.assertEquals(null, after.Approved_Discount_Value__c,
+            'AC6: a rejection never records an approved value.');
+    }
+
+    // ---------- AC13: already-closed records are never touched retroactively ----------
+    @isTest
+    static void ac13_closedRecordsUntouched() {
+        User rep = orgUser('devops-agent@cline.test');
+        User mgr = orgUser('meerwais.osmani@resourceful-bear-6f1u4j.com');
+        Id acc = accountId('ac13');
+        mapRep(rep, mgr);
+        Id lostId = null;
+        Id wonId = null;
+        System.runAs(rep) {
+            Opportunity lost = new Opportunity(
+                Name = 'AC13 closed lost', AccountId = acc, StageName = 'Closed Lost',
+                CloseDate = Date.today().addMonths(-1), Discount_in_Pct__c = 20,
+                Loss_Reason__c = 'Discount rejected by the customer'
+            );
+            insert lost;
+            lostId = lost.Id;
+            Opportunity won = new Opportunity(
+                Name = 'AC13 closed won', AccountId = acc, StageName = 'Closed Won',
+                CloseDate = Date.today().addMonths(-1), Discount_in_Pct__c = 20,
+                Discount_Approval__c = 'Approved', Approved_Discount_Value__c = 20
+            );
+            insert won;
+            wonId = won.Id;
+        }
+        Opportunity lost = [SELECT Id, StageName, Discount_Approval__c, Approval_Requested_On__c,
+                                   Approval_Waiting_Days__c, Approved_Discount_Value__c
+                           FROM Opportunity WHERE Id = :lostId LIMIT 1][0];
+        Opportunity won = [SELECT Id, StageName, Discount_Approval__c, Approval_Requested_On__c,
+                                  Approval_Waiting_Days__c, Approved_Discount_Value__c
+                          FROM Opportunity WHERE Id = :wonId LIMIT 1][0];
+        System.assertEquals(null, lost.Discount_Approval__c,
+            'AC13: a Closed Lost record gets no approval request.');
+        System.assertEquals(null, lost.Approval_Requested_On__c,
+            'AC13: no waiting duration starts for a closed record.');
+        System.assertEquals('Closed Lost', String.valueOf(lost.StageName), 'AC13: the stage is unchanged.');
+        System.assertEquals('Approved', String.valueOf(won.Discount_Approval__c),
+            'AC13: the existing approval of a Closed Won record is not reset.');
+        System.assertEquals(20, won.Approved_Discount_Value__c, 'AC13: the approved value is untouched.');
+        // A later edit of a closed record must not activate the approval path either.
+        System.runAs(rep) {
+            Opportunity o = [SELECT Id, Name FROM Opportunity WHERE Id = :lostId LIMIT 1][0];
+            o.Name = 'AC13 closed lost renamed';
+            update o;
+        }
+        Opportunity again = [SELECT Id, Name, StageName, Discount_Approval__c,
+                                    Approval_Requested_On__c FROM Opportunity WHERE Id = :lostId LIMIT 1][0];
+        System.assertEquals('AC13 closed lost renamed', String.valueOf(again.Name), 'AC13: the edit landed.');
+        System.assertEquals(null, again.Discount_Approval__c,
+            'AC13: the edit did not put a closed record on the waiting list.');
+        System.assertEquals(null, again.Approval_Requested_On__c, 'AC13: still no approval request.');
+        // Counted: neither of the two closed records is on the waiting list.
+        List<Opportunity> waiting = [SELECT Id FROM Opportunity
+                                     WHERE Discount_Approval__c = 'Pending'
+                                     AND AccountId = :acc];
+        System.assertEquals(0, waiting.size(),
+            'AC13: 0 of the 2 closed records appear on the waiting list.');
+    }
+
+    // ---------- AC4: mapping resolved + per-manager grouping (FeedItem is E2E) ----------
     @isTest
     static void notification_executeBothPaths() {
-        // Direct call of the Queueable body (no async enqueue) so both branches are measurable.
-        DiscountApprovalNotification.notify(new Map<Id, Id>());
+        // Empty map -> empty grouping (the guard path).
+        Map<Id, List<Opportunity>> empty = DiscountApprovalNotification.notify(new Map<Id, Id>());
+        System.assertEquals(0, empty.size(), 'AC4: an empty request map produces no grouping.');
         User rep = orgUser('devops-agent@cline.test');
         User mgr = orgUser('meerwais.osmani@resourceful-bear-6f1u4j.com');
         Id acc = accountId('notif');
         mapRep(rep, mgr);
-        Id oppId = null;
+        Integer soqlBefore = DiscountApprovalHandler.mappingSoqlCount;
+        Integer enqBefore = DiscountApprovalHandler.enqueueCount;
+        List<Id> oppIds = new List<Id>();
         System.runAs(rep) {
-            Opportunity o = mkOpp(acc, 'NOTIF feed', 20);
-            oppId = o.Id;
+            // ONE bulk insert: two separate insert statements would be two trigger
+            // invocations and two mapping SOQLs — the batch is what bulkification asserts.
+            List<Opportunity> seed = new List<Opportunity>();
+            for (Integer i = 0; i < 2; i++) {
+                seed.add(new Opportunity(
+                    Name = 'NOTIF feed ' + i, AccountId = acc, StageName = 'Prospecting',
+                    CloseDate = Date.today().addMonths(3), Discount_in_Pct__c = 20));
+            }
+            insert seed;
+            for (Opportunity o : seed) {
+                oppIds.add(o.Id);
+            }
         }
+        // Bulkification: 2 above-threshold saves -> exactly 1 mapping SOQL, 1 enqueueJob.
+        System.assertEquals(1, DiscountApprovalHandler.mappingSoqlCount - soqlBefore,
+            'AC4: the whole batch resolved its manager in ONE mapping SOQL.');
+        System.assertEquals(1, DiscountApprovalHandler.enqueueCount - enqBefore,
+            'AC4: the whole batch produced exactly ONE notification job.');
         Map<Id, Id> m = new Map<Id, Id>();
-        m.put(oppId, mgr.Id);
-        DiscountApprovalNotification.notify(m);
-        System.assertNotEquals(null, oppId, 'Notification: the seeded Opportunity exists.');
+        for (Id oid : oppIds) {
+            m.put(oid, mgr.Id);
+        }
+        System.assertEquals(2, m.size(), 'AC4: both waiting Opportunities carry a manager.');
+        Map<Id, List<Opportunity>> grouped = DiscountApprovalNotification.notify(m);
+        System.assertEquals(1, grouped.size(),
+            'AC4: both Opportunities are grouped under the ONE direct manager.');
+        System.assertEquals(2, grouped.get(mgr.Id).size(),
+            'AC4: the manager is informed about both of his reps waiting deals.');
     }
 
     // ---------- Bulk: 200 saves -> 1 mapping SOQL + 1 enqueueJob ----------

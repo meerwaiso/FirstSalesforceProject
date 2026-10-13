@@ -137,7 +137,25 @@ public with sharing class DiscountApprovalHandler {
         }
     }
 
+    /** AC13 (no retroactive change): an Opportunity already in a closed stage needs no
+     * approval request — approval only gates CLOSING as Won. Without this guard a Closed
+     * Lost record with a 20 % discount would land on the waiting list forever (measured
+     * by the AC13 test on 2026-10-13). The decision path is NOT guarded: only a holder of
+     * SCRUM445_Discount_Manager can change the picklist at all. */
+    private static Boolean alreadyClosed(Opportunity opp) {
+        String s = opp.StageName;
+        return s == 'Closed Won' || s == 'Closed Lost';
+    }
+
     private static Boolean needsApproval(Opportunity opp) {
+        if (alreadyClosed(opp)) {
+            return false;
+        }
+        if (opp.Discount_Approval__c == 'Rejected') {
+            // the manager already decided — the rejection and its reason stay visible;
+            // a new request only comes from raising the discount or a fresh save
+            return false;
+        }
         Decimal d = opp.Discount_in_Pct__c;
         if (d == null || d <= APPROVAL_THRESHOLD) {
             return false;

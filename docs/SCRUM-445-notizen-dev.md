@@ -66,5 +66,29 @@
   PermissionSetId + PermissionSet Name join in code; no name column on the assignment entity).
 - Field read-back through the CLI session: Pending rows show Discount_in_Pct__c,
   Approval_Requested_On__c, Approval_Waiting_Days__c — FLS live, not just deployed.
-- Probe cleanup: all 17 Probe445* Opportunities deleted; 0 records > 25 % remain in Test-Org.
-  (Probe inserts ran in System context, which bypasses ValRules — that is why they existed.)
+- Probe cleanup: all 17 Probe445* Opportunities deleted; 0 records with Discount_in_Pct__c > 25 remain in Test-Org.
+
+## Rework after the Architect's rejection (2026-10-13)
+- AC13 exposed a real handler gap: `needsApproval()` ignored the stage, so a Closed Lost
+  record with a 20 % discount landed on the waiting list forever. Fixed with `alreadyClosed()`
+  (Closed Won / Closed Lost never get a request) and a `Rejected` guard so a later rep edit
+  cannot silently overwrite the manager's decision.
+- AC6 (rejection) had ZERO coverage before — grep 'Reject' in both test classes: 0 hits.
+  New test `ac6_rejectionBlocksClosedWon`: manager sets Rejected + Rejection_Reason__c,
+  Closed Won stays refused, decision by/on recorded, Approved_Discount_Value__c stays null.
+- AC13 new test `ac13_closedRecordsUntouched`: seeds Closed Lost (needs Loss_Reason__c —
+  house ValRule LossReason_PflichtBeiClosedLost rejects the insert without it, measured) and
+  Closed Won, asserts no approval fields set, stage unchanged, and a later rename does not
+  activate the approval path; counted 0 of 2 closed records on the waiting list.
+- AC4 was WEAK (only assertion was trivially true). `notify()` now RETURNS the per-manager
+  grouping, and the test asserts: 1 mapping SOQL + 1 enqueueJob for the batch, both records
+  carry a manager, 1 group with 2 records. The FeedItem insert itself is `!Test.isRunningTest()`
+  guarded and can only be proven by the Playwright E2E spec.
+- Counter gotcha: two separate `insert` statements are TWO trigger invocations (mappingSoqlCount
+  delta 2). Bulkification asserts need ONE bulk insert.
+- Test run 707WU00001NVMCS: 17/17 green. Coverage Handler 95 % (88/93), Trigger 100 % (4/4),
+  Notification 77 % (27/35) — the uncovered lines are the doc comment, closing braces and
+  the constructor/execute() wrapper; every executable line of notify() is covered.
+- grantPS (User insert then PermissionSetAssignment insert, both setup-class DML) verified
+  green in 12 methods — no MIXED_DML between them; the earlier failures were PSA vs CMOM
+  insert (non-setup), which is the documented Cause E, not a grantPS defect.
