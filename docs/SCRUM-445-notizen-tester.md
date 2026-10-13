@@ -38,3 +38,39 @@ SCRUM445DiscountFlsTest: precondition_opportunityReadable, withoutPS_discountInv
 
 ## Session / infra
 - Worktree: shared checkout sits on feature/SCRUM-424-first-response with foreign dirty files -> never switched.
+
+
+## AC4 — FeedItem: VERIFIED 2026-10-13, inconclusive-to-defect
+- FeedItem insert works in the org: scripts/apex-probe.sh scratch/feedprobe.apex -> "INSERTED 0D5WU00000fmpLZ0AY".
+- DiscountApprovalNotification.notify() called DIRECTLY creates a FeedItem (rows 6->7,
+  scratch/notifyprobe2.apex on TEST-445-AC4-INS). So the class body is fine.
+- Real saves above 15% DO enqueue: 37 AsyncApexJob JobType=Queueable class=01pWU00000SwnDAYAZ
+  (DiscountApprovalNotification) creator=005WU000017tEKLYA2 between 16:40-16:57 UTC, all
+  Status=Completed NumberOfErrors=0.
+- BUT the FeedItem is missing for most of them: FeedItem WHERE CreatedDate=TODAY -> 5 rows,
+  none naming TEST-SCRUM445-E2E-* (the spec's own 12 creates) and none naming
+  TEST-445-AC4-CLEAN / AC4-CLEAN2 (fresh CLI inserts, waited 4 min).
+  Only AC4-FEED (16:11:58) and AC4-UPD (16:22:06) got items.
+- try/catch in notify() swallows the cause; System.debug not readable (getDebugLogs POST
+  returned no usable body).
+=> AC4 NOT proven; needs a real automated test. Not asserting "defect" beyond the measurement.
+
+## Layout gap — VERIFIED, primary defect
+- Org Opportunity layout: 29 fields, 0 of the 8 new discount/approval fields
+  (sf project retrieve start --metadata "Layout:Opportunity-Opportunity Layout" -o Test-Org).
+- Branch never touched layouts/: git diff --stat origin/master...origin/feature/SCRUM-445-discount-approval
+  -- force-app/main/default/layouts/ -> EMPTY.
+- Differential proof via Playwright probe on 006WU00000TUBYQYA5: 'Ruckruf gewunscht' text=3,
+  'Discount in %' text=0, 'Discount Approval' text=0; 'Edit Discount in %' button count=0,
+  'Edit Stage' button count=1.
+=> AC1 FAILS: the record does not show the discount. AC9/AC12 UI paths unreachable.
+
+## Spec run results (2026-10-13, test-report/playwright-results.json)
+- smoke: 2 passed (12.0s) -> session healthy.
+- SCRUM-445-discount-approval.spec.ts: 5 passed / 1 failed.
+  PASS: AC3 (Closed Won refused, stage stays Prospecting), AC9 (org-level refusal + value stays),
+        AC10 (ariaSnapshot: 7 items, 'Waiting days (approval)' header, row carries Pending + duration),
+        AC12 (update success + 12% persisted), AC13 (14 closed records, 0 with Approval_Requested_On).
+  FAIL: AC1 — getByText('Discount in %') element(s) not found on the Details tab.
+- Apex: SCRUM445DiscountApprovalTest + SCRUM445DiscountFlsTest 17/17 pass, job 707WU00001NVutbYAD.
+- CI on PR 166 head cbd677ae: Prod-Org Drift Gate RED (FailedValidationError from Prod-Org).
