@@ -75,6 +75,13 @@ public with sharing class DiscountApprovalNotification implements Queueable {
         if (orgUrl.endsWith('/')) {
             orgUrl = orgUrl.substring(0, orgUrl.length() - 1);
         }
-        return o.Name + ' \u2014 ' + o.Discount_in_Pct__c + ' % \u2014 ' + orgUrl + '/' + o.Id;
+        String line = o.Name + ' \u2014 ' + o.Discount_in_Pct__c + ' %';
+        // Measured 2026-10-13: on a before-insert save the record has no Id yet, so the
+        // link would render '/null'. The record is still named; the link is added only
+        // when it can actually resolve.
+        if (o.Id != null) {
+            line += ' \u2014 ' + orgUrl + '/' + o.Id;
+        }
+        return line;
     }
 }
