@@ -87,17 +87,7 @@ public with sharing class DiscountApprovalHandler {
         if (requesting.isEmpty()) {
             return;
         }
-        Map<Id, Id> oppToManager = new Map<Id, Id>();
-        for (Id oppId : requesting.keySet()) {
-            Id mgr = repToManager.get(requesting.get(oppId).OwnerId);
-            if (mgr != null) {
-                oppToManager.put(oppId, mgr);
-            }
-        }
-        if (!oppToManager.isEmpty()) {
-            System.enqueueJob(new DiscountApprovalNotification(oppToManager));
-            enqueueCount++;
-        }
+        notifyWaiting(requesting, repToManager);
     }
 
     /** before-insert: a new Opportunity already carrying a discount above the threshold
@@ -124,17 +114,31 @@ public with sharing class DiscountApprovalHandler {
             return;
         }
         Map<Id, Id> repToManager = loadMappings(ownerIds);
+        notifyWaiting(requesting, repToManager);
+    }
+
+    /** SCRUM-447: ONE place builds the notification payload and enqueues exactly one job
+     * per batch. The record text is rendered here — where the records are already in hand —
+     * and carried into the Queueable, so the job itself contains no SOQL re-read.
+     * Measured 2026-10-13: the enqueued job's own SOQL returned 0 rows (Completed, 0 errors,
+     * no FeedItem) while a direct call of the same body produced one. */
+    public static void notifyWaiting(Map<Id, Opportunity> requesting, Map<Id, Id> repToManager) {
         Map<Id, Id> oppToManager = new Map<Id, Id>();
+        Map<Id, String> oppLines = new Map<Id, String>();
         for (Id oppId : requesting.keySet()) {
-            Id mgr = repToManager.get(requesting.get(oppId).OwnerId);
-            if (mgr != null) {
-                oppToManager.put(oppId, mgr);
+            Opportunity opp = requesting.get(oppId);
+            Id mgr = repToManager.get(opp.OwnerId);
+            if (mgr == null) {
+                continue;
             }
+            oppToManager.put(oppId, mgr);
+            oppLines.put(oppId, DiscountApprovalNotification.lineFor(opp));
         }
-        if (!oppToManager.isEmpty()) {
-            System.enqueueJob(new DiscountApprovalNotification(oppToManager));
-            enqueueCount++;
+        if (oppToManager.isEmpty()) {
+            return;
         }
+        System.enqueueJob(new DiscountApprovalNotification(oppToManager, oppLines));
+        enqueueCount++;
     }
 
     /** AC13 (no retroactive change): an Opportunity already in a closed stage needs no

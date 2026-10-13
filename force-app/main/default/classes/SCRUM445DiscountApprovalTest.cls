@@ -402,8 +402,8 @@ private class SCRUM445DiscountApprovalTest {
     // ---------- AC4: mapping resolved + per-manager grouping (FeedItem is E2E) ----------
     @isTest
     static void notification_executeBothPaths() {
-        // Empty map -> empty grouping (the guard path).
-        Map<Id, List<Opportunity>> empty = DiscountApprovalNotification.notify(new Map<Id, Id>());
+        // Empty maps -> empty grouping (the guard path).
+        Map<Id, List<String>> empty = DiscountApprovalNotification.notify(new Map<Id, Id>(), new Map<Id, String>());
         System.assertEquals(0, empty.size(), 'AC4: an empty request map produces no grouping.');
         User rep = orgUser('devops-agent@cline.test');
         User mgr = orgUser('meerwais.osmani@resourceful-bear-6f1u4j.com');
@@ -432,15 +432,28 @@ private class SCRUM445DiscountApprovalTest {
         System.assertEquals(1, DiscountApprovalHandler.enqueueCount - enqBefore,
             'AC4: the whole batch produced exactly ONE notification job.');
         Map<Id, Id> m = new Map<Id, Id>();
-        for (Id oid : oppIds) {
-            m.put(oid, mgr.Id);
+        Map<Id, String> lines = new Map<Id, String>();
+        List<Opportunity> waiting = [SELECT Id, Name, Discount_in_Pct__c FROM Opportunity WHERE Id IN :oppIds];
+        System.assertEquals(2, waiting.size(), 'AC4: both seeded records exist for the notification.');
+        for (Opportunity o : waiting) {
+            m.put(o.Id, mgr.Id);
+            lines.put(o.Id, DiscountApprovalNotification.lineFor(o));
         }
         System.assertEquals(2, m.size(), 'AC4: both waiting Opportunities carry a manager.');
-        Map<Id, List<Opportunity>> grouped = DiscountApprovalNotification.notify(m);
+        System.assertEquals(2, lines.size(), 'AC4: both waiting Opportunities carry a rendered line.');
+        Map<Id, List<String>> grouped = DiscountApprovalNotification.notify(m, lines);
         System.assertEquals(1, grouped.size(),
             'AC4: both Opportunities are grouped under the ONE direct manager.');
         System.assertEquals(2, grouped.get(mgr.Id).size(),
             'AC4: the manager is informed about both of his reps waiting deals.');
+        // The payload the Queueable carries names the records — that is what the FeedItem body gets.
+        Boolean named = false;
+        for (String l : grouped.get(mgr.Id)) {
+            if (l.contains('NOTIF feed 0')) {
+                named = true;
+            }
+        }
+        System.assertEquals(true, named, 'AC4: the notice text names the waiting record, not just a count.');
     }
 
     // ---------- Bulk: 200 saves -> 1 mapping SOQL + 1 enqueueJob ----------
