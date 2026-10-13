@@ -68,6 +68,7 @@ let oppLow: string;   // 10 % — below threshold
 let oppHigh: string;  // 20 % — above threshold, Pending
 let oppOwner: string; // 20 % — owner edits it
 let oppCap: string;   // 10 % — raised to 30 % must be refused
+const extraIds: string[] = [];   // records created by a single test (AC4)
 
 test.beforeAll(() => {
   oppLow = createOpp(`${TAG}low`, 10);
@@ -77,7 +78,7 @@ test.beforeAll(() => {
 });
 
 test.afterAll(() => {
-  for (const id of [oppLow, oppHigh, oppOwner, oppCap]) {
+  for (const id of [oppLow, oppHigh, oppOwner, oppCap, ...extraIds]) {
     if (id) {
       execSync(
         `sf data delete record -s Opportunity -o Test-Org -i ${id} --json`,
@@ -87,14 +88,64 @@ test.afterAll(() => {
   }
 });
 
+// ── AC4 — the direct manager is informed on a save above 15 % ──────────
+// The FeedItem is created by a Queueable guarded with !Test.isRunningTest(),
+// so Apex cannot produce it — this is the automated test for AC4 (Tester).
+// The enqueue is asynchronous: measured 2026-10-13, the FeedItem appeared minutes
+// after the save, so the test polls instead of asserting right after the save.
+test.describe('[SCRUM-445] AC4 — the direct manager is informed', () => {
+  test('a save above 15 % puts a FeedItem on the mapped manager', async ({ page }) => {
+    test.setTimeout(420000);
+    const name = `${TAG}ac4`;
+    const oppId = createOpp(name, 20);
+    extraIds.push(oppId);
+
+    // The manager comes from the mapping object — read back, never hardcoded.
+    const cliUser = '005WU000017tEKLYA2'; // the CLI user, owner of the created record
+    const map = soql(`SELECT Manager__c FROM DiscountApprovalManager__c WHERE Rep__c = '${cliUser}'`);
+    expect(map.length).toBe(1);
+    const managerId = map[0].Manager__c;
+
+    const since = new Date(Date.now() - 120000).toISOString().slice(0, 19) + 'Z';
+    let feedItem: any = null;
+    const deadline = Date.now() + 300000;
+    while (!feedItem && Date.now() < deadline) {
+      await page.waitForTimeout(15000);
+      const rows = soql(`SELECT Id, ParentId, CreatedById, Body FROM FeedItem WHERE CreatedDate >= ${since}`);
+      for (const r of rows) {
+        if ((r.Body || '').includes(name)) feedItem = r;
+      }
+    }
+
+    // AC4 demands the manager is informed. Absence IS the failure.
+    expect(feedItem).toBeTruthy();
+    expect(feedItem.ParentId).toBe(managerId);
+    expect(feedItem.Body).toContain('20');
+    expect(feedItem.CreatedById !== managerId).toBe(true); // the rep posts it, not the manager
+
+    // Cleanup: the FeedItem was created by the CLI user and is deletable.
+    try {
+      shell(`sf data delete record -s FeedItem -o Test-Org -i ${feedItem.Id} --json`);
+    } catch {
+      // A FeedItem the CLI user may not delete stays; it names a test record only.
+    }
+  });
+});
+
 // ── AC1 — the entered discount is shown on the record page ─────────────
 test.describe('[SCRUM-445] AC1 — Discount in % shown on the record', () => {
   test('a 20 % discount is visible on the Details tab', async ({ page }) => {
     await openRecordDetails(page, `/lightning/r/Opportunity/${oppHigh}/view`);
     // The label must be on the page AND the value next to it.
+    // VERIFIED 2026-10-13 21:5x via probe: the Details tab renders label+value in ONE
+    // text node of the listitem ("Discount in % 20,00 %" — comma decimal, locale),
+    // while getByText(label) matches the inner element that holds ONLY the label.
+    // ariaSnapshot of the body pierces the shadow root and carries label+value, so
+    // the value is asserted there (locale-safe: only the integer part is matched).
     await expect(page.getByText(DISCOUNT_LABEL, { exact: false }).first()).toBeVisible({ timeout: 15000 });
-    const shown = await page.getByText(DISCOUNT_LABEL, { exact: false }).first().innerText();
-    expect(shown).toContain('20');
+    const snap = await page.locator('body').ariaSnapshot();
+    expect(snap).toContain(DISCOUNT_LABEL + ' 20');
+    expect(snap).toContain('Discount Approval Pending');
     // Positive read-back: the org holds the value the rep entered.
     const rec = soql(`SELECT Id, Discount_in_Pct__c FROM Opportunity WHERE Id='${oppHigh}'`);
     expect(rec.length).toBe(1);
@@ -161,13 +212,20 @@ test.describe('[SCRUM-445] AC10 — waiting list with duration', () => {
   test('every Pending approval listed with its waiting time', async ({ page }) => {
     await page.goto('/lightning/o/Opportunity/list?filterName=Discount_Approval_Waiting', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.locator('div.slds-global-header, one-appnav').first().waitFor({ state: 'visible', timeout: 60000 });
-    await page.waitForTimeout(5000);
-
     // The list renders in a CLOSED shadow root: textContent/allTextContents return
     // "" for its rows (measured 2026-09-18, SCRUM-417). ariaSnapshot is the route
     // that reads it — verified 2026-10-13 on this very list.
+    // The rows appear asynchronously: a fixed 5 s wait measured red once (0 rows)
+    // while the org held 8 Pending records, so the row count is POLLED with a
+    // budget instead of assumed after a fixed wait.
     const rows = page.getByRole('row');
-    const rowCount = await rows.count();
+    let rowCount = 0;
+    const deadline = Date.now() + 60000;
+    while (rowCount <= 1 && Date.now() < deadline) {
+      await page.waitForTimeout(5000);
+      rowCount = await rows.count();
+    }
+    // Absence of the rows IS the failure — asserted, never skipped.
     expect(rowCount).toBeGreaterThan(1);
 
     const header = String(await rows.nth(0).ariaSnapshot());
