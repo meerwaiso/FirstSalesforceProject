@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-445 System-PS: update-FLS for the fields the DiscountApprovalHandler writes
+     on a user-mode save. Measured 2026-10-12 (probe SCRUM445ProbeTest): the decision
+     write (Approved_Discount_Value__c / Approval_Decided_*) fails with
+     "Operation failed due to fields being inaccessible on Sobject Opportunity" when the
+     saving user holds only editable=false on those fields — a trigger write needs
+     editable=true in the SAVING user's FLS (house SCRUM442_Satisfaction_System / Cause E).
+     Assigned to every user who saves an Opportunity (reps + sales management). -->
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SCRUM445_Discount_System</fullName>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Opportunity.Approval_Requested_On__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Opportunity.Approved_Discount_Value__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Opportunity.Approval_Decided_By__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Opportunity.Approval_Decided_On__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM445_Discount_System</label>
+    <description>SCRUM-445 System-PS: editable FLS for the five approval fields the DiscountApprovalHandler writes during a save. Required so a trigger write resolves in the saving user&#39;s context (house SCRUM442_Satisfaction_System).</description>
+</PermissionSet>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-445 Phase 3: the Apex test pair (house scr440-phase3-apextests.xml /
+     scr442-apextests.xml) — deployed AFTER Handler/Trigger so the coverage gate
+     (>=75 % on the new classes) is measurable. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM445DiscountApprovalTest</members>
+        <members>SCRUM445DiscountFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

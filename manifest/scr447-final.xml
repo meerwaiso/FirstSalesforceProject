@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-447 final step: the Queueable's lineFor() link guard plus its consumer pair.
+     The Queueable SHAPE is unchanged (same 2-arg constructor, same lineFor signature),
+     so helper and consumer deploy in one batch — the helper-first split was only needed
+     for the shape change, already deployed via scr447-helper-first.xml. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>DiscountApprovalNotification</members>
+        <members>DiscountApprovalHandler</members>
+        <members>SCRUM445DiscountApprovalTest</members>
+        <members>SCRUM445DiscountFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-445 Phase 2: everything that REFERENCES the Phase-1 fields —
+     2 ValRules, ListView, 4 Permission Sets, Handler + Queueable + Trigger.
+     House scr440-phase2-apex-ps.xml / scr442-phase2-referencing.xml. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Opportunity.Discount_Hard_Cap_25</members>
+        <members>Opportunity.No_Won_Without_Approval</members>
+        <name>ValidationRule</name>
+    </types>
+    <types>
+        <members>Opportunity.Discount_Approval_Waiting</members>
+        <name>ListView</name>
+    </types>
+    <types>
+        <members>SCRUM445_Discount_Read</members>
+        <members>SCRUM445_Discount_Owner</members>
+        <members>SCRUM445_Discount_Manager</members>
+        <members>SCRUM445_DirectManager_Map</members>
+        <members>SCRUM445_DirectManager_Read</members>
+        <members>SCRUM445_Discount_Notice</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>DiscountApprovalHandler</members>
+        <members>DiscountApprovalNotification</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>DiscountApprovalTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <version>67.0</version>
+</Package>

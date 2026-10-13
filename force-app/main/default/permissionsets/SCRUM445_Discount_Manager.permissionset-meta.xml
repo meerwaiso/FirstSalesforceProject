@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-445 Manager-PS — SECURITY-CRITICAL: Discount_Approval__c and Rejection_Reason__c
+     editable. Direct managers + sales management ONLY. A rep holding this PS could set
+     'Approved' themselves and defeat the whole story — negative FLS test mandatory. -->
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SCRUM445_Discount_Manager</fullName>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Opportunity.Discount_Approval__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Opportunity.Rejection_Reason__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM445_Discount_Manager</label>
+    <description>SCRUM-445 Manager-PS (security-critical): Discount_Approval__c + Rejection_Reason__c editable. Direct managers and sales management ONLY — a rep must never set Approved themselves.</description>
+</PermissionSet>

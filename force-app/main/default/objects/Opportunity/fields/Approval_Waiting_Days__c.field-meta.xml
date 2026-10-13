@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Approval_Waiting_Days__c</fullName>
+    <label>Waiting days (approval)</label>
+    <description>SCRUM-445: Days the discount approval has been waiting, measured from Approval_Requested_On__c while Discount_Approval__c is Pending, otherwise NULL. Formula field, system-computed, read-only.</description>
+    <formula>IF(ISPICKVAL(Discount_Approval__c, &quot;Pending&quot;), MAX(0, (NOW() - Approval_Requested_On__c)), NULL)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <precision>10</precision>
+    <required>false</required>
+    <scale>1</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

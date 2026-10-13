@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-447 rework step 1: the Queueable alone — the Handler references its new
+     lineFor() and 2-arg constructor, so the helper must be live BEFORE the consumer
+     compiles (house rule: helper+consumer in one batch = consumer compiles vs OLD helper). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>DiscountApprovalNotification</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

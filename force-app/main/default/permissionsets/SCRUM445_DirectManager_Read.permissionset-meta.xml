@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-445 (implementation delta, flagged for Architect review): the trigger
+     resolves owner -> manager via DiscountApprovalManager__c. A trigger fired from a
+     user-mode save runs its SOQL in THAT user's context, so a rep without object-level
+     read access on the CMOM gets "sObject type ... is not supported" and the whole
+     Opportunity save fails (measured 2026-10-12, test run 0AfWU00000cA4Iz0AK).
+     Read-only object access for the sales department; CRUD stays SCRUM445_DirectManager_Map. -->
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SCRUM445_DirectManager_Read</fullName>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>DiscountApprovalManager__c.Rep__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>DiscountApprovalManager__c.Manager__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>DiscountApprovalManager__c</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM445_DirectManager_Read</label>
+    <description>SCRUM-445: read-only object access on DiscountApprovalManager__c for the sales department — the DiscountApprovalTrigger resolves the rep&#39;s direct manager in the saving user&#39;s context. CRUD stays SCRUM445_DirectManager_Map.</description>
+</PermissionSet>

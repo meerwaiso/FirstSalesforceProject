@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Approval_Decided_By__c</fullName>
+    <label>Decided by</label>
+    <description>SCRUM-445: The User (direct manager or sales management) who decided the discount approval. System-set on the Approved/Rejected transition, read-only everywhere.</description>
+    <referenceTo>User</referenceTo>
+    <relationshipLabel>Opportunities (discount approval decided by)</relationshipLabel>
+    <relationshipName>Discount_Approval_Decisions</relationshipName>
+    <required>false</required>
+    <type>Lookup</type>
+</CustomField>

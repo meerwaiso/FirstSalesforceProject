@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-445 Mapping-PS: object-level CRUD on DiscountApprovalManager__c for sales
+     management (mapping maintenance). House SCRUM442_TestObjectAccess shape. -->
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SCRUM445_DirectManager_Map</fullName>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>DiscountApprovalManager__c.Rep__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>DiscountApprovalManager__c.Manager__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <objectPermissions>
+        <allowCreate>true</allowCreate>
+        <allowDelete>true</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>DiscountApprovalManager__c</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM445_DirectManager_Map</label>
+    <description>SCRUM-445: object-level CRUD on DiscountApprovalManager__c (rep to direct manager mapping) for sales management.</description>
+</PermissionSet>
