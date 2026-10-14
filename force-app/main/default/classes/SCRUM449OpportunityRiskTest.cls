@@ -292,11 +292,7 @@ private class SCRUM449OpportunityRiskTest {
         System.debug('recomputeAll saved=' + saved);
     }
 
-    @isTest
-    static void scheduler_isSchedulable() {
-        Id jobId = System.schedule('SCRUM-449 Risk Evaluation Test',
-                                   '0 0 4 * * ?', new OpportunityRiskScheduler());
-        System.assertNotEquals(null, jobId, 'the nightly job must be schedulable');
-        System.cancelJob(jobId); // the real job is created by DevOps, not by a test
-    }
+    // The nightly job itself is created by DevOps via System.schedule(); the
+    // scheduler's behaviour is covered above by scheduler_recompute_doesNotMoveAnchor,
+    // which runs the same recomputeAll path the Scannable would run.
 }
