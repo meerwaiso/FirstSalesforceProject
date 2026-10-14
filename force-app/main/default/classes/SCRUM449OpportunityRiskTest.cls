@@ -52,9 +52,33 @@ private class SCRUM449OpportunityRiskTest {
 
     @testVisible private static Id createdUser;
 
-    // ---- helpers -------------------------------------------------------------
+    // ---- helpers (each caches ONE query per test method — the bulk test runs
+    //      200 records, an uncached lookup would blow the SOQL limit) ----------
+    private static Id accountIdCache;
+    private static Id accountId2Cache;
+    private static Id ownerIdCache;
+
     private static Id accountId() {
-        return [SELECT Id FROM Account WHERE Name = 'Risk Test Account' LIMIT 1].Id;
+        if (accountIdCache == null) {
+            accountIdCache = [SELECT Id FROM Account WHERE Name = 'Risk Test Account' LIMIT 1].Id;
+        }
+        return accountIdCache;
+    }
+
+    private static Id accountId2() {
+        if (accountId2Cache == null) {
+            accountId2Cache = [SELECT Id FROM Account WHERE Name = 'Risk Test Account 2' LIMIT 1].Id;
+        }
+        return accountId2Cache;
+    }
+
+    // TestSetup statics are NOT visible from helper methods (each test method
+    // gets a fresh static context), so the rep is looked up by Alias instead.
+    private static Id ownerId() {
+        if (ownerIdCache == null) {
+            ownerIdCache = [SELECT Id FROM User WHERE Alias = 'riskrep' LIMIT 1].Id;
+        }
+        return ownerIdCache;
     }
 
     private static Opportunity readRisk(Id id) {
@@ -71,12 +95,8 @@ private class SCRUM449OpportunityRiskTest {
             StageName = stage,
             CloseDate = close,
             AccountId = accountId(),
-            OwnerId = createdUser
+            OwnerId = ownerId()
         );
-    }
-
-    private static Id accountId2() {
-        return [SELECT Id FROM Account WHERE Name = 'Risk Test Account 2' LIMIT 1].Id;
     }
 
     // ---- org stage order: rank by the CONFIGURED picklist --------------------

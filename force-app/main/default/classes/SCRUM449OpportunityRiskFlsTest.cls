@@ -117,9 +117,12 @@ private class SCRUM449OpportunityRiskFlsTest {
         }
 
         // Business DML under the user: the user can still work with the record
-        // itself (the risk fields are simply not theirs to set).
+        // itself (the risk fields are simply not theirs to set). The Account is
+        // created here in System context — this class has no TestSetup (the PSA
+        // inserts must stay in the same transaction as the asserts above).
+        Account a = new Account(Name = 'FLS449 Account');
+        insert a;
         System.runAs(u) {
-            Account a = [SELECT Id FROM Account WHERE Name = 'Risk Test Account' LIMIT 1];
             Opportunity o = new Opportunity(
                 Name = 'FLS449 user opp',
                 StageName = 'Prospecting',
@@ -127,11 +130,17 @@ private class SCRUM449OpportunityRiskFlsTest {
                 AccountId = a.Id
             );
             insert o;
-            Opportunity r = [SELECT Id, Risk_Level__c FROM Opportunity
+            // The user cannot SEE the risk fields, so the read-back happens in
+            // System context below — here only the record itself is proven.
+            Opportunity r = [SELECT Id, Name FROM Opportunity
                              WHERE Name = 'FLS449 user opp' LIMIT 1];
-            System.assertNotEquals(null, r.Risk_Level__c,
-                'the trigger (system context) assesses the record even for a user without PS');
+            System.assertEquals('FLS449 user opp', r.Name,
+                'the user can create the record without touching the risk fields');
         }
+        Opportunity assessed = [SELECT Id, Risk_Level__c FROM Opportunity
+                                WHERE Name = 'FLS449 user opp' LIMIT 1];
+        System.assertNotEquals(null, assessed.Risk_Level__c,
+            'the trigger (system context) assessed the record even for a user without PS');
     }
 
     @isTest
