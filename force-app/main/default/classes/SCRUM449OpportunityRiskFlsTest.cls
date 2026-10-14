@@ -126,7 +126,7 @@ private class SCRUM449OpportunityRiskFlsTest {
             Opportunity o = new Opportunity(
                 Name = 'FLS449 user opp',
                 StageName = 'Prospecting',
-                CloseDate = Date.today().addDays(30),
+                CloseDate = Date.today().addDays(2), // early stage + close date soon -> C2 applies
                 AccountId = a.Id
             );
             insert o;

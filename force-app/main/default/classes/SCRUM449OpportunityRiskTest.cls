@@ -159,7 +159,7 @@ private class SCRUM449OpportunityRiskTest {
     @isTest
     static void ac4_setbackOne_warning_setbackTwo_high() {
         Opportunity one = mkOpp('AC4 setback one', 'Needs Analysis', Date.today().addDays(30));
-        one.Highest_Stage_Reached__c = 'Id. Decision Makers'; // pos 4, current pos 3
+        one.Highest_Stage_Reached__c = 'Value Proposition'; // pos 4, current pos 3 -> setback 1
         insert one;
 
         Opportunity r1 = readRisk(one.Id);
@@ -171,7 +171,7 @@ private class SCRUM449OpportunityRiskTest {
             'AC4: reason must name the setback');
 
         Opportunity two = mkOpp('AC4 setback two', 'Qualification', Date.today().addDays(30));
-        two.Highest_Stage_Reached__c = 'Perception Analysis'; // pos 6, current pos 2
+        two.Highest_Stage_Reached__c = 'Perception Analysis'; // pos 6, current pos 2 -> setback 4
         insert two;
 
         Opportunity r2 = readRisk(two.Id);
