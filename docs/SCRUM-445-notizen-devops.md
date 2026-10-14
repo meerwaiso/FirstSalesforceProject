@@ -39,6 +39,23 @@ Deploy validate job id `0Afg500000FnywrCAB`. All 13 findings, verbatim:
 
 Gate red → no merge on my own authority. Posted measurement + waiver request to Jira; waiting for @user Einzel-Waiver (the two precedents were both granted by @user).
 
+**Waiver granted 2026-10-13 (option 1) → PR #166 squash-merged as `2696e6cf3da41f650267819c7308b9cbf502fa9b`, pinned with `--match-head-commit 52c432b…`.**
+
+## Prod-Org release, 2026-10-14 (station: column `Release` + assignee `devops-agent`, both read back)
+
+- Pre-deploy validate: `sf project deploy validate --manifest manifest/scr445-phase1-fields.xml -o Prod-Org --test-level RunLocalTests` → `FailedValidationError` job `0Afg500000FoZegCAF`, 1 finding, self-trip only (`SCRUM445_Discount_System` names `Opportunity.Approval_Requested_On__c`, not yet in Prod). `NoTestRun` is rejected by `validate` (only `RunAllTestsInOrg|RunLocalTests|RunSpecifiedTests|RunRelevantTests`) — the isolation proof is a manifest that names nothing of the missing dependency.
+- Manifest entries vs disk: all 6 SCRUM-445 manifests → **0 missing**.
+- Deploy (3 phases, all `--test-level NoTestRun`, all `-o Prod-Org` explicit):
+  - `scr445-phase1-fields.xml` → Succeeded, 8 Opportunity fields + CMOM `DiscountApprovalManager__c` + its 2 fields (ids `00Ng500000Ummx…`)
+  - `scr445-phase2-referencing.xml` → Succeeded, 12 components created (2 ValRules, ListView, 6 PS, 2 Apex classes, trigger)
+  - `scr445-systemps.xml` → `SCRUM445_Discount_System` created; `scr445-rework-446-447.xml` → Layout `Opportunity-Opportunity Layout` changed=True (SCRUM-446 fix), `SCRUM445_Discount_Notice` changed=True
+  - `scr445-phase3-apextests.xml` → 2 test classes created
+- PS assignment (Phase 2 of the house 3-phase release): 7 PS × 2 users (`devops-agent@cline.de`, `meerwais.osmani.3ecaf61ebe28@agentforce.com`) → **14 `PermissionSetAssignment` rows read back**. `sf org assign permset` has no `-u`; `--on-behalf-of` is the flag.
+- Live read-back: `SELECT Discount_in_Pct__c, Discount_Approval__c, Approval_Waiting_Days__c, Approval_Requested_On__c FROM Opportunity` on Prod-Org → **3 rows, fields readable** (31 Opportunities in Prod).
+- Prod Apex tests (separate run, per the new-field rule): `707g500000r12brAAA` → **11/17 Pass, 6 Fail**, all 6 `System.QueryException: List has no rows for assignment to SObject` at `orgUser('devops-agent@cline.test')` / `orgUser('meerwais.osmani@resourceful-bear-6f1u4j.com')` — Test-Org usernames hardcoded in the fixture. Filed as **SCRUM-448** (Bug, parent SCRUM-445, assignee tester-agent).
+- Drift gate after release: `validate --source-dir force-app -o Prod-Org --test-level RunLocalTests` → job `0Afg500000FoU0hCAF`, exactly those 6 methods, **0 foreign names**. Gate stays red until SCRUM-448 is fixed — tracked, not left as drift.
+- Release tag: `release/2026-10-14-SCRUM-445` → points at `2696e6cf3da41f650267819c7308b9cbf502fa9b` (read back with `git rev-parse "refs/tags/<tag>^"` **before** the first push; a remote tag cannot be re-pointed, `git push -f`/`--delete` are on the deny list).
+
 ## Open: foreign uncommitted files in the shared tree (not mine, untouched)
 
 `git status -sb` at start (branch `feature/SCRUM-424-first-response`): modified SCRUM365/367/370/390/403/410/418/419/420 test classes + `reports/Erstreaktionszeit_Pro_Servicebereich.report-meta.xml`; untracked `docs/SCRUM-424-notizen-devops.md`, `docs/SCRUM-442-notizen-po.md`, `docs/SCRUM-442-release-note.md`, `docs/SCRUM-445-notizen-tester.md`, `objects/Case/Case.object-meta.xml`, `objects/Case/validationRules/`, `objects/Opportunity/listViews/Discount_Approval_Waiting.listView-meta.xml`, `parse_c`. None staged, none deleted.
