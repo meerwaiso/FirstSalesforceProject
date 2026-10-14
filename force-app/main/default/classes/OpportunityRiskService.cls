@@ -48,17 +48,21 @@ public without sharing class OpportunityRiskService {
     @testVisible public static Boolean systemWriteInProgress = false;
 
     // ---- Stage order, read from the org --------------------------------------
-    @testVisible private static Map<String, Integer> stageOrderCache;
+    @testVisible private static Map<String, Integer> stagePosCache;
+    @testVisible private static List<String> stageByPosCache; // 1-based: index 0 unused
 
     public static Map<String, Integer> stageOrder() {
-        if (stageOrderCache == null) {
+        if (stagePosCache == null) {
             Map<String, Integer> m = new Map<String, Integer>();
+            List<String> byPos = new List<String>{null}; // index 0 unused
             for (PicklistEntry e : Opportunity.StageName.getDescribe().picklistValues) {
-                m.put(e.value, m.size() + 1); // 1-based position, configured order
+                m.put(e.value, byPos.size()); // 1-based position, configured order
+                byPos.add(e.value);
             }
-            stageOrderCache = m;
+            stagePosCache = m;
+            stageByPosCache = byPos;
         }
-        return stageOrderCache;
+        return stagePosCache;
     }
 
     public static Integer stagePos(String stage) {
@@ -69,15 +73,10 @@ public without sharing class OpportunityRiskService {
     }
 
     public static String stageValueAt(Integer pos) {
-        if (pos == null) {
+        if (pos == null || pos < 1 || pos >= stageByPosCache.size()) {
             return null;
         }
-        for (Map.Entry<String, Integer> e : stageOrder().entry()) {
-            if (e.value == pos) {
-                return e.key;
-            }
-        }
-        return null;
+        return stageByPosCache[pos];
     }
 
     /** "Early stage" = first half of the configured picklist. */
@@ -96,13 +95,13 @@ public without sharing class OpportunityRiskService {
      * @param from earlier anchor
      * @param to  later timestamp (now)
      */
-    public static Integer roundedElapsedDays(DateTime from, DateTime to) {
-        if (from == null || to == null) {
+    public static Integer roundedElapsedDays(DateTime earlier, DateTime later) {
+        if (earlier == null || later == null) {
             return 0;
         }
-        Integer whole = from.date().daysBetween(to.date()); // calendar steps
-        Integer fromSec = secondsOfDay(from);
-        Integer toSec = secondsOfDay(to);
+        Integer whole = earlier.date().daysBetween(later.date()); // calendar steps
+        Integer fromSec = secondsOfDay(earlier);
+        Integer toSec = secondsOfDay(later);
         Integer delta = toSec - fromSec; // day-fraction difference in seconds
         if (delta < 0) {
             whole -= 1;
@@ -185,10 +184,11 @@ public without sharing class OpportunityRiskService {
             Boolean c1 = (shownDays > INACTIVE_DAYS_THRESHOLD);
 
             Date closeD = o.CloseDate;
-            Boolean c3 = (closeD != null && closeD.before(today));
+            // Date has no before()/after() in Apex — comparison operators (house).
+            Boolean c3 = (closeD != null && closeD < today);
             Boolean c2 = (closeD != null
-                          && !closeD.before(today)
-                          && !closeD.after(today.addDays(CLOSE_DATE_WINDOW_DAYS))
+                          && closeD >= today
+                          && closeD <= today.addDays(CLOSE_DATE_WINDOW_DAYS)
                           && curPos != null
                           && curPos <= earlyStageCutoff());
 
@@ -212,13 +212,12 @@ public without sharing class OpportunityRiskService {
             }
             if (c2) {
                 clauses.add('Unrealistic close date: CloseDate '
-                    + closeD.format('dd.MM.yyyy')
+                    + String.valueOf(closeD)
                     + ' within the next ' + CLOSE_DATE_WINDOW_DAYS
                     + ' days while still in an early stage (' + o.StageName + ')');
             }
             if (c3) {
-                clauses.add('Close date already passed (CloseDate '
-                    + closeD.format('dd.MM.yyyy') + ')');
+                clauses.add('Close date already passed (CloseDate ' + String.valueOf(closeD) + ')');
             }
             if (setback >= 1) {
                 clauses.add('Stage setback: ' + setback
@@ -271,11 +270,20 @@ public without sharing class OpportunityRiskService {
                    OR Risk_Reason__c != null
             ];
             List<Opportunity> dirty = evaluate(batch);
-            for (Integer i = 0; i < dirty.size(); i += DML_CHUNK_SIZE) {
-                Integer last = (i + DML_CHUNK_SIZE < dirty.size()) ? (i + DML_CHUNK_SIZE) : dirty.size();
-                List<Opportunity> chunk = dirty.subList(i, last);
-                update chunk;
-                saved += chunk.size();
+            // House chunking (AccountSatisfactionRebuilder): List.subList is not
+            // Apex — buffer + flush at DML_CHUNK_SIZE.
+            List<Opportunity> buffer = new List<Opportunity>();
+            for (Opportunity o : dirty) {
+                buffer.add(o);
+                if (buffer.size() >= DML_CHUNK_SIZE) {
+                    update buffer;
+                    saved += buffer.size();
+                    buffer = new List<Opportunity>();
+                }
+            }
+            if (!buffer.isEmpty()) {
+                update buffer;
+                saved += buffer.size();
             }
         } finally {
             systemWriteInProgress = false;
