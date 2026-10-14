@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-449 Phase 3: the Apex test pair (house: one rule class, one FLS
+         class — separate transactions, Mixed-DML lesson SCRUM-442). -->
+    <types>
+        <members>SCRUM449OpportunityRiskTest</members>
+        <members>SCRUM449OpportunityRiskFlsTest</members>
+        <name>Class</name>
+    </types>
+    <version>67.0</version>
+</Package>

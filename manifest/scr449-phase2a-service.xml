@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-449 Phase 2a: the SERVICE alone. House lesson (memory): a helper
+         and its consumers in ONE batch compile against the OLD live helper —
+         the helper must land first, on its own. -->
+    <types>
+        <members>OpportunityRiskService</members>
+        <name>Class</name>
+    </types>
+    <version>67.0</version>
+</Package>

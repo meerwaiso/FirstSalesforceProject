@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-449 Phase 2b: consumers of the service + both Permission Sets.
+         The Write-PS ships here so the FLS test (Phase 3) can look it up. -->
+    <types>
+        <members>OpportunityRiskHandler</members>
+        <members>OpportunityRiskScheduler</members>
+        <name>Class</name>
+    </types>
+    <types>
+        <members>OpportunityRiskTrigger</members>
+        <name>Trigger</name>
+    </types>
+    <types>
+        <members>SCRUM449OpportunityRisk</members>
+        <members>SCRUM449OpportunityRiskWrite</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>
