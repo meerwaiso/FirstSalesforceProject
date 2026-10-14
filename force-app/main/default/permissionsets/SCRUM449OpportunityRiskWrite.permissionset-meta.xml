@@ -27,5 +27,5 @@
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>SCRUM449OpportunityRiskWrite</label>
-    <description>SCRUM-449 Write-FLS for the five Apex-written risk fields, assigned ONLY to the user that runs the nightly scheduler (batch path). Apex DML checks FLS even in without-sharing classes; the scheduled batch runs as one single user and the org holds no proof for it (house pattern SCRUM-388/436). Never assigned to Sales Reps or Sales Managers — AC9 (nobody sets the risk by hand) stays satisfied. Inactive_Days__c is a formula field and is deliberately absent (never writable).</description>
+    <description>SCRUM-449 Write-FLS for the five Apex-written risk fields. Assigned ONLY to the user that runs the nightly scheduler (batch path); never to Sales Reps or Sales Managers, so AC9 (nobody sets the risk by hand) stays satisfied. Inactive_Days__c is a formula field and deliberately absent.</description>
 </PermissionSet>
