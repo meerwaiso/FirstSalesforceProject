@@ -291,6 +291,37 @@ private class SCRUM449OpportunityRiskTest {
         System.assertEquals(200, mine, 'AC11: every bulk record assessed, none missing');
     }
 
+    // ---- AC9 positive half for the rep: readable, never writable -------------
+    // House Mixed-DML lesson (SCRUM-432/442): the PSA insert is setup DML and
+    // stays outside runAs; ALL business DML runs inside the runAs block.
+    @isTest
+    static void repWithReadPS_canReadButNotWrite() {
+        User u = [SELECT Id FROM User WHERE Alias = 'riskrep' LIMIT 1];
+        PermissionSet ps = [SELECT Id FROM PermissionSet
+                            WHERE Name = 'SCRUM449OpportunityRisk' LIMIT 1];
+        insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);
+
+        System.runAs(u) {
+            Opportunity o = new Opportunity(
+                Name = 'FLS449 rep opp',
+                StageName = 'Prospecting',
+                CloseDate = Date.today().addDays(2),
+                AccountId = accountId()
+            );
+            insert o;
+            Opportunity r = [SELECT Id, Risk_Level__c, Risk_Reason__c, Inactive_Days__c,
+                                    Last_Risk_Evaluation__c, Last_User_Change__c,
+                                    Highest_Stage_Reached__c
+                             FROM Opportunity WHERE Name = 'FLS449 rep opp' LIMIT 1];
+            System.assertNotEquals(null, r.Risk_Level__c,
+                'with SCRUM449OpportunityRisk the rep can read the level the system wrote');
+            System.assertEquals(false, Opportunity.Risk_Level__c.getDescribe().isUpdateable(),
+                'AC9: the rep must not be able to write the level');
+            System.assertEquals(false, Opportunity.Risk_Reason__c.getDescribe().isUpdateable(),
+                'AC9: the rep must not be able to write the reason');
+        }
+    }
+
     // ---- nightly path: the scheduler's own writes are NOT user changes -------
     @isTest
     static void scheduler_recompute_doesNotMoveAnchor() {
