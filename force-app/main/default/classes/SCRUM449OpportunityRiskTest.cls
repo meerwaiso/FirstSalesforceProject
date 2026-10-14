@@ -233,8 +233,11 @@ private class SCRUM449OpportunityRiskTest {
 
         Opportunity lost = mkOpp('AC7 lost', 'Prospecting', Date.today().addDays(5));
         lost.Last_User_Change__c = System.now().addDays(-20);
-        lost.Loss_Reason__c = 'ZuTeuer'; // ValRule LossReason_PflichtBeiClosedLost
         insert lost;
+        // No ValidationRule exists on Opportunity in Test-Org (verified: the
+        // Tooling-API query returned empty), so Closing Lost needs no Loss_Reason.
+        // Loss_Reason__c itself is granted editable=false (SCRUM314_ContractFields)
+        // — writing it from System context fails with "fields being inaccessible".
         lost.StageName = 'Closed Lost';
         update lost;
         Opportunity rLost = readRisk(lost.Id);
