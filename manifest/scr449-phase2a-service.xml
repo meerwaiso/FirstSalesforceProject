@@ -5,7 +5,7 @@
          the helper must land first, on its own. -->
     <types>
         <members>OpportunityRiskService</members>
-        <name>Class</name>
+        <name>ApexClass</name>
     </types>
     <version>67.0</version>
 </Package>

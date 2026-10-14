@@ -5,11 +5,11 @@
     <types>
         <members>OpportunityRiskHandler</members>
         <members>OpportunityRiskScheduler</members>
-        <name>Class</name>
+        <name>ApexClass</name>
     </types>
     <types>
         <members>OpportunityRiskTrigger</members>
-        <name>Trigger</name>
+        <name>ApexTrigger</name>
     </types>
     <types>
         <members>SCRUM449OpportunityRisk</members>
