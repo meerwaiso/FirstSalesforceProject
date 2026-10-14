@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-449 Phase 4: AC12 artefacts (report + list view filtering Risk_Level__c) -->
+    <types>
+        <members>Sales/Hoeh_Risk_Chancen</members>
+        <name>Report</name>
+    </types>
+    <types>
+        <members>Opportunity.Hoeh_Risk_Chancen</members>
+        <name>ListView</name>
+    </types>
+    <version>67.0</version>
+</Package>
