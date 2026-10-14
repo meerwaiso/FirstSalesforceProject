@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Inactive_Days__c</fullName>
+    <description>SCRUM-449: Days the Opportunity has been without a USER change. Formelfield, systemberechnet, never writable. Anchor = Last_User_Change__c; until the first evaluation falls back to LastModifiedDate. NULL on closed Opportunities.</description>
+    <label>Inactive Days</label>
+    <precision>10</precision>
+    <scale>0</scale>
+    <formula>IF(IsClosed, NULL, IF(ISBLANK(Last_User_Change__c), TODAY() - LastModifiedDate, TODAY() - Last_User_Change__c))</formula>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>
