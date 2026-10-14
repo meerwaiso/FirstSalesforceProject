@@ -47,6 +47,7 @@ private class SCRUM449OpportunityRiskTest {
         );
         insert u;
         createdUser = u.Id;
+        System.assertNotEquals(null, createdUser, 'setup must produce the rep user');
     }
 
     @testVisible private static Id createdUser;
@@ -296,5 +297,6 @@ private class SCRUM449OpportunityRiskTest {
         Id jobId = System.schedule('SCRUM-449 Risk Evaluation Test',
                                    '0 0 4 * * ?', new OpportunityRiskScheduler());
         System.assertNotEquals(null, jobId, 'the nightly job must be schedulable');
+        System.cancelJob(jobId); // the real job is created by DevOps, not by a test
     }
 }

@@ -40,9 +40,9 @@ private class SCRUM449OpportunityRiskFlsTest {
         return new User(
             ProfileId = p.Id,
             LastName = 'Fls449',
-            Alias = alias,
-            Email = alias + '_449@example.invalid',
-            Username = alias + '_449_' + DateTime.now().getTime() + '@example.invalid',
+            Alias = alias, // max 8 chars (org limit, verified by the error)
+            Email = alias + '449@example.invalid',
+            Username = alias + '449_' + DateTime.now().getTime() + '@example.invalid',
             EmailEncodingKey = 'UTF-8',
             LanguageLocaleKey = 'en_US', // de_DE rejected in this org (verified)
             LocaleSidKey = 'en_US',
@@ -52,7 +52,7 @@ private class SCRUM449OpportunityRiskFlsTest {
 
     @isTest
     static void riskFields_invisibleWithoutPS_readableNotWritableWithPS() {
-        User u = mkUser('fls449neg');
+        User u = mkUser('fls449n');
         insert u;
 
         // Precondition: the user can see the OBJECT — otherwise the negative
