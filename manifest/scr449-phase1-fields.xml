@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-449 Phase 1: die sechs Opportunity-Felder + read-PS.
+         Gelangen ERST; Trigger/Service/Scheduler und der Write-PS referenzieren
+         sie (house: scr421-phase1). -->
+    <types>
+        <members>Opportunity.Risk_Level__c</members>
+        <members>Opportunity.Risk_Reason__c</members>
+        <members>Opportunity.Inactive_Days__c</members>
+        <members>Opportunity.Last_Risk_Evaluation__c</members>
+        <members>Opportunity.Last_User_Change__c</members>
+        <members>Opportunity.Highest_Stage_Reached__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>SCRUM449OpportunityRisk</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>

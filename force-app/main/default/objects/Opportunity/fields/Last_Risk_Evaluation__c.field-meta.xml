@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Last_Risk_Evaluation__c</fullName>
+    <description>SCRUM-449: Zeitpunkt (System.now()) des letzten Risk-Rewrite — Trigger- oder Scheduler-Pfad. System-written, read-only.</description>
+    <externalId>false</externalId>
+    <label>Last Risk Evaluation</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>

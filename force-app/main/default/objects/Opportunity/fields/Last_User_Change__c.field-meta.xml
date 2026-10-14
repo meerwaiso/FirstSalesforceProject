@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Last_User_Change__c</fullName>
+    <description>SCRUM-449 Support-Field: Zeitpunkt des letzten change made by a USER. Anchor for "no user change for N days"; the risk mechanism's own writes never touch it. Seeded once by the nightly scheduler from LastModifiedDate. System-written, read-only.</description>
+    <externalId>false</externalId>
+    <label>Last User Change</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>DateTime</type>
+</CustomField>
