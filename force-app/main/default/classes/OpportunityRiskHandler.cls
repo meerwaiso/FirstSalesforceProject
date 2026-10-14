@@ -9,11 +9,14 @@
  * The anchor rule (PO): "an update = any change made by a USER. Changes written
  * by the risk mechanism itself never count as an update and never reset the
  * inactivity counter."
- *   - User transaction (UI, API, Quick Action, bulk import): before-update fires
- *     -> Last_User_Change__c = System.now().
- *   - The nightly scheduler's own `update` (OpportunityRiskService.recomputeAll)
- *     sets systemWriteInProgress while it runs; the handler then leaves the
- *     anchor untouched.
+ *   - User transaction (UI, API, Quick Action, bulk import) that changes a field
+ *     the user can edit -> before-update fires -> Last_User_Change__c = now.
+ *   - Our own scheduler's rewrite: systemWriteInProgress is set by recomputeAll.
+ *   - ANY OTHER mechanism's rewrite (SCRUM-319 Is_Overdue__c, SCRUM-445 approval
+ *     fields, SCRUM-414 Loss_Reason__c): the flag is false, so userEditedRecord()
+ *     diffs new vs old and finds no user-editable difference -> anchor untouched.
+ *     This is the fix for the Architect's Blocking 1: 66 records carry
+ *     Is_Overdue__c, and the SCRUM-319 job's `update` used to reset the counter.
  *
  * Bulk: the whole chunk arrives in Trigger.new; evaluate() is pure Apex over it
  * (0 SOQL, 0 DML) — AC11 (data import) is covered by the same code path.
@@ -29,12 +32,23 @@ public without sharing class OpportunityRiskHandler {
 
     public static void handleBeforeUpdate(List<Opportunity> newRecords,
                                           Map<Id, Opportunity> oldMap) {
-        if (OpportunityRiskService.systemWriteInProgress) {
-            // The scheduler's own rewrite — not a user change, anchor untouched.
-            return;
-        }
+        // PO rule: the anchor moves only for a change made by a USER. Two
+        // mechanisms guard against the other kind of update:
+        //   1. systemWriteInProgress — our own scheduler's recompute.
+        //   2. userEditedRecord — every OTHER mechanism's update (SCRUM-319 sets
+        //      Is_Overdue__c, SCRUM-445 the approval fields, SCRUM-414 the loss
+        //      reason). Those fire this trigger with the flag false; the diff
+        //      against Trigger.oldMap is what keeps them from resetting the
+        //      counter. Review SCRUM-449 Blocking 1.
         for (Opportunity o : newRecords) {
-            o.Last_User_Change__c = System.now();
+            Opportunity was = oldMap.get(o.Id);
+            if (was == null) {
+                continue;
+            }
+            if (!OpportunityRiskService.systemWriteInProgress
+                && OpportunityRiskService.userEditedRecord(o, was)) {
+                o.Last_User_Change__c = System.now();
+            }
         }
         OpportunityRiskService.evaluate(newRecords);
     }

@@ -369,7 +369,50 @@ private class SCRUM449OpportunityRiskTest {
                 'AC9: the rep must not be able to write the level');
             System.assertEquals(false, Opportunity.Risk_Reason__c.getDescribe().isUpdateable(),
                 'AC9: the rep must not be able to write the reason');
+
+            // Stronger negative half (Architect review): a REAL update attempt
+            // must throw and must not change what is stored.
+            Boolean threw = false;
+            try {
+                Opportunity tamper = [SELECT Id, Risk_Level__c FROM Opportunity
+                                      WHERE Name = 'FLS449 rep opp' LIMIT 1];
+                tamper.Risk_Level__c = 'High';
+                update tamper;
+            } catch (Exception e) {
+                threw = true;
+            }
+            System.assert(threw,
+                'AC9: the rep cannot write the level even by attempting an update');
         }
+        Opportunity stored = [SELECT Id, Risk_Level__c FROM Opportunity
+                              WHERE Name = 'FLS449 rep opp' LIMIT 1];
+        System.assertNotEquals('High', stored.Risk_Level__c,
+            'AC9: the failed attempt left the system-written value untouched');
+    }
+
+    // ---- Blocking 1 (Architect review): a system-only update must NOT move the
+    // anchor. SCRUM-319's nightly job updates records changing only Is_Overdue__c;
+    // that used to reset the counter on all 66 flagged records.
+    @isTest
+    static void systemOnlyUpdate_doesNotMoveAnchor() {
+        Opportunity o = mkOpp('AC-anchor', 'Prospecting', Date.today().addDays(30));
+        o.Last_User_Change__c = System.now().addDays(-20);
+        insert o;
+        Opportunity before = readRisk(o.Id);
+        System.assertEquals('Low', before.Risk_Level__c,
+            'anchor 20 days old -> C1 applies, close date far -> only one warning');
+
+        Test.startTest();
+        o = [SELECT Id, Is_Overdue__c FROM Opportunity WHERE Name = 'AC-anchor' LIMIT 1];
+        o.Is_Overdue__c = true; // the SCRUM-319 flag, written by a machine
+        update o;
+        Test.stopTest();
+
+        Opportunity after = readRisk(o.Id);
+        System.assertEquals(before.Last_User_Change__c, after.Last_User_Change__c,
+            'a change of a system-written field only must not move the anchor');
+        System.assertEquals('Low', after.Risk_Level__c,
+            'the level stays the same: the counter was not reset');
     }
 
     // ---- nightly path: the scheduler's own writes are NOT user changes -------

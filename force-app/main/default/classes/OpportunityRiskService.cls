@@ -45,7 +45,59 @@ public without sharing class OpportunityRiskService {
     // and does NOT treat the scheduler's own writes as a user change — PO rule:
     // "changes written by the risk mechanism itself never count as an update
     //  and never reset the inactivity counter".
+    // This flag alone is NOT sufficient: OTHER mechanisms (SCRUM-319
+    // OpportunityOverdueService, SCRUM-445 DiscountApprovalHandler, ...) also
+    // `update` Opportunities without the user touching anything. Those fire this
+    // trigger with the flag false. The real gate is userEditedRecord() below.
     @testVisible public static Boolean systemWriteInProgress = false;
+
+    // ---- Is this update a USER change? ---------------------------------------
+    // Review SCRUM-449 (Architect, Blocking 1): moving the anchor on every
+    // before-update let the SCRUM-319 nightly job reset the inactivity counter on
+    // all 66 Is_Overdue__c records. The anchor moves only when a field the user
+    // can edit actually changed value.
+    // The list is generated from `sf sobject describe -s Opportunity` (2026-10-14)
+    // minus: formula/readOnly/autoImplemented/compound fields, the five risk
+    // fields, and every field another Apex mechanism writes without a user
+    // (Is_Overdue__c, Discount_Approval__c, Approval_Decided_* /
+    //  Approval_Requested_On__c / Approved_Discount_Value__c, Loss_Reason__c,
+    //  Rueckruf_am__c). Apex has no generic sObject field access here
+    // (getField/setField/getDescribe on sObject all reject — probe-verified),
+    // so the comparison is explicit and typed.
+    public static Boolean userEditedRecord(Opportunity now, Opportunity was) {
+        if (now.AccountId != was.AccountId) return true;
+        if (now.Name != was.Name) return true;
+        if (now.Description != was.Description) return true;
+        if (now.StageName != was.StageName) return true;
+        if (now.Amount != was.Amount) return true;
+        if (now.Probability != was.Probability) return true;
+        if (now.ExpectedRevenue != was.ExpectedRevenue) return true;
+        if (now.TotalOpportunityQuantity != was.TotalOpportunityQuantity) return true;
+        if (now.CloseDate != was.CloseDate) return true;
+        if (now.Type != was.Type) return true;
+        if (now.NextStep != was.NextStep) return true;
+        if (now.LeadSource != was.LeadSource) return true;
+        if (now.ForecastCategoryName != was.ForecastCategoryName) return true;
+        if (now.CampaignId != was.CampaignId) return true;
+        if (now.Pricebook2Id != was.Pricebook2Id) return true;
+        if (now.OwnerId != was.OwnerId) return true;
+        if (now.PushCount != was.PushCount) return true;
+        if (now.FiscalQuarter != was.FiscalQuarter) return true;
+        if (now.FiscalYear != was.FiscalYear) return true;
+        if (now.Fiscal != was.Fiscal) return true;
+        if (now.ContactId != was.ContactId) return true;
+        if (now.DeliveryInstallationStatus__c != was.DeliveryInstallationStatus__c) return true;
+        if (now.TrackingNumber__c != was.TrackingNumber__c) return true;
+        if (now.OrderNumber__c != was.OrderNumber__c) return true;
+        if (now.CurrentGenerators__c != was.CurrentGenerators__c) return true;
+        if (now.MainCompetitors__c != was.MainCompetitors__c) return true;
+        if (now.TestFeld__c != was.TestFeld__c) return true;
+        if (now.MeinNeuesFeld__c != was.MeinNeuesFeld__c) return true;
+        if (now.Rueckruf_desired__c != was.Rueckruf_desired__c) return true;
+        if (now.Discount_in_Pct__c != was.Discount_in_Pct__c) return true;
+        if (now.Rejection_Reason__c != was.Rejection_Reason__c) return true;
+        return false;
+    }
 
     // ---- Stage order, read from the org --------------------------------------
     @testVisible private static Map<String, Integer> stagePosCache;
