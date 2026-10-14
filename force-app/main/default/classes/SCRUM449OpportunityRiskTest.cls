@@ -285,6 +285,7 @@ private class SCRUM449OpportunityRiskTest {
         System.assertEquals(true, rLost.IsClosed, 'AC7: the record is closed');
         System.assertEquals(null, rLost.Risk_Level__c, 'AC7: Closed Lost -> no level');
         System.assertEquals(null, rLost.Risk_Reason__c, 'AC7: Closed Lost -> reason cleared');
+    }
 
     // ---- AC8: no condition applies -> cleared --------------------------------
     @isTest
