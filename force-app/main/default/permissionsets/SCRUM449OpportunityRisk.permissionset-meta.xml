@@ -32,5 +32,5 @@
     </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>SCRUM449OpportunityRisk</label>
-    <description>SCRUM-449 Read-FLS for the six risk fields on Opportunity (4 business + 2 support). Readable for every role that opens the record (Sales Reps, Sales Managers); editable=false for every human — a manually set risk level is a defect (AC9). Profiles untouched; FLS only via Permission Sets.</description>
+    <description>SCRUM-449 Read-FLS for the six risk fields on Opportunity. Readable for every role that opens the record; editable=false for every human (AC9: nobody sets the risk by hand). Profiles untouched.</description>
 </PermissionSet>

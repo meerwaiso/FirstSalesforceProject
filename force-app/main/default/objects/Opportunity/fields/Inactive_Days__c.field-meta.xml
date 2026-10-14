@@ -5,7 +5,7 @@
     <label>Inactive Days</label>
     <precision>10</precision>
     <scale>0</scale>
-    <formula>IF(IsClosed, NULL, IF(ISBLANK(Last_User_Change__c), TODAY() - LastModifiedDate, TODAY() - Last_User_Change__c))</formula>
+    <formula>IF(IsClosed, NULL, IF(ISBLANK(Last_User_Change__c), NOW() - LastModifiedDate, NOW() - Last_User_Change__c))</formula>
     <type>Number</type>
     <unique>false</unique>
 </CustomField>
