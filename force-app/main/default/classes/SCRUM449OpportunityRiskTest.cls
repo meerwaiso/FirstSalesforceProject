@@ -31,7 +31,25 @@ private class SCRUM449OpportunityRiskTest {
     static void setup() {
         Account a = new Account(Name = 'Risk Test Account');
         insert a;
+        Account a2 = new Account(Name = 'Risk Test Account 2');
+        insert a2;
+        Profile p = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
+        User u = new User(
+            ProfileId = p.Id,
+            LastName = 'RiskRep',
+            Alias = 'riskrep',
+            Email = 'riskrep@example.invalid',
+            Username = 'riskrep_' + DateTime.now().getTime() + '@example.invalid',
+            EmailEncodingKey = 'UTF-8',
+            LanguageLocaleKey = 'en_US', // de_DE rejected in this org (verified)
+            LocaleSidKey = 'en_US',
+            TimeZoneSidKey = 'America/Los_Angeles' // UTC rejected here (verified)
+        );
+        insert u;
+        createdUser = u.Id;
     }
+
+    @testVisible private static Id createdUser;
 
     // ---- helpers -------------------------------------------------------------
     private static Id accountId() {
@@ -52,28 +70,12 @@ private class SCRUM449OpportunityRiskTest {
             StageName = stage,
             CloseDate = close,
             AccountId = accountId(),
-            OwnerId = Test.createdUser
+            OwnerId = createdUser
         );
     }
 
-    @testVisible private static Id createdUser;
-
-    @TestSetup
-    static void seedUser() {
-        Profile p = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
-        User u = new User(
-            LastName = 'RiskRep',
-            Alias = 'riskrep',
-            Email = 'riskrep_' + DateTime.now().getTime() + '@example.invalid',
-            Username = 'riskrep_' + DateTime.now().getTime() + '@example.invalid',
-            ProfileId = p.Id,
-            EmailEncodingKey = 'UTF-8',
-            LanguageLocaleKey = 'en_US',
-            LocaleSidKey = 'en_US',
-            TimeZoneSidKey = 'America/Los_Angeles' // house: UTC rejected in this org
-        );
-        insert u;
-        createdUser = u.Id;
+    private static Id accountId2() {
+        return [SELECT Id FROM Account WHERE Name = 'Risk Test Account 2' LIMIT 1].Id;
     }
 
     // ---- org stage order: rank by the CONFIGURED picklist --------------------
@@ -96,13 +98,14 @@ private class SCRUM449OpportunityRiskTest {
     static void ac1_inactive15Days_low() {
         Opportunity o = mkOpp('AC1 inactive 15', 'Qualification', Date.today().addDays(60));
         o.Last_User_Change__c = System.now().addDays(-15);
-        update o;
+        insert o;
 
         Opportunity r = readRisk(o.Id);
         System.assertEquals('Low', r.Risk_Level__c, 'AC1: 15 inactive days -> Low');
         System.assert(r.Risk_Reason__c != null && r.Risk_Reason__c.contains('Inaktivity'),
             'AC1: reason must name inactivity');
-        System.assertEquals(15, r.Inactive_Days__c, 'AC1: Inactive Days shows the day count');
+        System.assertEquals(Decimal.valueOf(15), r.Inactive_Days__c,
+            'AC1: Inactive Days shows the day count');
     }
 
     // ---- AC2: early stage + close date within 7 days -------------------------
@@ -136,7 +139,7 @@ private class SCRUM449OpportunityRiskTest {
     static void ac4_setbackOne_warning_setbackTwo_high() {
         Opportunity one = mkOpp('AC4 setback one', 'Needs Analysis', Date.today().addDays(30));
         one.Highest_Stage_Reached__c = 'Id. Decision Makers'; // pos 4, current pos 3
-        update one;
+        insert one;
 
         Opportunity r1 = readRisk(one.Id);
         System.assertEquals('Id. Decision Makers', r1.Highest_Stage_Reached__c,
@@ -161,7 +164,7 @@ private class SCRUM449OpportunityRiskTest {
     static void ac5_twoWarnings_medium() {
         Opportunity o = mkOpp('AC5 two warnings', 'Qualification', Date.today().addDays(5));
         o.Last_User_Change__c = System.now().addDays(-20); // C1 + C2, no High driver
-        update o;
+        insert o;
 
         Opportunity r = readRisk(o.Id);
         System.assertEquals('Medium', r.Risk_Level__c, 'AC5: two warnings -> Medium');
@@ -189,7 +192,7 @@ private class SCRUM449OpportunityRiskTest {
         System.assert(r.Last_User_Change__c != null
                       && r.Last_User_Change__c >= flagged.Last_Risk_Evaluation__c,
             'AC6: the user change must move the anchor');
-        System.assertEquals(0, r.Inactive_Days__c, 'AC6: inactivity counter reset');
+        System.assertEquals(Decimal.valueOf(0), r.Inactive_Days__c, 'AC6: inactivity counter reset');
     }
 
     // ---- AC7: closed opportunities are cleared -------------------------------
@@ -231,11 +234,9 @@ private class SCRUM449OpportunityRiskTest {
     // ---- AC10: consistency across owners -------------------------------------
     @isTest
     static void ac10_differentAccounts_sameRules() {
-        Account a2 = new Account(Name = 'Risk Test Account 2');
-        insert a2;
         Opportunity first = mkOpp('AC10 rep A', 'Prospecting', Date.today().addDays(-2));
         Opportunity second = mkOpp('AC10 rep B', 'Prospecting', Date.today().addDays(-2));
-        second.AccountId = a2.Id;
+        second.AccountId = accountId2();
         insert new List<Opportunity>{first, second};
 
         List<Opportunity> read = [SELECT Id, Risk_Level__c, Risk_Reason__c
@@ -276,8 +277,8 @@ private class SCRUM449OpportunityRiskTest {
         o.Last_User_Change__c = System.now().addDays(-20);
         insert o;
         Opportunity before = readRisk(o.Id);
-        System.assertEquals('Low', before.Risk_Level__c,
-            'night: close date tomorrow -> only the close-date warning');
+        System.assertEquals('Medium', before.Risk_Level__c,
+            'night: anchor 20 days old (C1) + close date tomorrow in early stage (C2) -> Medium');
 
         Test.startTest();
         Integer saved = OpportunityRiskService.recomputeAll();
@@ -286,7 +287,7 @@ private class SCRUM449OpportunityRiskTest {
         Opportunity after = readRisk(o.Id);
         System.assertEquals(before.Last_User_Change__c, after.Last_User_Change__c,
             'the scheduler must never move the user-change anchor');
-        System.assertEquals('Low', after.Risk_Level__c, 'night: level stays consistent');
+        System.assertEquals('Medium', after.Risk_Level__c, 'night: level stays consistent');
         System.debug('recomputeAll saved=' + saved);
     }
 
