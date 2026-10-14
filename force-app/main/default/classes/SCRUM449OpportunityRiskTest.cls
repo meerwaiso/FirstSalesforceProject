@@ -251,12 +251,12 @@ private class SCRUM449OpportunityRiskTest {
     // ---- AC11: bulk import — every record assessed, none missing -------------
     @isTest
     static void ac11_bulk200_everyRecordAssessed() {
-        List<Opportunity> bulk = new List<Opportunity>();
+        List<Opportunity> import200 = new List<Opportunity>();
         for (Integer i = 0; i < 200; i++) {
-            bulk.add(mkOpp('AC11 bulk ' + i, 'Prospecting', Date.today().addDays(-1)));
+            import200.add(mkOpp('AC11 bulk ' + i, 'Prospecting', Date.today().addDays(-1)));
         }
         Test.startTest();
-        insert bulk; // ONE bulk insert = ONE trigger invocation over the chunk
+        insert import200; // ONE bulk insert = ONE trigger invocation over the chunk
         Test.stopTest();
 
         List<Opportunity> all = [SELECT Id, Name, Risk_Level__c FROM Opportunity
