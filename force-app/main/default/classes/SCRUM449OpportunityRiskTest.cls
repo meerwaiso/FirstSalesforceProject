@@ -163,7 +163,7 @@ private class SCRUM449OpportunityRiskTest {
         insert one;
 
         Opportunity r1 = readRisk(one.Id);
-        System.assertEquals('Id. Decision Makers', r1.Highest_Stage_Reached__c,
+        System.assertEquals('Value Proposition', r1.Highest_Stage_Reached__c,
             'AC4: high-water mark must not move backwards');
         System.assertEquals('Low', r1.Risk_Level__c,
             'AC4: setback of exactly 1 is a single warning, not High');
