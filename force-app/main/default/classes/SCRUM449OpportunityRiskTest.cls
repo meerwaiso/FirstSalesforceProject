@@ -230,20 +230,61 @@ private class SCRUM449OpportunityRiskTest {
         Opportunity rWon = readRisk(won.Id);
         System.assertEquals(null, rWon.Risk_Level__c, 'AC7: Closed Won -> no level');
         System.assertEquals(null, rWon.Risk_Reason__c, 'AC7: Closed Won -> reason cleared');
+    }
 
-        Opportunity lost = mkOpp('AC7 lost', 'Prospecting', Date.today().addDays(5));
-        lost.Last_User_Change__c = System.now().addDays(-20);
-        insert lost;
-        // No ValidationRule exists on Opportunity in Test-Org (verified: the
-        // Tooling-API query returned empty), so Closing Lost needs no Loss_Reason.
-        // Loss_Reason__c itself is granted editable=false (SCRUM314_ContractFields)
-        // — writing it from System context fails with "fields being inaccessible".
-        lost.StageName = 'Closed Lost';
-        update lost;
-        Opportunity rLost = readRisk(lost.Id);
+    // ---- AC7 second half: Closed Lost (needs Loss_Reason__c, see below) ------
+    // The active Opportunity ValidationRule blocks Closed Lost without a loss
+    // reason (error text read back: "Bitte wählen Sie einen Verlustgrund...").
+    // Loss_Reason__c is granted editable=false by SCRUM314_ContractFields, so
+    // System context cannot write it; SCRUM381_LeadFollowUp grants edit=true but
+    // is assigned to nobody. House pattern (SCRUM-442 lesson): a TEST-LOCAL
+    // assignment of that PS to a fixture user only — never widen a released PS.
+    // Mixed-DML: setup inserts first, ALL business DML inside the runAs block.
+    @isTest
+    static void ac7_closedLost_cleared() {
+        Profile p = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
+        User u = new User(
+            ProfileId = p.Id,
+            LastName = 'RiskLost',
+            Alias = 'risklost',
+            Email = 'risklost449@example.invalid',
+            Username = 'risklost449_' + DateTime.now().getTime() + '@example.invalid',
+            EmailEncodingKey = 'UTF-8',
+            LanguageLocaleKey = 'en_US',
+            LocaleSidKey = 'en_US',
+            TimeZoneSidKey = 'America/Los_Angeles'
+        );
+        insert u;
+        PermissionSet ps = [SELECT Id FROM PermissionSet
+                            WHERE Name = 'SCRUM381_LeadFollowUp' LIMIT 1];
+        insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);
+
+        System.runAs(u) {
+            Opportunity lost = new Opportunity(
+                Name = 'AC7 lost',
+                StageName = 'Prospecting',
+                CloseDate = Date.today().addDays(5),
+                AccountId = accountId(),
+                OwnerId = u.Id,
+                Loss_Reason__c = 'ZuTeuer'
+            );
+            insert lost;
+            Opportunity flagged = [SELECT Id, Risk_Level__c FROM Opportunity
+                                   WHERE Name = 'AC7 lost' LIMIT 1];
+            System.assertEquals('Low', flagged.Risk_Level__c,
+                'AC7 precondition: the open record carries a level');
+
+            lost = [SELECT Id, StageName, Loss_Reason__c FROM Opportunity
+                    WHERE Name = 'AC7 lost' LIMIT 1];
+            lost.StageName = 'Closed Lost';
+            update lost;
+        }
+
+        Opportunity rLost = [SELECT Id, Risk_Level__c, Risk_Reason__c, IsClosed
+                             FROM Opportunity WHERE Name = 'AC7 lost' LIMIT 1];
+        System.assertEquals(true, rLost.IsClosed, 'AC7: the record is closed');
         System.assertEquals(null, rLost.Risk_Level__c, 'AC7: Closed Lost -> no level');
         System.assertEquals(null, rLost.Risk_Reason__c, 'AC7: Closed Lost -> reason cleared');
-    }
 
     // ---- AC8: no condition applies -> cleared --------------------------------
     @isTest
