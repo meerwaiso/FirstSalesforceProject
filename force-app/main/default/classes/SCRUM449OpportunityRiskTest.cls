@@ -258,6 +258,11 @@ private class SCRUM449OpportunityRiskTest {
         PermissionSet ps = [SELECT Id FROM PermissionSet
                             WHERE Name = 'SCRUM381_LeadFollowUp' LIMIT 1];
         insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);
+        // The rep also needs the READ-PS: without it the SELECT of a risk field
+        // throws 'No such column' (house lesson — grant, never assume).
+        PermissionSet readPs = [SELECT Id FROM PermissionSet
+                                WHERE Name = 'SCRUM449OpportunityRisk' LIMIT 1];
+        insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = readPs.Id);
 
         System.runAs(u) {
             Opportunity lost = new Opportunity(
