@@ -64,15 +64,48 @@ private class SCRUM445DiscountApprovalTest {
         return [SELECT Id FROM User WHERE Id = :assignee LIMIT 1][0];
     }
 
-    /** House SCRUM442TestFixtures.existingCloser, by username: an org user that ALREADY
-     * carries the PSs (read of PermissionSetAssignment, no PSA DML). The CMOM mapping
-     * insert is non-setup DML and cannot share a transaction with a PSA insert in EITHER
-     * order (measured both directions 2026-10-12, house SCRUM-442 Cause E) — so the
-     * mapping methods run as the two org users that already hold all SCRUM445 PSs. */
-    private static User orgUser(String username) {
-        User u = [SELECT Id FROM User WHERE Username = :username LIMIT 1];
-        System.assertNotEquals(null, u, 'Org user ' + username + ' missing — mapping proof not exercisable.');
-        return u;
+    /** SCRUM-448: the two fixture users come FROM THE ORG, never from a username.
+     *  The old orgUser('devops-agent@cline.test') was a SCALAR SELECT on User, so in
+     *  Prod-Org — where that username does not exist — it threw
+     *  "List has no rows for assignment to SObject" before any assertion ran, and
+     *  reddened the Prod-Org Drift Gate on every later PR.
+     *  Resolution: the users that ALREADY carry every SCRUM445 PS (read of
+     *  PermissionSetAssignment, no PSA DML). In Test-Org that is the same pair the
+     *  literals named; in Prod-Org it is Prod's own pair. Ordered by Username so a
+     *  run is reproducible. Fails loudly when fewer than two such users exist — the
+     *  mapping proof needs a rep AND a DIFFERENT manager, never a vacuous pass. */
+    private static User[] orgFixturePair() {
+        String[] psNames = new String[] {
+            'SCRUM445_Discount_Owner', 'SCRUM445_Discount_Manager', 'SCRUM445_Discount_System'
+        };
+        Set<Id> common = null;
+        for (String psName : psNames) {
+            PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = :psName LIMIT 1];
+            System.assertNotEquals(null, ps,
+                'Permission Set ' + psName + ' missing — the fixture pair is not resolvable (fail, never pass vacuously).');
+            Set<Id> holders = new Set<Id>();
+            for (PermissionSetAssignment psa : [SELECT AssigneeId FROM PermissionSetAssignment
+                                                WHERE PermissionSetId = :ps.Id]) {
+                holders.add(psa.AssigneeId);
+            }
+            System.assert(holders.size() > 0,
+                'No user carries ' + psName + ' — the fixture pair is not resolvable (fail, never pass vacuously).');
+            if (common == null) {
+                common = holders;
+            } else {
+                Set<Id> both = new Set<Id>();
+                for (Id h : holders) {
+                    if (common.contains(h)) { both.add(h); }
+                }
+                common = both;
+            }
+        }
+        System.assert(common != null && common.size() >= 2,
+            'Fewer than two org users carry all SCRUM445 PSs — the mapping proof needs a rep and a different manager (fail, never pass vacuously).');
+        List<User> users = [SELECT Id, Username FROM User WHERE Id IN :common ORDER BY Username];
+        System.assertEquals(2, users.size(),
+            'Exactly two org users carry all SCRUM445 PSs; found ' + users.size() + ' — fixture pair ambiguous.');
+        return users;
     }
 
     private static void grantPS(User u, String[] psNames) {
@@ -130,8 +163,9 @@ private class SCRUM445DiscountApprovalTest {
     static void ac3_aboveThreshold_blockedWhilePending() {
         // MIXED_DML measured: PSA insert is setup-class DML, the CMOM insert is not —
         // so setup (User, PSA, Account) strictly first, then CMOM, then business DML.
-        User rep = orgUser('devops-agent@cline.test');
-        User mgr = orgUser('meerwais.osmani@resourceful-bear-6f1u4j.com');
+        User[] pair = orgFixturePair();
+        User rep = pair[0];
+        User mgr = pair[1];
         Id acc = accountId('ac3');
         mapRep(rep, mgr);
         Id oppId = null;
@@ -272,8 +306,9 @@ private class SCRUM445DiscountApprovalTest {
     // ---------- AC10: waiting list predicate + duration ----------
     @isTest
     static void ac10_waitingList_hasDuration() {
-        User rep = orgUser('devops-agent@cline.test');
-        User mgr = orgUser('meerwais.osmani@resourceful-bear-6f1u4j.com');
+        User[] pair = orgFixturePair();
+        User rep = pair[0];
+        User mgr = pair[1];
         Id acc = accountId('ac10');
         mapRep(rep, mgr);
         Integer created = 0;
@@ -300,8 +335,9 @@ private class SCRUM445DiscountApprovalTest {
     // ---------- AC6: manager rejects with reason -> Closed Won stays blocked ----------
     @isTest
     static void ac6_rejectionBlocksClosedWon() {
-        User rep = orgUser('devops-agent@cline.test');
-        User mgr = orgUser('meerwais.osmani@resourceful-bear-6f1u4j.com');
+        User[] pair = orgFixturePair();
+        User rep = pair[0];
+        User mgr = pair[1];
         Id acc = accountId('ac6');
         mapRep(rep, mgr);
         Id oppId = null;
@@ -343,8 +379,9 @@ private class SCRUM445DiscountApprovalTest {
     // ---------- AC13: already-closed records are never touched retroactively ----------
     @isTest
     static void ac13_closedRecordsUntouched() {
-        User rep = orgUser('devops-agent@cline.test');
-        User mgr = orgUser('meerwais.osmani@resourceful-bear-6f1u4j.com');
+        User[] pair = orgFixturePair();
+        User rep = pair[0];
+        User mgr = pair[1];
         Id acc = accountId('ac13');
         mapRep(rep, mgr);
         Id lostId = null;
@@ -405,8 +442,9 @@ private class SCRUM445DiscountApprovalTest {
         // Empty maps -> empty grouping (the guard path).
         Map<Id, List<String>> empty = DiscountApprovalNotification.notify(new Map<Id, Id>(), new Map<Id, String>());
         System.assertEquals(0, empty.size(), 'AC4: an empty request map produces no grouping.');
-        User rep = orgUser('devops-agent@cline.test');
-        User mgr = orgUser('meerwais.osmani@resourceful-bear-6f1u4j.com');
+        User[] pair = orgFixturePair();
+        User rep = pair[0];
+        User mgr = pair[1];
         Id acc = accountId('notif');
         mapRep(rep, mgr);
         Integer soqlBefore = DiscountApprovalHandler.mappingSoqlCount;
@@ -459,8 +497,9 @@ private class SCRUM445DiscountApprovalTest {
     // ---------- Bulk: 200 saves -> 1 mapping SOQL + 1 enqueueJob ----------
     @isTest
     static void bulk_200_updates_oneSoqlOneEnqueue() {
-        User rep = orgUser('devops-agent@cline.test');
-        User mgr = orgUser('meerwais.osmani@resourceful-bear-6f1u4j.com');
+        User[] pair = orgFixturePair();
+        User rep = pair[0];
+        User mgr = pair[1];
         Id acc = accountId('bulk');
         mapRep(rep, mgr);
         System.runAs(rep) {
