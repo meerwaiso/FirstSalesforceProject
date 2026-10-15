@@ -425,12 +425,72 @@ jobs:
           unveroeffentlicht = [b for b in rest if typ_liegt_im_repo(*b)]
           drift  = [b for b in rest if not typ_liegt_im_repo(*b)]
 
+          # A FailedValidationError whose message lists only failing TESTS is a
+          # readable result, not an unreadable one: every component resolved, the
+          # test phase failed. This gate treats test problems as a warning (see the
+          # comment on the step), so it must not turn red here. Measured: SCRUM-442
+          # run 38126905195 and SCRUM-445 artifact 11848153322 both landed in the
+          # "no usable result" branch below with 0 component errors and only test
+          # failures, and both PRs needed a manual waiver.
+          #
+          # Shape (one line, entries separated by commas that precede the next
+          # "Class.method - System."):  Failed to validate ... Due To:
+          #   ClassA.m1 - System.QueryException: ...,ClassB.m2 - System.DmlException: ...
+          testfehler = []
+          if not befunde and not r:
+              text = d.get("message") or ""
+              rumpf = text.split("Due To:", 1)[1] if "Due To:" in text else ""
+              for teil in re.split(r",(?=\s*[A-Za-z0-9_]+\.[A-Za-z0-9_]+ - System\.)", rumpf):
+                  m = re.match(r"\s*([A-Za-z0-9_]+\.[A-Za-z0-9_]+) - (System\.\S+?):?\s(.*)", teil, re.S)
+                  if m:
+                      testfehler.append((m.group(1), m.group(2), " ".join(m.group(3).split())))
+
+          # Why a test fails in Prod-Org but not in Test-Org. A hint for the reader,
+          # never a reason to gate.
+          def ursache(meldung):
+              if "No such column" in meldung or "fields being inaccessible" in meldung:
+                  return "new field not visible to the test user yet (permission sets are assigned at release)"
+              if "List has no rows for assignment" in meldung:
+                  return "test expects a record or user that exists only in Test-Org"
+              if "FIELD_CUSTOM_VALIDATION_EXCEPTION" in meldung:
+                  return "older test data violates a new validation rule"
+              return "other"
+
+          # Only one cause is expected before a release: a new field the test user
+          # cannot see yet, because permission sets are assigned at release time.
+          # That is a warning. Every other cause will still fail AFTER the release
+          # (SCRUM-445: 6 tests looked up a Test-Org-only user, went red in Prod-Org
+          # and became SCRUM-448; SCRUM-442: older test data broke a new validation
+          # rule), so those keep the gate red, but with the test names and the cause.
+          NEUES_FELD = "new field not visible to the test user yet (permission sets are assigned at release)"
+          if testfehler:
+              gruppen = {}
+              for name, typ, meldung in testfehler:
+                  gruppen.setdefault(ursache(meldung), []).append((name, typ, meldung))
+              erwartet = gruppen.pop(NEUES_FELD, [])
+              echt = sum(len(v) for v in gruppen.values())
+              if erwartet:
+                  print(f"::warning title=Prod test phase::{len(erwartet)} test(s) cannot see new fields yet "
+                        f"— expected before release, not gated.")
+                  for name, typ, meldung in erwartet:
+                      print(f"    {name}  {typ}: {meldung[:160]}")
+              if echt:
+                  print(f"::error title=Prod test phase::{echt} test(s) fail in Prod-Org for a reason the "
+                        f"release will not fix — they will still fail after deployment.")
+                  for grund, liste in gruppen.items():
+                      print(f"  {len(liste)}x {grund}:")
+                      for name, typ, meldung in liste:
+                          print(f"    {name}  {typ}: {meldung[:160]}")
+                  sys.exit(1)
+              print("No component drift, no test failure beyond the expected pre-release ones.")
+              sys.exit(0)
+
           # A gate that cannot read its own result must not wave the change through.
           if not befunde and not r:
               print("::error title=Prod drift gate::Validation produced no usable result — "
                     "this run cannot show the change is free of drift.")
               print(f"  name: {d.get('name', '?')}   code: {d.get('code', '?')}")
-              print("  " + (d.get("message") or "(no message)")[:800].replace("\n", "\n  "))
+              print("  " + (d.get("message") or "(no message)").replace("\n", "\n  "))
               sys.exit(1)
 
           if apex:
