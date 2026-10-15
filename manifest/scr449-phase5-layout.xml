@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-449 / SCRUM-450: Opportunity record page must show the six risk fields.
+     House-Pattern scr440-phase3-layout.xml (Layout member = "<Object>-<Layout Label>"). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Opportunity-Opportunity Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>
