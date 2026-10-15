@@ -62,3 +62,23 @@ written ONLY by the system. 12 ACs. Counting rule: every AC needs real records, 
 - Verdict: 11/12 pass, AC1 FAIL -> SCRUM-449 back to developer-agent,
   column "Implementierung" (transition_id 21). SCRUM-450 linked with "Relates".
 - Spec committed 49f8cc7 + final AC7 fix pushed on feature/SCRUM-449-risk-level.
+
+## Re-test after the Developer's SCRUM-450 fix (2026-10-15, head 52c61ab)
+- Fix commits: 02ce6a1 (layout) + 52c61ab (dev notes). Diff a40eaff..52c61ab
+  touches ONLY: the layout file (+35 lines), manifest/scr449-phase5-layout.xml
+  (+10), docs/SCRUM-449-notizen-dev.md. NO Apex, no trigger, no PS -> the
+  17/17 Apex result from above still stands, no re-run needed.
+- ORG layout re-retrieved (scratch/l449c): 45 fields (was 39), all four
+  asserted fields present: Risk_Level__c / Risk_Reason__c / Inactive_Days__c /
+  Last_Risk_Evaluation__c each grep-count 1.
+- Playwright re-run on the new head: smoke 2/2, spec SCRUM-449-risk-level
+  3/3 green (28.5s) -> AC1 now PASS. Log: scratch/spec449c.log.
+- CI on PR 168 head 52c61ab (run 38776090054): Lint pass 51s | Metadata,
+  Apex & Session Smoke pass 2m54s | README pass 6s | Prod-Org Drift Gate
+  fail 13m7s = the same pre-existing INCONCLUSIVE cause (test classes vs
+  Prod-Org), not drift on this change.
+- STILL 0 ScheduledJob records in Test-Org: the nightly recalculation remains
+  unscheduled. Not AC-blocking; DevOps has to create the job.
+- VERDICT ROUND 2: 12/12 PASS -> SCRUM-449 to devops-agent, column
+  "Deployment" (transition_id 4). SCRUM-450 resolved (fix verified in org +
+  UI) -> "Erledigt" (transition_id 41).
