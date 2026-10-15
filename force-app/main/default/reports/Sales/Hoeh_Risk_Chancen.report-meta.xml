@@ -63,8 +63,17 @@
     <showDetails>true</showDetails>
     <showGrandTotal>true</showGrandTotal>
     <showSubTotals>true</showSubTotals>
+    <!-- AC12 must list High-risk open Opportunities organisation-wide. The C3
+         records (close date already passed) have CloseDate 2024-06-12 — 13 of
+         the 14 open ones. A fiscal-year frame (INTERVAL_CURRENT) excludes them:
+         measured, the report showed 1 row instead of 14. Deploying WITHOUT the
+         element does NOT clear the existing one (deploy ID 0AfWU00000cEbrS0AS
+         reported "Changed", retrieve still returned INTERVAL_CURRENT) — so the
+         frame is set explicitly to a custom span that covers every record. -->
     <timeFrameFilter>
         <dateColumn>CLOSE_DATE</dateColumn>
-        <interval>INTERVAL_CURRENT</interval>
+        <endDate>2099-12-31</endDate>
+        <interval>INTERVAL_CUSTOM</interval>
+        <startDate>2000-01-01</startDate>
     </timeFrameFilter>
 </Report>
