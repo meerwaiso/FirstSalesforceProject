@@ -70,3 +70,10 @@ leftovers — not mine, neither commit noch delete.
   Low, reason names the close-date condition, Inactive_Days__c 0.
 - Test results: 14/14 green, deploy `0AfWU00000cDp3f0AC`, RunSpecifiedTests.
 - PR #168 (https://github.com/meerwaiso/FirstSalesforceProject/pull/168).
+
+## CI-gate findings on the PR head (2026-10-14, run 38646627875, both reproduced)
+- Prod-Org Drift Gate red: `OpportunityRiskService | Variable does not exist: MeinNeuesFeld__c (95:41)` — read from the CI artifact prod-validate.json (gh run download 38646627875). Field exists in NEITHER org: `sf data query -t -q "SELECT QualifiedApiName FROM FieldDefinition WHERE EntityDefinitionId = 'Opportunity' AND QualifiedApiName = 'Opportunity.MeinNeuesFeld__c'"` -> 0 rows in Test-Org AND Prod-Org; no field file in origin/master. Fix: drop the comparison (a field that exists in no org can never change).
+- Apex gate red: real MIXED_DML, not the budget — `ApexTestQueueItem WHERE CreatedDate = LAST_N_DAYS:1` = 14 rows vs ceiling max(500, 10 x 78 test classes) = 780. Failure: 'DML operation on setup object is not permitted after ... Account, original object: PermissionSetAssignment' at FlsTest line 124. Fix: Account insert moved to @TestSetup (own transaction), looked up by Name in the method.
+- `FieldDefinition` needs `EntityDefinitionId` as a filter (reified column); `QualifiedApiName` alone is rejected. `ApexTestQueueItem` columns: Id, CreatedDate, ApexClassId, Status, ExtendedStatus, ParentJobId, TestRunResultId (no TestClass.Name, no NumberOfTests).
+- `sf project deploy validate --tests <non-test class>` -> 'Test coverage of selected Apex Class is 0%' and status Failed with ZERO component failures. Name the covering TEST class in --tests, never the class being deployed.
+- AC12 artefacts verified org-first: `sf project retrieve start --metadata 'ListView:Opportunity.Hoeh_Risk_Chancen'` and 'Report:Sales/Hoeh_Risk_Chancen' -> byte-identical to the repo files (ADR-7). Retrieve output-dir must be INSIDE the project (scratch/), /tmp is rejected.
