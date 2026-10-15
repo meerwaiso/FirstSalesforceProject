@@ -97,20 +97,27 @@ test.describe('[SCRUM-449] AC7/AC8 — closed or healthy records carry no risk l
     const closedTotal = soql("SELECT Id, Name, StageName FROM Opportunity WHERE IsClosed = true");
     expect(closedTotal.length).toBeGreaterThan(0); // the criterion is exercised on real records
 
-    // UI-level: the list view must not leak a closed record.
+    // UI-level: the list view must contain EXACTLY the High+open records the org
+    // holds. A closed record leaking in would push the count above that — this
+    // is the sound check; matching on Name does not work here, the Test-Org
+    // reuses record names across closed and open records (3 collisions measured
+    // 2026-10-15: 'Edge Emergency Generator', 'United Oil Installations', ...).
+    const highOpen = soql(
+      "SELECT Id, Name FROM Opportunity WHERE Risk_Level__c = 'High' AND IsClosed = false",
+    );
+    expect(highOpen.length).toBeGreaterThan(0);
+
     const rows = await listRows(page);
     const rowCount = await rows.count();
     expect(rowCount).toBeGreaterThan(1);
+    expect(rowCount).toBe(highOpen.length + 1); // +1 header row
 
-    const closedNames = new Set(closedTotal.map((r) => r.Name));
-    const leaked: string[] = [];
+    // And every listed row carries a level — a closed record has none.
     for (let i = 1; i < rowCount; i++) {
       const snap = await rows.nth(i).ariaSnapshot();
-      for (const name of closedNames) {
-        if (snap.includes(name)) leaked.push(name);
-      }
+      expect(snap).toContain('High');
+      expect(snap).toContain('Risk Level');
     }
-    expect(leaked).toEqual([]);
   });
 });
 
