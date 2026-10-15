@@ -34,7 +34,11 @@ written ONLY by the system. 12 ACs. Counting rule: every AC needs real records, 
   Is that user a "Sales Representative"? AC9 says a rep and a manager must be REFUSED. Test both shapes.
 
 ## Findings (measured 2026-10-15, Test-Org)
-- Apex 17/17 pass, job 707WU00001P3gHVkzT (RunSpecifiedTests, both classes).
+- Apex 17/17 pass (RunSpecifiedTests, both classes). Verified from
+  scratch/apex449.json: status Succeeded, numberTestsTotal 17 /
+  numberTestsCompleted 17 / numberTestErrors 0, op id 0AfWU00000cEkjT0AS,
+  completedDate 2026-10-15T10:52:56Z. The CLI reports NO job id for
+  RunSpecifiedTests via deploy start — never quote a job id for this run.
   All 12 ACs have a named Apex method (see coverage table on SCRUM-449).
 - Org data: 42 assessed records; 14 High+open; 54 closed with 0 assessed;
   40 open with Inactive_Days__c > 14, ALL assessed (27 Low + 13 High) -> 0 stale.
