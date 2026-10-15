@@ -1,47 +1,70 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Report xmlns="http://soap.sforce.com/2006/04/metadata">
-    <!-- Column keys are the reportType's own detailColumnInfo keys, read back
-         from the org 2026-10-14 via
-         sf api request rest "/services/data/v64.0/analytics/report-types/Opportunity"
-         -> OPPORTUNITY_NAME, ACCOUNT_NAME, STAGE_NAME, CLOSE_DATE, FULL_NAME.
-         (OPPORTUNITY.NAME / ACCOUNT.NAME / OWNER are Lead/Case keys and are
-          rejected here: "columns-field: Invalid value specified".) -->
-    <columns><field>OPPORTUNITY_NAME</field></columns>
-    <columns><field>ACCOUNT_NAME</field></columns>
-    <columns><field>STAGE_NAME</field></columns>
-    <columns><field>CLOSE_DATE</field></columns>
-    <columns><field>Opportunity.Inactive_Days__c</field></columns>
-    <columns><field>Opportunity.Risk_Reason__c</field></columns>
-    <columns><field>FULL_NAME</field></columns>
-    <!-- AC12 (SCRUM-449): organisation-wide, High risk only, open only.
-         Closed records are excluded by the STAGE filter (house pattern from
-         Ueberfaellige_Chancen: StageName notEqual Closed Won,Closed Lost) —
-         IsClosed is the Single Source of Truth, but the report filter uses the
-         picklist values, which is what the house list views do. -->
+    <columns>
+        <field>OPPORTUNITY_NAME</field>
+    </columns>
+    <columns>
+        <field>ACCOUNT_NAME</field>
+    </columns>
+    <columns>
+        <field>STAGE_NAME</field>
+    </columns>
+    <columns>
+        <field>CLOSE_DATE</field>
+    </columns>
+    <columns>
+        <field>Opportunity.Inactive_Days__c</field>
+    </columns>
+    <columns>
+        <field>Opportunity.Risk_Reason__c</field>
+    </columns>
+    <columns>
+        <field>FULL_NAME</field>
+    </columns>
+    <description>Open Opportunities with risk level High, organisation-wide (SCRUM-449 AC12). Grouped by Risk_Level__c, Record Count per group; shows inactive days and the reason clause.</description>
     <filter>
         <criteriaItems>
             <column>Opportunity.Risk_Level__c</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>false</isUnlocked>
             <operator>equals</operator>
             <value>High</value>
         </criteriaItems>
         <criteriaItems>
             <column>STAGE_NAME</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>false</isUnlocked>
             <operator>notEqual</operator>
             <value>Closed Won,Closed Lost</value>
         </criteriaItems>
+        <language>en_US</language>
     </filter>
     <format>Summary</format>
     <groupingsDown>
+        <dateGranularity>Day</dateGranularity>
         <field>Opportunity.Risk_Level__c</field>
         <sortOrder>Desc</sortOrder>
     </groupingsDown>
-    <description>Open Opportunities with risk level High, organisation-wide (SCRUM-449 AC12). Grouped by Risk_Level__c, Record Count per group; shows inactive days and the reason clause.</description>
     <name>Hoeh_Risk_Chancen</name>
+    <params>
+        <name>open</name>
+        <value>all</value>
+    </params>
+    <params>
+        <name>probability</name>
+        <value>&gt;0</value>
+    </params>
+    <params>
+        <name>co</name>
+        <value>1</value>
+    </params>
     <reportType>Opportunity</reportType>
-    <!-- scope values for THIS report type (read back from scopeInfo): user, team,
-         organization, scopingRule. "org" is not a choice here. -->
     <scope>organization</scope>
     <showDetails>true</showDetails>
     <showGrandTotal>true</showGrandTotal>
     <showSubTotals>true</showSubTotals>
+    <timeFrameFilter>
+        <dateColumn>CLOSE_DATE</dateColumn>
+        <interval>INTERVAL_CURRENT</interval>
+    </timeFrameFilter>
 </Report>

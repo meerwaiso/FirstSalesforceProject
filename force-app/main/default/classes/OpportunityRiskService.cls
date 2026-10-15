@@ -92,7 +92,9 @@ public without sharing class OpportunityRiskService {
         if (now.CurrentGenerators__c != was.CurrentGenerators__c) return true;
         if (now.MainCompetitors__c != was.MainCompetitors__c) return true;
         if (now.TestFeld__c != was.TestFeld__c) return true;
-        if (now.MeinNeuesFeld__c != was.MeinNeuesFeld__c) return true;
+        // MeinNeuesFeld__c deliberately NOT compared: it exists only in Test-Org
+        // (no file in origin/master, 0 rows in Prod-Org FieldDefinition) — the
+        // Prod-Org Drift Gate rejects the reference as "Variable does not exist".
         if (now.Rueckruf_desired__c != was.Rueckruf_desired__c) return true;
         if (now.Discount_in_Pct__c != was.Discount_in_Pct__c) return true;
         if (now.Rejection_Reason__c != was.Rejection_Reason__c) return true;

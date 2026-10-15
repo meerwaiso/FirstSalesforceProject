@@ -24,6 +24,15 @@
 @isTest
 private class SCRUM449OpportunityRiskFlsTest {
 
+    @TestSetup
+    static void setup_accountForUserDml() {
+        // Setup DML in its OWN transaction (@TestSetup) — see the MIXED_DML note
+        // in the method below. Looked up by Name, not by a static: TestSetup
+        // statics are not visible from test methods (house lesson, bulk test).
+        Account a = new Account(Name = 'FLS449 Account');
+        insert a;
+    }
+
     private static List<String> fieldApiNames() {
         return new List<String>{
             'Opportunity.Risk_Level__c',
@@ -117,11 +126,14 @@ private class SCRUM449OpportunityRiskFlsTest {
         }
 
         // Business DML under the user: the user can still work with the record
-        // itself (the risk fields are simply not theirs to set). The Account is
-        // created here in System context — this class has no TestSetup (the PSA
-        // inserts must stay in the same transaction as the asserts above).
-        Account a = new Account(Name = 'FLS449 Account');
-        insert a;
+        // itself (the risk fields are simply not theirs to set).
+        // MIXED_DML (measured 2026-10-14, run 707WU00001Nl2Tv): inserting the
+        // Account HERE failed with "DML operation on setup object ... Account,
+        // original object: PermissionSetAssignment" — a setup-object insert may
+        // not follow the non-setup PSA inserts of this transaction. The Account
+        // therefore comes from @TestSetup, its own transaction, and is looked up
+        // by Name here (TestSetup statics are not visible across methods).
+        Account a = [SELECT Id FROM Account WHERE Name = 'FLS449 Account' LIMIT 1];
         System.runAs(u) {
             Opportunity o = new Opportunity(
                 Name = 'FLS449 user opp',
