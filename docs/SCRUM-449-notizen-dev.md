@@ -83,3 +83,10 @@ leftovers — not mine, neither commit noch delete.
 - Read back: org report metadata == repo file (comments ignored, python diff True); org timeFrameFilter = INTERVAL_CUSTOM 2000-01-01..2099-12-31.
 - AC12 count now: Risk_Level__c = 'High' AND StageName NOT IN (Closed Won, Closed Lost) -> 14; identical to Risk_Level__c = 'High' AND IsClosed = false -> 14. 13 of them CloseDate 2024-06-12, 1 at 2026-09-01.
 - Open finding (not the blocking item): OpportunityRiskService.recomputeAll() threw 'Operation failed due to fields being inaccessible on Sobject Opportunity' once, when 73 records still needed assessment (batch = DML_CHUNK_SIZE 2000, so one update statement). Single-record updates of the same records (with and without AccountId in the SELECT) and a 2-record batch all succeeded. After the first pass the trigger assesses records on DML, so later recomputeAll calls find dirty=0 and save 0. Cause NOT pinned — do not claim it fixed.
+## SCRUM-450 layout gap (2026-10-15) — record page showed no risk fields
+- Org layout 'Opportunity-Opportunity Layout' retrieved: 39 fields, 0 risk fields; branch file identical; no manifest on the branch had a Layout member (grep Layout manifest/scr449-*.xml -> none).
+- Fix: new <layoutSections> 'Risk Level' inserted after 'Ueberschrittene Abschlusses', shape copied from the house sections (customLabel true, detailHeading true, editHeading true, TwoColumnsLeftToRight). Left column: Risk_Level__c, Risk_Reason__c, Inactive_Days__c. Right: Last_Risk_Evaluation__c, Last_User_Change__c, Highest_Stage_Reached__c. All behavior=Readonly (the mechanism writes them; AC9 forbids hand edits).
+- Manifest manifest/scr449-phase5-layout.xml, house pattern scr440-phase3-layout.xml (Layout member = 'Opportunity-Opportunity Layout').
+- Deploy: validate then start, ID 0AfWU00000cFfIn0AK, Status Succeeded, Layout Changed, 15/15 tests green.
+- Read back: retrieve -> org layout 45 fields (39+6), all six risk fields present, org == repo (comments ignored).
+- Same layout member was used by SCRUM-440 for the same object/gap and rendered on the record page.
