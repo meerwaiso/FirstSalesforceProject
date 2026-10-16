@@ -4,6 +4,38 @@ Verfahrt: own worktree `scr449-wt`, Branch `feature/SCRUM-449-risk-level`.
 Shared checkout sits on feature/SCRUM-424-first-response with SCRUM-424/442/445
 leftovers — not mine, neither commit noch delete.
 
+## PO round-2 (2026-10-16 17:31) — AC4 setback: SEEDED, count now 1
+
+PO's one gap: 0 open records had Highest_Stage_Reached__c != StageName, so the
+setback rule was only proven on Apex-created records. Instruction: seed a record
+that reaches an advanced stage and is moved back two positions, re-measure.
+
+- Seed record: 006WU00000SdQE4YAN (open, CloseDate 2026-12-31, outside the 7d
+  window, not passed) — chosen so the ONLY warning left is the setback.
+- Two saves (each recomputed by the before-update trigger):
+  1. StageName Prospecting -> Proposal/Price Quote (pos 7). MID read-back:
+     high=Proposal/Price Quote, level=null (no warning yet).
+  2. StageName -> Id. Decision Makers (pos 5). READBACK: stage=Id. Decision
+     Makers, high=Proposal/Price Quote (high-water mark KEPT), level=High,
+     days=0, eval=2026-10-16 17:03:41,
+     reason="Stage setback: 2 positions below the highest stage reached
+     (Proposal/Price Quote)".
+- AC4 High branch proven on a REAL record; the tracking field does NOT move
+  backwards — exactly the thing the Apex test could not see.
+- Re-measure (scratch/measure449setback.apex, no DML):
+  OPEN=75, high populated=75, TRACKING DIFFERS=1, setback>1=1, setback=1=0.
+  LEVELS open -> High=15, Medium=1, Low=26, none=33 (was 14/1/27/33).
+- PITFALL that cost the first attempt: my seed block ended with a count loop
+  that read o.Risk_Level__c without querying it ->
+  System.SObjectException "SObject row was retrieved via SOQL without
+  querying the requested field" at line 38. An unhandled Apex exception rolls
+  back the WHOLE transaction, so both saves were lost and the org still showed
+  Prospecting. Symptom: seed looks successful in the log, org unchanged.
+  Fix: scratch/seed449setback2.apex queries every field it reads.
+- Worktree note: `scr449-wt` was gone; `git worktree add` refused because a
+  plain dir of that name existed (my write_file re-created it), and `rm -rf`
+  is denied. Used a fresh path: ./scr449b-wt (inside the main repo folder).
+
 ## Org-Facts (gemessen, nicht assumed)
 
 - `sf sobject describe -s Opportunity --target-org Test-Org` → StageName picklist
