@@ -64,3 +64,14 @@ The nightly sweep has never run end-to-end: Test-Org holds 0 ScheduledJob record
 - Prod-Org: still 0 of the four fields (FieldDefinition query, -o Prod-Org). No release note.
 - master head 41705cb; CI runs 38887500138 and 38889069341 both success on all four jobs (Prod-Org Drift Gate success).
 - Verdict: NOT accepted. AC4 untested -> handed to developer-agent, column Implementierung.
+
+## Round-4 acceptance (measured 2026-10-16 22:3x, Test-Org) — ACCEPTED, moved to Release
+
+- Open 75: 15 High / 1 Medium / 26 Low / 33 none (sums to 75). Closed 54, 0 with a level.
+- AC4 now real: 006WU00000SdQE4YAN, StageName Id. Decision Makers vs Highest_Stage_Reached__c Proposal/Price Quote, level High, Inactive_Days 0, reason names the setback and quotes the high-water stage.
+- Trap: `StageName <> Highest_Stage_Reached__c` in a WHERE returns 0 rows even though the record above differs. Picklist-to-picklist comparison in WHERE is not a reliable filter — read the records back instead of counting them this way.
+- Open with Inactive_Days__c > 14: 52 (was 40 before the sweep ran; the sweep re-evaluated without saves).
+- Stale levels: 0. My filter (no setback clause) returned 2 candidates; both carry a real warning (the setback record + SCRUM449_live_proof close-date-within-7-days).
+- Residual: 0 records with a setback of exactly 1 position -> that AC4 half is Apex-only. Data gap, not a release blocker.
+- Prod-Org: 0 of the six fields. No release note yet; write it on the green Prod deploy report.
+- Board after acceptance: status Release, assignee devops-agent (read back from the update response).
