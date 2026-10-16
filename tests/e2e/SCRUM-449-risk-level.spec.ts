@@ -26,7 +26,10 @@ import { execSync } from 'node:child_process';
  *   - Rows live in a CLOSED shadow root: innerTxt() returns "" for them, ariaSnapshot()
  *     is the read that works. Each cell renders VALUE BEFORE LABEL
  *     ("24 Locked Inactive Days High Locked Risk Level"), so no adjacency regex.
- *   - Row 0 is the header row; 14 records => 15 rows.
+ *   - Row 0 is the header row; the DOM renders at most 14 data rows (first page,
+ *     VERIFIED 2026-10-16: the Account list view with 50 items also renders 14).
+ *     Organisation-wide scope is therefore asserted via the header's "Select N
+ *     items" count, NOT via the rendered row count.
  */
 
 const RISK_LEVEL_LABEL = 'Risk Level';
@@ -110,7 +113,13 @@ test.describe('[SCRUM-449] AC7/AC8 — closed or healthy records carry no risk l
     const rows = await listRows(page);
     const rowCount = await rows.count();
     expect(rowCount).toBeGreaterThan(1);
-    expect(rowCount).toBe(highOpen.length + 1); // +1 header row
+    // The header's own item count must equal the org's High+open count: a closed
+    // record leaking into the view would state MORE than the org query.
+    // (Rendered rows cap at 14 — Lightning's first page, VERIFIED 2026-10-16.)
+    const head0 = await rows.nth(0).ariaSnapshot();
+    const stated = Number((head0.replace(/\s+/g, ' ').match(/Select (\d+) items/) || [, '0'])[1]);
+    expect(stated).toBe(highOpen.length);
+    expect(stated).toBeGreaterThan(0);
 
     // And every listed row carries a level — a closed record has none.
     for (let i = 1; i < rowCount; i++) {
@@ -152,6 +161,44 @@ test.describe('[SCRUM-449] AC2/AC5 — Medium from two warnings, on a REAL org r
   });
 });
 
+test.describe('[SCRUM-449] AC4 — a stage setback is flagged on a REAL record', () => {
+  test.setTimeout(180000);
+  test('a record moved back below its highest stage reached shows High and names the setback', async ({ page }) => {
+    // Round 4 (2026-10-16): the PO demanded AC4 on real data — 0 org records had
+    // ever moved to an earlier stage, so the rule was proven only on records an
+    // Apex test creates and deletes. The Developer seeded 006WU00000SdQE4YAN
+    // (Proposal/Price Quote pos 7 -> Id. Decision Makers pos 5, setback 2).
+    // The org read-back of the high-water field is done HERE, in the test, so a
+    // red run can only mean the record PAGE does not show it.
+    const ORDER = ['Prospecting', 'Qualification', 'Needs Analysis', 'Value Proposition',
+      'Id. Decision Makers', 'Perception Analysis', 'Proposal/Price Quote',
+      'Negotiation/Review', 'Closed Won', 'Closed Lost'];
+    const open = soql('SELECT Id, Name, StageName, Highest_Stage_Reached__c FROM Opportunity WHERE IsClosed = false');
+    const setback = open.filter((r) => r.Highest_Stage_Reached__c && r.Highest_Stage_Reached__c !== r.StageName
+      && ORDER.indexOf(r.Highest_Stage_Reached__c) > ORDER.indexOf(r.StageName));
+    expect(setback.length).toBeGreaterThan(0); // 0 records = criterion UNTESTED, not a pass
+    const rec = setback[0];
+    const positionsDown = ORDER.indexOf(rec.Highest_Stage_Reached__c) - ORDER.indexOf(rec.StageName);
+    expect(positionsDown).toBeGreaterThan(1); // AC4: >1 position = High, not a warning
+
+    const lvl = soql(`SELECT Id, Risk_Level__c, Risk_Reason__c, Inactive_Days__c FROM Opportunity WHERE Id = '${rec.Id}'`)[0];
+    expect(lvl.Risk_Level__c).toBe('High');
+    expect(lvl.Risk_Reason__c).toMatch(/setback/i);
+
+    await openRecordDetails(page, `/lightning/r/Opportunity/${rec.Id}/view`);
+    const snap = await page.locator('body').first().ariaSnapshot();
+
+    // Absence IS the failure — no conditional skip.
+    expect(snap).toContain(RISK_LEVEL_LABEL);
+    expect(snap).toContain(RISK_REASON_LABEL);
+    expect(snap).toMatch(new RegExp(`${RISK_LEVEL_LABEL}\\D+High|High\\D+${RISK_LEVEL_LABEL}`));
+    expect(snap).toContain(lvl.Risk_Reason__c.slice(0, 40));
+    // The reason must name the setback AND quote the highest stage reached.
+    expect(snap).toMatch(/setback/i);
+    expect(snap).toContain(rec.Highest_Stage_Reached__c);
+  });
+});
+
 test.describe('[SCRUM-449] AC10/AC12 — usable as filter, organisation-wide', () => {
   test.setTimeout(240000);
   test('the deployed list view lists every High-risk open record', async ({ page }) => {
@@ -166,10 +213,15 @@ test.describe('[SCRUM-449] AC10/AC12 — usable as filter, organisation-wide', (
     const rowCount = await rows.count();
     // Absence of the rows IS the failure.
     expect(rowCount).toBeGreaterThan(1);
-    // The view must show the SAME records the org holds — not a user-scoped subset.
-    expect(rowCount).toBe(recs.length + 1); // +1 header row
 
     const header = await rows.nth(0).ariaSnapshot();
+    // Organisation-wide scope is proven by the view's OWN item count, not by the
+    // number of rendered rows: Lightning renders only the first page (VERIFIED
+    // 2026-10-16 — the Account list view with 50 items also renders 14 rows).
+    // A user-scoped filter would state a smaller count than the org query.
+    const stated = Number((header.replace(/\s+/g, ' ').match(/Select (\d+) items/) || [, '0'])[1]);
+    expect(stated).toBe(recs.length);
+    expect(stated).toBeGreaterThan(0);
     expect(header).toContain(RISK_LEVEL_LABEL);
     expect(header).toContain(INACTIVE_DAYS_LABEL);
     expect(header).toContain(RISK_REASON_LABEL);
