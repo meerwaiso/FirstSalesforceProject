@@ -8,8 +8,9 @@ name: CI
 on:
   pull_request:
     branches: [master]
-  push:
-    branches: [master]
+  # Kein eigener Lauf nach dem Merge auf master (seit 16.10.2026, Wunsch von @user):
+  # jede Aenderung ist im Pull Request schon geprueft. Fuer eine Nachpruefung von master
+  # bleibt workflow_dispatch unten.
   # Erlaubt einen Lauf per Knopfdruck (Actions-Tab oder `gh workflow run CI`),
   # um das Gate zu pruefen, ohne dafuer committen zu muessen
   workflow_dispatch:
