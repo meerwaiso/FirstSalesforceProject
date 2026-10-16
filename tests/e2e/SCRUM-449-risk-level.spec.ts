@@ -121,6 +121,37 @@ test.describe('[SCRUM-449] AC7/AC8 — closed or healthy records carry no risk l
   });
 });
 
+test.describe('[SCRUM-449] AC2/AC5 — Medium from two warnings, on a REAL org record', () => {
+  test.setTimeout(180000);
+  test('a record carrying two warnings shows Medium, its days and both reason clauses', async ({ page }) => {
+    // Round 3 (2026-10-16): the PO demanded Medium be measured against real data,
+    // not only against records an Apex test creates and cleans up. The Developer
+    // seeded one reversible record (006WU00000SGHxeYAH). A zero count here is
+    // UNTESTED, not a pass — hence the explicit count assertion below.
+    const medium = soql(
+      "SELECT Id, Name, Risk_Level__c, Risk_Reason__c, Inactive_Days__c " +
+      "FROM Opportunity WHERE IsClosed = false AND Risk_Level__c = 'Medium'",
+    );
+    expect(medium.length).toBeGreaterThan(0); // 0 records = criterion untested
+    const rec = medium[0];
+    expect(Number(rec.Inactive_Days__c)).toBeGreaterThan(14); // C1 inactivity warning
+
+    await openRecordDetails(page, `/lightning/r/Opportunity/${rec.Id}/view`);
+    const snap = await page.locator('body').first().ariaSnapshot();
+
+    // Absence IS the failure — no conditional skip.
+    expect(snap).toContain(RISK_LEVEL_LABEL);
+    expect(snap).toContain(RISK_REASON_LABEL);
+    expect(snap).toContain(INACTIVE_DAYS_LABEL);
+    expect(snap).toMatch(new RegExp(`${RISK_LEVEL_LABEL}\\D+Medium|Medium\\D+${RISK_LEVEL_LABEL}`));
+    expect(snap).toMatch(new RegExp(`${INACTIVE_DAYS_LABEL}\\D+${rec.Inactive_Days__c}|${rec.Inactive_Days__c}\\D+${INACTIVE_DAYS_LABEL}`));
+    // AC2: the reason must name the close-date situation, AC5: and the inactivity.
+    expect(rec.Risk_Reason__c).toMatch(/Inaktivity/i);
+    expect(rec.Risk_Reason__c).toMatch(/close date/i);
+    expect(snap).toContain(rec.Risk_Reason__c.slice(0, 40));
+  });
+});
+
 test.describe('[SCRUM-449] AC10/AC12 — usable as filter, organisation-wide', () => {
   test.setTimeout(240000);
   test('the deployed list view lists every High-risk open record', async ({ page }) => {

@@ -82,3 +82,12 @@ written ONLY by the system. 12 ACs. Counting rule: every AC needs real records, 
 - VERDICT ROUND 2: 12/12 PASS -> SCRUM-449 to devops-agent, column
   "Deployment" (transition_id 4). SCRUM-450 resolved (fix verified in org +
   UI) -> "Erledigt" (transition_id 41).
+
+## Re-test round 3 (2026-10-16, head ccfc773)
+- Board read back: SCRUM-449 "Testen", assignee tester-agent. PO handed back with 2 gaps; dev closed both (head ccfc773).
+- Diff 52c61ab..ccfc773 touches: ci.yml (from the SCRUM-448 merge), SCRUM445DiscountApprovalTest (SCRUM-448 fixture fix), docs. SCRUM449 Apex classes UNCHANGED -> the 17/17 Apex result (op 0AfWU00000cEkjT0AS) still stands, not re-run (test budget).
+- Org counts re-measured 2026-10-16: open 75; High 14, Medium 1, Low 27, none 33; closed-with-level 0.
+- AC5 Medium now measurable on REAL data: record 006WU00000SGHxeYAH, Medium, Inactive_Days 20, reason names Inaktivity + close-date situation.
+- New E2E describe block AC2/AC5 added (Medium on the real record, count>0 asserted). Suite: smoke 2/2, spec 4/4 green (48.8s).
+- ScheduledJob: NOT queryable by me. `SELECT ... FROM ScheduledJob` -> INVALID_TYPE via plain AND --use-tooling-api SOQL; Apex `List<ScheduledJob>` -> compile failure "Invalid type". The dev's 0-jobs figure came from their own Tooling call; I could not reproduce it. Report as open item for DevOps (design sec. 11 puts System.schedule on DevOps), not as a defect.
+- Verdict: 12/12 PASS -> handoff to devops-agent, column "Deployment".
