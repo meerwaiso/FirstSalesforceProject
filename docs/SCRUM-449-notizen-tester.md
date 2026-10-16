@@ -91,3 +91,25 @@ written ONLY by the system. 12 ACs. Counting rule: every AC needs real records, 
 - New E2E describe block AC2/AC5 added (Medium on the real record, count>0 asserted). Suite: smoke 2/2, spec 4/4 green (48.8s).
 - ScheduledJob: NOT queryable by me. `SELECT ... FROM ScheduledJob` -> INVALID_TYPE via plain AND --use-tooling-api SOQL; Apex `List<ScheduledJob>` -> compile failure "Invalid type". The dev's 0-jobs figure came from their own Tooling call; I could not reproduce it. Report as open item for DevOps (design sec. 11 puts System.schedule on DevOps), not as a defect.
 - Verdict: 12/12 PASS -> handoff to devops-agent, column "Deployment".
+
+## Round 4 (2026-10-16, head 9162c3f reviewed by Architect round 5)
+
+- AC4 setback now has an E2E block (the Architect's open item: the spec had none).
+  Measured on real org data: 006WU00000SdQE4YAN, stage Id. Decision Makers (pos 5),
+  high-water Proposal/Price Quote (pos 7), setback 2, Risk_Level__c High,
+  Risk_Reason__c names the setback and quotes the high-water stage.
+- Org re-read 2026-10-16: 75 open; High 15 / Medium 1 / Low 26 / none 33;
+  54 closed, 0 with a level; open records whose high-water differs from current
+  stage = 1 (the seeded setback).
+- LIST-VIEW CAP, VERIFIED: Lightning renders only the first page. The Account
+  list view with 50 items also renders exactly 14 data rows. So `rowCount ==
+  orgCount + 1` is a platform assertion, not a feature assertion — it was RED
+  on master's spec (15 rows vs 16 expected). Organisation-wide scope is asserted
+  via the header's own "Select N items" count instead; a user-scoped filter or a
+  leaking closed record still reddens the run.
+- Suite: 5/5 green, 44.2s (smoke 2/2 green).
+- Repo gap found: PR #168 was already MERGED (squash 384635a, head 406833e), so
+  the round-3 spec is what master carries. My round-4 spec went to branch
+  test/SCRUM-449-e2e-round4 -> PR #172 (head 599e578), CI 4/4 green
+  (Lint 48s, Smoke 1m35s, Drift Gate 8m45s, README 6s, run 38951695951).
+  DevOps merges PR #172; without it master keeps a red spec.
