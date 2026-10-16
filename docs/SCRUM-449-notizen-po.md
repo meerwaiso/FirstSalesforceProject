@@ -50,3 +50,17 @@ Granted read-only by `SCRUM449OpportunityRisk` (2 users) and `SCRUM449Opportunit
 ## Open gap (why the story is NOT in Release)
 
 The nightly sweep has never run end-to-end: Test-Org holds 0 ScheduledJob records for `OpportunityRiskScheduler`, and `recomputeAll()` threw `fields being inaccessible on Sobject Opportunity` once with 73 records. A deal that only ages — close date passes with nobody touching it — is assessed by that sweep, not by the trigger. Until it runs, "recalculated automatically" is proven only for records that get saved.
+
+## Round-3 addendum (measured 2026-10-16, Test-Org)
+
+- Open 75; levels 14 High / 1 Medium / 27 Low / 33 none. Closed 54, 0 with a level.
+- Reason categories over the 42 levelled open records: inactivity 40, close-date-passed 14, unrealistic-close-date 2, **stage setback 0**.
+- Highest_Stage_Reached__c populated on all 75 open records and EQUAL to StageName on all 75 -> the tracking field is live, but 0 records ever moved backwards. AC4 untested on real data.
+- Nightly sweep confirmed: 36 open records share Last_Risk_Evaluation__c 2026-10-15T21:49:31, 3 at 22:04:44, 1 at 22:27:54. Round-2 gap 1 closed.
+- Open with Inactive_Days__c > 14: 40 (matches the 40 inactivity reasons exactly).
+- Open with a level but no warning applicable: 0 (no stale levels).
+- Medium record: TEST-DBG, Id 006WU00000SGHxeYAH, Inactive_Days 21, CloseDate 2026-10-19, StageName Prospecting, reason names both clauses.
+- FLS: all four visible fields read-only for 2 users; the write-capable PS is assigned to the CLI user only.
+- Prod-Org: still 0 of the four fields (FieldDefinition query, -o Prod-Org). No release note.
+- master head 41705cb; CI runs 38887500138 and 38889069341 both success on all four jobs (Prod-Org Drift Gate success).
+- Verdict: NOT accepted. AC4 untested -> handed to developer-agent, column Implementierung.
