@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-449 PROD release package. DevOps-Agent 2026-10-17.
+
+     House pattern: scr414-prod-release.xml / scr413-prod-release.xml (one manifest
+     per Prod release, named scrNNN-prod-release.xml).
+
+     Measured Prod-Org state on 2026-10-17 (queries below, all -o Prod-Org):
+       FieldDefinition Opportunity (6 risk fields)          -> 6 rows  (live)
+       ApexClass OpportunityRisk* / SCRUM449*               -> 5 rows  (live)
+       ApexTrigger OpportunityRiskTrigger                   -> 1 row   (live)
+       PermissionSet SCRUM449%                              -> 2 rows  (live)
+       Report Sales/Hoeh_Risk_Chancen                       -> 1 row   (live)
+       Layout Opportunity-Opportunity Layout (6 risk fields)-> live
+       ListView Opportunity.Hoeh_Risk_Chancen               -> 0 rows  (MISSING)
+
+     So the package carries the WHOLE feature (redeploying the already-live parts is
+     an update, not a new component) and closes the one real gap: the AC12 list view.
+     Nothing is excluded: no component of this ticket references a field that is
+     absent from Prod (unlike scr414, whose Is_Inactive__c had no Prod counterpart).
+     Version 67.0 = the CLI's own metadataRegistry version, copied from the
+     per-phase manifests that already deployed from this repo.
+-->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Opportunity.Risk_Level__c</members>
+        <members>Opportunity.Risk_Reason__c</members>
+        <members>Opportunity.Inactive_Days__c</members>
+        <members>Opportunity.Last_Risk_Evaluation__c</members>
+        <members>Opportunity.Last_User_Change__c</members>
+        <members>Opportunity.Highest_Stage_Reached__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>OpportunityRiskService</members>
+        <members>OpportunityRiskHandler</members>
+        <members>OpportunityRiskScheduler</members>
+        <members>SCRUM449OpportunityRiskTest</members>
+        <members>SCRUM449OpportunityRiskFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>OpportunityRiskTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <types>
+        <members>SCRUM449OpportunityRisk</members>
+        <members>SCRUM449OpportunityRiskWrite</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Opportunity.Hoeh_Risk_Chancen</members>
+        <name>ListView</name>
+    </types>
+    <types>
+        <members>Sales/Hoeh_Risk_Chancen</members>
+        <name>Report</name>
+    </types>
+    <types>
+        <members>Opportunity-Opportunity Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>

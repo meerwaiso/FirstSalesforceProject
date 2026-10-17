@@ -63,7 +63,62 @@ The Tester's open item was "ScheduledJob is not readable from my position". Repr
 - **No CronTrigger named `SCRUM-449 Risk Evaluation`** → the nightly sweep for this feature is NOT scheduled in Test-Org, even though `OpportunityRiskScheduler` is deployed (ApexClass CreatedDate 2026-10-14T19:31:07Z). Design line 301 puts the org step on DevOps: `System.schedule('SCRUM-449 Risk Evaluation', '0 0 4 * * ?', new OpportunityRiskScheduler())`.
 - The design's own collision question (design line 322) answers YES: the `0 0 4 * * ?` slot is taken by SCRUM-442 Satisfaction (`08eWU00000rLDgnYAG`, TimesTriggered 6). A free slot is needed at the org step — no org write done by me yet.
 
-## Not done / not authorised
+## Round 5 — Prod-Org release (2026-10-17, authorised)
 
-- Prod-Org deployment: NOT started. Ticket is in "Deployment", not "Release". PO must move it to "Release" and assign it to me; only then `sf project deploy validate --manifest manifest/package.xml` and the 3-phase Prod deploy, plus the `System.schedule` org step in Prod-Org.
-- Release tag `release/2026-10-16-SCRUM-449` belongs to the Prod deploy, not now.
+Board read back before the work (`jira_get_issue`, fields=status,assignee): SCRUM-449 **status "Release"**, **assignee devops-agent** — both Prod gate conditions hold at once. Updated 2026-10-16 22:39 CEST (PO handoff).
+
+### Prod-Org state measured BEFORE the deploy (all `-o Prod-Org`)
+
+The feature was already partly live in Prod — a Prod deploy had run on 2026-10-16 21:47–21:49 UTC (ApexTrigger `OpportunityRiskTrigger` CreatedDate 2026-10-16T21:49:48Z, both PermissionSets 21:47:14/21:49:49Z). Measured rows:
+
+| query | rows |
+|---|---|
+| `FieldDefinition` Opportunity, 6 risk fields | 6 (live) |
+| `ApexClass` OpportunityRisk* / SCRUM449* | 5 (live) |
+| `ApexTrigger OpportunityRiskTrigger` | 1 (live) |
+| `PermissionSet SCRUM449%` | 2 (live) |
+| `Report Sales/Hoeh_Risk_Chancen` | 1 (live) |
+| `Layout Opportunity-Opportunity Layout` (retrieve, 6 risk `<field>` entries) | live |
+| `ListView` exact `Name = 'Hoeh Risk Chancen'` | **1 (live)** |
+
+**Trap that cost me a wrong premise:** `ListView.Name` is the **label**, not the API name. `WHERE Name LIKE 'Opportunity%'` → 0 rows and reads like "not deployed"; the same view is one row under `Name = 'Hoeh Risk Chancen'`. `retrieve --metadata "ListView:Opportunity.Hoeh_Risk_Chancen"` returns no `.listView` file at all — it returns `objects/Opportunity.object` with the `<listViews>` block. Read the object file, not the missing component file.
+
+### Validation + deploy (house 3-phase)
+
+- Manifest authored: `manifest/scr449-prod-release.xml` (house pattern of `scr414-prod-release.xml`), 17 members, version 67.0. Nothing excluded — unlike scr414, no member of this ticket references a field Prod lacks.
+- `sf project deploy validate -x manifest/scr449-prod-release.xml -o Prod-Org --test-level RunRelevantTests --concise --json` → **job 0Afg500000FvE5eCAF, 17/17 components, 0 errors**.
+- `sf project deploy start -x … -o Prod-Org --test-level NoTestRun --json` → **job 0Afg500000FvGc6CAF, status Succeeded, 17/17, 0 errors, 0 tests** (NoTestRun by design — see below).
+- `sf apex run test -o Prod-Org --tests SCRUM449OpportunityRiskTest --tests SCRUM449OpportunityRiskFlsTest` → **run 707g500000s6C7S, 19/19 Pass, 100%, org 00Dg500000DkTtzEAF, user devops-agent@cline.de**. Includes the negative-access test `riskFields_invisibleWithoutPS_readableNotWritableWithPS` (17.7 s) and `writePS_neverAssignedToHumanProfiles`.
+
+**Why the 3-phase split is mandatory here:** an inline `--test-level RunSpecifiedTests` Prod deploy fails for a new-field release — the new-field test runs in admin mode and answers `No such column` (SCRUM-436: 8 VerifyTests), even when the deploy user is System Admin. `NoTestRun` + a separate `sf apex run test` is the fix.
+
+### Read-backs after the deploy (all `-o Prod-Org`)
+
+- `PermissionSetAssignment WHERE PermissionSet.Name LIKE 'SCRUM449%'` → **3 rows**: `devops-agent@cline.de` × both PS, `meerwais.osmani.3ecaf61ebe28@agentforce.com` (the only real Prod end user, System Admin) × `SCRUM449OpportunityRisk` (read PS). Write PS deliberately NOT assigned to the human profile — matches the passing `writePS_neverAssignedToHumanProfiles`.
+- FLS read-back through a real session: `sf data query -q "SELECT … Risk_Level__c, Inactive_Days__c, Last_Risk_Evaluation__c …" -o Prod-Org` returns values → the read PS grants the fields to the CLI user.
+- `Layout` retrieve → all 6 risk fields present. `Report` retrieve → columns `Opportunity.Risk_Level__c`, `Opportunity.Risk_Reason__c`, `Opportunity.Inactive_Days__c` + the 5 standard ones.
+- `ListView` exact-name query → 1 row, label "Hoeh Risk Chancen".
+
+### Org step: the nightly sweep (Scheduled Jobs are runtime, not metadata)
+
+Design line 301 puts `System.schedule('SCRUM-449 Risk Evaluation', '0 0 4 * * ?', new OpportunityRiskScheduler())` on DevOps. **In Prod-Org that job already exists and is live** — no org write was needed:
+
+```
+08eg500000MJiK3AAL | 08ag500000MIYY3AAP SCRUM-449 Risk Evaluation
+  cron 0 0 4 * * ? | State WAITING | CreatedDate 2026-10-16T22:02:20.000+0000
+  Owner/CreatedBy 005g5000009C4M4AAK = devops-agent@cline.de
+  NextFireTime 2026-10-17T11:00:00+0000 | PreviousFireTime null | TimesTriggered 0
+```
+
+- `CronTrigger` IS reachable via `sf data query -q … -o <org>` **without** `-t`. With `--use-tooling-api` (`-t`) it fails: `sObject type 'CronTrigger' is not supported`. The earlier Test-Org read used `-t`; that flag is what broke it, not the org.
+- `CronJobDetail` has no `Type` and no `CreatedDate` column — `SELECT Id, Name` is the working shape.
+- Prod slot map (8 jobs): 01:00 SCRUM436-Reminder, 02:00 SCRUM-388, 03:00 SCRUM-417, 04:00 **SCRUM-449**, 05:00+20:00 Metalytics, 06:00 SCRUM-319, 01:36 weekly Metalytics, 06/11/16/23 quarter-hourly Metalytics. The `0 0 4` collision the design asked about (line 322) exists **in Test-Org only** (SCRUM-442 Satisfaction `08eWU00000rLDgnYAG`); Prod has no SCRUM-442 cron, so the design slot was free and is now taken by this feature.
+- `TimesTriggered 0` is expected: created 2026-10-16 22:02 UTC, first fire 2026-10-17 11:00 UTC (= 04:00 America/Los_Angeles, the org's TimeZoneSidKey).
+
+### Still open, not mine
+
+Test-Org has **no** `SCRUM-449 Risk Evaluation` CronTrigger (5 jobs there: Metalytics, SCRUM-417, SCRUM-319, SCRUM-438 SLA, SCRUM-442 Satisfaction). The nightly sweep is live in Prod but missing in Test-Org — the Tester's AC on the scheduled sweep cannot be exercised in Test-Org until that job is created there. Not a Prod blocker; filed as a finding, not fixed by me (Test-Org org writes belong to Developer/Tester).
+
+### Release tag
+
+`release/2026-10-17-SCRUM-449` → annotated tag on the release commit, pushed with it. Tag date is the deploy date (2026-10-17), not the PO handoff date.
