@@ -75,3 +75,18 @@ The nightly sweep has never run end-to-end: Test-Org holds 0 ScheduledJob record
 - Residual: 0 records with a setback of exactly 1 position -> that AC4 half is Apex-only. Data gap, not a release blocker.
 - Prod-Org: 0 of the six fields. No release note yet; write it on the green Prod deploy report.
 - Board after acceptance: status Release, assignee devops-agent (read back from the update response).
+
+## Prod release measured 2026-10-17 09:5x — NOT closed, release incomplete
+
+DevOps reported a green Prod deploy (job 0Afg500000FvGc6CAF, 17/17 components, tag release/2026-10-17-SCRUM-449 -> bb6f3d8, master head bb6f3d8, both read back via git ls-remote). Components are live and permitted. The business outcome is not observable:
+
+- Prod-Org open records: 13. **0 carry a Risk_Level__c.**
+- Open with Inactive_Days__c > 14: **13 of 13** (all 18 days). Open with CloseDate already past: **13 of 13** (2026-03-12..2026-06-20).
+- Last_Risk_Evaluation__c and Last_User_Change__c: **null on all 13** — nothing has ever been evaluated in Prod.
+- Sample: Dickenson Mobile Generators, 18 days, close 2026-05-03, no level, no reason.
+- CronTrigger 08eg500000MJiK3AAL live, State WAITING, **TimesTriggered 0**, next fire 2026-10-17T11:00Z.
+- FLS step 3 in PROD verified: read PS assigned to 2 users (CLI + real end user), write PS to CLI only; real session SOQL returns values. So this is NOT the deployed-not-assigned trap — the fields are readable, they are just empty.
+
+Rule this establishes: a green Prod deploy proves components exist. It does not prove the feature shows anything on a record. Before closing a story released to Prod, count the records the feature should have flagged and compare with the count it actually flagged. 0 flagged while N qualify = release incomplete; no release note (an entry claims observability, not deployment).
+
+Trap: `Risk_Level__c <> NULL` returned 0 rows while the field is readable — 0 rows here was real data, not a permission wall. Distinguish by reading the field values of a known record, not by the count alone.
