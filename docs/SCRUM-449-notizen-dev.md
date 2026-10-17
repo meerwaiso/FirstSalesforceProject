@@ -132,3 +132,27 @@ that reaches an advanced stage and is moved back two positions, re-measure.
 - Gap 2, real Medium data seeded (Test-Org, reversible, one record 006WU00000SGHxeYAH, Prospecting): STEP1 CloseDate 2027-03-01 -> 2026-10-19 (a user-editable change, so the anchor moved to now), STEP2 Last_User_Change__c = now-20d written alone (not user-editable, so the value survives). Read back from the org: Risk_Level__c=Medium, Inactive_Days__c=20, Risk_Reason__c='Inaktivity: 20 days without user change;Unrealistic close date: CloseDate 2026-10-19 within the next 7 days while still in an early stage (Prospecting)'. Re-measure after seeding: High=14 Medium=1 Low=27 none=33, drift=0.
 - ScheduledJob creation NOT done by me: design section 11 puts System.schedule(...) on DevOps; Test-Org still holds 0 ScheduledJob records for OpportunityRiskScheduler.
 - FLS note found while probing: PermissionSetAssignment WHERE Field LIKE '%Last_User_Change%' -> 0 rows, yet the anchor writes succeed for the CLI user. The anchor field is written by the mechanism, not by users; the read/write grants come from the object CRUD on the profile, not from a field-level grant.
+
+## Round 7 (2026-10-17) — Architect round-6 rejection: the sweep must survive an invisible field
+The Prod nightly sweep failed: `System.DmlException: Operation failed due to fields being inaccessible on Sobject Opportunity`
+- Route 1 (DevOps, Prod): AsyncApexJob 707g500000ryLVDAA2, CronTrigger 08eg500000MJiK3AAL fired, 13/13 open Prod records still null.
+- Route 2 (DevOps, Prod, synchronous): recomputeAll() as the CLI user -> same DmlException.
+Root cause read from the org: line 94 `if (now.TestFeld__c != was.TestFeld__c) return true;` — TestFeld__c is SCRUM-315's field.
+FLS read-backs with scripts/fls-check.sh (canonical 3-query chain):
+- Test-Org  TestFeld__c: exists Text(255), granted by 28 PROFILES (incl. Standard User) -> visible. That is why the sweep ran there.
+- Prod-Org TestFeld__c: exists Text(255), FieldPermissions KEINE, no PS and no Profile -> invisible to ALL users incl. Sys-Admin. That is the wall.
+- Rueckruf_desired__c / Discount_in_Pct__c / Rejection_Reason__c: granted by PSs (SCRUM440_Rueckrufwunsch; SCRUM445_Discount_Owner/_Read; SCRUM445_Discount_Manager/_Read), 2 users in BOTH orgs.
+Fix (NOT the per-org drop the round-6 rejection called out): guard every foreign comparison by the ACTING user's accessibility.
+- Service: `refreshForeignVisibility()` fills Map<String,Boolean> foreignVisible with `Opportunity.<Field>.getDescribe().isAccessible()`; `foreignVisibleToUser(apiName)` reads it. Handler calls refreshForeignVisibility() ONCE per transaction before the record loop (accessibility belongs to the acting user; the acting user differs between UI save, API call and the scheduler).
+- getDescribe() on a typed Field reference does NOT throw for an invisible field -> isAccessible()=false (house pattern, SCRUM449OpportunityRiskFlsTest). `Opportunity.Field f = Opportunity.X__c;` compiles for a granted field; it does NOT compile for Is_Inactive__c (0 grants) -> a name with no grant anywhere cannot even be referenced, so the guard is for per-user invisibility, not for org-absence.
+- MeinNeuesFeld__c stays unreferenced: exists only in Test-Org, a reference is a COMPILE error in Prod (Drift Gate "Variable does not exist").
+Design doc: new section 5b "Changed by a user — org-independent definition" (Blocking 3 asked for the reason in the design/ADR, stated once and org-independently).
+Deploys (Test-Org, house order: helper ALONE first, then consumers):
+- validate manifest/scr449-phase2a-service.xml --test-level RunRelevantTests -> Succeeded 0AfWU00000cIzgf0AC, 127/127 tests.
+- deploy start same -> 0AfWU00000cIzlV0AS, Succeeded, 127/127.
+- new manifest/scr449-round7-fix.xml (Handler only; Scheduler+Trigger bodies unchanged, PSs unchanged and already assigned) -> 0AfWU00000cJ0EX0A0, Succeeded, 127/127.
+- Read-back that the NEW class is live: `sf project retrieve start -m ApexClass:OpportunityRiskService -o Test-Org -t scratch/retrieve2 --unzip` -> org source has refreshForeignVisibility 3x, TestFeld__c guarded at line 143 (org 16,7xx chars vs Prod 15,9xx with the live comparison).
+New tests in SCRUM449OpportunityRiskFlsTest (Blocking 4):
+- sweep_survivesForeignFieldInvisibleToActingUser: user with ONLY the two SCRUM449 PSs; preconditions assert Rueckruf_desired__c/Discount_in_Pct__c/Rejection_Reason__c INVISIBLE and Risk_Level__c visible (so the run cannot pass vacuously), then recomputeAll() under runAs(u) must not throw, and open/stamped/anchored counts must be equal (counted, not assumed).
+- userEditOfGrantedForeignField_movesAnchor: Standard User edits TestFeld__c in Test-Org (precondition: accessible AND updateable there) -> Last_User_Change__c must move. The guard must not swallow a real user change.
+License note: `insert u` for a fresh User can hit LICENSE_LIMIT_EXCEEDED in Test-Org (measured twice in scratch probes); inside the test runner the same inserts work (the existing FLS test does them).

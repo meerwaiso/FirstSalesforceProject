@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-449 round 7 (Architect round-6 rejection): the nightly sweep must
+         survive a custom field that is invisible to the acting user. The SERVICE
+         already landed alone in its own deploy (house lesson: helper first,
+         consumers compile against the OLD live helper otherwise). This manifest
+         carries the CONSUMERS of the changed service only — the two Permission
+         Sets are unchanged and already deployed and assigned, so they stay out
+         of this batch. -->
+    <!-- Only the HANDLER changed (it now refreshes the foreign-field visibility
+         map once per transaction). The Scheduler and the Trigger bodies are
+         unchanged in this round, so they are not re-uploaded. -->
+    <types>
+        <members>OpportunityRiskHandler</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

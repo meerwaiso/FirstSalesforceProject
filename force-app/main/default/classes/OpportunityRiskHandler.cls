@@ -40,6 +40,12 @@ public without sharing class OpportunityRiskHandler {
         //      reason). Those fire this trigger with the flag false; the diff
         //      against Trigger.oldMap is what keeps them from resetting the
         //      counter. Review SCRUM-449 Blocking 1.
+        // The foreign-field visibility map is refreshed ONCE per transaction
+        // here — accessibility belongs to the acting user, and the acting user
+        // differs between a UI save, an API call and the nightly scheduler.
+        // Without this the service would refresh lazily on the first record;
+        // refreshing here makes the cost explicit and independent of chunk size.
+        OpportunityRiskService.refreshForeignVisibility();
         for (Opportunity o : newRecords) {
             Opportunity was = oldMap.get(o.Id);
             if (was == null) {

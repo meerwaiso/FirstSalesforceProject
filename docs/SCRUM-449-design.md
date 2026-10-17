@@ -177,6 +177,71 @@ Reason text (255 chars, German, one clause per condition, must name each):
 
 ---
 
+## 5b. "Changed by a user" — org-independent definition (round 6, Blocking 3)
+
+The PO rule is: an update counts as a user change only when it changes something
+a **user** can actually do. The implementation compares a fixed list of fields
+(`userEditedRecord`). That list mixes three kinds of field, and the rule must
+mean the same thing in every org:
+
+1. **This story's six fields** — never a user-change signal. No human holds
+   edit rights on them (AC9); the mechanism's own writes must not move the
+   anchor. Excluded unconditionally.
+2. **Fields another ticket owns** — `TestFeld__c` (SCRUM-315),
+   `Rueckruf_desired__c` (SCRUM-440), `Discount_in_Pct__c` /
+   `Rejection_Reason__c` (SCRUM-445). Nothing in this contract writes them, and
+   nothing in the repo writes them at all. They are a user-change signal
+   **exactly where the acting user can see the field** — so each comparison is
+   guarded by `Field.getDescribe().isAccessible()` for the acting user,
+   refreshed once per transaction (accessibility belongs to the acting user,
+   and the acting user differs between a UI save, an API call and the nightly
+   scheduler).
+3. **A field that does not exist in the org** — `MeinNeuesFeld__c` exists only
+   in Test-Org. A reference to it is a *compile* error in Prod, so no runtime
+   guard can help; it is simply not referenced.
+
+**Why the guard, not a per-org decision.** The first fix dropped
+`TestFeld__c` because Prod-Org grants nothing for it. That is a per-org reason,
+and it makes the rule mean different things in the two orgs: in Test-Org the
+field *is* granted (28 Profiles incl. Standard User), so a user editing it there
+should still move the anchor — and after that fix it no longer did. The guard
+states the rule once: *compare what the acting user can see*. The difference
+between the orgs then comes from the org's own FLS, not from a branch in the
+code. Measured with `scripts/fls-check.sh`:
+
+| field | Test-Org | Prod-Org |
+|---|---|---|
+| `TestFeld__c` | granted by 28 Profiles → compared, moves the anchor | no grant at all → skipped |
+| `Rueckruf_desired__c` | `SCRUM440_Rueckrufwunsch`, 2 users | same, 2 users |
+| `Discount_in_Pct__c` | `SCRUM445_Discount_Owner`/`_Read`, 2 users | same |
+| `Rejection_Reason__c` | `SCRUM445_Discount_Manager`/`_Read`, 2 users | same |
+
+**Why the guard is necessary at all (and why CI does not cover it).** The list
+is a hand-maintained enumeration: Apex has no generic sObject field access here
+(`getField`/`setField`/`getDescribe` on an sObject *value* all reject — probe-
+verified), so the diff is explicit and typed. The next custom field added to
+either org and granted to nobody would otherwise re-break the nightly sweep at
+**runtime**. The Prod-Org Drift Gate does not catch that class: it rejected
+`MeinNeuesFeld__c` because the name does not exist in the org; a name that
+exists but is invisible to the acting user compiles and passes the gate.
+
+**The defect this closes** (measured, two routes, Prod-Org): the nightly sweep
+threw `System.DmlException: Operation failed due to fields being inaccessible
+on Sobject Opportunity` — `AsyncApexJob 707g500000ryLVDAA2` (fired via
+`CronTrigger 08eg500000MJiK3AAL`, changed nothing) and, synchronously,
+`OpportunityRiskService.recomputeAll()` as the CLI user. 13 of 13 open Prod
+records still carried no level.
+
+**Tested by** `SCRUM449OpportunityRiskFlsTest.sweep_survivesForeignFieldInvisibleToActingUser`
+(a user holding only the two SCRUM449 sets, for whom the three SCRUM440/445
+fields are invisible — the Prod shape reproduced in Test-Org, with the
+invisibility asserted as a precondition so the run cannot pass vacuously) and
+`userEditOfGrantedForeignField_movesAnchor` (a Standard User editing
+`TestFeld__c` in Test-Org still moves the anchor — the guard must not have
+swallowed a real user change).
+
+---
+
 ## 6. ADR — Apex, not Flow, not pure formula
 
 **Decision: Apex (trigger + service + scheduler), with one formula field.**
