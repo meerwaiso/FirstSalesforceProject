@@ -91,7 +91,18 @@ public without sharing class OpportunityRiskService {
         if (now.OrderNumber__c != was.OrderNumber__c) return true;
         if (now.CurrentGenerators__c != was.CurrentGenerators__c) return true;
         if (now.MainCompetitors__c != was.MainCompetitors__c) return true;
-        if (now.TestFeld__c != was.TestFeld__c) return true;
+        // TestFeld__c deliberately NOT compared (SCRUM-449 release round, Prod):
+        // the field exists in BOTH orgs (FieldDefinition LIKE '%TestFeld%' -> 1
+        // row each), but in Prod-Org NO Permission Set and NO Profile grants it
+        // (scripts/fls-check.sh Opportunity TestFeld__c Prod-Org -> "KEINE ...
+        // invisible to ALL users, also Sys-Admin"). A user therefore cannot
+        // change it there at all, and reading it in a before-update comparison
+        // hits the FLS wall: the nightly sweep failed with
+        // "Operation failed due to fields being inaccessible on Sobject
+        // Opportunity" (AsyncApexJob 707g500000ryLVDAA2, reproduced
+        // synchronously as recomputeAll()). In Test-Org it is granted by a
+        // Profile, which is why the same sweep ran there. The field belongs to
+        // SCRUM-315, not to this contract; nothing in the repo writes it.
         // MeinNeuesFeld__c deliberately NOT compared: it exists only in Test-Org
         // (no file in origin/master, 0 rows in Prod-Org FieldDefinition) — the
         // Prod-Org Drift Gate rejects the reference as "Variable does not exist".
