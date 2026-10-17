@@ -36,6 +36,48 @@ that reaches an advanced stage and is moved back two positions, re-measure.
   plain dir of that name existed (my write_file re-created it), and `rm -rf`
   is denied. Used a fresh path: ./scr449b-wt (inside the main repo folder).
 
+## Release round (2026-10-17) — Prod nightly sweep failed: TestFeld__c FLS wall
+
+DevOps measured in Prod-Org: AsyncApexJob 707g500000ryLVDAA2 Failed,
+"Operation failed due to fields being inaccessible on Sobject Opportunity";
+reproduced synchronously as recomputeAll(). Root cause they named: line 94
+`if (now.TestFeld__c != was.TestFeld__c) return true;`.
+
+Measured by me (scripts/fls-check.sh, the canonical 3-query chain):
+- Test-Org  TestFeld__c: exists (Text 255), granted by 28 PROFILES -> visible.
+- Prod-Org  TestFeld__c: exists (Text 255), FieldPermissions KEINE ->
+  "invisible to ALL users, also Sys-Admin". No PS, no Profile grants it.
+- The other foreign fields in userEditedRecord ARE granted in Prod:
+  Rueckruf_desired__c (SCRUM440_Rueckrufwunsch, 2 users),
+  Discount_in_Pct__c (SCRUM445_Discount_Owner/Read), Rejection_Reason__c
+  (SCRUM445_Discount_Manager/Read). So TestFeld__c is the only wall.
+- FieldDefinition LIKE '%TestFeld%' -> 1 row in BOTH orgs. My earlier
+  `QualifiedApiName = 'Opportunity.TestFeld__c'` returned 0 rows:
+  FieldDefinition.QualifiedApiName carries the BARE name (TestFeld__c), not
+  the object-qualified one. Query with LIKE or the bare name.
+- Nothing in origin/master writes TestFeld__c; only the field file, the
+  Opportunity layout, and this line reference it. No PS on master names it.
+
+Fix: drop the comparison (field belongs to SCRUM-315, cannot be a user-change
+signal in Prod since no user can edit it there). Same class of bug as the
+MeinNeuesFeld__c line, different wall: MeinNeuesFeld__c does not EXIST in Prod
+(compile reject by the Drift Gate); TestFeld__c EXISTS but is FLS-invisible
+(runtime DmlException).
+
+Deployed to Test-Org: 0AfWU00000cIlIk0AK, 1 component, 0 errors, 17/17 tests.
+Org source read back via retrieve: fix present, TestFeld__c only in comments.
+
+Nightly path re-proven after the fix (scratch/run449scheduler2.apex):
+`new OpportunityRiskScheduler(); job.execute(null)` -> "0 Opportunities
+re-evaluated", no exception. Org consistent: OPEN=75 withLevel=55 High=15
+evalStamp=75 anchor=75.
+
+NOT pinned: the exact record that made the FIRST failing run (52 dirty) throw.
+After the fix, recomputeAll() returns saved=0 (org consistent), and an inline
+copy of the same SELECT+evaluate+update over 51 dirty records passed. The
+failure is not reproducible on the current org state; the Prod failure IS
+reproducible there (DevOps measured it twice).
+
 ## Org-Facts (gemessen, nicht assumed)
 
 - `sf sobject describe -s Opportunity --target-org Test-Org` → StageName picklist
