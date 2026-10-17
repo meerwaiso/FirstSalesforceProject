@@ -122,3 +122,39 @@ Test-Org has **no** `SCRUM-449 Risk Evaluation` CronTrigger (5 jobs there: Metal
 ### Release tag
 
 `release/2026-10-17-SCRUM-449` → annotated tag on the release commit, pushed with it. Tag date is the deploy date (2026-10-17), not the PO handoff date.
+
+## Round 6 — the nightly sweep FAILED in Prod (2026-10-17, measured after the release)
+
+The release was green on metadata and tests, but the CronTrigger's own job failed.
+Measured, not theorised:
+
+- `AsyncApexJob 707g500000ryLVDAA2 | ScheduledApex | Failed | 2026-10-16 22:02:20`
+  — `ExtendedStatus: Operation failed due to fields being inaccessible on Sobject Opportunity`.
+- CronTrigger `08eg500000MJiK3AAL` fired (TimesTriggered 1, PreviousFireTime 2026-10-17 11:00:08Z)
+  and changed nothing: all 13 open Opportunities still `Risk_Level__c = null`.
+- Reproduced synchronously as the CLI user: `OpportunityRiskService.recomputeAll()` → same
+  `System.DmlException`. Not a scheduled-context quirk.
+- A single-field write DOES succeed: `one[0].Risk_Level__c = 'Low'; update one;` → OK
+  (`006g5000005MFyPAAW`). So the wall is in the trigger's field reads, not in the risk fields.
+
+**Root cause, read from the org:** `sf project retrieve start -m ApexClass:OpportunityRiskService
+-o Prod-Org` → Prod source identical to `origin/master` except a trailing newline; line 94:
+`if (now.TestFeld__c != was.TestFeld__c) return true;`. `TestFeld__c` is SCRUM-315's field
+(commit `3c76b17`), **no Permission Set in the repo names it** (grep over all
+`permissionsets/*.permissionset-meta.xml` on master: 0 hits), and it is not among the 26 custom
+fields `sf sobject describe --sobject Opportunity -o Prod-Org` lists.
+
+**Why tests stayed green:** the test classes build records in the factory; the FLS wall only trips
+on a real `update` over org records. Green tests do not cover this path.
+
+**Routed to Developer-Agent** (implementation, not design) — Jira comment 23524, ticket moved to
+"Implementierung" / assignee developer-agent. DevOps does not touch `force-app/`.
+
+**Tool lessons from this round (verified commands):**
+- `System.query()` / `System.queryAllSobjects()` do NOT exist in Apex — compile error. Per-field
+  isolation must be one statement per `sf apex run`, not a loop of `System.query`.
+- `try/catch` does NOT hold an FLS access error: it aborts the transaction regardless.
+- `FieldDefinition` has no `FieldObject` relationship and no `Name` column — use
+  `sf sobject describe --sobject <Obj>` and read the field list instead.
+- `sf project retrieve start -m ApexClass:<Name> -o <org>` returns the org's compiled-source
+  text; diffing it against `origin/master` proves whether the org runs what the repo holds.
