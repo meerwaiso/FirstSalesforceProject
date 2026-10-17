@@ -97,8 +97,14 @@ public without sharing class OpportunityRiskService {
         if (foreignVisible == null) {
             refreshForeignVisibility();
         }
-        Boolean v = foreignVisible.get(apiName);
-        return (v == null) ? true : v;
+        // Architect round-7 open item 1: an UNREGISTERED name must fail loudly.
+        // Defaulting to visible re-opened the runtime wall for the next foreign
+        // field added to userEditedRecord() without registering it here — the
+        // guard is opt-in, so its default was the dangerous value.
+        System.assert(foreignVisible.containsKey(apiName),
+            'foreign field ' + apiName + ' is compared in userEditedRecord() but has no '
+                + 'accessibility entry in refreshForeignVisibility() — register it there');
+        return foreignVisible.get(apiName);
     }
 
     public static Boolean userEditedRecord(Opportunity now, Opportunity was) {

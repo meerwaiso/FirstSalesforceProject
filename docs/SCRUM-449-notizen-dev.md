@@ -156,3 +156,15 @@ New tests in SCRUM449OpportunityRiskFlsTest (Blocking 4):
 - sweep_survivesForeignFieldInvisibleToActingUser: user with ONLY the two SCRUM449 PSs; preconditions assert Rueckruf_desired__c/Discount_in_Pct__c/Rejection_Reason__c INVISIBLE and Risk_Level__c visible (so the run cannot pass vacuously), then recomputeAll() under runAs(u) must not throw, and open/stamped/anchored counts must be equal (counted, not assumed).
 - userEditOfGrantedForeignField_movesAnchor: Standard User edits TestFeld__c in Test-Org (precondition: accessible AND updateable there) -> Last_User_Change__c must move. The guard must not swallow a real user change.
 License note: `insert u` for a fresh User can hit LICENSE_LIMIT_EXCEEDED in Test-Org (measured twice in scratch probes); inside the test runner the same inserts work (the existing FLS test does them).
+
+## Round 8 (Architect round-7 rejection, Blocking 1 + open item 1) — 2026-10-17 night
+Blocking 1: userEditOfGrantedForeignField_movesAnchor reddened the Prod-Org Drift Gate on its OWN precondition (TestFeld readable by Standard User: true in Test-Org, false in Prod-Org). A test must not read one org's Profiles.
+Fix shape (measured before writing):
+- SCRUM440_Rueckrufwunsch exists in BOTH orgs (sf data query -q "SELECT Name FROM PermissionSet WHERE Name LIKE 'SCRUM440%'" -o Test-Org / Prod-Org -> both).
+- FieldPermissions rows in BOTH orgs (fls-check.sh shape: SELECT Parent.IsOwnedByProfile, Parent.Name, PermissionsRead, PermissionsEdit FROM FieldPermissions WHERE SobjectType='Opportunity' AND Field='Opportunity.X' — plain query, NOT with -t: sObject type 'FieldPermissions' is not supported with --use-tooling-api): Parent.Name='SCRUM440_Rueckrufwunsch', Rueckruf_desired__c AND Rueckruf_am__c, read=true edit=true, IsOwnedByProfile=false.
+- Rueckruf_desired__c DataType=Checkbox, Rueckruf_am__c DateTime (FieldDefinition via --use-tooling-api, WHERE EntityDefinition.QualifiedApiName='Opportunity').
+- ValRule pair Rueckruf_am_PflichtBeiGesetzer + Rueckruf_am_KeineNichte: a set checkbox REQUIRES a FUTURE Rueckruf_am__c -> the edit sets both (o.Rueckruf_am__c = System.now().addDays(3)).
+- RueckrufTaskHandler.handleAfterUpdate reads Rueckruf_desired__c/Rueckruf_am__c with NO try/catch (only try/finally) -> an invisible-field DmlException there would fail the test; hence the test user is granted SCRUM440_Rueckrufwunsch (PS present in both orgs -> org-independent). Test user now holds 3 PSs.
+Open item 1: foreignVisibleToUser default-true replaced with System.assert(foreignVisible.containsKey(apiName), ...) — an unregistered foreign name fails loudly instead of re-opening the wall.
+`ApexException` does NOT exist as a system exception type (measured: sf apex run probe -> "Invalid type: ApexException").
+Deploys round 8: service alone RunRelevantTests -> 129/129 green; tests RunSpecifiedTests -> 19/19 green (log scratch/deploy449r8.log).

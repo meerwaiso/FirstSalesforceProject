@@ -309,11 +309,16 @@ private class SCRUM449OpportunityRiskFlsTest {
 
     // (b) A user edit of a field the acting user CAN see must still move the
     // anchor — the guard must not have silently dropped a real user-change
-    // signal. TestFeld__c is the field the fix touches: in Test-Org it IS
-    // granted (28 Profiles incl. Standard User), so a user change of it still
-    // counts as a user change there. That is the org-independent meaning of the
-    // rule; in Prod-Org the same field has no grant at all, so the same rule
-    // skips it — the difference comes from the org's FLS, not from the code.
+    // signal. Round-7 Blocking 1: the previous version used TestFeld__c and
+    // asserted its visibility from the ORG's Profiles (28 Profiles grant it in
+    // Test-Org, nothing grants it in Prod-Org) — a test that reads one org's
+    // FLS proves nothing about the rule and reddened the Prod-Org Drift Gate.
+    // The proof now uses a field granted by a PERMISSION SET that exists in
+    // BOTH orgs: Rueckruf_desired__c via SCRUM440_Rueckrufwunsch. Measured 2026-10-17
+    // in Test-Org AND Prod-Org: FieldPermissions rows Parent.Name='SCRUM440_Rueckrufwunsch',
+    // read=true, edit=true for Rueckruf_desired__c and Rueckruf_am__c, IsOwnedByProfile=false.
+    // The test user holds that PS, so the precondition is the CONTRACT (the PS
+    // grants the field), not one org's Profile table.
     @isTest
     static void userEditOfGrantedForeignField_movesAnchor() {
         Account a = [SELECT Id FROM Account WHERE Name = 'FLS449 Account' LIMIT 1];
@@ -330,17 +335,27 @@ private class SCRUM449OpportunityRiskFlsTest {
         PermissionSet psWrite = [
             SELECT Id FROM PermissionSet WHERE Name = 'SCRUM449OpportunityRiskWrite' LIMIT 1
         ];
+        // The foreign field of the proof is granted by SCRUM440_Rueckrufwunsch —
+        // a Permission Set present in BOTH orgs, unlike TestFeld__c's Profile
+        // grants. Never read the org's Profiles here (round-7 Blocking 1).
+        PermissionSet psForeign = [
+            SELECT Id FROM PermissionSet WHERE Name = 'SCRUM440_Rueckrufwunsch' LIMIT 1
+        ];
         insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = psRead.Id);
         insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = psWrite.Id);
+        insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = psForeign.Id);
 
         // PRECONDITION: the field must be visible AND writable for this user,
         // otherwise the edit below is not a user change and the assertion would
         // pass for the wrong reason.
         System.runAs(u) {
-            System.assertEquals(true, Opportunity.TestFeld__c.getDescribe().isAccessible(),
-                'precondition: TestFeld__c must be readable by a Standard User in this org');
-            System.assertEquals(true, Opportunity.TestFeld__c.getDescribe().isUpdateable(),
-                'precondition: TestFeld__c must be writable by a Standard User in this org');
+            System.assertEquals(true, Opportunity.Rueckruf_desired__c.getDescribe().isAccessible(),
+                'precondition: Rueckruf_desired__c must be readable for a user holding '
+                    + 'SCRUM440_Rueckrufwunsch (the PS grants it in both orgs)');
+            System.assertEquals(true, Opportunity.Rueckruf_desired__c.getDescribe().isUpdateable(),
+                'precondition: Rueckruf_desired__c must be writable for that user');
+            System.assertEquals(true, Opportunity.Rueckruf_am__c.getDescribe().isAccessible(),
+                'precondition: the paired Rueckruf_am__c must be readable (ValRule pair)');
         }
 
         Opportunity seed = new Opportunity(
@@ -364,9 +379,14 @@ private class SCRUM449OpportunityRiskFlsTest {
         System.assertNotEquals(null, before.Last_User_Change__c, 'the insert seeded the anchor');
 
         System.runAs(u) {
-            Opportunity o = [SELECT Id, TestFeld__c FROM Opportunity
+            Opportunity o = [SELECT Id, Rueckruf_desired__c, Rueckruf_am__c
+                             FROM Opportunity
                              WHERE Name = 'FLS449 anchor edit' LIMIT 1];
-            o.TestFeld__c = 'edited by the rep';
+            // ValRule pair Rueckruf_am_PflichtBeiGesetzer / Rueckruf_am_KeineNichte
+            // (measured in both orgs): a set checkbox requires a FUTURE
+            // Rueckruf_am__c, otherwise the save is blocked.
+            o.Rueckruf_desired__c = true;
+            o.Rueckruf_am__c = System.now().addDays(3);
             update o;
         }
 
