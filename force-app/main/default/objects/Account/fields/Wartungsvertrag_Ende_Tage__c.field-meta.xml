@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Wartungsvertrag_Ende_Tage__c</fullName>
+    <label>Wartungsvertrag ends in (Tage)</label>
+    <description>SCRUM-451: Whole calendar days left on the contract, measured at read. Blank end = blank (never recorded); already expired = blank (never a negative count). System-computed formula field, read-only.</description>
+    <formula>IF(ISBLANK(Wartungsvertrag_End__c), null, IF(Wartungsvertrag_End__c &gt;= TODAY(), Wartungsvertrag_End__c - TODAY(), null))</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <type>Number</type>
+    <precision>10</precision>
+    <scale>0</scale>
+    <unique>false</unique>
+</CustomField>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-451: Service + Sales. Read-only on all six new Account fields (2 recorded dates + 4 derived). No Edit. The Case indicator reads Account.Wartungsvertrag_End__c, so service and sales need that read grant.</description>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Wartungsvertrag_Start__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Wartungsvertrag_End__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Wartungsvertrag_Ende_Tage__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Wartungsvertrag_Status__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Wartungsvertrag_Active__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Wartungsvertrag_Renewal_Soon__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM451_Wartungsvertrag_Dates_Read</label>
+</PermissionSet>

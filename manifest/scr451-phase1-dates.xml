@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-451 phase 1: the two manually recorded contract dates.
+     Deployed BEFORE the derived fields, the Case formula change and the
+     ValidationRule, which all reference Account.Wartungsvertrag_End__c. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Account.Wartungsvertrag_Start__c</members>
+        <members>Account.Wartungsvertrag_End__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>

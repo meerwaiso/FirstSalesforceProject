@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Wartungsvertrag_End__c</fullName>
+    <label>Wartungsvertrag end</label>
+    <description>SCRUM-451: Manually recorded end of the maintenance contract (team leads only). Commercially sensitive business data, not PII. Empty = never recorded, customer keeps today's behaviour.</description>
+    <type>Date</type>
+    <required>false</required>
+    <unique>false</unique>
+    <externalId>false</externalId>
+    <trackTrending>false</trackTrending>
+</CustomField>

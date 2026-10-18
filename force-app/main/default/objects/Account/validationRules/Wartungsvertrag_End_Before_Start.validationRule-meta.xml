@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Wartungsvertrag_End_Before_Start</fullName>
+    <active>true</active>
+    <description>SCRUM-451 AC12: An end date before the start date is refused. Equal dates are allowed (contract that starts and ends on the same day).</description>
+    <errorConditionFormula>AND(NOT(ISBLANK(Wartungsvertrag_Start__c)), NOT(ISBLANK(Wartungsvertrag_End__c)), Wartungsvertrag_End__c &lt; Wartungsvertrag_Start__c)</errorConditionFormula>
+    <errorMessage>Enddate before Startdate is refused - please correct the contract dates.</errorMessage>
+</ValidationRule>

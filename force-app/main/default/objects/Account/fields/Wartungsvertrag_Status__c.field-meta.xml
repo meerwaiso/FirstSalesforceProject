@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Wartungsvertrag_Status__c</fullName>
+    <label>Wartungsvertrag status</label>
+    <description>SCRUM-451: Remaining time at a glance - "in 45 days", "ends today", "expired". Blank end date = blank (never recorded). System-computed formula field, read-only; no negative day count is ever produced.</description>
+    <formula>IF(ISBLANK(Wartungsvertrag_End__c), null, IF(Wartungsvertrag_End__c &lt; TODAY(), "expired", IF(Wartungsvertrag_End__c = TODAY(), "ends today", "in " &amp; TEXT(Wartungsvertrag_End__c - TODAY()) &amp; " days")))</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

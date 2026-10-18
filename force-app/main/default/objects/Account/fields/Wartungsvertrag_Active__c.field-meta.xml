@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Wartungsvertrag_Active__c</fullName>
+    <label>Wartungsvertrag counts (derived)</label>
+    <description>SCRUM-451: Derived "counts as a maintenance customer" decision = flag AND (end blank OR end &gt;= today). The manually recorded flag is never overwritten. Empty end date keeps today's behaviour. System-computed, read-only.</description>
+    <formula>AND(Wartungsvertrag__c, OR(ISBLANK(Wartungsvertrag_End__c), Wartungsvertrag_End__c &gt;= TODAY()))</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <type>Checkbox</type>
+</CustomField>

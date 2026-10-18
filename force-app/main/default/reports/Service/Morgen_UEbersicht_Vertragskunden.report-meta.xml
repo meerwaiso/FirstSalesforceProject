@@ -6,7 +6,7 @@
     <columns><field>CREATED_DATE</field></columns>
     <filter>
         <criteriaItems>
-            <column>Account.Wartungsvertrag__c</column>
+            <column>Account.Wartungsvertrag_Active__c</column>
             <columnToColumn>false</columnToColumn>
             <isUnlocked>false</isUnlocked>
             <operator>equals</operator>
@@ -25,7 +25,7 @@
         <field>CREATED_DATE</field>
         <sortOrder>Asc</sortOrder>
     </groupingsDown>
-    <description>(SCRUM-431) Offene Faelle von Kunden mit Wartungsvertrag = Ja, aelteste zuerst (Tabular, sortiert asc nach Erfassungsdatum).</description>
+    <description>(SCRUM-431 + SCRUM-451) Offene Faelle von Kunden whose contract still counts as a maintenance contract (SCRUM-451: derived Account.Wartungsvertrag_Active__c, not the raw flag — an expired contract is no longer listed), aelteste zuerst (Tabular, sortiert asc nach Erfassungsdatum).</description>
     <name>Morgen_UEbersicht_Vertragskunden</name>
     <reportType>CaseList</reportType>
     <scope>organization</scope>

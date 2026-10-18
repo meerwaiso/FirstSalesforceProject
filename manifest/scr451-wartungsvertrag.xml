@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-451: full deployable set (design doc §Components 1-13).
+     Phase 1 (manifest/scr451-phase1-dates.xml) carries the two recorded dates,
+     which every derived artefact below references. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Wartungsvertrag_Start__c</members>
+        <members>Wartungsvertrag_End__c</members>
+        <members>Wartungsvertrag_Ende_Tage__c</members>
+        <members>Wartungsvertrag_Status__c</members>
+        <members>Wartungsvertrag_Active__c</members>
+        <members>Wartungsvertrag_Renewal_Soon__c</members>
+        <members>Wartungsvertrag_Anzeige__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Account.Wartungsvertrag_End_Before_Start</members>
+        <name>ValidationRule</name>
+    </types>
+    <types>
+        <members>Sales/Wartungsvertrag_Renewals_3M</members>
+        <members>Service/Morgen_UEbersicht_Vertragskunden</members>
+        <name>Report</name>
+    </types>
+    <types>
+        <members>Account-Account Layout</members>
+        <members>Account-Account %28Sales%29 Layout</members>
+        <members>Account-Account %28Support%29 Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>SCRUM451_Wartungsvertrag_Dates_Teamleitung</members>
+        <members>SCRUM451_Wartungsvertrag_Dates_Read</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>
