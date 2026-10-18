@@ -179,6 +179,9 @@ async function openRecord(page: Page, path: string) {
      fails while the API host works). A bounded re-navigation separates "slow"
      from "the tab is not there": a genuinely missing Details tab fails all
      attempts and the test stays red. */
+  if (/undefined|null/.test(path)) {
+    throw new Error(`record URL contains an unresolved Id: ${path} — the SOQL query did not select Id`);
+  }
   let last: Error | null = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -238,7 +241,7 @@ async function reportRows(frame: Frame): Promise<string[][]> {
 
 test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glance', () => {
   test('AC1+AC3: recorded dates stored, visible, and the remaining time shown', async ({ page }) => {
-    const [g] = soql(`SELECT Name, Wartungsvertrag_Start__c, Wartungsvertrag_End__c,
+    const [g] = soql(`SELECT Id, Name, Wartungsvertrag_Start__c, Wartungsvertrag_End__c,
                       Wartungsvertrag_Ende_Tage__c, Wartungsvertrag_Status__c,
                       Wartungsvertrag_Active__c
                       FROM Account WHERE Name = '${P}ACTIVE-45'`);
@@ -281,7 +284,7 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
   });
 
   test('AC4: a contract ending today still counts as a maintenance customer', async ({ page }) => {
-    const [g] = soql(`SELECT Name, Wartungsvertrag_End__c, Wartungsvertrag_Ende_Tage__c,
+    const [g] = soql(`SELECT Id, Name, Wartungsvertrag_End__c, Wartungsvertrag_Ende_Tage__c,
                       Wartungsvertrag_Status__c, Wartungsvertrag_Active__c
                       FROM Account WHERE Name = '${P}ENDS-TODAY'`);
     expect(g, `fixture ${P}ENDS-TODAY missing`).not.toBe(undefined);
@@ -305,7 +308,7 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
   });
 
   test('AC5: an expired contract says so and never shows a negative count', async ({ page }) => {
-    const [g] = soql(`SELECT Name, Wartungsvertrag_End__c, Wartungsvertrag_Ende_Tage__c,
+    const [g] = soql(`SELECT Id, Name, Wartungsvertrag_End__c, Wartungsvertrag_Ende_Tage__c,
                       Wartungsvertrag_Status__c, Wartungsvertrag_Active__c
                       FROM Account WHERE Name = '${P}EXPIRED'`);
     expect(g, `fixture ${P}EXPIRED missing`).not.toBe(undefined);
