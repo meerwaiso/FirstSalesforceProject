@@ -336,6 +336,12 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
     await expect(page.getByLabel(/Wartungsvertrag start/).first()).toBeVisible({ timeout: 30000 });
 
     await page.getByLabel(/Account Name/).first().fill(name);
+    // The flag is a checkbox INPUT: a click checks it (fill(true) is refused —
+    // "value: expected string, got boolean"). Without the flag the derived
+    // Active stays false: formula = AND(Wartungsvertrag__c, OR(blank end, end >= TODAY)).
+    const flag = page.getByLabel(/^Wartungsvertrag$/).first();
+    expect(await flag.evaluate((el) => el.tagName), 'AC1: the flag control is not an INPUT').toBe('INPUT');
+    await flag.click();
     const startField = page.getByLabel(/Wartungsvertrag start/).first();
     await startField.click();
     await startField.fill(toUiDate(startTyped));
@@ -351,10 +357,11 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
     await page.waitForTimeout(2000);
 
     // The record exists with exactly what was typed (save, not just display).
-    const [g] = soql(`SELECT Id, Name, Wartungsvertrag_Start__c, Wartungsvertrag_End__c,
+    const [g] = soql(`SELECT Id, Name, Wartungsvertrag__c, Wartungsvertrag_Start__c, Wartungsvertrag_End__c,
                       Wartungsvertrag_Ende_Tage__c, Wartungsvertrag_Status__c, Wartungsvertrag_Active__c
                       FROM Account WHERE Name = '${name}'`);
     expect(g, `AC1: the record ${name} saved from the form is not in the org`).not.toBe(undefined);
+    expect(g.Wartungsvertrag__c, 'AC1: the flag clicked on the form is not stored').toBe(true);
     expect(deDate(String(g.Wartungsvertrag_Start__c)), `AC1: start saved as ${g.Wartungsvertrag_Start__c}, typed ${startTyped}`).toBe(deDate(startTyped));
     expect(deDate(String(g.Wartungsvertrag_End__c)), `AC1: end saved as ${g.Wartungsvertrag_End__c}, typed ${endTyped}`).toBe(deDate(endTyped));
 
