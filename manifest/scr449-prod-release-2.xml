@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-449 PROD release delta #2 (2026-10-18). DevOps-Agent.
+
+     Why a delta manifest and not scr449-prod-release.xml again: the 2026-10-17
+     release already put all 17 components into Prod-Org (deploy job
+     0Afg500000FvGc6CAF, 17/17). The merge of PR #173 changed the guard in TWO
+     classes. Measured by retrieving the deployed source from Prod-Org
+     (sf project retrieve start -m ApexClass:OpportunityRiskService ... -o Prod-Org)
+     and diffing against origin/master 4816da9:
+
+       OpportunityRiskService.cls   DIFFERS  - 44-line guard block missing
+                               (foreignVisible map + refreshForeignVisibility()
+                                + getDescribe().isAccessible() guards)
+       OpportunityRiskHandler.cls   DIFFERS  - refreshForeignVisibility() call
+       OpportunityRiskScheduler.cls IDENTICAL (trailing newline only)
+       OpportunityRiskTrigger       IDENTICAL (trailing newline only)
+
+     So this package carries the whole remaining drift: nothing is left out,
+     nothing unchanged is redeployed. The other 15 components were verified live
+     in Prod-Org on 2026-10-17 (6 fields, 5 classes, trigger, 2 PS, ListView,
+     Report, Layout) and are byte-identical to master apart from these two.
+-->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>OpportunityRiskService</members>
+        <members>OpportunityRiskHandler</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

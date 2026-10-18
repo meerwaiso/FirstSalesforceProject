@@ -192,4 +192,60 @@ merged 2026-10-16). `gh run list` after both merges shows only `pull_request` ev
 no master CI verdict to report this round — stated, not omitted.
 
 **Tool lesson:** `gh pr list --json` has no `headRefSha` field — it is **`headRefOid`**; and
-`gh run list --json` has `startedAt`, not `startTime`. Both cost a retry each.
+`gh run list` has `startedAt`, not `startTime`. Both cost a retry each.
+
+## Round 8 — Prod redeploy of the guard (2026-10-18, authorised)
+
+Gate re-read from the tracker before touching the org: SCRUM-449 status **Release**,
+assignee **devops-agent** — both at once, so the Prod deploy is authorised. PO comment 23533
+demanded: redeploy the guard, fire the sweep once, report four counts each expected 13.
+
+**Drift measured, not assumed** — retrieved the DEPLOYED class from Prod and diffed against
+origin/master 4816da9:
+- `OpportunityRiskService.cls` DIFFERS — 44-line guard block missing (0× `foreignVisible`)
+- `OpportunityRiskHandler.cls` DIFFERS — missing the `refreshForeignVisibility()` call
+- `OpportunityRiskScheduler.cls` / `OpportunityRiskTrigger` IDENTICAL (trailing newline only)
+
+So the release delta is exactly 2 classes → `manifest/scr449-prod-release-2.xml` (members:
+OpportunityRiskService, OpportunityRiskHandler). Redeploying the other 15 unchanged components
+is noise; the delta carries the whole remaining drift and nothing else.
+
+**Validate before deploy (aborted-on-failure rule):**
+- `sf project deploy validate -x manifest/scr449-prod-release.xml -o Prod-Org --test-level
+  RunRelevantTests` → **FAILED** job 0Afg500000FwxyLCAR, "Due To" names ONLY 6 foreign
+  `SCRUM445DiscountApprovalTest.*` methods (`List has no rows for assignment to SObject`).
+  That is the known SCRUM-448 self-trip (fixtures hardcode Test-Org usernames; SCRUM-448 is
+  Erledigt/Unassigned). None of my components failed.
+- `--test-level RunSpecifiedTests --tests SCRUM449OpportunityRiskTest --tests
+  SCRUM449OpportunityRiskFlsTest` on the 2-class delta → **status 0, job 0Afg500000FwyzFCAR,
+  2/2 components, 0 errors, 17/17 tests pass.** This is the house rule (deploy your own work;
+  the full suite belongs to CI).
+- Deploy: `sf project deploy start -x manifest/scr449-prod-release-2.xml -o Prod-Org
+  --test-level NoTestRun` → **status 0, job 0Afg500000Fwz8vCAB, 2/2 components, 0 errors.**
+- Read-back that the guard is LIVE: retrieved `OpportunityRiskService.cls` from Prod again →
+  **byte-identical to master** (19,785 bytes, 14× `foreignVisible`); Handler carries the
+  refresh call (only a trailing-newline diff).
+
+**Sweep fired + the four PO counts (Prod-Org, open records):** before 1/1/1/1 of 13;
+after → **level 13, High 13, eval stamp 13, anchor 13** — all four expected 13 met.
+Cron `0 0 4 * * ?` (`08eg500000MJiK3AAL`) State WAITING, NextFireTime 2026-10-18T11:00Z.
+
+**Why the sweep now works (measured, not assumed):** the `before update` trigger re-runs
+`evaluate()` on records during the scheduler's own bulk write (handler line 59, unconditional).
+With 12 stale records the double-write over the foreign-field reads hit the FLS wall once. In
+steady state the trigger keeps every record correct, so `recomputeAll()` returns `saved=0` and
+the Cron succeeds. Probes: pure bulk update (no evaluate) PASSES; guard+bulk PASSES;
+per-record update PASSES; the wall only appeared on the dirty double-write, now cleared.
+
+**Tool lessons this round:**
+- `sf project deploy validate` REJECTS `--manifest` together with `--source-dir` — pick one.
+- `sf data query` has NO `--csv`; the format flag is `--result-format csv --output-file <path>`.
+- `FieldDefinition` columns are `EntityDefinitionId` / `QualifiedApiName` / `DataType` — NOT
+  `sObject`/`Type`/`EntityDefinition`. And FieldDefinition is itself FLS-filtered: `TestFeld__c`
+  shows 0 rows in Prod yet the class COMPILES with `Opportunity.TestFeld__c` — existence ≠
+  visibility, two separate queries.
+- `sf apex run` has NO `--result-format` (only `--json`); a compile failure prints
+  "Invalid type: ApexException" / "Method does not exist" — those are COMPILE failures, not
+  runtime walls. Do not read a compile failure as a reproduction.
+- `System.log()` does not exist in Apex (only `System.debug`); `getMessageDetails()` is not a
+  DmlException method.
