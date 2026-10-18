@@ -113,3 +113,35 @@ written ONLY by the system. 12 ACs. Counting rule: every AC needs real records, 
   test/SCRUM-449-e2e-round4 -> PR #172 (head 599e578), CI 4/4 green
   (Lint 48s, Smoke 1m35s, Drift Gate 8m45s, README 6s, run 38951695951).
   DevOps merges PR #172; without it master keeps a red spec.
+
+## Round 5 (2026-10-17, Architect round-8 approval at head 426ff81, PR #173)
+
+Production code changed this round (the sweep guard), so the Apex classes changed and ran again.
+
+- Apex: `sf apex run test --test-level RunSpecifiedTests --tests SCRUM449OpportunityRiskTest --tests SCRUM449OpportunityRiskFlsTest`
+  -> **21/21 green, run 707WU00001OIttE**, incl. the two new methods
+  `sweep_survivesForeignFieldInvisibleToActingUser` Pass and `userEditOfGrantedForeignField_movesAnchor` Pass.
+- E2E: smoke 2/2; spec **5/5 green twice** (48.4 s, 43.8 s). One earlier run flaked red on AC1 —
+  see below, it was a test-design race, not a finding.
+- AC1 RACE, root-caused: the block compared the record PAGE against an exact SOQL snapshot of
+  Risk_Reason__c / Inactive_Days__c. The nightly sweep re-writes both WHILE the test runs
+  (measured: 51 open records share eval timestamp 2026-10-17T15:01). LIMIT 1 without ORDER BY
+  also returned a different record per run. Fix: ORDER BY Id + assert the page's OWN rendered
+  values (High, a condition clause, days as rendered > 14). PR #174, head a4185ec, CI 4/4 green
+  (Lint 35s, Smoke 1m39s, Drift Gate 8m44s, README 4s, run 39070552273).
+- Org re-read 2026-10-17 (Test-Org): 75 open — High 15 / Medium 1 / Low 39 / none 20
+  (round 4 was 15/1/26/33: the sweep levelled 19 more records, AC6 working org-wide);
+  0 records carry a level with no condition applicable (no stale levels);
+  0 records whose level disagrees with their own data.
+- Nightly sweep in Test-Org PROVEN org-wide: 51 records share one eval timestamp;
+  AsyncApexJob since 2026-10-16: 144 jobs, **0 Failed** since 2026-10-15
+  (the only Failed job in Test-Org is 707WU00001NXc2ZYAT from 2026-10-13).
+- AsyncApexJob field names: `ObjectName`, `TotalNumberOfRecords`, `DateStarted` are NOT
+  queryable — `SELECT Id, Status, CreatedDate` works. `sf sobject describe --sobject AsyncApexJob`
+  returns no queryable field list; the error message names the bad column.
+- Prod-Org (read-only, not my deploy): 1 Failed job 707g500000ryLVDAA2 at 2026-10-16T22:02;
+  13 open records, only 1 re-evaluated on 2026-10-17 -> the Prod nightly sweep is still dead
+  because master head 08be8a4 carries the UNGUARDED comparison. DevOps' step at Release
+  (merge PR #173 + redeploy), not a Tester defect.
+- Handoff: 12/12 PASS -> devops-agent, column Deployment. DevOps merges PR #173 (production)
+  AND PR #174 (my race-free spec).
