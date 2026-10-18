@@ -118,10 +118,12 @@ private class SCRUM451WartungsvertragFlsTest {
                     'the derived display stays read-only even for the team lead');
             }
             // the round trip really works for this user
-            Account a = new Account(Name: 'TEST-SCRUM-451-FLS-ROUNDTRIP',
-                                    Wartungsvertrag__c: true,
-                                    Wartungsvertrag_Start__c: Date.today().addMonths(-6),
-                                    Wartungsvertrag_End__c: Date.today().addDays(20));
+            Account a = new Account(
+                Name = 'TEST-SCRUM-451-FLS-ROUNDTRIP',
+                Wartungsvertrag__c = true,
+                Wartungsvertrag_Start__c = Date.today().addMonths(-6),
+                Wartungsvertrag_End__c = Date.today().addDays(20)
+            );
             insert a;
             Account back = [SELECT Wartungsvertrag_End__c, Wartungsvertrag_Ende_Tage__c
                             FROM Account WHERE Id = :a.Id];

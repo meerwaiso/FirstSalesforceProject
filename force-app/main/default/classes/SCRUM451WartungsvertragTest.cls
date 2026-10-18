@@ -57,12 +57,12 @@ private class SCRUM451WartungsvertragTest {
         return u;
     }
 
-    private static Account newContractAccount(String name, Boolean flag, Date start, Date end) {
+    private static Account newContractAccount(String name, Boolean flag, Date startDt, Date endDt) {
         return new Account(
             Name = name,
             Wartungsvertrag__c = flag,
-            Wartungsvertrag_Start__c = start,
-            Wartungsvertrag_End__c = end
+            Wartungsvertrag_Start__c = startDt,
+            Wartungsvertrag_End__c = endDt
         );
     }
 
@@ -144,7 +144,7 @@ private class SCRUM451WartungsvertragTest {
             System.assertEquals('Nein', readAnzeige(c.Id),
                 'AC6: the case of an expired customer no longer shows the indicator');
             System.assertEquals(0, [SELECT COUNT() FROM Case
-                                    WHERE AccountId = :a.Id AND Wartungsvertrag_Anzeige__c = 'Ja'].size(),
+                                    WHERE AccountId = :a.Id AND Wartungsvertrag_Anzeige__c = 'Ja'],
                 'AC6: cases of expired-contract customers that still show the indicator must be 0');
         }
     }
@@ -199,10 +199,10 @@ private class SCRUM451WartungsvertragTest {
             };
             insert seeds;
             System.assertEquals(2, [SELECT COUNT() FROM Account
-                                    WHERE Name LIKE 'TEST-SCRUM-451-WIN%' AND Wartungsvertrag_Renewal_Soon__c = true].size(),
+                                    WHERE Name LIKE 'TEST-SCRUM-451-WIN%' AND Wartungsvertrag_Renewal_Soon__c = true],
                 'AC10: two contracts end inside today -> today + 3 months');
             System.assertEquals(0, [SELECT COUNT() FROM Account
-                                    WHERE Name LIKE 'TEST-SCRUM-451-OFF%' AND Wartungsvertrag_Renewal_Soon__c = true].size(),
+                                    WHERE Name LIKE 'TEST-SCRUM-451-OFF%' AND Wartungsvertrag_Renewal_Soon__c = true],
                 'AC11: a contract ending beyond the window is not in the overview');
             Account far = [SELECT Wartungsvertrag_Status__c FROM Account
                            WHERE Name = 'TEST-SCRUM-451-OFF-1'];
@@ -227,7 +227,7 @@ private class SCRUM451WartungsvertragTest {
             System.assertNotEquals(null, ex, 'AC12: an end date before the start date MUST be refused');
             System.assert(ex.getMessage().contains('Enddate before Startdate'),
                 'The message names the contract dates. Actually: ' + ex.getMessage());
-            System.assertEquals(0, [SELECT COUNT() FROM Account WHERE Name = 'TEST-SCRUM-451-INVALID'].size(),
+            System.assertEquals(0, [SELECT COUNT() FROM Account WHERE Name = 'TEST-SCRUM-451-INVALID'],
                 'AC12: nothing was stored');
         }
     }
