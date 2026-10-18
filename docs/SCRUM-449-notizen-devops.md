@@ -158,3 +158,38 @@ on a real `update` over org records. Green tests do not cover this path.
   `sf sobject describe --sobject <Obj>` and read the field list instead.
 - `sf project retrieve start -m ApexClass:<Name> -o <org>` returns the org's compiled-source
   text; diffing it against `origin/master` proves whether the org runs what the repo holds.
+
+## Round 7 — merge round (2026-10-17 23:40+, ticket in "Deployment" + assignee devops-agent)
+
+Gate read back before merging, all four preconditions:
+
+- Tracker: status **Deployment**, assignee **devops-agent** (updated 2026-10-17 23:39 CEST).
+  NOT "Release" → **no Prod deploy this round**; the Prod re-deploy of the guard waits for the
+  PO handoff to "Release".
+- Test verdict on record: Tester round 5, **12/12 PASS** (Jira 23531).
+- Approval on record: Architect **APPROVED** PR #173, GitHub review 5560046533 (Jira 23530).
+  `reviewDecision` is empty for both PRs — shared-account repo, self-review; the tracker verdict
+  is the approval (skill `pr-merge-approval-gate`).
+- CI belongs to the head being merged, re-read immediately before each merge:
+  - PR #173 head `426ff8112b8455fb520fe41b3ce73d5f52b1315b` → run **39067579440**, 4/4 pass
+    (Metadata/Apex/Session Smoke 3m46s, Prod-Org Drift Gate 9m9s — pass, not skipped)
+  - PR #174 head **`c14710f65b48c18474a6022c51b0e292642022eb`** → run **39071420937**, 4/4 pass.
+    **The Tester's CI verdict named `a4185ec` (run 39070552273) — the branch moved on.**
+    Merging `--match-head-commit c14710f…` pinned the head I actually measured.
+
+Merges (squash, both pinned):
+- PR #173 → `3156194` (production: sweep guard `refreshForeignVisibility()` /
+  `foreignVisibleToUser()`, `TestFeld__c` now guarded by `getDescribe().isAccessible()`)
+- PR #174 → `a76ba2c` (race-free E2E spec; `ORDER BY Id` ×2 on master)
+
+Read-back that the merged master really carries the guard:
+`git show 3156194:force-app/main/default/classes/OpportunityRiskService.cls | grep -n foreignVisible`
+→ lines 68–97. The Prod sweep is still dead until the Release re-deploy — the org runs the old
+class, the repo does not.
+
+**CI does not run on pushes to master** (workflow is pull-request-events-only since PR #171,
+merged 2026-10-16). `gh run list` after both merges shows only `pull_request` events. So there is
+no master CI verdict to report this round — stated, not omitted.
+
+**Tool lesson:** `gh pr list --json` has no `headRefSha` field — it is **`headRefOid`**; and
+`gh run list --json` has `startedAt`, not `startTime`. Both cost a retry each.
