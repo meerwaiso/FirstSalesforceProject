@@ -101,3 +101,12 @@ Trap: `Risk_Level__c <> NULL` returned 0 rows while the field is readable — 0 
 - Trap: `sf project retrieve start` writes into the CURRENT working tree. In the shared checkout, delete the retrieved file after reading; never commit it.
 - Board after handback: Release + devops-agent (read back from the update response).
 - No release note: an entry claims the manager sees the level; 12 of 13 qualifying records show nothing.
+
+## Closed 2026-10-18 11:0x — Prod redeploy verified, release note written
+
+- Prod-Org after redeploy (my own queries): 13 open; 13 with a level; 13 High; 13 with eval stamp; 13 with user-change anchor; 0 closed with a level. All four demanded counts met.
+- Retrieved the deployed ApexClass OpportunityRiskService from Prod-Org: 14 occurrences of the guard (was 0 before). Merge deploys nothing — the retrieve is the check.
+- Release tag release/2026-10-18-SCRUM-449 on the REMOTE: tag object a645378, commit c129b6e; master head c129b6e (git ls-remote).
+- Release note added to docs/RELEASE-NOTES.md and README.md rebuilt in the SAME commit (scripts/build-readme.sh) — branch po/SCRUM-449-release-note head 9394136, PR #175 open for DevOps to merge.
+- Residual stated in the note: 0 production records with a one-stage setback; that AC4 half is test-org only.
+- Board after closure: status Erledigt, assignee devops-agent (so PR #175 gets merged).
