@@ -68,6 +68,15 @@ function soql(q: string): any[] {
   return (doc.result && doc.result.records) || [];
 }
 
+/** SELECT COUNT() answers in result.totalSize with an empty records array. */
+function soqlCount(q: string): number {
+  const doc = shellJson(rawOut(`sf data query -q "${q}" --target-org Test-Org --json`));
+  if (!doc.result || doc.result.totalSize === undefined) {
+    throw new Error(`COUNT() query returned no totalSize: ${JSON.stringify(doc).slice(0, 300)}`);
+  }
+  return doc.result.totalSize;
+}
+
 function reportIdOf(name: string): string {
   const recs = soql(`SELECT Id, Name FROM Report WHERE Name = '${name}' LIMIT 1`);
   if (recs.length === 0) throw new Error(`Report "${name}" is not deployed in Test-Org`);
@@ -184,7 +193,7 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
                       Wartungsvertrag_Ende_Tage__c, Wartungsvertrag_Status__c,
                       Wartungsvertrag_Active__c
                       FROM Account WHERE Name = '${P}ACTIVE-45'`);
-    expect(g, `fixture ${P}ACTIVE-45 missing in Test-Org — the Tester's seed is gone`).notToBe(undefined);
+    expect(g, `fixture ${P}ACTIVE-45 missing in Test-Org — the Tester's seed is gone`).not.toBe(undefined);
     console.log(`[AC1/AC3] SOQL: start=${g.Wartungsvertrag_Start__c} end=${g.Wartungsvertrag_End__c} days=${g.Wartungsvertrag_Ende_Tage__c} status=${g.Wartungsvertrag_Status__c}`);
 
     await openRecordDetails(page, `/lightning/r/Account/${g.Id}/view`);
@@ -226,7 +235,7 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
     const [g] = soql(`SELECT Name, Wartungsvertrag_End__c, Wartungsvertrag_Ende_Tage__c,
                       Wartungsvertrag_Status__c, Wartungsvertrag_Active__c
                       FROM Account WHERE Name = '${P}ENDS-TODAY'`);
-    expect(g, `fixture ${P}ENDS-TODAY missing`).notToBe(undefined);
+    expect(g, `fixture ${P}ENDS-TODAY missing`).not.toBe(undefined);
     console.log(`[AC4] SOQL: end=${g.Wartungsvertrag_End__c} days=${g.Wartungsvertrag_Ende_Tage__c} status=${g.Wartungsvertrag_Status__c} active=${g.Wartungsvertrag_Active__c}`);
 
     await openRecordDetails(page, `/lightning/r/Account/${g.Id}/view`);
@@ -250,7 +259,7 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
     const [g] = soql(`SELECT Name, Wartungsvertrag_End__c, Wartungsvertrag_Ende_Tage__c,
                       Wartungsvertrag_Status__c, Wartungsvertrag_Active__c
                       FROM Account WHERE Name = '${P}EXPIRED'`);
-    expect(g, `fixture ${P}EXPIRED missing`).notToBe(undefined);
+    expect(g, `fixture ${P}EXPIRED missing`).not.toBe(undefined);
     console.log(`[AC5] SOQL: end=${g.Wartungsvertrag_End__c} days=${g.Wartungsvertrag_Ende_Tage__c} status=${g.Wartungsvertrag_Status__c}`);
 
     await openRecordDetails(page, `/lightning/r/Account/${g.Id}/view`);
@@ -270,7 +279,7 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
     });
   });
 
-  test('AC7+AC8: an empty end date (and a start-only customer) keep today's behaviour', async ({ page }) => {
+  test('AC7+AC8: an empty end date (and a start-only customer) keeps the old behaviour', async ({ page }) => {
     const fixtures = soql(`SELECT Id, Name, Wartungsvertrag__c, Wartungsvertrag_Start__c, Wartungsvertrag_End__c,
                            Wartungsvertrag_Ende_Tage__c, Wartungsvertrag_Status__c,
                            Wartungsvertrag_Active__c, Wartungsvertrag_Renewal_Soon__c
@@ -316,7 +325,7 @@ test.describe('[SCRUM-451] The SCRUM-431 case indicator follows the expiry', () 
 
     for (const name of [`${P}EXPIRED`, `${P}ACTIVE-45`, `${P}NO-END-1`]) {
       const c = byName[name];
-      expect(c, `AC6: no seeded case of ${name} — the fixture set is incomplete`).notToBe(undefined);
+      expect(c, `AC6: no seeded case of ${name} — the fixture set is incomplete`).not.toBe(undefined);
       await openRecordDetails(page, `/lightning/r/Case/${c.Id}/view`);
       const lines = ((await page.locator('body').innerText()) || '').split('\n').map((s) => s.trim());
       const hits = lines.reduce((acc: number[], l, i) => (l === 'Wartungsvertrag (Kunde)' ? acc.concat([i]) : acc), [] as number[]);
@@ -333,12 +342,12 @@ test.describe('[SCRUM-451] The SCRUM-431 case indicator follows the expiry', () 
     // The org-wide count the AC demands: cases of expired-contract customers
     // that still show the indicator must be 0 — beside the record count, so a
     // zero-record measurement cannot pass silently.
-    const expiredCases = soql(`SELECT COUNT() FROM Case WHERE Account.Wartungsvertrag_End__c != null AND Account.Wartungsvertrag_End__c < TODAY`);
-    const stillShowing = soql(`SELECT COUNT() FROM Case WHERE Account.Wartungsvertrag_End__c != null
+    const expiredCases = soqlCount(`SELECT COUNT() FROM Case WHERE Account.Wartungsvertrag_End__c != null AND Account.Wartungsvertrag_End__c < TODAY`);
+    const stillShowing = soqlCount(`SELECT COUNT() FROM Case WHERE Account.Wartungsvertrag_End__c != null
                                AND Account.Wartungsvertrag_End__c < TODAY AND Wartungsvertrag_Anzeige__c = 'Ja'`);
-    console.log(`[AC6] SOQL: cases of expired customers=${expiredCases[0]?.totalSize ?? 0}, of them still "Ja"=${stillShowing[0]?.totalSize ?? 0}`);
-    expect(expiredCases[0]?.totalSize ?? 0, 'AC6 needs at least one case of an expired customer to be a real test').toBeGreaterThan(0);
-    expect(stillShowing[0]?.totalSize ?? -1, 'AC6: cases of expired customers still showing the indicator must be 0').toBe(0);
+    console.log(`[AC6] SOQL: cases of expired customers=${expiredCases}, of them still "Ja"=${stillShowing}`);
+    expect(expiredCases, 'AC6 needs at least one case of an expired customer to be a real test').toBeGreaterThan(0);
+    expect(stillShowing, 'AC6: cases of expired customers still showing the indicator must be 0').toBe(0);
   });
 });
 
@@ -349,8 +358,7 @@ test.describe('[SCRUM-451] Sales overview: contracts ending in the next 3 months
     const inWindow = soql(`SELECT Id, Name, Wartungsvertrag_End__c, Wartungsvertrag_Status__c
                            FROM Account WHERE Wartungsvertrag_Renewal_Soon__c = true
                            ORDER BY Wartungsvertrag_End__c ASC`);
-    const truth = soql(`SELECT COUNT() FROM Account WHERE Wartungsvertrag_Renewal_Soon__c = true`);
-    const truthCount = truth[0]?.totalSize ?? -1;
+    const truthCount = soqlCount(`SELECT COUNT() FROM Account WHERE Wartungsvertrag_Renewal_Soon__c = true`);
     console.log(`[AC9] SOQL ground truth: ${truthCount} customers in today -> today+3M: ${inWindow.map((r) => `${r.Name} ${r.Wartungsvertrag_End__c}`).join(' | ')}`);
     expect(truthCount, 'AC9 needs at least one customer in the window to be a real test').toBeGreaterThan(0);
 
@@ -396,7 +404,7 @@ test.describe('[SCRUM-451] Sales overview: contracts ending in the next 3 months
     console.log(`[AC10] excluded by definition: ${excluded.map((r) => r.Name).join(' | ')}; rendered: ${renderedNames.join(' | ')}`);
     expect(excluded.length, 'AC10 needs expired / no-end-date customers to exclude').toBeGreaterThan(0);
     for (const g of excluded) {
-      expect(renderedNames, `AC10: ${g.Name} (expired or no end date) must not be in the overview`).notToContain(g.Name);
+      expect(renderedNames, `AC10: ${g.Name} (expired or no end date) must not be in the overview`).not.toContain(g.Name);
     }
     test.info().annotations.push({
       type: 'observed',
@@ -409,8 +417,7 @@ test.describe('[SCRUM-451] Sales overview: contracts ending in the next 3 months
 
 test.describe('[SCRUM-451] AC13 (PO): morning overview filters the derived indicator', () => {
   test('AC13: an expired customer and its open cases are no longer listed', async ({ page }) => {
-    const truth = soql(`SELECT COUNT() FROM Case WHERE Account.Wartungsvertrag_Active__c = true AND IsClosed = false`);
-    const truthCount = truth[0]?.totalSize ?? -1;
+    const truthCount = soqlCount(`SELECT COUNT() FROM Case WHERE Account.Wartungsvertrag_Active__c = true AND IsClosed = false`);
     console.log(`[AC13] SOQL: ${truthCount} open cases of customers that still count`);
     expect(truthCount, 'AC13 needs open cases to be a real test').toBeGreaterThan(0);
 
@@ -429,7 +436,7 @@ test.describe('[SCRUM-451] AC13 (PO): morning overview filters the derived indic
                                 AND Account.Wartungsvertrag_End__c < TODAY`);
     expect(expiredCase.length, 'AC13 needs an open case of an expired customer').toBeGreaterThan(0);
     for (const c of expiredCase) {
-      expect(renderedCaseNumbers, `AC13: case ${c.CaseNumber} of expired customer ${c['Account.Name']} is still listed`).notToContain(String(c.CaseNumber));
+      expect(renderedCaseNumbers, `AC13: case ${c.CaseNumber} of expired customer ${c['Account.Name']} is still listed`).not.toContain(String(c.CaseNumber));
     }
 
     // A flagged customer WITHOUT an end date must still be listed (PO decision 3).
@@ -451,13 +458,13 @@ test.describe('[SCRUM-451] AC13 (PO): morning overview filters the derived indic
 
 test.describe('[SCRUM-451] AC11: no email, task, reminder or notification', () => {
   test('AC11: the story creates no automatic artefact', async ({ page }) => {
-    const tasks = soql(`SELECT COUNT() FROM Task WHERE Subject LIKE '${P}%'`);
+    const taskCount = soqlCount(`SELECT COUNT() FROM Task WHERE Subject LIKE '${P}%'`);
     const templates = shellJson(rawOut(
       `sf data query -q "SELECT Id, Name FROM EmailTemplate WHERE Name LIKE '%Wartungsvertrag%' OR Name LIKE '%451%'" --target-org Test-Org --use-tooling-api --json`
     ));
     const templateRows = (templates.result && templates.result.records) || [];
-    console.log(`[AC11] SOQL: Task naming a fixture=${tasks[0]?.totalSize ?? -1}; EmailTemplate naming the story=${templateRows.length}`);
-    expect(tasks[0]?.totalSize ?? -1, 'AC11: no Task may be created for the contract fixtures').toBe(0);
+    console.log(`[AC11] SOQL: Task naming a fixture=${taskCount}; EmailTemplate naming the story=${templateRows.length}`);
+    expect(taskCount, 'AC11: no Task may be created for the contract fixtures').toBe(0);
     expect(templateRows.length, 'AC11: no EmailTemplate may belong to this story').toBe(0);
 
     // The customer page carries no chatter/notification about the contract.
