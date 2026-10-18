@@ -25,7 +25,7 @@
         <field>CREATED_DATE</field>
         <sortOrder>Asc</sortOrder>
     </groupingsDown>
-    <description>(SCRUM-431 + SCRUM-451) Offene Faelle von Kunden whose contract still counts as a maintenance contract (SCRUM-451: derived Account.Wartungsvertrag_Active__c, not the raw flag — an expired contract is no longer listed), aelteste zuerst (Tabular, sortiert asc nach Erfassungsdatum).</description>
+    <description>(SCRUM-431 + SCRUM-451) Open cases of customers whose contract still counts (derived Account.Wartungsvertrag_Active__c, not the raw flag), oldest first.</description>
     <name>Morgen_UEbersicht_Vertragskunden</name>
     <reportType>CaseList</reportType>
     <scope>organization</scope>

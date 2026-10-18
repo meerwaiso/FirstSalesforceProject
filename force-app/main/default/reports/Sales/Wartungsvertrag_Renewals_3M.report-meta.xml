@@ -21,7 +21,7 @@
             <value>1</value>
         </criteriaItems>
     </filter>
-    <description>(SCRUM-451) Sales renewal overview: every customer whose maintenance contract ends between today and today + 3 months (window gate = Account.Wartungsvertrag_Renewal_Soon__c), soonest first. Customer, account owner, end date, remaining time. Already-expired contracts and customers without an end date are not listed.</description>
+    <description>SCRUM-451 Sales renewal overview: customers whose maintenance contract ends between today and today + 3 months (gate Account.Wartungsvertrag_Renewal_Soon__c), soonest first. Customer, account owner, end date, remaining time.</description>
     <format>Tabular</format>
     <name>Wartungsvertrag_Renewals_3M</name>
     <reportType>AccountList</reportType>
