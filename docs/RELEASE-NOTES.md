@@ -16,6 +16,49 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 18.10.2026 — Opportunities at risk flag themselves (SCRUM-449)
+
+**What changes**
+
+- Every open opportunity now carries a risk level — Low, Medium or High — and
+  one sentence that says *why*: whether the problem is inactivity, an
+  unrealistic close date, or a step back in the sales process. You no longer
+  have to open each deal and ask a sales representative.
+- The record also shows how many days the deal has gone without a change, and
+  when it was last assessed.
+- All 13 open opportunities in the production org are flagged **High** today —
+  every one of them already has a close date in the past. That is the number
+  you should see when you look at the org now.
+- A deal that recovers loses its flag; a closed deal (Won or Lost) carries
+  none. Nobody — not a sales representative — can set or clear a level by hand:
+  the system writes it, and attempts to edit it are refused.
+
+**Where you see it**
+
+- Directly on the opportunity page, in the section that was added to the
+  standard opportunity layout.
+- Org-wide in the list view and the report "Hoeh Risk Chancen" — you can
+  list all High-risk open deals in one place, which is how coaching gets
+  prioritised.
+
+**Deliberately not in there**
+
+- Deals that only age are re-assessed by the nightly run at 04:00 local org
+  time, not during the day. A deal nobody touches keeps its last assessment
+  until that run.
+- The boundary case "moved back by exactly one stage" has no example in the
+  production org yet — no production deal has ever moved backwards by one.
+  That half of the rule is proven only in the test org, so watch it the first
+  time a real deal steps back one stage.
+- Risk levels say nothing about *why a deal was lost*; they mark where
+  attention is due, not an outcome.
+
+**Evidence** — production deploy job 0Afg500000Fwz8vCAB (2 of 2 components,
+0 errors), release tag release/2026-10-18-SCRUM-449 at commit c129b6e.
+Measured in the production org on 18.10.2026: 13 open records, 13 carrying a
+level, 13 at High, 13 with an assessment timestamp, 13 with a change anchor;
+0 of the closed records carry a level.
+
 ## 14.10.2026 — Gross Discounts need the Manager's Approval before a Deal is won (SCRUM-445)
 
 **Was sich aendert**
