@@ -25,12 +25,15 @@
  * run fine under System.runAs of a fixture user. A Case insert that sets
  * AccountId does NOT: "Operation failed due to fields being inaccessible on
  * Sobject Case" for every variant tried (re-read AccountId, update after insert,
- * an Account without the flag), and widening SCRUM451_TestObjectAccess with
- * object-level CRUD, viewAllRecords and FLS on Account.Name/Owner/AccountNumber
- * and Case.AccountId/Origin/Subject/Status changed nothing. So the Case
- * assertions below run in System context, as in the SCRUM-431 house class; the
- * permission proof for the Case indicator lives in SCRUM451WartungsvertragFlsTest
- * (reflection) and in the Tester's E2E against a real session.
+ * an Account without the flag). Widening SCRUM451_TestObjectAccess with FLS on
+ * Account.Name/Owner/AccountNumber and Case.AccountId/Origin/Subject/Status
+ * changed nothing — the measured reason: the platform refuses an FLS entry on
+ * those required standard fields, so Test-Org stored zero field-level grants and
+ * the Prod-Org Drift Gate rejects the file. The Set therefore carries object-level
+ * CRUD only. The Case assertions below therefore run in System context, as in the
+ * SCRUM-431 house class; the permission proof for the Case indicator lives in
+ * SCRUM451WartungsvertragFlsTest (reflection) and in the Tester's E2E against a
+ * real session.
  *
  * Fixtures here mirror the ones seeded in Test-Org: end = today+45, today,
  * today-1, blank, start-only, beyond the 3-month window, plus three flagged

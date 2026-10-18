@@ -6,45 +6,17 @@
      this org's Standard User has no object-level CRUD on Account/Case.
      Deliberately NOT a released PS: it is assigned only to the Users that the
      SCRUM451 test classes create, never to a real user.
-     Field-level entries below are for non-required fields only: Salesforce
-     refuses an FLS entry on a REQUIRED field ("You cannot deploy to a required
-     field: Account.Name"), and a required field is reachable through the
-     object-level CRUD in this Set. Measured: a PS file carrying a required-field
-     FLS entry deploys to Test-Org with Status Succeeded but stores ZERO
-     field-level grants, while the Prod-Org Drift Gate rejects the same file. -->
+     Object-level CRUD only: the platform rejects a field-level entry on these
+     standard Account/Case fields in this org — the deploy names each one
+     ("You cannot deploy to a required field: Account.Name", then the same for
+     Account.Owner). Measured: a PS file carrying such an entry deploys to
+     Test-Org with Status Succeeded but stores ZERO field-level grants, while
+     the Prod-Org Drift Gate rejects the same file — org and branch disagree.
+     A required field is readable and editable through the object-level CRUD
+     below. -->
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>SCRUM451_TestObjectAccess</fullName>
     <description>Test-local object-level CRUD on Account and Case for the SCRUM-451 fixture users. Never assigned to real users.</description>
-    <fieldPermissions>
-        <editable>false</editable>
-        <field>Account.Owner</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <field>Account.AccountNumber</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Case.AccountId</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Case.Origin</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Case.Subject</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>Case.Status</field>
-        <readable>true</readable>
-    </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>SCRUM-451 Test Object Access (fixture users only)</label>
     <objectPermissions>
