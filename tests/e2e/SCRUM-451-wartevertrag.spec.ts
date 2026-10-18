@@ -326,6 +326,11 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
       const d = new Date(Date.now() + 30 * 86400000);
       return d.toISOString().slice(0, 10);
     })();
+    // The org's locale renders dates as DD.MM.YYYY ("Format: 31.12.2024" is the
+    // form's own hint). An ISO string is REJECTED: saving with 2026-01-06 ends
+    // in "We hit a snag — review the following fields: Wartungsvertrag start,
+    // Wartungsvertrag end" and nothing is created (measured 2026-10-18).
+    const toUiDate = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
     await page.goto('/lightning/o/Account/new', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForSelector('.slds-global-header, one-appnav', { timeout: 60000 });
     await expect(page.getByLabel(/Wartungsvertrag start/).first()).toBeVisible({ timeout: 30000 });
@@ -333,14 +338,17 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
     await page.getByLabel(/Account Name/).first().fill(name);
     const startField = page.getByLabel(/Wartungsvertrag start/).first();
     await startField.click();
-    await startField.fill(startTyped);
+    await startField.fill(toUiDate(startTyped));
     const endField = page.getByLabel(/Wartungsvertrag end/).first();
     await endField.click();
-    await endField.fill(endTyped);
+    await endField.fill(toUiDate(endTyped));
     await endField.press('Enter');
-    await page.waitForTimeout(1000);
-    await page.getByRole('button', { name: /^Save$|Speichern/i }).first().click();
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(1500);
+    await page.getByRole('button', { name: /^Save$|Speichern/i }).last().click();
+    // Positive proof of the save: the form announces the created record.
+    await expect(page.getByText(/was created/i).first())
+      .toBeVisible({ timeout: 30000 });
+    await page.waitForTimeout(2000);
 
     // The record exists with exactly what was typed (save, not just display).
     const [g] = soql(`SELECT Id, Name, Wartungsvertrag_Start__c, Wartungsvertrag_End__c,
@@ -369,11 +377,14 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
     expect(start.value, `AC1: page renders start ${start.value}, saved ${startTyped}`).toBe(deDate(startTyped));
     expect(end.value, `AC1: page renders end ${end.value}, saved ${endTyped}`).toBe(deDate(endTyped));
 
+    // Housekeeping: the run created a record, so the next run starts where this
+    // one started. Not an acceptance criterion — nothing is asserted here.
+    console.log(`[AC1] cleanup: deleted ${g.Id} (${rawOut(`sf data delete record -s Account -i ${g.Id} --target-org Test-Org --json`).slice(0, 80)})`);
+
     test.info().annotations.push({
       type: 'observed',
       description: `AC1: form save → SOQL start=${g.Wartungsvertrag_Start__c} end=${g.Wartungsvertrag_End__c} days=${g.Wartungsvertrag_Ende_Tage__c} status=${g.Wartungsvertrag_Status__c}; page re-render start=${start.value} end=${end.value}`,
     });
-  });
 
   test('AC4: a contract ending today still counts as a maintenance customer', async ({ page }) => {
     const [g] = soql(`SELECT Id, Name, Wartungsvertrag_End__c, Wartungsvertrag_Ende_Tage__c,
