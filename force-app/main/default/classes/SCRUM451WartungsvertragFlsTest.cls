@@ -31,7 +31,7 @@ private class SCRUM451WartungsvertragFlsTest {
         User u = new User(
             ProfileId = p.Id,
             LastName = 'Scr451Fls-' + tag,
-            Alias = 'scr451fls' + tag,
+            Alias = ('45f' + tag).left(8),
             Email = uName,
             Username = uName,
             EmailEncodingKey = 'UTF-8',

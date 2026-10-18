@@ -39,7 +39,7 @@ private class SCRUM451WartungsvertragTest {
         User u = new User(
             ProfileId = p.Id,
             LastName = 'Scr451-' + tag,
-            Alias = 'scr451' + tag,
+            Alias = ('45' + tag).left(8),
             Email = uName,
             Username = uName,
             EmailEncodingKey = 'UTF-8',
