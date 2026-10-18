@@ -378,8 +378,15 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
     expect(end.value, `AC1: page renders end ${end.value}, saved ${endTyped}`).toBe(deDate(endTyped));
 
     // Housekeeping: the run created a record, so the next run starts where this
-    // one started. Not an acceptance criterion — nothing is asserted here.
-    console.log(`[AC1] cleanup: deleted ${g.Id} (${rawOut(`sf data delete record -s Account -i ${g.Id} --target-org Test-Org --json`).slice(0, 80)})`);
+    // one started. Not an acceptance criterion — nothing is asserted here, and
+    // a failed cleanup must not turn a green test red.
+    let cleanup = 'delete not verified';
+    try {
+      cleanup = rawOut(`sf data delete record -s Account -i ${g.Id} --target-org Test-Org --json`).slice(0, 60);
+    } catch (err) {
+      cleanup = `delete failed: ${String((err as Error).message).slice(0, 80)}`;
+    }
+    console.log(`[AC1] cleanup: ${cleanup} for ${g.Id}`);
 
     test.info().annotations.push({
       type: 'observed',
