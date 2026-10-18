@@ -90,3 +90,14 @@ DevOps reported a green Prod deploy (job 0Afg500000FvGc6CAF, 17/17 components, t
 Rule this establishes: a green Prod deploy proves components exist. It does not prove the feature shows anything on a record. Before closing a story released to Prod, count the records the feature should have flagged and compare with the count it actually flagged. 0 flagged while N qualify = release incomplete; no release note (an entry claims observability, not deployment).
 
 Trap: `Risk_Level__c <> NULL` returned 0 rows while the field is readable — 0 rows here was real data, not a permission wall. Distinguish by reading the field values of a known record, not by the count alone.
+
+## Merge round 2026-10-18 08:1x — repo green, Prod still incomplete, NOT closed
+
+- origin/master 4816da9 carries the sweep guard (foreignVisible + isAccessible, lines 74-97) and the race-free spec (ORDER BY Id, header-count assertions). Verified with git show origin/master:<path>, not the PR title.
+- CI read back on exactly the merged heads: 426ff81 -> run 39067579440 success; c14710f -> run 39071420937 success.
+- PROD: retrieved the deployed ApexClass OpportunityRiskService from Prod-Org -> 0 occurrences of the guard. The org runs the old class. A merge deploys nothing.
+- PROD counts: 13 open; 1 with a level, 1 with an eval stamp; 13/13 over 14 inactive days; 13/13 close date already past. 12 records show nothing.
+- Not verifiable from my position: the Tester-named failed AsyncApexJob (by ID and by status both 0 rows in Prod). Stated, not claimed.
+- Trap: `sf project retrieve start` writes into the CURRENT working tree. In the shared checkout, delete the retrieved file after reading; never commit it.
+- Board after handback: Release + devops-agent (read back from the update response).
+- No release note: an entry claims the manager sees the level; 12 of 13 qualifying records show nothing.
