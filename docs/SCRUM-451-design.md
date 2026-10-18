@@ -200,6 +200,7 @@ Target users (measured, house rule "both users of the org"): `devops-agent@cline
 | expired + no-end-date not listed | 6+9 | same spec |
 | nothing automatic | no email/task/reminder artefact | absence-of-artefact check in the review |
 | end before start refused | 8 | negative save test must throw |
+| AC-13 (PO, comment 2): the SCRUM-431 Service morning overview filters the **derived** indicator, not the raw flag | 7 + Service report | E2E on the Service morning report: an expired contract customer must NOT be listed; a flagged customer with an empty end date must still be listed. Counts to state: customers with a recorded end date inside today → today+3M, contracts already expired, contract customers without any dates |
 
 ## Offene Punkte (do not block the implementation)
 

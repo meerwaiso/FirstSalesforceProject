@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- [SCRUM-451] Apex test classes shipped in the same PR as the metadata they
+     cover (phase 4). Run with --test-level RunSpecifiedTests, one --tests per
+     class. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <components>
+        <component>ApexClass:SCRUM451WartungsvertragTest</component>
+        <component>ApexClass:SCRUM451WartungsvertragFlsTest</component>
+    </components>
+    <version>67.0</version>
+</Package>

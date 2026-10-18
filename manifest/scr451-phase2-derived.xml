@@ -5,11 +5,11 @@
      BEFORE the layouts, Permission Sets and Reports that name them. -->
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
     <types>
-        <members>Wartungsvertrag_Ende_Tage__c</members>
-        <members>Wartungsvertrag_Status__c</members>
-        <members>Wartungsvertrag_Active__c</members>
-        <members>Wartungsvertrag_Renewal_Soon__c</members>
-        <members>Wartungsvertrag_Anzeige__c</members>
+        <members>Account.Wartungsvertrag_Ende_Tage__c</members>
+        <members>Account.Wartungsvertrag_Status__c</members>
+        <members>Account.Wartungsvertrag_Active__c</members>
+        <members>Account.Wartungsvertrag_Renewal_Soon__c</members>
+        <members>Case.Wartungsvertrag_Anzeige__c</members>
         <name>CustomField</name>
     </types>
     <types>
