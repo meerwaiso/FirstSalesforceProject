@@ -39,6 +39,10 @@ import { openRecordDetails } from './record-page';
  *     never hardcoded — orgs get recreated.
  */
 
+// A record page can need more than the default 30 s when the UI hosts resolve
+// slowly (see openRecord below); the report poll alone can spend 45 s.
+test.setTimeout(180000);
+
 const P = 'TEST-SCRUM-451-';
 const SALES_REPORT = 'Wartungsvertrag_Renewals_3M';
 const MORNING_REPORT = 'Morgen_UEbersicht_Vertragskunden';
@@ -167,11 +171,56 @@ async function openReportFrame(page: Page, name: string): Promise<Frame> {
   return frame!;
 }
 
+async function openRecord(page: Page, path: string) {
+  /* The Details tab renders ~1 s after the header (probe scratch/probe451tabs.mjs,
+     2026-10-18: detailsWaitMs 872-2181 for all six fixtures). Three of nine tests
+     in run2 still timed out at the helper's 30 s cap — the org's UI hosts resolve
+     intermittently during a browser run (see MEMORY: DNS for *.my.salesforce.com
+     fails while the API host works). A bounded re-navigation separates "slow"
+     from "the tab is not there": a genuinely missing Details tab fails all
+     attempts and the test stays red. */
+  let last: Error | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await openRecordDetails(page, path);
+      return;
+    } catch (e) {
+      last = e as Error;
+      await page.waitForTimeout(2000);
+    }
+  }
+  throw last!;
+}
+
 async function reportStatedTotal(frame: Frame): Promise<number> {
   const text: string = await frame.locator('body').innerText().catch(() => '');
   const m = text.match(/Total Records\s*(\d+)/);
   if (!m) throw new Error(`"Total Records N" not in the report frame:\n${text.slice(0, 600)}`);
   return parseInt(m[1], 10);
+}
+
+/**
+ * Poll "Total Records N" until it equals the ground truth (house shape,
+ * SCRUM-431). Verified there: the report streams rows, a single read can see an
+ * intermediate count — measured again 2026-10-18 on the morning report, first
+ * read stated 1, settled on 4. The caller still asserts the returned value.
+ */
+async function pollReportTotal(frame: Frame, expected: number, budgetMs = 45000): Promise<number> {
+  const deadline = Date.now() + budgetMs;
+  for (;;) {
+    const text: string = await frame.locator('body').innerText().catch(() => '');
+    const m = text.match(/Total Records\s*(\d+)/);
+    if (m) {
+      const v = parseInt(m[1], 10);
+      if (v === expected) return v;
+    }
+    if (Date.now() > deadline) {
+      const t: string = await frame.locator('body').innerText().catch(() => '');
+      const m2 = t.match(/Total Records\s*(\d+)/);
+      return m2 ? parseInt(m2[1], 10) : -1;
+    }
+    await frame.waitForTimeout(600).catch(() => {});
+  }
 }
 
 async function reportRows(frame: Frame): Promise<string[][]> {
@@ -196,7 +245,7 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
     expect(g, `fixture ${P}ACTIVE-45 missing in Test-Org — the Tester's seed is gone`).not.toBe(undefined);
     console.log(`[AC1/AC3] SOQL: start=${g.Wartungsvertrag_Start__c} end=${g.Wartungsvertrag_End__c} days=${g.Wartungsvertrag_Ende_Tage__c} status=${g.Wartungsvertrag_Status__c}`);
 
-    await openRecordDetails(page, `/lightning/r/Account/${g.Id}/view`);
+    await openRecord(page, `/lightning/r/Account/${g.Id}/view`);
 
     const start = await fieldOnDetails(page, 'Wartungsvertrag start');
     const end = await fieldOnDetails(page, 'Wartungsvertrag end');
@@ -238,7 +287,7 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
     expect(g, `fixture ${P}ENDS-TODAY missing`).not.toBe(undefined);
     console.log(`[AC4] SOQL: end=${g.Wartungsvertrag_End__c} days=${g.Wartungsvertrag_Ende_Tage__c} status=${g.Wartungsvertrag_Status__c} active=${g.Wartungsvertrag_Active__c}`);
 
-    await openRecordDetails(page, `/lightning/r/Account/${g.Id}/view`);
+    await openRecord(page, `/lightning/r/Account/${g.Id}/view`);
     const end = await fieldOnDetails(page, 'Wartungsvertrag end');
     const days = await fieldOnDetails(page, 'Wartungsvertrag ends in (Tage)');
     const status = await fieldOnDetails(page, 'Wartungsvertrag status');
@@ -262,7 +311,7 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
     expect(g, `fixture ${P}EXPIRED missing`).not.toBe(undefined);
     console.log(`[AC5] SOQL: end=${g.Wartungsvertrag_End__c} days=${g.Wartungsvertrag_Ende_Tage__c} status=${g.Wartungsvertrag_Status__c}`);
 
-    await openRecordDetails(page, `/lightning/r/Account/${g.Id}/view`);
+    await openRecord(page, `/lightning/r/Account/${g.Id}/view`);
     const days = await fieldOnDetails(page, 'Wartungsvertrag ends in (Tage)');
     const status = await fieldOnDetails(page, 'Wartungsvertrag status');
     const counts = await fieldOnDetails(page, 'Wartungsvertrag counts (derived)');
@@ -288,7 +337,7 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
     console.log(`[AC7/AC8] SOQL: ${fixtures.map((f) => `${f.Name}: start=${f.Wartungsvertrag_Start__c} end=${f.Wartungsvertrag_End__c}`).join(' | ')}`);
 
     for (const g of fixtures) {
-      await openRecordDetails(page, `/lightning/r/Account/${g.Id}/view`);
+      await openRecord(page, `/lightning/r/Account/${g.Id}/view`);
       const flag = await fieldOnDetails(page, 'Wartungsvertrag');
       const end = await fieldOnDetails(page, 'Wartungsvertrag end');
       const days = await fieldOnDetails(page, 'Wartungsvertrag ends in (Tage)');
@@ -297,7 +346,7 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
       const window = await fieldOnDetails(page, 'Wartungsvertrag ends within 3 months');
 
       expect(flag.value, `AC7/AC8: the recorded flag stays what the team lead typed (${g.Wartungsvertrag__c})`)
-              .toBe(String(g.Wartungsvertrag__c));
+              .toBe(g.Wartungsvertrag__c ? 'True' : 'False');
       expect(end.present, 'AC7/AC8: the end date field exists, it is just empty').toBe(true);
       expect(end.value, 'AC7/AC8: no end date recorded -> renders empty').toBe('');
       expect(days.value, 'AC7/AC8: no day count without an end date').toBe('');
@@ -320,13 +369,13 @@ test.describe('[SCRUM-451] The SCRUM-431 case indicator follows the expiry', () 
     const cases = soql(`SELECT Id, CaseNumber, Account.Name, Wartungsvertrag_Anzeige__c
                         FROM Case WHERE Account.Name LIKE '${P}%'`);
     expect(cases.length, 'the seeded cases must exist').toBeGreaterThan(0);
-    const byName = cases.reduce((m, c) => { m[String(c['Account.Name'])] = c; return m; }, {} as any);
-    console.log(`[AC6] SOQL: ${cases.map((c) => `${c.CaseNumber} ${c['Account.Name']} -> ${c.Wartungsvertrag_Anzeige__c}`).join(' | ')}`);
+    const byName = cases.reduce((m, c) => { m[String(c.Account.Name)] = c; return m; }, {} as any);
+    console.log(`[AC6] SOQL: ${cases.map((c) => `${c.CaseNumber} ${c.Account.Name} -> ${c.Wartungsvertrag_Anzeige__c}`).join(' | ')}`);
 
     for (const name of [`${P}EXPIRED`, `${P}ACTIVE-45`, `${P}NO-END-1`]) {
       const c = byName[name];
       expect(c, `AC6: no seeded case of ${name} — the fixture set is incomplete`).not.toBe(undefined);
-      await openRecordDetails(page, `/lightning/r/Case/${c.Id}/view`);
+      await openRecord(page, `/lightning/r/Case/${c.Id}/view`);
       const lines = ((await page.locator('body').innerText()) || '').split('\n').map((s) => s.trim());
       const hits = lines.reduce((acc: number[], l, i) => (l === 'Wartungsvertrag (Kunde)' ? acc.concat([i]) : acc), [] as number[]);
       expect(hits.length, `AC6: the indicator "Wartungsvertrag (Kunde)" is not on the case page of ${name}`).toBeGreaterThan(0);
@@ -363,7 +412,7 @@ test.describe('[SCRUM-451] Sales overview: contracts ending in the next 3 months
     expect(truthCount, 'AC9 needs at least one customer in the window to be a real test').toBeGreaterThan(0);
 
     const frame = await openReportFrame(page, SALES_REPORT);
-    const stated = await reportStatedTotal(frame);
+    const stated = await pollReportTotal(frame, truthCount);
     const rows = await reportRows(frame);
     console.log(`[AC9] Report: Total Records=${stated}, rows=${rows.length}, first=${JSON.stringify(rows[0])}`);
 
@@ -375,16 +424,17 @@ test.describe('[SCRUM-451] Sales overview: contracts ending in the next 3 months
     // Architect could not read through the CLI session.
     for (let i = 0; i < rows.length; i++) {
       const cells = rows[i];
-      expect(cells.length, `AC9: row ${i} has ${cells.length} cells (row#, customer, owner, end, status)`).toBe(5);
-      expect(cells[2].length, `AC9: the account-owner column is empty in row ${i} (${JSON.stringify(cells)})`).toBeGreaterThan(0);
+      expect(cells.length, `AC9: row ${i} has ${cells.length} cells (customer, owner, end, status)`).toBe(4);
+      expect(cells[1].length, `AC9: the account-owner column is empty in row ${i} (${JSON.stringify(cells)})`).toBeGreaterThan(0);
     }
 
     // Every customer of the SOQL ground truth is listed, soonest first.
-    const renderedNames = rows.map((r) => r[1]);
+    const renderedNames = rows.map((r) => r[0]);
     for (const g of inWindow) {
       expect(renderedNames, `AC9: ${g.Name} is missing from the overview`).toContain(g.Name);
       const row = rows[renderedNames.indexOf(g.Name)];
-      expect(row[3], `AC9: ${g.Name} end date rendered ${row[3]} ≠ SOQL ${deDate(g.Wartungsvertrag_End__c)}`).toBe(deDate(g.Wartungsvertrag_End__c));
+      expect(row[2], `AC9: ${g.Name} end date rendered ${row[2]} ≠ SOQL ${deDate(g.Wartungsvertrag_End__c)}`).toBe(deDate(g.Wartungsvertrag_End__c));
+      expect(row[3], `AC9: ${g.Name} status rendered ${row[3]} ≠ SOQL ${g.Wartungsvertrag_Status__c}`).toBe(String(g.Wartungsvertrag_Status__c));
     }
     const expectedOrder = inWindow.map((r) => r.Name);
     expect(renderedNames, `AC9: rows sorted soonest first (${expectedOrder.join(' < ')})`).toEqual(expectedOrder);
@@ -398,7 +448,7 @@ test.describe('[SCRUM-451] Sales overview: contracts ending in the next 3 months
   test('AC10: already-expired contracts and customers without an end date are not listed', async ({ page }) => {
     const frame = await openReportFrame(page, SALES_REPORT);
     const rows = await reportRows(frame);
-    const renderedNames = rows.map((r) => r[1]);
+    const renderedNames = rows.map((r) => r[0]);
     const excluded = soql(`SELECT Name FROM Account WHERE Wartungsvertrag__c = true
                            AND (Wartungsvertrag_End__c = null OR Wartungsvertrag_End__c < TODAY)`);
     console.log(`[AC10] excluded by definition: ${excluded.map((r) => r.Name).join(' | ')}; rendered: ${renderedNames.join(' | ')}`);
@@ -422,9 +472,9 @@ test.describe('[SCRUM-451] AC13 (PO): morning overview filters the derived indic
     expect(truthCount, 'AC13 needs open cases to be a real test').toBeGreaterThan(0);
 
     const frame = await openReportFrame(page, MORNING_REPORT);
-    const stated = await reportStatedTotal(frame);
+    const stated = await pollReportTotal(frame, truthCount);
     const rows = await reportRows(frame);
-    const renderedCaseNumbers = rows.map((r) => r[1]);
+    const renderedCaseNumbers = rows.map((r) => r[0]);
     console.log(`[AC13] Report: Total Records=${stated}, rows=${rows.length}, cases=${renderedCaseNumbers.join(' | ')}`);
 
     expect(stated, `AC13: morning overview states ${stated}, SOQL measures ${truthCount}`).toBe(truthCount);
@@ -436,7 +486,7 @@ test.describe('[SCRUM-451] AC13 (PO): morning overview filters the derived indic
                                 AND Account.Wartungsvertrag_End__c < TODAY`);
     expect(expiredCase.length, 'AC13 needs an open case of an expired customer').toBeGreaterThan(0);
     for (const c of expiredCase) {
-      expect(renderedCaseNumbers, `AC13: case ${c.CaseNumber} of expired customer ${c['Account.Name']} is still listed`).not.toContain(String(c.CaseNumber));
+      expect(renderedCaseNumbers, `AC13: case ${c.CaseNumber} of expired customer ${c.Account.Name} is still listed`).not.toContain(String(c.CaseNumber));
     }
 
     // A flagged customer WITHOUT an end date must still be listed (PO decision 3).
@@ -444,7 +494,7 @@ test.describe('[SCRUM-451] AC13 (PO): morning overview filters the derived indic
                             WHERE Account.Wartungsvertrag__c = true AND Account.Wartungsvertrag_End__c = null AND IsClosed = false`);
     expect(noEndCase.length, 'AC13 needs an open case of a no-end-date customer').toBeGreaterThan(0);
     for (const c of noEndCase) {
-      expect(renderedCaseNumbers, `AC13: case ${c.CaseNumber} of ${c['Account.Name']} (no end date) must still be listed`).toContain(String(c.CaseNumber));
+      expect(renderedCaseNumbers, `AC13: case ${c.CaseNumber} of ${c.Account.Name} (no end date) must still be listed`).toContain(String(c.CaseNumber));
     }
 
     test.info().annotations.push({
@@ -469,7 +519,7 @@ test.describe('[SCRUM-451] AC11: no email, task, reminder or notification', () =
 
     // The customer page carries no chatter/notification about the contract.
     const [g] = soql(`SELECT Id, Name FROM Account WHERE Name = '${P}ACTIVE-45'`);
-    await openRecordDetails(page, `/lightning/r/Account/${g.Id}/view`);
+    await openRecord(page, `/lightning/r/Account/${g.Id}/view`);
     const body = ((await page.locator('body').innerText()) || '');
     const chatterHits = (body.match(/Wartungsvertrag/g) || []).length;
     console.log(`[AC11] record page chatter markers=${chatterHits}`);
