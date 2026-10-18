@@ -104,6 +104,7 @@ private class SCRUM451WartungsvertragFlsTest {
     static void teamleadReadsAndEditsDates() {
         User u = newUser('lead');
         assignPS('SCRUM451_Wartungsvertrag_Dates_Teamleitung', u.Id);
+        assignPS('SCRUM451_TestObjectAccess', u.Id);
         System.runAs(u) {
             System.assertEquals(true, Account.Wartungsvertrag_Start__c.getDescribe().isAccessible(),
                 'AC9: the team lead reads the start date');

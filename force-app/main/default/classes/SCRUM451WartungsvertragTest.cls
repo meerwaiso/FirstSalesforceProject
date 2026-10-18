@@ -50,7 +50,8 @@ private class SCRUM451WartungsvertragTest {
         insert u;
         for (String psName : new String[] {
                 'SCRUM451_Wartungsvertrag_Dates_Teamleitung',
-                'SCRUM451_Wartungsvertrag_Dates_Read' }) {
+                'SCRUM451_Wartungsvertrag_Dates_Read',
+                'SCRUM451_TestObjectAccess' }) {
             PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = :psName LIMIT 1];
             insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);
         }

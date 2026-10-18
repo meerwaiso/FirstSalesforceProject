@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-451: TEST-LOCAL object-level access for the fixture users only
+     (house pattern: SCRUM442_TestObjectAccess). Measured: inserting an Account
+     under System.runAs of a Standard User fails with
+     "Operation failed due to fields being inaccessible on Sobject Account" —
+     this org's Standard User has no object-level CRUD on Account/Case.
+     Deliberately NOT a released PS: it is assigned only to the Users that the
+     SCRUM451 test classes create, never to a real user. It grants object-level
+     CRUD, not field-level access — the FLS assertions stay meaningful. -->
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SCRUM451_TestObjectAccess</fullName>
+    <description>Test-local object-level CRUD on Account and Case for the SCRUM-451 fixture users. Never assigned to real users.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM-451 Test Object Access (fixture users only)</label>
+    <objectPermissions>
+        <allowCreate>true</allowCreate>
+        <allowDelete>true</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Account</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+    <objectPermissions>
+        <allowCreate>true</allowCreate>
+        <allowDelete>true</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Case</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+</PermissionSet>

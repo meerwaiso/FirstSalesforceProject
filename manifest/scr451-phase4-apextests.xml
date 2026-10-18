@@ -7,5 +7,9 @@
         <component>ApexClass:SCRUM451WartungsvertragTest</component>
         <component>ApexClass:SCRUM451WartungsvertragFlsTest</component>
     </components>
+    <types>
+        <members>SCRUM451_TestObjectAccess</members>
+        <name>PermissionSet</name>
+    </types>
     <version>67.0</version>
 </Package>
