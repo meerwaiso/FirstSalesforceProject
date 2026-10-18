@@ -257,3 +257,70 @@ Fix: delete that one `<fieldPermissions>` block. A required field is readable an
 ### Note on the Developer's last edit
 
 The room record shows a failed file edit on `.../classes/SCRUM451WartvertertragFlsTest.cls` — a path that does not exist (the real file is `SCRUM451WartuvertragFlsTest.cls`). The edit was a no-op; if it carried an intended change, that change is in neither the branch nor the org.
+
+---
+
+## Architect-Review, Round 2 (2026-10-18) — APPROVED
+
+Reviewed PR #176 at head `60cca4f3f053d909e81d4052a657683d2bbac4cc`. Head proven against the remote: `git ls-remote origin feature/SCRUM-451` → `60cca4f3f053d909e81d4052a657683d2bbac4cc`.
+
+### Round-1 blocking defect — fixed, verified on the head
+
+`SCRUM451_TestObjectAccess.permissionset-meta.xml` now carries **object-level CRUD only** (2 `objectPermissions`: Account `viewAllRecords=true`, Case `viewAllRecords=false`; zero `<fieldPermissions>`). The `Account.Name` entry — and the follow-up `Account.Owner` entry the Developer hit — are gone.
+
+Org read-back in Test-Org (my own queries, 2026-10-18):
+- `FieldPermissions WHERE Parent.Name LIKE 'SCRUM451%'` → **12 rows, none of them on `SCRUM451_TestObjectAccess`** — the test-local Set holds zero field grants, exactly as the branch now says. Org state and branch state agree.
+- `retrieve -m PermissionSet:SCRUM451_TestObjectAccess` → the org's copy differs from the branch file only in the XML comment, `<fullName>` and the two default `<viewAllFields>false</viewAllFields>` (not stored by the platform). Semantically identical.
+
+### CI belongs to the head I reviewed
+
+`gh run list --branch feature/SCRUM-451` → the newest run carries `headSha 60cca4f3f…`, `conclusion: success`. `gh pr checks 176` → Lint & Format pass, Metadata/Apex/Session Smoke pass, **Prod-Org Drift Gate pass**, README pass. The three older runs on this branch (0d0f79a, 6d3b224, bc73ba9) are red — they are the previous heads, not this one.
+
+### Org classes == branch classes (the CI Org-Job runs deployed code)
+
+`sf project retrieve start -o Test-Org -m ApexClass:SCRUM451WartungsvertragTest -m ApexClass:SCRUM451WartungsvertragFlsTest` diffed against `git show HEAD:…` → **both byte-identical**. The 11/11 green run really ran the branch's code.
+
+### Akzeptanzkriterien-Check (criterion → named artefact)
+
+| AC | Artefact on the head | Verdict |
+|---|---|---|
+| AC1 dates stored + visible to service/sales | fields `Wartungsvertrag_Start__c`/`Wartungsvertrag_End__c`; PS `…_Dates_Read` (6 fields readable) + `…_Dates_Teamleitung` (dates read+edit); org read-back 12 FieldPermissions rows; `SCRUM451WartungsvertragFlsTest` positive case (`assignPS` → `isAccessible() == true`) | ERFÜLLT |
+| AC2 non-team-lead change refused, value unchanged | `editable=false` on all six fields in `…_Dates_Read`; FLS test negative case (`isUpdateable() == false` without the PS) | ERFÜLLT |
+| AC3 "45 days" at a glance | `SCRUM451WartungsvertragTest.endsIn45Days_remainingTimeAndStatus` → `Ende_Tage = 45`, `Status = "in 45 days"` | ERFÜLLT |
+| AC4 ends today still counts | `endsToday_stillCountsAsMaintenanceCustomer` → 0 days, `"ends today"`, `Active = true` (inclusive `>= TODAY()`) | ERFÜLLT |
+| AC5 expired states it, never a negative count | `expired_noNegativeCount_statesExpired` → day count `null` (not 0, not negative), `Status = "expired"`, `Active = false` | ERFÜLLT |
+| AC6 case of an expired customer shows no indicator, count 0 | `caseIndicator…` asserts `Nein` for the expired customer's Case + `COUNT() … = 'Ja'` → 0; my org count: 1 Case of an expired customer, **0 read `Ja`** | ERFÜLLT |
+| AC7 empty end date keeps today's behaviour | `emptyEndDate_keepsTodayBehaviour` seeds 3 flagged customers with no dates → flag untouched, `Active = true`, day count/status blank, not in the overview | ERFÜLLT |
+| AC8 start without end behaves the same | same class, 4th bulk seed `TEST-SCRUM-451-STARTONLY` (start set, end null) | ERFÜLLT |
+| AC9 overview lists every end date in today → today+3M, row count = measured count | report `Sales/Wartungsvertrag_Renewals_3M` (AccountList, Tabular, filter `Renewal_Soon = 1`, `sortColumn Account.Wartungsvertrag_End__c` Asc, columns `ACCOUNT.NAME / USERS.NAME / Account.Wartungsvertrag_End__c / Account.Wartungsvertrag_Status__c`); field-level proof `SCRUM451WartungsvertragTest` (COUNT `Renewal_Soon = true` → 2); **rendering + the `USERS.NAME` column have no automated artefact → Tester E2E** | PARTLY (rendering = Tester) |
+| AC10 expired + no-end-date not listed | `Wartungsvertrag_Renewal_Soon__c` formula excludes both; test asserts `false` for expired and for blank | ERFÜLLT |
+| AC11 nothing automatic | PR carries no email/task/reminder/Flow/Webhook artefact (26 files, all metadata + tests + docs) | ERFÜLLT |
+| AC12 end before start refused | ValidationRule `Wartungsvertrag_End_Before_Start` + `invalidEndBeforeStart…` negative save must throw, `COUNT() … TEST-SCRUM-451-INVALID` → 0 | ERFÜLLT |
+| AC-13 morning overview filters the derived indicator | `Service/Morgen_UEbersicht_Vertragskunden.report-meta.xml` diff: filter column switched from the raw flag to `Account.Wartungsvertrag_Active__c`; **no automated artefact → Tester E2E** | PARTLY (rendering = Tester) |
+
+### Counts I measured in Test-Org on 2026-10-18 (must travel into the Tester's coverage table)
+
+| Query | Result |
+|---|---|
+| `Account WHERE Wartungsvertrag__c = true` | **9** |
+| `Account WHERE Wartungsvertrag_Renewal_Soon__c = true` | **2** |
+| `Account WHERE Wartungsvertrag__c = true AND Wartungsvertrag_End__c < TODAY` | **1** |
+| `Account WHERE Wartungsvertrag__c = true AND Wartungsvertrag_End__c = null` | **5** |
+| `Account WHERE Wartungsvertrag_Active__c = true` | **8** (= 9 − 1 expired, consistent) |
+| `Case WHERE Account.Wartungsvertrag_End__c < TODAY` | **1** |
+| `Case WHERE Account.Wartungsvertrag_End__c < TODAY AND Wartungsvertrag_Anzeige__c = 'Ja'` | **0** |
+| `Case WHERE Wartungsvertrag_Anzeige__c = 'Ja'` | **4** |
+
+No criterion here is measured against zero records except the AC6 negative count, which is a *must-be-zero* criterion — the Tester states the record count beside it.
+
+### Still without an automated artefact — Tester's station, not a design defect
+
+- AC9: the overview's rendered row count and its `USERS.NAME` (Account Owner) column — E2E on the report, assert the header's "Select N items" count, never the rendered row count.
+- AC-13: the Service morning overview must not list the expired customer and must still list the no-date ones — E2E on that report.
+- The at-a-glance display on the Account detail page — E2E on the layout (repo covers the three Classic layouts; Lightning placement stays an Org step for DevOps).
+
+These are UI/report-rendering criteria; the Apex pair in the PR proves the values behind them. They do not belong to the Developer's PR and do not block this approval — they block the Tester's sign-off.
+
+### Verdict
+
+**APPROVED.** Design, Permission Set shape, FLS table, ADR (100 % declarative, no Flow, no production Apex) and the manifest phases all match the spec. Handoff: Tester-Agent, column "Testen".
