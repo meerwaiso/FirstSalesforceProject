@@ -626,7 +626,43 @@ test.describe('[SCRUM-451] AC13 (PO): morning overview filters the derived indic
   });
 });
 
-/* ============================ AC11: nothing automatic ===================== */
+/* ==================== AC12: end date before start date ================== */
+
+test.describe('[SCRUM-451] AC12: an end date before the start date is refused', () => {
+  test('AC12: saving with end before start is rejected and nothing is stored', async ({ page }) => {
+    const name = `${P}BADRANGE`;
+    await page.goto('/lightning/o/Account/new', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForSelector('.slds-global-header, one-appnav', { timeout: 60000 });
+    await expect(page.getByLabel(/Wartungsvertrag start/).first())
+      .toBeVisible({ timeout: 45000 });
+
+    await page.getByLabel(/Account Name/).first().fill(name);
+    const startField = page.getByLabel(/Wartungsvertrag start/).first();
+    await startField.click();
+    await startField.fill('01.06.2026');
+    await startField.press('Enter');
+    const endField = page.getByLabel(/Wartungsvertrag end/).first();
+    await endField.click();
+    await endField.fill('01.01.2026');
+    await endField.press('Enter');
+    await page.waitForTimeout(1500);
+    await page.getByRole('button', { name: /^Save$|Speichern/i }).last().click();
+
+    // The org answers with a field-level error dialog (house pattern SCRUM-378).
+    await expect(page.getByText(/We hit a snag|Review the following fields/i).first())
+      .toBeVisible({ timeout: 30000 });
+    // Still on the form — nothing persisted.
+    expect(page.url(), 'AC12: the form left the new-record page').toContain('/new');
+    // And the record really is not in the org.
+    const rows = soql(`SELECT Id, Name FROM Account WHERE Name = '${name}'`);
+    expect(rows.length, `AC12: ${name} was created despite end < start`).toBe(0);
+
+    test.info().annotations.push({
+      type: 'observed',
+      description: `AC12: start 01.06.2026 + end 01.01.2026 → error dialog, 0 records named ${name} in Test-Org`,
+    });
+  });
+});
 
 test.describe('[SCRUM-451] AC11: no email, task, reminder or notification', () => {
   test('AC11: the story creates no automatic artefact', async ({ page }) => {
