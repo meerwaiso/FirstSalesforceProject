@@ -112,44 +112,61 @@ const ACCOUNT_LABELS = [
  * value='' when the label is there but renders blank (an empty field). Those
  * two are different findings and the ACs need to tell them apart.
  */
-async function fieldOnDetails(page: Page, label: string) {
-  const lines = ((await page.locator('body').innerText()) || '')
-    .split('\n').map((s) => s.trim());
-  const hits = lines.reduce((acc: number[], l, i) => (l === label ? acc.concat([i]) : acc), [] as number[]);
-  if (hits.length === 0) return { present: false, value: '' };
-  let value = '';
-  for (const i of hits) {
-    for (let j = i + 1; j < Math.min(i + 3, lines.length); j++) {
-      const cand = lines[j];
-      if (!cand) continue;
-      if (ACCOUNT_LABELS.includes(cand) || cand.startsWith('Edit ')) break;
-      value = cand;
-      break;
-    }
-    if (value) break;
-  }
-  return { present: true, value };
+async function fieldLines(page: Page): Promise<string[]> {
+  return ((await page.locator('body').innerText()) || '').split('\n').map((s) => s.trim());
 }
 
 /**
- * Is the rendered value read-only for THIS session's user?
- * Verified DOM fact 2026-10-18: the value span of a formula field carries the
- * class "is-read-only", the two recorded dates do not. Returns null when the
- * label is not on the page, so a missing field can never read as "writable".
+ * Read one field on the Details tab, polling until the label is rendered.
+ *
+ * The Details tab can report aria-selected=true before its fields are painted
+ * (measured 2026-10-18: AC6 read 0 occurrences of "Wartungsvertrag (Kunde)"
+ * right after the switch; the same label is on the page 2 s later). A single
+ * read therefore reports a present field as missing. The poll keeps the failure
+ * real: after the budget the label is genuinely not there and the caller's
+ * `present` assertion fails.
  */
-async function readOnlyOnDetails(page: Page, label: string): Promise<boolean | null> {
-  return await page.evaluate(
-    (label: string) => {
-      for (const el of document.querySelectorAll('div.slds-form-element')) {
-        const lab = el.querySelector('[class*="test-id__field-label"]');
-        if (!lab || (lab.textContent || '').trim() !== label) continue;
-        const val = el.querySelector('[class*="field-value"]');
-        return val ? /is-read-only/.test(val.className || '') : null;
+async function fieldOnDetails(page: Page, label: string, budgetMs = 25000) {
+  const deadline = Date.now() + budgetMs;
+  let lines: string[] = [];
+  for (;;) {
+    lines = await fieldLines(page);
+    const hits = lines.reduce((acc: number[], l, i) => (l === label ? acc.concat([i]) : acc), [] as number[]);
+    if (hits.length > 0 || Date.now() > deadline) {
+      let value = '';
+      for (const i of hits) {
+        for (let j = i + 1; j < Math.min(i + 3, lines.length); j++) {
+          const cand = lines[j];
+          if (!cand) continue;
+          if (ACCOUNT_LABELS.includes(cand) || cand.startsWith('Edit ')) break;
+          value = cand;
+          break;
+        }
+        if (value) break;
       }
-      return null;
-    },
-    label,
-  );
+      return { present: hits.length > 0, value, occurrences: hits.length };
+    }
+    await page.waitForTimeout(1500);
+  }
+}
+
+/**
+ * Is the field a real form control on the object's new-record form?
+ *
+ * House pattern (SCRUM-378, "AC read-only"): on `/lightning/o/<Object>/new` an
+ * editable field is a focusable INPUT, a formula field has NO labelled control
+ * at all. That is the DOM-level proof of "the team lead can record it, nobody
+ * can type into the derived value" — and it works where querySelectorAll does
+ * not: parts of the Lightning record page sit in a CLOSED shadow root, so
+ * `document.querySelectorAll('div.slds-form-element')` returns 0 there
+ * (measured 2026-10-18 on the Account page) while getByLabel reaches them.
+ */
+async function controlCount(page: Page, labelRegex: RegExp): Promise<{ count: number; tag: string }> {
+  const loc = page.getByLabel(labelRegex);
+  const count = await loc.count();
+  if (count === 0) return { count: 0, tag: '' };
+  const tag = await loc.first().evaluate((el) => el.tagName);
+  return { count, tag };
 }
 
 /* --------------------------- Report frame (house) -------------------------- */
@@ -255,15 +272,6 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
     const days = await fieldOnDetails(page, 'Wartungsvertrag ends in (Tage)');
     const status = await fieldOnDetails(page, 'Wartungsvertrag status');
 
-    // AC1: the two recorded dates are writable for a team lead, the derived
-    // values are read-only for everyone (verified DOM distinction).
-    const startWritable = await readOnlyOnDetails(page, 'Wartungsvertrag start');
-    const endWritable = await readOnlyOnDetails(page, 'Wartungsvertrag end');
-    const daysReadOnly = await readOnlyOnDetails(page, 'Wartungsvertrag ends in (Tage)');
-    expect(startWritable, 'AC1: "Wartungsvertrag start" is not editable on the page').toBe(false);
-    expect(endWritable, 'AC1: "Wartungsvertrag end" is not editable on the page').toBe(false);
-    expect(daysReadOnly, 'AC1: the derived day count must be read-only').toBe(true);
-
     // AC1: both dates are on the customer and readable in a real session.
     expect(start.present, 'AC1: no "Wartungsvertrag start" on the detail page').toBe(true);
     expect(start.value, `AC1: start date not rendered as stored (${deDate(g.Wartungsvertrag_Start__c)})`)
@@ -280,6 +288,85 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
     test.info().annotations.push({
       type: 'observed',
       description: `AC1/AC3: page shows start=${start.value}, end=${end.value}, days=${days.value}, status=${status.value}; SOQL ${g.Wartungsvertrag_Ende_Tage__c}/${g.Wartungsvertrag_Status__c}`,
+    });
+  });
+
+  test('AC1: the dates are a real control, the derived values are not', async ({ page }) => {
+    // House pattern SCRUM-378 "AC read-only": on the new-record form an editable
+    // field is a labelled INPUT, a formula field has no labelled control at all.
+    await page.goto('/lightning/o/Account/new', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForSelector('.slds-global-header, one-appnav', { timeout: 60000 });
+
+    const start = await controlCount(page, /Wartungsvertrag start/);
+    const end = await controlCount(page, /Wartungsvertrag end/);
+    expect(start.count, 'AC1: "Wartungsvertrag start" has no control on the Account form').toBeGreaterThan(0);
+    expect(start.tag, `AC1: the start control is <${start.tag}> — must be a real INPUT`).toBe('INPUT');
+    expect(end.count, 'AC1: "Wartungsvertrag end" has no control on the Account form').toBeGreaterThan(0);
+    expect(end.tag, `AC1: the end control is <${end.tag}> — must be a real INPUT`).toBe('INPUT');
+
+    for (const derived of [/Wartungsvertrag ends in \(Tage\)/, /Wartungsvertrag status/, /Wartungsvertrag counts \(derived\)/]) {
+      const c = await controlCount(page, derived);
+      expect(c.count, `AC1: the derived field ${derived.source} must not be a control anyone can type into`).toBe(0);
+    }
+    test.info().annotations.push({
+      type: 'observed',
+      description: `AC1: form controls — start INPUT, end INPUT; derived day count / status / counts: 0 controls`,
+    });
+  });
+
+  test('AC1: a team lead records both dates and the value is saved', async ({ page }) => {
+    const name = `${P}SAVE-UI`;
+    const startTyped = '2026-01-06';
+    const endTyped = (() => {
+      const d = new Date(Date.now() + 30 * 86400000);
+      return d.toISOString().slice(0, 10);
+    })();
+    await page.goto('/lightning/o/Account/new', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForSelector('.slds-global-header, one-appnav', { timeout: 60000 });
+    await expect(page.getByLabel(/Wartungsvertrag start/).first()).toBeVisible({ timeout: 30000 });
+
+    await page.getByLabel(/^Name$/).first().fill(name);
+    const startField = page.getByLabel(/Wartungsvertrag start/).first();
+    await startField.click();
+    await startField.fill(startTyped);
+    const endField = page.getByLabel(/Wartungsvertrag end/).first();
+    await endField.click();
+    await endField.fill(endTyped);
+    await endField.press('Enter');
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /^Save$|Speichern/i }).first().click();
+    await page.waitForTimeout(3000);
+
+    // The record exists with exactly what was typed (save, not just display).
+    const [g] = soql(`SELECT Id, Name, Wartungsvertrag_Start__c, Wartungsvertrag_End__c,
+                      Wartungsvertrag_Ende_Tage__c, Wartungsvertrag_Status__c, Wartungsvertrag_Active__c
+                      FROM Account WHERE Name = '${name}'`);
+    expect(g, `AC1: the record ${name} saved from the form is not in the org`).not.toBe(undefined);
+    expect(deDate(String(g.Wartungsvertrag_Start__c)), `AC1: start saved as ${g.Wartungsvertrag_Start__c}, typed ${startTyped}`).toBe(deDate(startTyped));
+    expect(deDate(String(g.Wartungsvertrag_End__c)), `AC1: end saved as ${g.Wartungsvertrag_End__c}, typed ${endTyped}`).toBe(deDate(endTyped));
+
+    // And the derived values follow the SAVED dates, not the other fixtures.
+    // The day count is asserted against the org's own arithmetic: the status
+    // word must name exactly the number the org shows, so a derived field that
+    // did not follow the saved value cannot pass.
+    const days = g.Wartungsvertrag_Ende_Tage__c;
+    expect(days, 'AC1: the derived day count is empty on a record with an end date').not.toBe(null);
+    expect(Math.abs(Number(days) - 30), `AC1: day count ${days} is not ~30 for an end date typed as today+30 (clock skew ±1)`)
+      .toBeLessThanOrEqual(1);
+    expect(String(g.Wartungsvertrag_Status__c), `AC1: glance value must name the org's own day count (${days})`)
+      .toBe(`in ${days} days`);
+    expect(g.Wartungsvertrag_Active__c, 'AC1: a contract ending in 30 days counts').toBe(true);
+
+    // Post-reload persistence: the record page renders the saved values.
+    await openRecord(page, `/lightning/r/Account/${g.Id}/view`);
+    const start = await fieldOnDetails(page, 'Wartungsvertrag start');
+    const end = await fieldOnDetails(page, 'Wartungsvertrag end');
+    expect(start.value, `AC1: page renders start ${start.value}, saved ${startTyped}`).toBe(deDate(startTyped));
+    expect(end.value, `AC1: page renders end ${end.value}, saved ${endTyped}`).toBe(deDate(endTyped));
+
+    test.info().annotations.push({
+      type: 'observed',
+      description: `AC1: form save → SOQL start=${g.Wartungsvertrag_Start__c} end=${g.Wartungsvertrag_End__c} days=${g.Wartungsvertrag_Ende_Tage__c} status=${g.Wartungsvertrag_Status__c}; page re-render start=${start.value} end=${end.value}`,
     });
   });
 
@@ -512,12 +599,16 @@ test.describe('[SCRUM-451] AC13 (PO): morning overview filters the derived indic
 test.describe('[SCRUM-451] AC11: no email, task, reminder or notification', () => {
   test('AC11: the story creates no automatic artefact', async ({ page }) => {
     const taskCount = soqlCount(`SELECT COUNT() FROM Task WHERE Subject LIKE '${P}%'`);
+    const postCount = soqlCount(`SELECT COUNT() FROM Post WHERE BodyPlain LIKE '%${P}%'`);
+    const feedCount = soqlCount(`SELECT COUNT() FROM FeedItem WHERE Name LIKE '%${P}%'`);
     const templates = shellJson(rawOut(
       `sf data query -q "SELECT Id, Name FROM EmailTemplate WHERE Name LIKE '%Wartungsvertrag%' OR Name LIKE '%451%'" --target-org Test-Org --use-tooling-api --json`
     ));
     const templateRows = (templates.result && templates.result.records) || [];
-    console.log(`[AC11] SOQL: Task naming a fixture=${taskCount}; EmailTemplate naming the story=${templateRows.length}`);
+    console.log(`[AC11] SOQL: Task naming a fixture=${taskCount}; Post naming a fixture=${postCount}; FeedItem naming a fixture=${feedCount}; EmailTemplate naming the story=${templateRows.length}`);
     expect(taskCount, 'AC11: no Task may be created for the contract fixtures').toBe(0);
+    expect(postCount, 'AC11: no Chatter Post may be created for the contract fixtures').toBe(0);
+    expect(feedCount, 'AC11: no chatter feed item may be created for the contract fixtures').toBe(0);
     expect(templateRows.length, 'AC11: no EmailTemplate may belong to this story').toBe(0);
 
     // The customer page carries no chatter/notification about the contract.
