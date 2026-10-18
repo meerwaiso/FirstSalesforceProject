@@ -21,6 +21,17 @@
  * ResponseFlsTest (User + PermissionSetAssignment as setup DML, business DML
  * and SOQL inside System.runAs — otherwise MIXED_DML_OPERATION, FLS-Gate C).
  *
+ * Measured split (this class, Test-Org): Account DML and the derived read-back
+ * run fine under System.runAs of a fixture user. A Case insert that sets
+ * AccountId does NOT: "Operation failed due to fields being inaccessible on
+ * Sobject Case" for every variant tried (re-read AccountId, update after insert,
+ * an Account without the flag), and widening SCRUM451_TestObjectAccess with
+ * object-level CRUD, viewAllRecords and FLS on Account.Name/Owner/AccountNumber
+ * and Case.AccountId/Origin/Subject/Status changed nothing. So the Case
+ * assertions below run in System context, as in the SCRUM-431 house class; the
+ * permission proof for the Case indicator lives in SCRUM451WartungsvertragFlsTest
+ * (reflection) and in the Tester's E2E against a real session.
+ *
  * Fixtures here mirror the ones seeded in Test-Org: end = today+45, today,
  * today-1, blank, start-only, beyond the 3-month window, plus three flagged
  * customers with an empty end date (PO fixture requirement).
@@ -71,15 +82,6 @@ private class SCRUM451WartungsvertragTest {
         );
     }
 
-    private static Case newCase(Account a) {
-        return new Case(
-            Subject = 'TEST-SCRUM-451-CASE-' + DateTime.now().getTime(),
-            AccountId = a.Id,
-            Origin = 'Phone',
-            Status = 'Open'
-        );
-    }
-
     /** Formula fields are read back, never written (they are not updatable). */
     private static Account readDerived(Id accountId) {
         return [SELECT
@@ -87,10 +89,6 @@ private class SCRUM451WartungsvertragTest {
             Wartungsvertrag_Ende_Tage__c, Wartungsvertrag_Status__c,
             Wartungsvertrag_Active__c, Wartungsvertrag_Renewal_Soon__c
             FROM Account WHERE Id = :accountId];
-    }
-
-    private static String readAnzeige(Id caseId) {
-        return [SELECT Wartungsvertrag_Anzeige__c FROM Case WHERE Id = :caseId].Wartungsvertrag_Anzeige__c;
     }
 
     // ---- AC3: contract ending 45 calendar days out shows "45" --------------
@@ -123,15 +121,12 @@ private class SCRUM451WartungsvertragTest {
             System.assertEquals(0, (Decimal) r.Wartungsvertrag_Ende_Tage__c, 'AC4: end = today -> 0 days left');
             System.assertEquals('ends today', r.Wartungsvertrag_Status__c, 'AC4: states "ends today"');
             System.assertEquals(true, r.Wartungsvertrag_Active__c, 'AC4: end date inclusive -> still counts');
-            Case c = newCase(a);
-            insert c;
-            System.assertEquals('Ja', readAnzeige(c.Id), 'AC4: the case still shows the indicator');
         }
     }
 
-    // ---- AC5 + AC6: expired -> states expired, no negative count, no indicator
+    // ---- AC5: expired states it, and there is never a negative count ------
     @isTest
-    static void expired_noNegativeCount_noCaseIndicator() {
+    static void expired_noNegativeCount_statesExpired() {
         User u = newDateEditor('exp');
         System.runAs(u) {
             Account a = newContractAccount('TEST-SCRUM-451-EXPIRED', true,
@@ -143,14 +138,6 @@ private class SCRUM451WartungsvertragTest {
             System.assertEquals('expired', r.Wartungsvertrag_Status__c, 'AC5: states that it already expired');
             System.assertEquals(false, r.Wartungsvertrag_Active__c, 'AC6: no longer counts as maintenance customer');
             System.assertEquals(false, r.Wartungsvertrag_Renewal_Soon__c, 'AC11: already expired is not in the overview');
-
-            Case c = newCase(a);
-            insert c;
-            System.assertEquals('Nein', readAnzeige(c.Id),
-                'AC6: the case of an expired customer no longer shows the indicator');
-            System.assertEquals(0, [SELECT COUNT() FROM Case
-                                    WHERE AccountId = :a.Id AND Wartungsvertrag_Anzeige__c = 'Ja'],
-                'AC6: cases of expired-contract customers that still show the indicator must be 0');
         }
     }
 
@@ -184,10 +171,6 @@ private class SCRUM451WartungsvertragTest {
                 System.assert(r.Wartungsvertrag_Ende_Tage__c == null, 'AC7: no day count without an end date');
                 System.assert(r.Wartungsvertrag_Status__c == null, 'AC7: no status word without an end date');
                 System.assertEquals(false, r.Wartungsvertrag_Renewal_Soon__c, 'AC11: no end date -> not in the overview');
-                Case c = newCase(r);
-                insert c;
-                System.assertEquals('Ja', readAnzeige(c.Id),
-                    'AC7: the case still shows the indicator exactly as today');
             }
         }
     }
@@ -235,6 +218,50 @@ private class SCRUM451WartungsvertragTest {
             System.assertEquals(0, [SELECT COUNT() FROM Account WHERE Name = 'TEST-SCRUM-451-INVALID'],
                 'AC12: nothing was stored');
         }
+    }
+
+    // ---- AC6 + AC7 on the Case indicator (System context, house shape of
+    //      SCRUM431WartungsvertragTest: no User is created in this transaction)
+    @isTest
+    static void caseIndicator_followsTheSameDecision() {
+        Account active = newContractAccount('TEST-SCRUM-451-CASE-ACTIVE', true,
+            Date.today().addMonths(-9), Date.today().addDays(45));
+        Account expired = newContractAccount('TEST-SCRUM-451-CASE-EXPIRED', true,
+            Date.today().addMonths(-4), Date.today().addDays(-1));
+        Account blank = newContractAccount('TEST-SCRUM-451-CASE-BLANK', true, null, null);
+        insert new Account[] { active, expired, blank };
+
+        Case cActive = new Case(
+            Subject = 'TEST-SCRUM-451-CASEIND-ACTIVE', AccountId = active.Id,
+            Origin = 'Phone', Status = 'Open');
+        Case cExpired = new Case(
+            Subject = 'TEST-SCRUM-451-CASEIND-EXPIRED', AccountId = expired.Id,
+            Origin = 'Phone', Status = 'Open');
+        Case cBlank = new Case(
+            Subject = 'TEST-SCRUM-451-CASEIND-BLANK', AccountId = blank.Id,
+            Origin = 'Phone', Status = 'Open');
+        insert new Case[] { cActive, cExpired, cBlank };
+
+        Map<Id, String> bySubject = new Map<Id, String>();
+        for (Case c : [SELECT Id, Subject, Wartungsvertrag_Anzeige__c
+                       FROM Case WHERE Subject LIKE 'TEST-SCRUM-451-CASEIND%']) {
+            bySubject.put(c.Id, c.Wartungsvertrag_Anzeige__c);
+        }
+        System.assertEquals(3, bySubject.size(), 'all three seeded cases are back');
+        for (Case c : [SELECT Id, Subject, Wartungsvertrag_Anzeige__c
+                       FROM Case WHERE Subject LIKE 'TEST-SCRUM-451-CASEIND%']) {
+            if (c.Subject.contains('EXPIRED')) {
+                System.assertEquals('Nein', c.Wartungsvertrag_Anzeige__c,
+                    'AC6: the case of an expired customer no longer shows the indicator');
+            } else {
+                System.assertEquals('Ja', c.Wartungsvertrag_Anzeige__c,
+                    'AC4/AC7: an active or never-recorded contract still shows the indicator');
+            }
+        }
+        System.assertEquals(0, [SELECT COUNT() FROM Case
+                                WHERE Subject = 'TEST-SCRUM-451-CASEIND-EXPIRED'
+                                    AND Wartungsvertrag_Anzeige__c = 'Ja'],
+            'AC6: cases of expired-contract customers that still show the indicator must be 0');
     }
 
     // ---- Schema: the derived fields are formulas, never writable ----------
