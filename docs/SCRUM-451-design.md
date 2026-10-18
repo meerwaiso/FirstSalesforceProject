@@ -211,3 +211,49 @@ Target users (measured, house rule "both users of the org"): `devops-agent@cline
 ## Handoff
 
 Branch `feature/SCRUM-451` (fresh from `origin/master` @ `d2e14c3a`). This file plus `docs/SCRUM-451-notizen.md` are committed and pushed here; reachability is proven with `git cat-file -e origin/feature/SCRUM-451:docs/SCRUM-451-design.md`.
+
+---
+
+## Architect-Review, Round 1 (2026-10-18) — REJECTED (1 blocking defect)
+
+Reviewed PR #176, head `0d0f79a8b55ae87ae55c5399d5c02f83911c2068`.
+
+### Blocking — must change
+
+`force-app/main/default/permissionsets/SCRUM451_TestObjectAccess.permissionset-meta.xml`, line 15:
+
+    <fieldPermissions><field>Account.Name</field> ...
+
+`Account.Name` is a **required** field. Salesforce refuses an FLS entry on it — the Prod-Org Drift Gate is red on this head with its own words:
+
+    ##[error]1 component(s) do not resolve in Prod-Org
+    SCRUM451_TestObjectAccess: You cannot deploy to a required field: Account.Name
+
+The Test-Org advisory validate names the same component. Measured in Test-Org:
+`SELECT Field, PermissionsRead, PermissionsEdit FROM FieldPermissions WHERE Parent.Name = 'SCRUM451_TestObjectAccess'` → **0 rows**. The org's copy of that PS carries no field grants at all, so org state ≠ branch state; the branch as committed cannot be deployed unchanged at release.
+
+Fix: delete that one `<fieldPermissions>` block. A required field is readable and editable without an FLS entry — the test's need for `Account.Name` is satisfied by the object-level `Account` CRUD already in that PS. Nothing else in that PS may name a required field; `Account.Owner` passed validation and may stay.
+
+### Aligned with the design (verified on the PR head, not the report)
+
+- All four formula fields byte-identical to the spec above, incl. `ADDMONTHS(TODAY(), 3)` and the inclusive `end >= TODAY()` boundary.
+- Case indicator switched to the derived indicator, name and layout placement unchanged.
+- ValidationRule `Wartuvertrag_End_Before_Start` as specified (active, ErrorConditionFormula, the PO's German message).
+- Sales overview: `AccountList`, Tabular, `sortColumn = ACCOUNT.WARTUVERTRAG_END__C` Asc, no grouping, filter on `Renewal_Soon`, scope organization; columns `ACCOUNT.NAME / USERS.NAME / ACCOUNT.WARTUVERTRAG_END__C / ACCOUNT.WARTUVERTRAG_STATUS__C`.
+- Service morning report switched from the raw flag to the derived indicator (AC-13) — the PO's decision is implemented.
+- Permission Sets: Teamleitung read+edit on the two dates, read-only on the four derived; Read-PS read-only on all six. No Profile edit anywhere.
+- Org classes == branch classes (`sf project retrieve start -o Test-Org -m ApexClass:...` diffed against `git show origin/feature/SCRUM-451:...`): identical for both test classes, so the CI Org-Job really ran the branch's code.
+
+### Counts measured in Test-Org after the deploy (2026-10-18)
+
+9 flagged customers; 2 with an end date inside today → today+3M; 1 already expired; 5 with no end date recorded. 5 Cases belong to flagged customers, 1 of them to the expired customer — that Case reads `Nein`, 0 read `Ja`.
+
+### Criteria still without an automated artefact (Tester must cover)
+
+- AC-13 (morning overview lists no expired customer, still lists the no-date ones): E2E on the Service report — no Apex artefact exists.
+- Sales overview's `USERS.NAME` column: `Account.Owner` is not readable through the CLI session (permission artifact), so the column is unproven until the E2E renders it.
+- The at-a-glance display in the Account detail page: E2E on the layout.
+
+### Note on the Developer's last edit
+
+The room record shows a failed file edit on `.../classes/SCRUM451WartvertertragFlsTest.cls` — a path that does not exist (the real file is `SCRUM451WartuvertragFlsTest.cls`). The edit was a no-op; if it carried an intended change, that change is in neither the branch nor the org.
