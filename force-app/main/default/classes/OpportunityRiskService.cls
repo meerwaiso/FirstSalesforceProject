@@ -64,6 +64,49 @@ public without sharing class OpportunityRiskService {
     //  Rueckruf_am__c). Apex has no generic sObject field access here
     // (getField/setField/getDescribe on sObject all reject — probe-verified),
     // so the comparison is explicit and typed.
+    // The four comparisons below belong to OTHER tickets' contracts
+    // (SCRUM-315 TestFeld__c, SCRUM-440 Rueckruf_desired__c, SCRUM-445
+    // Discount_in_Pct__c / Rejection_Reason__c). They are user-editable signals
+    // ONLY where the acting user can actually see the field, so each is guarded
+    // by its accessibility for the acting user — see refreshForeignVisibility().
+    // The standard fields above are readable through object-level CRUD in both
+    // orgs and need no guard.
+    @testVisible private static Map<String, Boolean> foreignVisible;
+
+    // Recomputed ONCE per trigger invocation (the handler calls this before the
+    // record loop), never cached across transactions: accessibility belongs to
+    // the ACTING user, and the acting user differs between a UI save, an API
+    // call and the nightly scheduler. getDescribe() on a typed field reference
+    // does not throw for an invisible field — it returns isAccessible()=false
+    // (house pattern, SCRUM449OpportunityRiskFlsTest).
+    public static void refreshForeignVisibility() {
+        foreignVisible = new Map<String, Boolean>();
+        foreignVisible.put('Opportunity.TestFeld__c',
+                           Opportunity.TestFeld__c.getDescribe().isAccessible());
+        foreignVisible.put('Opportunity.Rueckruf_desired__c',
+                           Opportunity.Rueckruf_desired__c.getDescribe().isAccessible());
+        foreignVisible.put('Opportunity.Discount_in_Pct__c',
+                           Opportunity.Discount_in_Pct__c.getDescribe().isAccessible());
+        foreignVisible.put('Opportunity.Rejection_Reason__c',
+                           Opportunity.Rejection_Reason__c.getDescribe().isAccessible());
+    }
+
+    // Lazy fallback for direct callers (tests) that did not refresh: same
+    // per-transaction cost, one metadata call set instead of one per record.
+    private static Boolean foreignVisibleToUser(String apiName) {
+        if (foreignVisible == null) {
+            refreshForeignVisibility();
+        }
+        // Architect round-7 open item 1: an UNREGISTERED name must fail loudly.
+        // Defaulting to visible re-opened the runtime wall for the next foreign
+        // field added to userEditedRecord() without registering it here — the
+        // guard is opt-in, so its default was the dangerous value.
+        System.assert(foreignVisible.containsKey(apiName),
+            'foreign field ' + apiName + ' is compared in userEditedRecord() but has no '
+                + 'accessibility entry in refreshForeignVisibility() — register it there');
+        return foreignVisible.get(apiName);
+    }
+
     public static Boolean userEditedRecord(Opportunity now, Opportunity was) {
         if (now.AccountId != was.AccountId) return true;
         if (now.Name != was.Name) return true;
@@ -91,13 +134,30 @@ public without sharing class OpportunityRiskService {
         if (now.OrderNumber__c != was.OrderNumber__c) return true;
         if (now.CurrentGenerators__c != was.CurrentGenerators__c) return true;
         if (now.MainCompetitors__c != was.MainCompetitors__c) return true;
-        if (now.TestFeld__c != was.TestFeld__c) return true;
-        // MeinNeuesFeld__c deliberately NOT compared: it exists only in Test-Org
-        // (no file in origin/master, 0 rows in Prod-Org FieldDefinition) — the
-        // Prod-Org Drift Gate rejects the reference as "Variable does not exist".
-        if (now.Rueckruf_desired__c != was.Rueckruf_desired__c) return true;
-        if (now.Discount_in_Pct__c != was.Discount_in_Pct__c) return true;
-        if (now.Rejection_Reason__c != was.Rejection_Reason__c) return true;
+        // Foreign custom fields — guarded by the acting user's view of the field.
+        // TestFeld__c belongs to SCRUM-315 and is NOT part of this story's
+        // contract; nothing in the repo writes it. It exists in BOTH orgs but
+        // carries no FLS grant at all in Prod-Org, where reading it threw
+        // "Operation failed due to fields being inaccessible on Sobject
+        //  Opportunity" in the nightly sweep (AsyncApexJob
+        //  707g500000ryLVDAA2, reproduced synchronously by recomputeAll()).
+        // Guarding by accessibility keeps the rule org-independent: in Test-Org
+        // the field IS granted (28 Profiles incl. Standard User), so a user
+        // change of it still moves the anchor there — the meaning of "changed
+        // by a user" is the same in both orgs.
+        if (foreignVisibleToUser('Opportunity.TestFeld__c')
+            && now.TestFeld__c != was.TestFeld__c) return true;
+        // MeinNeuesFeld__c is NOT compared at all: it exists only in Test-Org
+        // (no file in origin/master, 0 rows in Prod-Org FieldDefinition), so a
+        // reference to it is a COMPILE error in Prod — the Prod-Org Drift Gate
+        // rejects it as "Variable does not exist". A guard cannot help a name
+        // that does not exist in the org.
+        if (foreignVisibleToUser('Opportunity.Rueckruf_desired__c')
+            && now.Rueckruf_desired__c != was.Rueckruf_desired__c) return true;
+        if (foreignVisibleToUser('Opportunity.Discount_in_Pct__c')
+            && now.Discount_in_Pct__c != was.Discount_in_Pct__c) return true;
+        if (foreignVisibleToUser('Opportunity.Rejection_Reason__c')
+            && now.Rejection_Reason__c != was.Rejection_Reason__c) return true;
         return false;
     }
 

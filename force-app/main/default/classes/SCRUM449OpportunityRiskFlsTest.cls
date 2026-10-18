@@ -155,6 +155,251 @@ private class SCRUM449OpportunityRiskFlsTest {
             'the trigger (system context) assessed the record even for a user without PS');
     }
 
+    // ---- Review SCRUM-449 round 6, Blocking 4: the fix must be proven -------
+    // (a) The nightly sweep must survive an org in which a custom field on the
+    // object is INVISIBLE to the acting user. That is exactly the Prod shape of
+    // TestFeld__c (exists, no grant at all -> "Operation failed due to fields
+    // being inaccessible on Sobject Opportunity", AsyncApexJob
+    // 707g500000ryLVDAA2). Test-Org reproduces the shape with a user that holds
+    // ONLY the two SCRUM449 sets: Rueckruf_desired__c (SCRUM440_Rueckrufwunsch),
+    // Discount_in_Pct__c and Rejection_Reason__c (SCRUM445_*) are granted by
+    // Permission Sets, not by Profiles (measured with scripts/fls-check.sh), so
+    // for this user they are invisible — the same wall the Prod scheduler hit.
+    @isTest
+    static void sweep_survivesForeignFieldInvisibleToActingUser() {
+        User u = mkUser('fls449sw');
+        insert u;
+        // Account from @TestSetup (own transaction), looked up by Name — house
+        // lesson: TestSetup statics are not visible across methods, and a setup
+        // object must not be inserted after the PSA inserts of this transaction.
+        Account acct = [SELECT Id FROM Account WHERE Name = 'FLS449 Account' LIMIT 1];
+        PermissionSet psRead = [
+            SELECT Id FROM PermissionSet WHERE Name = 'SCRUM449OpportunityRisk' LIMIT 1
+        ];
+        PermissionSet psWrite = [
+            SELECT Id FROM PermissionSet WHERE Name = 'SCRUM449OpportunityRiskWrite' LIMIT 1
+        ];
+        insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = psRead.Id);
+        insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = psWrite.Id);
+
+        // PRECONDITION — the probe must be able to fail. If this user could see
+        // all three foreign fields, the run below would prove nothing about the
+        // FLS wall and the test would pass for the wrong reason.
+        System.runAs(u) {
+            System.assert(Opportunity.SObjectType.getDescribe().isAccessible(),
+                'precondition: the user must be able to open Opportunity');
+            System.assertEquals(false, Opportunity.Rueckruf_desired__c.getDescribe().isAccessible(),
+                'precondition: Rueckruf_desired__c must be INVISIBLE to this user (the Prod shape)');
+            System.assertEquals(false, Opportunity.Discount_in_Pct__c.getDescribe().isAccessible(),
+                'precondition: Discount_in_Pct__c must be INVISIBLE to this user');
+            System.assertEquals(false, Opportunity.Rejection_Reason__c.getDescribe().isAccessible(),
+                'precondition: Rejection_Reason__c must be INVISIBLE to this user');
+            System.assertEquals(true, Opportunity.Risk_Level__c.getDescribe().isAccessible(),
+                'precondition: the risk fields themselves must be readable');
+        }
+
+        // (a1) THE WALL ITSELF, hit directly. This is the non-vacuous proof:
+        // userEditedRecord() is the code that read the foreign fields, and for
+        // THIS user three of them are invisible. Under the old code the call
+        // below threw System.DmlException: "Operation failed due to fields being
+        // inaccessible on Sobject Opportunity" — the exact message of the failed
+        // Prod AsyncApexJob 707g500000ryLVDAA2 — and an unhandled exception fails
+        // the test. With the guard the call answers without touching the field.
+        // refreshForeignVisibility() is what the handler calls once per transaction
+        // (accessibility belongs to the acting user), so the test mirrors the
+        // production path rather than the lazy fallback.
+        System.runAs(u) {
+            OpportunityRiskService.refreshForeignVisibility();
+
+            // Two records identical in every field the user CAN see. A user
+            // transaction that changes nothing visible is not a user change.
+            Opportunity plainA = new Opportunity(
+                Name = 'FLS449 wall probe',
+                StageName = 'Prospecting',
+                CloseDate = Date.today().addDays(30),
+                AccountId = acct.Id
+            );
+            Opportunity plainB = new Opportunity(
+                Name = 'FLS449 wall probe',
+                StageName = 'Prospecting',
+                CloseDate = Date.today().addDays(30),
+                AccountId = acct.Id
+            );
+            System.assertEquals(false, OpportunityRiskService.userEditedRecord(plainB, plainA),
+                'a transaction that changes nothing the user can see is not a user change ' +
+                    '(and must not read the invisible foreign fields at all)');
+
+            // Same call, one VISIBLE difference: the diff still works for a user
+            // who cannot see the foreign fields.
+            Opportunity touched = new Opportunity(
+                Name = 'FLS449 wall probe',
+                StageName = 'Prospecting',
+                CloseDate = Date.today().addDays(30),
+                Description = 'changed by the rep',
+                AccountId = acct.Id
+            );
+            System.assertEquals(true, OpportunityRiskService.userEditedRecord(touched, plainA),
+                'a change of a field the user CAN see is still a user change');
+        }
+
+        // (a2) The scheduler path end to end for that user: the nightly sweep must
+        // run and must not throw. Honest scope note: recomputeAll() sets
+        // systemWriteInProgress, so the handler short-circuits userEditedRecord()
+        // on the sweep's OWN writes — the wall proof above is what pins the FLS
+        // behaviour; this call proves the sweep still completes for a user without
+        // the foreign fields.
+        //
+        // Measured (probe SCRUM449ProbeTest, 2026-10-17): an Apex test run sees
+        // ONLY the records it creates (org-wide open Opportunities = 0 from inside
+        // a test), so the sweep here covers the records seeded below, and the
+        // count asserts it covered them.
+        List<Opportunity> seeds = new List<Opportunity>();
+        for (Integer i = 0; i < 3; i++) {
+            seeds.add(new Opportunity(
+                Name = 'FLS449 sweep ' + i,
+                StageName = 'Prospecting',
+                CloseDate = Date.today().addDays(-1), // past close date -> High, so the sweep must write
+                AccountId = acct.Id
+            ));
+        }
+        System.runAs(u) {
+            insert seeds;
+        }
+
+        Integer saved = 0;
+        Test.startTest();
+        System.runAs(u) {
+            saved = OpportunityRiskService.recomputeAll();
+        }
+        Test.stopTest();
+
+        List<Opportunity> stamped = [
+            SELECT Id, Name, Last_Risk_Evaluation__c, Last_User_Change__c, Risk_Level__c
+            FROM Opportunity WHERE Name LIKE 'FLS449 sweep%'
+        ];
+        System.assertEquals(3, stamped.size(), 'the sweep must cover the seeded open records (seeded=3)');
+        Integer stampedCount = 0;
+        Integer anchoredCount = 0;
+        Integer levelledCount = 0;
+        for (Opportunity o : stamped) {
+            if (o.Last_Risk_Evaluation__c != null) {
+                stampedCount++;
+            }
+            if (o.Last_User_Change__c != null) {
+                anchoredCount++;
+            }
+            if (o.Risk_Level__c != null) {
+                levelledCount++;
+            }
+        }
+        System.assertEquals(3, stampedCount,
+            'every seeded record carries an evaluation stamp (stamped=' + stampedCount + ')');
+        System.assertEquals(3, anchoredCount,
+            'the anchor exists on every seeded record (anchored=' + anchoredCount + ')');
+        System.assertEquals(3, levelledCount,
+            'the sweep actually assessed the records (levelled=' + levelledCount + ')');
+    // saved is NOT asserted > 0: the insert above already ran the trigger,
+    // so the records are consistent and the sweep legitimately finds
+    // nothing dirty (measured: saved=0 with stamped=3). What must not
+    // happen is the wall — an unhandled DmlException fails the test. The
+    // 3/3/3 counts above are the non-vacuous check that the records were
+    // assessed; the direct userEditedRecord() call is the wall proof.
+    System.debug('sweep as a user without the foreign fields completed, saved=' + saved);
+    }
+
+    // (b) A user edit of a field the acting user CAN see must still move the
+    // anchor — the guard must not have silently dropped a real user-change
+    // signal. Round-7 Blocking 1: the previous version used TestFeld__c and
+    // asserted its visibility from the ORG's Profiles (28 Profiles grant it in
+    // Test-Org, nothing grants it in Prod-Org) — a test that reads one org's
+    // FLS proves nothing about the rule and reddened the Prod-Org Drift Gate.
+    // The proof now uses a field granted by a PERMISSION SET that exists in
+    // BOTH orgs: Rueckruf_desired__c via SCRUM440_Rueckrufwunsch. Measured 2026-10-17
+    // in Test-Org AND Prod-Org: FieldPermissions rows Parent.Name='SCRUM440_Rueckrufwunsch',
+    // read=true, edit=true for Rueckruf_desired__c and Rueckruf_am__c, IsOwnedByProfile=false.
+    // The test user holds that PS, so the precondition is the CONTRACT (the PS
+    // grants the field), not one org's Profile table.
+    @isTest
+    static void userEditOfGrantedForeignField_movesAnchor() {
+        Account a = [SELECT Id FROM Account WHERE Name = 'FLS449 Account' LIMIT 1];
+        User u = mkUser('fls449ue');
+        insert u; // the user must exist before System.runAs can act as it
+
+        // The user needs the SCRUM449 sets: the trigger writes the six risk
+        // fields on EVERY insert/update, so without them the insert itself
+        // throws "fields being inaccessible on Sobject Opportunity" (measured:
+        // deploy 0AfWU00000cIyPe0AK, a bare Standard User at line 271).
+        PermissionSet psRead = [
+            SELECT Id FROM PermissionSet WHERE Name = 'SCRUM449OpportunityRisk' LIMIT 1
+        ];
+        PermissionSet psWrite = [
+            SELECT Id FROM PermissionSet WHERE Name = 'SCRUM449OpportunityRiskWrite' LIMIT 1
+        ];
+        // The foreign field of the proof is granted by SCRUM440_Rueckrufwunsch —
+        // a Permission Set present in BOTH orgs, unlike TestFeld__c's Profile
+        // grants. Never read the org's Profiles here (round-7 Blocking 1).
+        PermissionSet psForeign = [
+            SELECT Id FROM PermissionSet WHERE Name = 'SCRUM440_Rueckrufwunsch' LIMIT 1
+        ];
+        insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = psRead.Id);
+        insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = psWrite.Id);
+        insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = psForeign.Id);
+
+        // PRECONDITION: the field must be visible AND writable for this user,
+        // otherwise the edit below is not a user change and the assertion would
+        // pass for the wrong reason.
+        System.runAs(u) {
+            System.assertEquals(true, Opportunity.Rueckruf_desired__c.getDescribe().isAccessible(),
+                'precondition: Rueckruf_desired__c must be readable for a user holding '
+                    + 'SCRUM440_Rueckrufwunsch (the PS grants it in both orgs)');
+            System.assertEquals(true, Opportunity.Rueckruf_desired__c.getDescribe().isUpdateable(),
+                'precondition: Rueckruf_desired__c must be writable for that user');
+            System.assertEquals(true, Opportunity.Rueckruf_am__c.getDescribe().isAccessible(),
+                'precondition: the paired Rueckruf_am__c must be readable (ValRule pair)');
+        }
+
+        Opportunity seed = new Opportunity(
+            Name = 'FLS449 anchor edit',
+            StageName = 'Prospecting',
+            CloseDate = Date.today().addDays(30), // far away -> only the anchor matters
+            AccountId = a.Id
+        );
+        // Anchor seeded 20 days in the past, so the value after the edit is
+        // unambiguous: a moved anchor is ~now, a swallowed edit leaves now-20d.
+        // (Comparing two anchors written in the same second is not a
+        // discriminator — the DateTime string only shows seconds.)
+        seed.Last_User_Change__c = System.now().addDays(-20);
+        System.runAs(u) {
+            insert seed;
+        }
+        Opportunity before = [
+            SELECT Id, Last_User_Change__c FROM Opportunity
+            WHERE Name = 'FLS449 anchor edit' LIMIT 1
+        ];
+        System.assertNotEquals(null, before.Last_User_Change__c, 'the insert seeded the anchor');
+
+        System.runAs(u) {
+            Opportunity o = [SELECT Id, Rueckruf_desired__c, Rueckruf_am__c
+                             FROM Opportunity
+                             WHERE Name = 'FLS449 anchor edit' LIMIT 1];
+            // ValRule pair Rueckruf_am_PflichtBeiGesetzer / Rueckruf_am_KeineNichte
+            // (measured in both orgs): a set checkbox requires a FUTURE
+            // Rueckruf_am__c, otherwise the save is blocked.
+            o.Rueckruf_desired__c = true;
+            o.Rueckruf_am__c = System.now().addDays(3);
+            update o;
+        }
+
+        Opportunity after = [
+            SELECT Id, Last_User_Change__c FROM Opportunity
+            WHERE Name = 'FLS449 anchor edit' LIMIT 1
+        ];
+        System.assert(after.Last_User_Change__c > before.Last_User_Change__c,
+            'a user edit of a field the user CAN see must move the anchor: ' +
+                'anchor before=' + before.Last_User_Change__c +
+                ', anchor after=' + after.Last_User_Change__c);
+    }
+
     @isTest
     static void writePS_neverAssignedToHumanProfiles() {
         // AC9 second half: SCRUM449OpportunityRiskWrite exists for the scheduler
