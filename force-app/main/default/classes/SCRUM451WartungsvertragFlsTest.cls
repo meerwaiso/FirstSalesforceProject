@@ -103,6 +103,7 @@ private class SCRUM451WartungsvertragFlsTest {
     @isTest
     static void teamleadReadsAndEditsDates() {
         User u = newUser('lead');
+        assignPS('SCRUM431_Wartungsvertrag_Teamleitung', u.Id);
         assignPS('SCRUM451_Wartungsvertrag_Dates_Teamleitung', u.Id);
         assignPS('SCRUM451_TestObjectAccess', u.Id);
         System.runAs(u) {

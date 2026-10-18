@@ -48,7 +48,11 @@ private class SCRUM451WartungsvertragTest {
             TimeZoneSidKey = 'America/Los_Angeles'
         );
         insert u;
+        // A team lead in this org holds the SCRUM-431 PS as well: the recorded
+        // flag lives there, and an insert that sets it fails without it
+        // ("fields being inaccessible on Sobject Account").
         for (String psName : new String[] {
+                'SCRUM431_Wartungsvertrag_Teamleitung',
                 'SCRUM451_Wartungsvertrag_Dates_Teamleitung',
                 'SCRUM451_Wartungsvertrag_Dates_Read',
                 'SCRUM451_TestObjectAccess' }) {
