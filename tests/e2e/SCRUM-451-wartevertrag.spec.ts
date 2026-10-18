@@ -393,6 +393,8 @@ test.describe('[SCRUM-451] Customer detail page: dates, remaining time at a glan
       description: `AC1: form save → SOQL start=${g.Wartungsvertrag_Start__c} end=${g.Wartungsvertrag_End__c} days=${g.Wartungsvertrag_Ende_Tage__c} status=${g.Wartungsvertrag_Status__c}; page re-render start=${start.value} end=${end.value}`,
     });
 
+  });
+
   test('AC4: a contract ending today still counts as a maintenance customer', async ({ page }) => {
     const [g] = soql(`SELECT Id, Name, Wartungsvertrag_End__c, Wartungsvertrag_Ende_Tage__c,
                       Wartungsvertrag_Status__c, Wartungsvertrag_Active__c
