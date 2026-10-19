@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-451 phase 2: the four derived Account fields, the changed SCRUM-431
+     Case indicator and the ValidationRule. All reference
+     Account.Wartungsvertrag_Start__c / _End__c (phase 1) and must deploy
+     BEFORE the layouts, Permission Sets and Reports that name them. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Account.Wartungsvertrag_Ende_Tage__c</members>
+        <members>Account.Wartungsvertrag_Status__c</members>
+        <members>Account.Wartungsvertrag_Active__c</members>
+        <members>Account.Wartungsvertrag_Renewal_Soon__c</members>
+        <members>Case.Wartungsvertrag_Anzeige__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Account.Wartungsvertrag_End_Before_Start</members>
+        <name>ValidationRule</name>
+    </types>
+    <version>67.0</version>
+</Package>

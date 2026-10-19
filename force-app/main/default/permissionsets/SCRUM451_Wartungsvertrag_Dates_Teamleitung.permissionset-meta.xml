@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-451 Teamleitung: Read+Edit on the two recorded contract dates, read-only on the four derived formula fields. The SCRUM-431 flag stays in SCRUM431_Wartungsvertrag_Teamleitung.</description>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Account.Wartungsvertrag_Start__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Account.Wartungsvertrag_End__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Wartungsvertrag_Ende_Tage__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Wartungsvertrag_Status__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Wartungsvertrag_Active__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Wartungsvertrag_Renewal_Soon__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM451_Wartungsvertrag_Dates_Teamleitung</label>
+</PermissionSet>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Wartungsvertrag_Renewal_Soon__c</fullName>
+    <label>Wartungsvertrag ends within 3 months</label>
+    <description>SCRUM-451: Window gate for the sales renewal overview = end date recorded AND end &gt;= today AND end &lt;= today + 3 months (ADDMONTHS). Already-expired and never-recorded contracts are excluded. System-computed, read-only.</description>
+    <formula>AND(NOT(ISBLANK(Wartungsvertrag_End__c)), Wartungsvertrag_End__c &gt;= TODAY(), Wartungsvertrag_End__c &lt;= ADDMONTHS(TODAY(), 3))</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <type>Checkbox</type>
+</CustomField>
