@@ -32,3 +32,19 @@ Both are this ticket's own new fields, which exist only in Test-Org until the Re
 - `origin/master`: `d2e14c3a538e1a92482970b125100fb022e9a148` -> `d84d1e6b8b4724c5b9474896ff74daf3801ec729`.
 - Local master synced with `git fetch origin master:master` (shared working tree stayed on `feature/SCRUM-424-first-response`, foreign uncommitted files untouched).
 - Feature branch `feature/SCRUM-451` NOT deleted (branch deletion is policy-gated here).
+
+## Release station (Prod-Org, 2026-10-19)
+
+- Authorization read back BEFORE the first org write: status `Release` + assignee `devops-agent`.
+- Prod-Org alias trap: every write carries explicit `-o Prod-Org` (Org `00Dg500000DkTtzEAF`); the default org is Test-Org.
+- Manifest check before deploy: 15/15 members resolve to files on disk.
+- `sf project deploy validate -x manifest/scr451-wartungsvertrag.xml -o Prod-Org --test-level RunRelevantTests` -> Succeeded, 0 errors.
+- Deploys (`--test-level NoTestRun`): phase1 2/2, phase2 6/6, full set 15/15.
+- PITFALL: a metadata-format manifest (`<components>` block) does NOT deploy ApexClasses — phase4 manifest deployed only its 1 PermissionSet. ApexClasses went with `--metadata ApexClass:...` -> 2/2.
+- PS read-back: 4 `PermissionSetAssignment` rows (2 PS x @user + devops-agent@cline.de). `SCRUM451_TestObjectAccess` intentionally unassigned to real users (fixture PS, assigned by the test classes via setup DML).
+- Prod field presence: 6 Account fields + `Case.Wartungsvertrag_Anzeige__c` via `FieldDefinition WHERE EntityDefinitionId = 'Account'` (no `FieldDataType` field on FieldDefinition).
+- Prod Apex tests: run `707g500000st0mr`, 12/12 Pass, Outcome Passed, username `devops-agent@cline.de`.
+- Post-release `workflow_dispatch` run `39204110375` on `d84d1e6`: **Prod-Org Drift Gate success** (the two pre-release self-trips in artifact `0Afg500000FxvmPCAR` are gone).
+- Smoke job on that run: 432 tests, 2 failures, BOTH foreign — `SCRUM403LastCaseDateTest.existingCase_showsDateAndHumanDuration` (Expected 2026-10-19, Actual 2026-10-18, line 72) and `SCRUM434Probe.openCaseInRunAs_triggersMustNotBreak` (line 31). Reproduced standalone: run `707WU00001OY7AR`, 10 tests, 8 Pass / 2 Fail. Filed as SCRUM-452 (tester-agent); SCRUM-444 already covers the probe.
+- Release tag `release/2026-10-19-SCRUM-451`: tag object `d162659...`, `git cat-file -p` -> `object d84d1e6...`. NOTE: `git rev-parse refs/tags/<tag>^` returns the PREVIOUS master (`d2e14c3`) — do not read the tag target that way; use `git cat-file -p "$(git rev-parse refs/tags/<tag>)"`.
+- Prod data state: `Wartungsvertrag_End__c != null` -> 0 records. Feature live, counts not yet measurable in Prod.
