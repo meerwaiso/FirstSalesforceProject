@@ -36,6 +36,57 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 19.10.2026 — Maintenance contracts show their dates and what is still ahead (SCRUM-451)
+
+**What changes**
+
+- A customer now records **when the maintenance contract started and when it ends**. Only a
+  team lead can write those two dates and the contract flag; the service team and sales see
+  them but cannot change them, and an attempted change leaves the stored value untouched.
+- On the customer the remaining time is written out in whole calendar days — "in 44 days",
+  "ends today", "expired" — recalculated every time the customer is opened. A contract that
+  has already run out says so and never shows a negative number of days. A contract ending
+  today still counts as a maintenance customer on that day; it is expired from the next day
+  on.
+- An expired contract no longer counts as a maintenance customer: on the cases of that
+  customer the existing SCRUM-431 indicator switches from "Ja" to "Nein", so the service team
+  stops treating an out-of-contract customer as a contract customer.
+- A contract customer **without** an end date keeps behaving exactly as before: it still counts
+  as a maintenance customer, on the customer and on its cases, and it never appears in the
+  sales overview. Recording an end date before the start date is refused at the save.
+
+**Where you see it**
+
+- On the customer record: contract start, contract end, remaining days, and a status sentence.
+- On the case: the existing maintenance-contract indicator, now following the dates instead of
+  the raw flag.
+- Sales: the report "Wartungsvertrag Renewals 3M" lists every customer whose contract ends
+  within the next three months — customer, end date, account owner, soonest first. Already
+  expired contracts and customers without an end date are not in it.
+- Service: the morning report "Morgen UEbersicht Vertragskunden" now counts only customers that
+  still count as contract customers.
+
+**Deliberately not in there**
+
+- Nothing announces itself. No email, task, reminder or notification is created or sent — the
+  overview is the only mechanism, and sales still has to pick up the phone.
+- **In the production org there is nothing to see yet: no customer has a contract recorded.**
+  0 of the production customers carry a contract end date, so the renewal overview is empty
+  today and the indicator change cannot be observed on a real case. The feature is live, the
+  data is not — the first customer a team lead dates is the first one you can watch.
+- The contract document itself stays where it is today: no attachment, no contract management,
+  no automatic renewal and no automatic flagging of customers.
+
+**Evidence** — production deploy jobs `0Afg500000FyKcjCAF` (2/2 dates), phase 2 derived 6/6,
+full set 15/15 Succeeded, Apex test classes 2/2 and 1/1; release tag
+`release/2026-10-19-SCRUM-451` at commit `d84d1e6` (tag object `d162659`). Measured in the
+production org on 19.10.2026: both dates and the four derived fields present on `Account`,
+`Case.Wartungsvertrag_Anzeige__c` present, both reports present, 4 Permission Set assignments
+(2 sets to 2 users, active, not revoked), the end date read back through a real production
+session. 0 of the production customers carry a contract end date — 0 customers expected in the
+19.10.–19.01. window and 0 rows in the overview, so expectation and observation agree at zero;
+the counting itself is proven only in the test org (1 customer in the window today).
+
 ## 18.10.2026 — Opportunities at risk flag themselves (SCRUM-449)
 
 **What changes**
