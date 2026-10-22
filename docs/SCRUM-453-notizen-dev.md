@@ -59,3 +59,33 @@ Read before re-deriving. Every line names the command that produced it.
 - Report drift: the org adds `<params>co=1` and `timeFrameFilter DUE_DATE/INTERVAL_CUSTOM`
   on its own -> repo file replaced by the retrieved metadata (ADR-7).
 - Test result: 17/17 green with `--test-level RunSpecifiedTests --tests <both classes>`.
+
+## Round 2 (Architect rejection, 2026-10-22)
+- FLS gate (`scripts/fls-gate.py`) reddens a test class that touches a new field
+  outside `System.runAs`: it would pass in Test-Org (CLI user holds every PS) and
+  fail the Prod-Org drift gate. House shape: in-test Standard User +
+  `PermissionSetAssignment` inserts + all field access inside `System.runAs`
+  (model SCRUM424FirstResponseFlsTest).
+- `@TestSetup` is required once the test body does User+PSA inserts: a setup-object
+  insert (Account) in the same transaction as the User insert = MIXED_DML_OPERATION.
+  Green under RunSpecifiedTests, red under RunLocalTests/CI (house lesson SCRUM-449).
+  @TestSetup statics are not visible from helpers -> look fixture up by stable field, cache.
+- Seeds with cross-object refs (Case -> Account/Contact) must be created in System
+  context: inside System.runAs the Case triggers read custom Case fields the user
+  has no FLS for -> "fields being inaccessible on Sobject Case" (house SCRUM-442).
+- `Task` has no `Title` (name field is `Subject`); `Opportunity` needs `CloseDate`
+  (REQUIRED_FIELD_MISSING otherwise). Both read via `sf sobject describe`.
+- Test evidence in the org: `sf project deploy start --test-level RunSpecifiedTests`
+  runs tests but writes NO ApexTestQueueItem row. `sf apex run test -o Test-Org -l
+  RunSpecifiedTests -t <Class> -r json` does. Queue entity columns are only
+  Id/CreatedDate/CreatedById/SystemModstamp/ApexClassId/Status/ExtendedStatus/
+  ParentJobId/TestRunResultId/ShouldSkipCodeCoverage (no pass/fail counters).
+- Fixture Contacts carrying `NewsletterConsent__c=true` need SCRUM359_NewsletterConsent
+  in the runAs user, else insert fails with "fields being inaccessible".
+- Async run 707WU00001PCy3v (2026-10-22T19:24:18Z): 20 tests, 100% pass, 2 queue rows
+  (ApexClassId 01pWU00000T8DH7YAN FlsTest / 01pWU00000T8DH8YAN Test).
+- Persistent fixtures in Test-Org (the Tester's zero-row trap): Account "V453 Fixture
+  Alpha" (2 Contacts, both NewsletterConsent__c=true, 1 marked) -> aggregates 1/1/2026-10-01;
+  Account "V453 Fixture Beta" (2 Contacts, consent, both marked) -> 0/2/2026-10-01.
+  Overview filter `Contacts_Without_Mark__c = 0 AND Contacts_Left_Count__c > 0` now
+  returns 1 row (Beta). Marked Contacts with consent: 3.
