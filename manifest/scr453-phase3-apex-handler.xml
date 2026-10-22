@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-453 Phase 3: the handler ALONE, before its trigger. A trigger and its
+         new helper in one batch compile the consumer against the OLD live helper
+         (house rule, memory) — a brand-new helper must be live first. -->
+    <types>
+        <members>SCRUM453ContactLeftHandler</members>
+        <name>ApexClass</name>
+    </types>
+    <version>68.0</version>
+</Package>

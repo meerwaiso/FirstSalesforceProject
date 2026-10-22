@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-453 Set-FLS: Sales and Service may SET the Austritt mark and its date. Clearing it is refused by ContactLeftGuardTrigger unless the user holds SCRUM453_ContactLeft_Undo (AC-6).</description>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Contact.Has_Left_Company__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Contact.Left_Company_Date__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM453_ContactLeft_Set</label>
+</PermissionSet>

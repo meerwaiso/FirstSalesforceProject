@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Contact_Status_Anzeige__c</fullName>
+    <label>Austritt-Anzeige</label>
+    <description>SCRUM-453: Read-only display of the row-level Austritt mark, so a contact who left stands out in every list and on the record page. Never editable; the mark itself stays the source of truth.</description>
+    <formula>IF(Has_Left_Company__c, &quot;Austritt - not there any more&quot;, &quot;Active&quot;)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

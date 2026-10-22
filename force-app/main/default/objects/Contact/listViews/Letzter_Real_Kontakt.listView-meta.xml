@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ListView xmlns="http://soap.sforce.com/2006/04/metadata">
     <columns>Contact.Last_Real_Contact_Date__c</columns>
+    <!-- SCRUM-453 AC-4: a contact who left stands out in every list. -->
+    <columns>Contact.Contact_Status_Anzeige__c</columns>
     <fullName>Letzter_Real_Kontakt</fullName>
     <filterScope>Everything</filterScope>
     <label>Letzter echter Kontakt</label>

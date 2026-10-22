@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Contacts_Without_Mark__c</fullName>
+    <label>Kontakte without Austritt</label>
+    <description>SCRUM-453: Count of the Contacts of this Account that are NOT marked as having left. System-maintained by ContactLeftGuardTrigger / SCRUM453ContactLeftHandler (full recompute, SCRUM-416 pattern); von Hand nicht aenderbar. 0 together with Contacts_Left_Count__c &gt; 0 = the customer has no contact person left any more (overview AC-8).</description>
+    <type>Number</type>
+    <precision>6</precision>
+    <scale>0</scale>
+    <defaultValue>0</defaultValue>
+    <required>false</required>
+    <unique>false</unique>
+    <externalId>false</externalId>
+    <trackTrending>false</trackTrending>
+</CustomField>

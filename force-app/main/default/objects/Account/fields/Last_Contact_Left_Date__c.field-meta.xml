@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Last_Contact_Left_Date__c</fullName>
+    <label>Letzter Austritt am</label>
+    <description>SCRUM-453: Newest Left_Company_Date__c over the marked Contacts of this Account. System-maintained (full recompute); the overview sorts Asc on it, so the customer whose last contact person left longest ago comes first. Empty = no marked contact.</description>
+    <type>Date</type>
+    <required>false</required>
+    <unique>false</unique>
+    <externalId>false</externalId>
+    <trackTrending>false</trackTrending>
+</CustomField>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Contact_Left_Anzeige__c</fullName>
+    <label>Contact person left</label>
+    <description>SCRUM-453 AC-7: Read-only indicator on the Case, derived from the Case's Contact lookup, so Service sees at once - without opening the Contact - that the contact person of this Case no longer works at the customer. Blank when the Case has no Contact or the Contact is still active.</description>
+    <formula>IF(Contact.Has_Left_Company__c, &quot;Austritt - not there any more (&quot; &amp; TEXT(Contact.Left_Company_Date__c) &amp; &quot;)&quot;, &quot;&quot;)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

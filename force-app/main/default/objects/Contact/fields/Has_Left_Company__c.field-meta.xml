@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Has_Left_Company__c</fullName>
+    <label>Austritt</label>
+    <description>SCRUM-453: True, wenn der Contact person no longer works at the customer's company. Row-level mark, never deletes the record. Setting it is Sales/Service (SCRUM453_ContactLeft_Set); clearing it only for team leads (SCRUM453_ContactLeft_Undo, enforced by ContactLeftGuardTrigger). Commercially sensitive business data, not PII.</description>
+    <defaultValue>false</defaultValue>
+    <required>false</required>
+    <type>Checkbox</type>
+    <unique>false</unique>
+    <externalId>false</externalId>
+    <trackTrending>false</trackTrending>
+</CustomField>
