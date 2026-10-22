@@ -53,6 +53,10 @@ Dates render `DD.MM.YYYY`.
 - List-view header row (`tr[data-row-key-value="HEADER"]`) reads
   `Select N items`; N is **capped at 50** (653 org contacts → "Select 50 items"),
   so an org-wide view is proven by reaching the cap, not by matching the org count.
+- A record page's BODY renders after the global header: `openRecordPage` +
+  immediate `ariaSnapshot()` can return a snapshot holding ONLY the navigation
+  bar (measured on the Case page, flaky red). Use `openRecordDetails` — waiting
+  for the Details tab forces the record content to attach.
 - `FeedItem.RelatedRecordId` exists but **cannot be filtered in a query call**
   (`INVALID_FIELD … can not be filtered`); `FeedItem.ParentId` is the record the
   post is attached to and filters fine.

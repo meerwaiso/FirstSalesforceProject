@@ -165,15 +165,18 @@ test.describe('[SCRUM-453] Contact Austritt — mark, date, consent, history', (
     expect(contactSnap, 'marked contact must still open as a record after marking').toContain('V453 Fixture B2');
     test.info().annotations.push({
       type: 'observed',
-      description: `AC-3: Related tab of the marked contact renders "No related lists to display" — no Contact related list is deployed in Test-Org`,
+      description: `AC-3 Related tab of the marked contact: ${contactSnap.includes('No related lists to display') ? 'renders "No related lists to display" — no Contact related list is deployed in Test-Org' : 'related lists present'}`,
     });
 
-    await openRecordPage(page, `/lightning/r/Case/${cases[0].Id}/view`);
+    // Details tab, not the raw page: the record body renders AFTER the global
+    // header, and a snapshot taken too early sees only the navigation bar
+    // (measured 2026-10-22: the Case snapshot held no record content at all).
+    await openRecordDetails(page, `/lightning/r/Case/${cases[0].Id}/view`);
     const caseSnap = await snapshot(page);
     expect(caseSnap, `Case "${cases[0].Subject}" must still be openable after the contact was marked`).toContain(cases[0].Subject);
     expect(caseSnap, `Case page must still name its contact "V453 Fixture B2" (link survived the mark)`).toContain('V453 Fixture B2');
 
-    await openRecordPage(page, `/lightning/r/Opportunity/${opps[0].Id}/view`);
+    await openRecordDetails(page, `/lightning/r/Opportunity/${opps[0].Id}/view`);
     const oppSnap = await snapshot(page);
     const oppName = (opps[0].Opportunity?.Name ?? 'SCRUM-453-e2e-Opp-B2') as string;
     expect(oppSnap, `Opportunity "${oppName}" must still be openable after the contact was marked`).toContain(oppName);
