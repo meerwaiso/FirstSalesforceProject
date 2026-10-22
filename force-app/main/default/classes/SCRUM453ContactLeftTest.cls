@@ -284,4 +284,35 @@ private class SCRUM453ContactLeftTest {
         System.assertEquals(2, soqlAfter - soqlBefore,
             'one recompute call = 2 aggregate SOQL, independent of the batch');
     }
+
+    // ---------- AC-6 is NOT tested here, deliberately ----------
+    // The undo gate depends on the RUNNING user, and both real users of this org
+    // (CLI target-org user + the human test account) are the two SCRUM428_Teamleitung
+    // holders, i.e. they hold SCRUM453_ContactLeft_Undo. A negative undo test under
+    // them is unsatisfiable by construction (a Permission Set can only grant, never
+    // revoke). AC-6 negative + positive live in SCRUM453ContactLeftFlsTest, which
+    // builds its own runAs users with an explicit PS set — house SCRUM445/442 shape.
+
+    // ---------- trigger branch: after delete heals the aggregates ----------
+    @isTest
+    static void deleteHealsAggregates() {
+        Id accId = newAccount('Delete');
+        Id c1 = newContact('D1', accId);
+        Id c2 = newContact('D2', accId);
+        Contact m = contact(c2);
+        m.Has_Left_Company__c = true;
+        m.Left_Company_Date__c = LEFT_WHEN;
+        update m;
+        System.assertEquals(Decimal.valueOf(1), aggregates(accId).Contacts_Left_Count__c,
+            'before delete: one marked');
+
+        delete contact(c2);
+        Account acc = aggregates(accId);
+        System.assertEquals(Decimal.valueOf(0), acc.Contacts_Left_Count__c,
+            'AC-8: a deleted contact is no longer counted');
+        System.assertEquals(Decimal.valueOf(1), acc.Contacts_Without_Mark__c,
+            'AC-8: the remaining contact keeps the customer out of the overview');
+        System.assert(acc.Last_Contact_Left_Date__c == null,
+            'AC-8: no leaving date is left behind');
+    }
 }

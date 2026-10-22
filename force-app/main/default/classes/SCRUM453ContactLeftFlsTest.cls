@@ -31,7 +31,7 @@ private class SCRUM453ContactLeftFlsTest {
         User u = new User(
             ProfileId         = p.Id,
             LastName          = 'SCRUM453FLS ' + tag,
-            Alias             = tag,
+            Alias             = tag.substring(0, Math.min(8, tag.length())),   // User Alias <= 8 chars
             Email             = tag + '@scr453fls.example.invalid',
             Username          = 'scr453fls_' + tag + '_'
                                 + String.valueOf(System.now().getTime()) + '@scr453fls.example.invalid',
@@ -100,7 +100,7 @@ private class SCRUM453ContactLeftFlsTest {
     @isTest
     static void readPS_readableNotEditable() {
         User viewer = mkUser('view', null);
-        grantPS(viewer, new String[] { 'SCRUM453_ContactLeft_Read' });
+        grantPS(viewer, new String[] { 'SCRUM453_ContactLeft_Read', 'SCRUM451_TestObjectAccess', 'SCRUM453_ContactLeft_System' });
         Boolean accessible = false;
         Boolean updateable = false;
         System.runAs(viewer) {
@@ -116,7 +116,7 @@ private class SCRUM453ContactLeftFlsTest {
     @isTest
     static void readPS_cannotSetMark() {
         User viewer = mkUser('viewset', null);
-        grantPS(viewer, new String[] { 'SCRUM453_ContactLeft_Read' });
+        grantPS(viewer, new String[] { 'SCRUM453_ContactLeft_Read', 'SCRUM451_TestObjectAccess', 'SCRUM453_ContactLeft_System' });
         Account a = new Account(Name = 'V453 fls-read');
         insert a;
         Id cId = markedContact(a.Id);
@@ -141,7 +141,8 @@ private class SCRUM453ContactLeftFlsTest {
     @isTest
     static void setPS_setsMark() {
         User seller = mkUser('setter', null);
-        grantPS(seller, new String[] { 'SCRUM453_ContactLeft_Read', 'SCRUM453_ContactLeft_Set' });
+        grantPS(seller, new String[] { 'SCRUM453_ContactLeft_Read', 'SCRUM453_ContactLeft_Set',
+                                 'SCRUM451_TestObjectAccess', 'SCRUM453_ContactLeft_System' });
         Account a = new Account(Name = 'V453 fls-set');
         insert a;
         Id cId = newContact(a.Id);
@@ -167,7 +168,8 @@ private class SCRUM453ContactLeftFlsTest {
     @isTest
     static void setPSWithoutUndo_cannotClearMark() {
         User seller = mkUser('nosetundo', null);
-        grantPS(seller, new String[] { 'SCRUM453_ContactLeft_Read', 'SCRUM453_ContactLeft_Set' });
+        grantPS(seller, new String[] { 'SCRUM453_ContactLeft_Read', 'SCRUM453_ContactLeft_Set',
+                                 'SCRUM451_TestObjectAccess', 'SCRUM453_ContactLeft_System' });
         Account a = new Account(Name = 'V453 fls-undo');
         insert a;
         Id cId = markedContact(a.Id);
@@ -194,7 +196,7 @@ private class SCRUM453ContactLeftFlsTest {
     static void undoPS_clearsMark() {
         User lead = mkUser('lead', null);
         grantPS(lead, new String[] { 'SCRUM453_ContactLeft_Read', 'SCRUM453_ContactLeft_Set',
-                                     'SCRUM453_ContactLeft_Undo' });
+                                     'SCRUM453_ContactLeft_Undo', 'SCRUM451_TestObjectAccess', 'SCRUM453_ContactLeft_System' });
         Account a = new Account(Name = 'V453 fls-lead');
         insert a;
         Id cId = markedContact(a.Id);

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-453: System-PS for the three system-maintained Account aggregates.
+
+     WHY THIS EXISTS AT ALL (measured 2026-10-22, not designed): the guard trigger's
+     recompute does `update` on Account under the RUNNING user. Apex DML checks FLS
+     even in `without sharing` classes (house ADR-5, SCRUM-442), and System.runAs
+     enforces it strictly. Measured: with only SCRUM453_ContactLeft_Read (readable,
+     not editable) the Account write fails with
+     "Operation failed due to fields being inaccessible on Sobject Account" — and
+     granting SCRUM451_TestObjectAccess (object-level CRUD on Account) does NOT
+     change that, so object-level access is not the answer either.
+
+     House shape: SCRUM442_Satisfaction_System / SCRUM436_CaseReminderSystem /
+     SCRUM438_SLA_System — a separate System-PS carrying update-FLS for the
+     system-written fields, never merged into the user-facing Read/Set PS (that
+     would let a Sales user edit an aggregate directly).
+
+     Assigned to the users who can set the mark (CLI target-org user + the human
+     test account), because their Contact edit causes this Account write. -->
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Account.Contacts_Without_Mark__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Account.Contacts_Left_Count__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Account.Last_Contact_Left_Date__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM453 ContactLeft System</label>
+    <description>SCRUM-453 System-PS: update-FLS for the three system-maintained Account aggregates. Needed because ContactLeftGuardTrigger writes them (Apex DML checks FLS). Never merged into Read/Set.</description>
+</PermissionSet>

@@ -13,6 +13,7 @@
         <members>SCRUM453_ContactLeft_Read</members>
         <members>SCRUM453_ContactLeft_Set</members>
         <members>SCRUM453_ContactLeft_Undo</members>
+        <members>SCRUM453_ContactLeft_System</members>
         <name>PermissionSet</name>
     </types>
     <types>

@@ -3,18 +3,19 @@
      any more — every Contact of that Account is marked as having left.
      Filter = the two system-maintained Account aggregates:
        Contacts_Without_Mark__c equals 0  AND  Contacts_Left_Count__c greaterThan 0.
-     The second criterion is what implements the PO decision "customers that never had
+     The second criterion implements the PO decision "customers that never had
      a contact person are excluded" (no extra field).
-     Columns: customer, account owner (USERS.NAME — OWNER_FULL_NAME is NOT a valid
-     AccountList column, read from the Analytics API), when the last contact left,
-     and both counts. Sorted Asc on Last_Contact_Left_Date__c = oldest first.
-     NO timeFrameFilter (house SCRUM-443 finding: a window silently drops rows and
-     there is no matching interval token here).
-     Report placement/sharing = Org step S2 (@devops-agent). -->
+     ACCOUNT.NAME is the grouping (groupingsDown), NOT a column: the deploy rejects
+     a field that appears in both lists ("You can't include groupings in the
+     selected columns list"). House: Miserable_Kunde_Satisfaction.
+     USERS.NAME is the account owner — OWNER_FULL_NAME is NOT a valid AccountList
+     column (read from the Analytics API reportTypes/AccountList).
+     THIS FILE IS THE ORG'S OWN METADATA (ADR-7 house rule): it was retrieved
+     after the first deploy, not written from scratch. The org added <params>co=1
+     and the timeFrameFilter DUE_DATE/INTERVAL_CUSTOM on its own — carrying them
+     here keeps branch and Test-Org identical, so the Prod-Org Drift Gate stays
+     honest. No window was chosen by us; INTERVAL_CUSTOM is the org default. -->
 <Report xmlns="http://soap.sforce.com/2006/04/metadata">
-    <!-- ACCOUNT.NAME is the grouping (groupingsDown), not a column: a report
-         rejects a field that appears in both lists ("You can't include groupings
-         in the selected columns list"). House: Miserable_Kunde_Satisfaction. -->
     <columns>
         <field>USERS.NAME</field>
     </columns>
@@ -52,6 +53,10 @@
         <sortOrder>Asc</sortOrder>
     </groupingsDown>
     <name>Kunde_ohne_Kontaktperson</name>
+    <params>
+        <name>co</name>
+        <value>1</value>
+    </params>
     <reportType>AccountList</reportType>
     <scope>organization</scope>
     <showDetails>true</showDetails>
@@ -59,4 +64,8 @@
     <showSubTotals>true</showSubTotals>
     <sortColumn>Account.Last_Contact_Left_Date__c</sortColumn>
     <sortOrder>Asc</sortOrder>
+    <timeFrameFilter>
+        <dateColumn>DUE_DATE</dateColumn>
+        <interval>INTERVAL_CUSTOM</interval>
+    </timeFrameFilter>
 </Report>
