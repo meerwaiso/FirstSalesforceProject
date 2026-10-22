@@ -56,12 +56,54 @@ private class SCRUM453ContactLeftFlsTest {
         }
     }
 
-    /** Fixture Contact that is already marked, so an undo can be attempted. */
-    private static Id markedContact(Id accId) {
-        Contact c = new Contact(LastName = 'FLS',  AccountId = accId,
-                                Has_Left_Company__c = true, Left_Company_Date__c = Date.today().addMonths(-2));
-        insert c;
-        return c.Id;
+    /** Fixtures come in via @TestSetup: Account is a setup object, and setup
+     * DML may not share a transaction with the User + PermissionSetAssignment
+     * inserts of the test body (MIXED_DML_OPERATION, house lesson SCRUM-449 —
+     * green under RunSpecifiedTests, red under RunLocalTests/CI). @TestSetup is
+     * committed before the body runs, so both halves stay legal. The seeds are
+     * created in System context, which is also why the marked one can carry the
+     * fresh Contact fields. */
+    @TestSetup
+    static void seedFls() {
+        Account a = new Account(Name = 'V453 fls');
+        insert a;
+        Contact m = new Contact(LastName = 'FLS marked', AccountId = a.Id,
+                                Has_Left_Company__c = true,
+                                Left_Company_Date__c = Date.today().addMonths(-2));
+        insert m;
+        Contact f = new Contact(LastName = 'FLS free', AccountId = a.Id);
+        insert f;
+    }
+
+    /** @TestSetup statics are not visible from helpers (house SCRUM-449):
+     * look the fixture up by a stable field and cache it. */
+    private static Id accCache;
+    private static Id markedCache;
+    private static Id freeCache;
+
+    private static Id flsAccount() {
+        if (accCache == null) {
+            accCache = [SELECT Id FROM Account WHERE Name = 'V453 fls' LIMIT 1].Id;
+        }
+        return accCache;
+    }
+
+    private static Id flsMarkedContact() {
+        if (markedCache == null) {
+            Id acc = flsAccount();
+            markedCache = [SELECT Id FROM Contact
+                           WHERE AccountId = :acc AND LastName = 'FLS marked' LIMIT 1].Id;
+        }
+        return markedCache;
+    }
+
+    private static Id flsFreeContact() {
+        if (freeCache == null) {
+            Id acc = flsAccount();
+            freeCache = [SELECT Id FROM Contact
+                         WHERE AccountId = :acc AND LastName = 'FLS free' LIMIT 1].Id;
+        }
+        return freeCache;
     }
 
     private static Boolean markReadable(User u) {
@@ -117,9 +159,7 @@ private class SCRUM453ContactLeftFlsTest {
     static void readPS_cannotSetMark() {
         User viewer = mkUser('viewset', null);
         grantPS(viewer, new String[] { 'SCRUM453_ContactLeft_Read', 'SCRUM451_TestObjectAccess', 'SCRUM453_ContactLeft_System' });
-        Account a = new Account(Name = 'V453 fls-read');
-        insert a;
-        Id cId = markedContact(a.Id);
+        Id cId = flsMarkedContact();
 
         Boolean setByReadPs = false;
         System.runAs(viewer) {
@@ -143,9 +183,7 @@ private class SCRUM453ContactLeftFlsTest {
         User seller = mkUser('setter', null);
         grantPS(seller, new String[] { 'SCRUM453_ContactLeft_Read', 'SCRUM453_ContactLeft_Set',
                                  'SCRUM451_TestObjectAccess', 'SCRUM453_ContactLeft_System' });
-        Account a = new Account(Name = 'V453 fls-set');
-        insert a;
-        Id cId = newContact(a.Id);
+        Id cId = flsFreeContact();
 
         Boolean wasSet = false;
         System.runAs(seller) {
@@ -158,21 +196,13 @@ private class SCRUM453ContactLeftFlsTest {
         System.assert(wasSet, 'AC-1: a Sales/Service user holding the Set-PS marks the contact.');
     }
 
-    private static Id newContact(Id accId) {
-        Contact c = new Contact(LastName = 'FLS-set',  AccountId = accId);
-        insert c;
-        return c.Id;
-    }
-
     // ---------- AC-6 NEGATIVE: Set-PS without Undo-PS may NOT clear the mark ----------
     @isTest
     static void setPSWithoutUndo_cannotClearMark() {
         User seller = mkUser('nosetundo', null);
         grantPS(seller, new String[] { 'SCRUM453_ContactLeft_Read', 'SCRUM453_ContactLeft_Set',
                                  'SCRUM451_TestObjectAccess', 'SCRUM453_ContactLeft_System' });
-        Account a = new Account(Name = 'V453 fls-undo');
-        insert a;
-        Id cId = markedContact(a.Id);
+        Id cId = flsMarkedContact();
 
         Boolean cleared = false;
         System.runAs(seller) {
@@ -197,9 +227,7 @@ private class SCRUM453ContactLeftFlsTest {
         User lead = mkUser('lead', null);
         grantPS(lead, new String[] { 'SCRUM453_ContactLeft_Read', 'SCRUM453_ContactLeft_Set',
                                      'SCRUM453_ContactLeft_Undo', 'SCRUM451_TestObjectAccess', 'SCRUM453_ContactLeft_System' });
-        Account a = new Account(Name = 'V453 fls-lead');
-        insert a;
-        Id cId = markedContact(a.Id);
+        Id cId = flsMarkedContact();
 
         Boolean cleared = false;
         System.runAs(lead) {
@@ -211,11 +239,12 @@ private class SCRUM453ContactLeftFlsTest {
         }
         System.assert(cleared, 'AC-6: a team lead holding the Undo-PS can undo the mark.');
 
+        Id accId = flsAccount();
         Account acc = [SELECT Id, Contacts_Without_Mark__c, Contacts_Left_Count__c
-                       FROM Account WHERE Id = :a.Id LIMIT 1];
+                       FROM Account WHERE Id = :accId LIMIT 1];
         System.assertEquals(Decimal.valueOf(0), acc.Contacts_Left_Count__c,
             'AC-8: the undo is reflected in the Account aggregates');
-        System.assertEquals(Decimal.valueOf(1), acc.Contacts_Without_Mark__c,
-            'AC-8: the customer has a contact person again');
+        System.assertEquals(Decimal.valueOf(2), acc.Contacts_Without_Mark__c,
+            'AC-8: both fixture contacts of the customer are unmarked again');
     }
 }

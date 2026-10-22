@@ -92,6 +92,58 @@ private class SCRUM453ContactLeftTest {
         return l.isEmpty() ? null : l[0];
     }
 
+    /** History fixtures of AC-3 come in via @TestSetup, in System context:
+     * Account is a setup object and may not share a transaction with the User +
+     * PermissionSetAssignment inserts of the test body (MIXED_DML_OPERATION,
+     * house lesson SCRUM-449 — green under RunSpecifiedTests, red under
+     * RunLocalTests/CI), and a Case insert inside System.runAs trips the Case
+     * triggers, which read custom Case fields this user has no FLS for
+     * ("fields being inaccessible on Sobject Case"). The SCRUM-453 fields
+     * themselves are still only read and written inside the runAs block. */
+    @TestSetup
+    static void seedHistory() {
+        Account a = new Account(Name = 'V453 history');
+        insert a;
+        Contact c = new Contact(LastName = 'AC3 seed', AccountId = a.Id,
+                                NewsletterConsent__c = true, ConsentDate__c = PAST_CONSENT);
+        insert c;
+        Case cs = new Case(Status = 'Open', Subject = 'V453 old case',
+                           AccountId = a.Id, ContactId = c.Id);
+        insert cs;
+        Opportunity o = new Opportunity(Name = 'V453 old opp', StageName = 'Closed',
+                                        AccountId = a.Id, CloseDate = Date.today().addMonths(-3));
+        insert o;
+        Task t = new Task(Subject = 'V453 old task', WhoId = c.Id);
+        insert t;
+    }
+
+    /** @TestSetup statics are not visible from helpers (house SCRUM-449):
+     * look the fixture up by a stable field and cache it. */
+    private static Id histAcc;
+    private static Id histCon;
+    private static Id histCase;
+
+    private static Id historyAccount() {
+        if (histAcc == null) {
+            histAcc = [SELECT Id FROM Account WHERE Name = 'V453 history' LIMIT 1].Id;
+        }
+        return histAcc;
+    }
+
+    private static Id historyContact() {
+        if (histCon == null) {
+            histCon = [SELECT Id FROM Contact WHERE Name = 'AC3 seed' LIMIT 1].Id;
+        }
+        return histCon;
+    }
+
+    private static Id historyCase() {
+        if (histCase == null) {
+            histCase = [SELECT Id FROM Case WHERE Subject = 'V453 old case' LIMIT 1].Id;
+        }
+        return histCase;
+    }
+
     private static Account aggregates(Id accId) {
         List<Account> l = [SELECT Id, Contacts_Without_Mark__c, Contacts_Left_Count__c,
                                   Last_Contact_Left_Date__c
@@ -225,23 +277,26 @@ private class SCRUM453ContactLeftTest {
     // ---------- AC-3 + AC-7: history stays reachable, Case shows the mark ----------
     @isTest
     static void historyStaysReachable_afterMarking() {
+        Id accId = historyAccount();
+        Id cId = historyContact();
+        Id csId = historyCase();
+
         User u = prepareMarker('ac3');
         System.runAs(u) {
-            Id accId = newAccount('History');
-            Id cId = newContact('AC3', accId);
-            Case cs = new Case(Status = 'Open', Subject = 'V453 old case',
-                               AccountId = accId, ContactId = cId);
-            insert cs;
-            Id csId = cs.Id;
-
             Contact rec = contact(cId);
             rec.Has_Left_Company__c = true;
             rec.Left_Company_Date__c = LEFT_WHEN;
             update rec;
 
+            System.assertEquals(1, [SELECT COUNT() FROM Case WHERE AccountId = :accId],
+                'AC-3: the old Case is still reachable');
+            System.assertEquals(1, [SELECT COUNT() FROM Opportunity WHERE AccountId = :accId],
+                'AC-3: the old Opportunity is still reachable');
+            System.assertEquals(1, [SELECT COUNT() FROM Task WHERE WhoId = :cId],
+                'AC-3: the activity participant is still reachable');
             List<Case> cases = [SELECT Id, Subject, ContactId, AccountId, Contact_Left_Anzeige__c
                                 FROM Case WHERE Id = :csId LIMIT 1];
-            System.assertEquals(1, cases.size(), 'AC-3: the old Case is still reachable');
+            System.assertEquals(1, cases.size(), 'AC-3: the Case is still there');
             Case after = cases[0];
             System.assertEquals('V453 old case', after.Subject, 'AC-3: the history was not altered');
             System.assertEquals(cId, after.ContactId, 'AC-3: the Case still points at the Contact');
