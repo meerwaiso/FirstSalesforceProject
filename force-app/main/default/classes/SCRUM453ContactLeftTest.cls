@@ -37,7 +37,7 @@ private class SCRUM453ContactLeftTest {
 
     /** A Contact that once gave newsletter consent — AC-5 must never touch that. */
     private static Id newContact(String tag, Id accId) {
-        Contact c = new Contact(LastName = tag, CompanyName = 'V453 GmbH',
+        Contact c = new Contact(LastName = tag, 
                                 AccountId = accId,
                                 NewsletterConsent__c = true, ConsentDate__c = PAST_CONSENT);
         insert c;
@@ -162,6 +162,7 @@ private class SCRUM453ContactLeftTest {
         Id cId = newContact('AC3', accId);
         Case cs = new Case(Status = 'Open', Subject = 'V453 old case', AccountId = accId, ContactId = cId);
         insert cs;
+        Id csId = cs.Id;
 
         Contact rec = contact(cId);
         rec.Has_Left_Company__c = true;
@@ -169,7 +170,7 @@ private class SCRUM453ContactLeftTest {
         update rec;
 
         List<Case> cases = [SELECT Id, Subject, ContactId, AccountId, Contact_Left_Anzeige__c
-                            FROM Case WHERE Id = :cs LIMIT 1];
+                            FROM Case WHERE Id = :csId LIMIT 1];
         System.assertEquals(1, cases.size(), 'AC-3: the old Case is still reachable');
         Case after = cases[0];
         System.assertEquals('V453 old case', after.Subject, 'AC-3: the history was not altered');
@@ -191,7 +192,7 @@ private class SCRUM453ContactLeftTest {
         rec.Has_Left_Company__c = true;
         update rec;
 
-        List<Task> ts = [SELECT Id, Subject FROM Task WHERE AccountId = :accId OR ContactId = :cId];
+        List<Task> ts = [SELECT Id, Subject FROM Task WHERE AccountId = :accId OR WhoId = :cId];
         System.assertEquals(0, ts.size(),
             'AC-9: marking created no Task, no reminder, no email');
         Contact after = contact(cId);
@@ -212,7 +213,7 @@ private class SCRUM453ContactLeftTest {
         List<Contact> seeds = new List<Contact>();
         for (Account a : accs) {
             for (Integer j = 0; j < 20; j++) {
-                seeds.add(new Contact(LastName = 'bulk-' + j, CompanyName = 'V453 GmbH',
+                seeds.add(new Contact(LastName = 'bulk-' + j, 
                                       AccountId = a.Id, Has_Left_Company__c = true));
             }
         }
@@ -253,10 +254,10 @@ private class SCRUM453ContactLeftTest {
         moved.AccountId = toId;
         update moved;
 
-        Account from = aggregates(fromId);
+        Account fromAcc = aggregates(fromId);
         Account to = aggregates(toId);
-        System.assertEquals(Decimal.valueOf(0), from.Contacts_Left_Count__c, 'ADR-4: old Account healed');
-        System.assert(from.Last_Contact_Left_Date__c == null, 'ADR-4: old Account date cleared');
+        System.assertEquals(Decimal.valueOf(0), fromAcc.Contacts_Left_Count__c, 'ADR-4: old Account healed');
+        System.assert(fromAcc.Last_Contact_Left_Date__c == null, 'ADR-4: old Account date cleared');
         System.assertEquals(Decimal.valueOf(1), to.Contacts_Left_Count__c, 'ADR-4: new Account counted');
         System.assertEquals(Decimal.valueOf(0), to.Contacts_Without_Mark__c, 'ADR-4: new Account is an overview row');
         System.assertEquals(LEFT_WHEN, to.Last_Contact_Left_Date__c, 'ADR-4: date carried over');

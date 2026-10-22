@@ -58,7 +58,7 @@ private class SCRUM453ContactLeftFlsTest {
 
     /** Fixture Contact that is already marked, so an undo can be attempted. */
     private static Id markedContact(Id accId) {
-        Contact c = new Contact(LastName = 'FLS', CompanyName = 'V453 GmbH', AccountId = accId,
+        Contact c = new Contact(LastName = 'FLS',  AccountId = accId,
                                 Has_Left_Company__c = true, Left_Company_Date__c = Date.today().addMonths(-2));
         insert c;
         return c.Id;
@@ -146,19 +146,19 @@ private class SCRUM453ContactLeftFlsTest {
         insert a;
         Id cId = newContact(a.Id);
 
-        Boolean set = false;
+        Boolean wasSet = false;
         System.runAs(seller) {
             Contact c = [SELECT Id, Has_Left_Company__c FROM Contact WHERE Id = :cId LIMIT 1];
             c.Has_Left_Company__c = true;
             update c;
             Contact check = [SELECT Id, Has_Left_Company__c FROM Contact WHERE Id = :cId LIMIT 1];
-            set = check.Has_Left_Company__c;
+            wasSet = check.Has_Left_Company__c;
         }
-        System.assert(set, 'AC-1: a Sales/Service user holding the Set-PS marks the contact.');
+        System.assert(wasSet, 'AC-1: a Sales/Service user holding the Set-PS marks the contact.');
     }
 
     private static Id newContact(Id accId) {
-        Contact c = new Contact(LastName = 'FLS-set', CompanyName = 'V453 GmbH', AccountId = accId);
+        Contact c = new Contact(LastName = 'FLS-set',  AccountId = accId);
         insert c;
         return c.Id;
     }
