@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-453 Undo-FLS (team leads only): may clear the Austritt mark and correct the date. Also the gate of ContactLeftGuardTrigger - the running user is checked against this set (ADR-2/ADR-3).</description>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Contact.Has_Left_Company__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Contact.Left_Company_Date__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM453_ContactLeft_Undo</label>
+</PermissionSet>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-453 Phase 2: everything referencing the Phase-1 fields —
+         the two derived formula fields (Contact one references its own mark,
+         the Case one references the Contact lookup), Permission Sets, layouts,
+         list-view columns and the overview report. -->
+    <types>
+        <members>Contact.Contact_Status_Anzeige__c</members>
+        <members>Case.Contact_Left_Anzeige__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>SCRUM453_ContactLeft_Read</members>
+        <members>SCRUM453_ContactLeft_Set</members>
+        <members>SCRUM453_ContactLeft_Undo</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Contact-Contact Layout</members>
+        <members>Case-Case Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>Contact.Kritische_Kontakte</members>
+        <members>Contact.Letzter_Real_Kontakt</members>
+        <members>Contact.Letztes_Anliegen</members>
+        <name>ListView</name>
+    </types>
+    <types>
+        <members>Sales/Kunde_ohne_Kontaktperson</members>
+        <name>Report</name>
+    </types>
+    <version>68.0</version>
+</Package>

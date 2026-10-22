@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-453 Phase 4: the Contact trigger (needs the live handler) plus the
+         Apex test classes of the same PR (house rule: tests ship with the code). -->
+    <types>
+        <members>ContactLeftGuardTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <types>
+        <members>SCRUM453ContactLeftTest</members>
+        <members>SCRUM453ContactLeftFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>68.0</version>
+</Package>

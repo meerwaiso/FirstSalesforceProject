@@ -97,6 +97,13 @@
                 <behavior>Readonly</behavior>
                 <field>ContactEmail</field>
             </layoutItems>
+            <!-- SCRUM-453 AC-7: Austritt-Indikator in the TOP section, right under the
+                 Contact's own email — Service sees at once, WITHOUT opening the Contact,
+                 that this contact person no longer works at the customer. -->
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Contact_Left_Anzeige__c</field>
+            </layoutItems>
             <layoutItems>
                 <behavior>Required</behavior>
                 <field>Origin</field>
