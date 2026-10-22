@@ -35,6 +35,28 @@ Dates render `DD.MM.YYYY`.
 - Created by the Tester for AC-3/AC-4/AC-7 (CLI `sf data create record`): Case `SCRUM-453-e2e-Case-B2` on B2 (indicator renders `Austritt - not there any more (2026-10-01)`), Opportunity `SCRUM-453-e2e-Opp-B2` + `OpportunityContactRole` on B2, and 5 open Cases `SCRUM-453-e2e-Kritisch-B1-*` on B1 so B1 reaches `Open_Cases_Rating__c = 'Kritisch'` and lands in `Kritische_Kontakte`.
 - `sf data create record --values` splits on SPACES — a value containing a space needs inner double quotes (house note SCRUM-412); `Subject=SCRUM-453 e2e Case B2` failed with "Malformed key=value pair".
 
+## Reading Lightning values (measured 2026-10-22, cost 5 minutes → 1 second)
+
+- Record-page field VALUES live in **closed shadow roots**: `page.evaluate` +
+  `querySelectorAll('div.slds-form-element')` finds the labels but every value
+  comes back empty; Playwright locators pierce the shadow DOM but reading 35
+  `div.slds-form-element` blocks one by one costs ~9 s each (311 s for one page
+  → the test times out and looks like an org problem).
+- ONE `page.locator('body').ariaSnapshot()` reads the whole page in ~1 s and
+  carries label + value: `- text: Austritt am 01.10.2026`,
+  `- listitem: Austritt-Anzeige Austritt - not there any more`,
+  `- text: Newsletter-Einwilligung True Newsletter-Einwilligung` (Lightning
+  repeats the label after some values — strip the trailing repeat).
+- The Contact record's Related tab renders **"No related lists to display"** —
+  no Contact related list is deployed in Test-Org, so AC-3 reachability is
+  proven by opening the linked Case/Opportunity records, not by a Related tab.
+- List-view header row (`tr[data-row-key-value="HEADER"]`) reads
+  `Select N items`; N is **capped at 50** (653 org contacts → "Select 50 items"),
+  so an org-wide view is proven by reaching the cap, not by matching the org count.
+- `FeedItem.RelatedRecordId` exists but **cannot be filtered in a query call**
+  (`INVALID_FIELD … can not be filtered`); `FeedItem.ParentId` is the record the
+  post is attached to and filters fine.
+
 ## Session / tooling
 
 - Worktree `../wt-SCRUM-453` on `feature/scr453-kontakt-austritt`; `node_modules` is symlinked from the main checkout (a worktree copies tracked files only) — **remove the symlink before handing off**, it is not gitignored here.
