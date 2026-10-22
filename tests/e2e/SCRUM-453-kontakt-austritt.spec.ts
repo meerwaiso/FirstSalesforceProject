@@ -30,6 +30,9 @@ import { openRecordPage, openRecordDetails, expectFieldVisible } from './record-
 
 const ORG = 'Test-Org';
 
+// Lightning pages plus a SOQL round-trip per assertion need far more than the 30 s default.
+test.setTimeout(120000);
+
 function soql(query: string): any[] {
   const raw = execFileSync(
     'sf',
@@ -170,29 +173,32 @@ test.describe('[SCRUM-453] Austritt-Anzeige in every Contact list', () => {
       await page.getByText('Austritt-Anzeige', { exact: true }).first()
         .waitFor({ state: 'visible', timeout: 30000 });
 
-      // Scope proof from the header's own count (a list view renders only 14 rows).
-      const header = await page.getByText(/items? •/).first().innerText().catch(() => '');
-      const stated = Number((header.match(/(\d+)\s+items?/) ?? [, '0'])[1]);
+      // Scope proof from the header row's own selection count (a list view renders only 14 rows).
+      // Measured: the header row (data-row-key-value="HEADER") reads "… Select N items Sort by: …".
+      const headerRow = await page.locator('tr[data-row-key-value="HEADER"]').first().innerText().catch(() => '');
+      const stated = Number((headerRow.match(/Select (\d+) items/) ?? [, '0'])[1]);
       const orgCount = devName === 'Kritische_Kontakte'
         ? soql(`SELECT Id FROM Contact WHERE Open_Cases_Rating__c = 'Kritisch'`).length
         : soql(`SELECT Id FROM Contact`).length;
-      expect(stated, `${devName}: header "${header}" ≠ org scope ${orgCount} records`).toBe(orgCount);
+      expect(stated, `${devName}: header "${headerRow}" ≠ org scope ${orgCount} records`).toBe(orgCount);
 
       if (devName === 'Kritische_Kontakte') {
         // B1 is marked AND Kritisch → its row must carry the mark, not just the column.
         const b1 = fixtureId('Contact', 'V453 Fixture B1');
         const rows = page.locator('tr[data-row-key-value]');
         const n = await rows.count();
-        const cells: Record<string, string[]> = {};
+        const texts: Record<string, string> = {};
         for (let i = 0; i < n; i++) {
           const key = (await rows.nth(i).getAttribute('data-row-key-value').catch(() => '')) ?? '';
           if (!key || key === 'HEADER') continue;
-          cells[key] = await rows.nth(i).locator('td').allTextContents().catch(() => []);
+          // The td/th cells of a row hold only the row actions; the visible values are in innerText.
+          texts[key] = (await rows.nth(i).innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
         }
-        expect(Object.keys(cells)).toContain(b1);
-        const row = cells[b1].map((c) => c.trim());
-        expect(row.join(' | '), `B1 row in Kritische_Kontakte: ${row.join(' | ')}`).toContain('not there any more');
-        test.info().annotations.push({ type: 'observed', description: `AC-4 ${devName}: ${stated} items, B1 row "${row.join(' | ')}"` });
+        expect(Object.keys(texts), `${devName}: B1 not in the rendered rows (${Object.keys(texts).join(', ')})`).toContain(b1);
+        const row = texts[b1];
+        expect(row, `B1 row in ${devName}: ${row}`).toContain('not there any more');
+        expect(row, `B1 row in ${devName}: ${row}`).toContain('Kritisch');
+        test.info().annotations.push({ type: 'observed', description: `AC-4 ${devName}: ${stated} items, B1 row "${row}"` });
       } else {
         test.info().annotations.push({ type: 'observed', description: `AC-4 ${devName}: column visible, ${stated} items` });
       }
@@ -277,7 +283,9 @@ test.describe('[SCRUM-453] Marking sends nothing and creates nothing', () => {
     const marked = soql(`SELECT Id FROM Contact WHERE Has_Left_Company__c = true`);
     expect(marked.length).toBeGreaterThanOrEqual(1);
     const ids = marked.map((m) => `'${m.Id}'`).join(',');
-    const feeds = soql(`SELECT Id FROM FeedItem WHERE RelatedRecordId IN (${ids})`);
+    // FeedItem.ParentId is the record the post is attached to (measured: 500… Case ids).
+    // RelatedRecordId exists on FeedItem but cannot be filtered in a query call.
+    const feeds = soql(`SELECT Id, ParentId FROM FeedItem WHERE ParentId IN (${ids})`);
     expect(feeds.length, `AC-9: ${feeds.length} FeedItem attached to marked contacts — marking must post nothing`).toBe(0);
     const tasks = soql(`SELECT Id, WhoId FROM Task WHERE WhoId IN (${ids})`);
     expect(tasks.length, `AC-9: ${tasks.length} Task assigned to marked contacts`).toBe(0);
