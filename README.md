@@ -36,6 +36,63 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 23.10.2026 — A contact person who left the company stays in the record, but stands out (SCRUM-453)
+
+**What changes**
+
+- A contact person can now be marked as **"has left the company"** together with the date
+  they left. The person is **not deleted and not deactivated**: their cases, opportunities and
+  activities stay reachable and still name them, so the history of a customer stays readable.
+- The mark is not a hidden value: it shows on the contact record, in the contact lists, and —
+  when the service team opens a case of that person — **on the case page itself**, as a line
+  "Austritt – not there any more (date)". Nobody has to open the contact first.
+- The newsletter agreement of that person and the date of the agreement are **left untouched**
+  by the mark. Marking someone does not cancel what they once agreed to.
+- For the account managers there is a new overview **"Kunde ohne Kontaktperson"**: it lists
+  exactly those customers whose *every* contact person has left, with customer name, account
+  owner and the date the last one left. A customer that still has one person who is still
+  there is not listed, and neither is a customer that never had a contact person.
+- Clearing the mark needs a right of its own, which is meant for team leads only. Setting the
+  mark is normal work for sales and service. Nothing is ever deleted by this feature.
+
+**Where you see it**
+
+- On the contact: the mark and the leaving date, on the record page and in the contact lists.
+- On a case of that person: the indicator line on the case page.
+- In the report **"Kunde ohne Kontaktperson"**, in the report folders, for the account
+  managers.
+
+**What is deliberately not in there**
+
+- **The newsletter still reaches such a person.** The mark is visible where the recipients are
+  picked, but taking the person out of the recipient list is a separate piece of work
+  (SCRUM-454) and is not live yet.
+- **Nothing happens on its own**: no email, no task, no reminder is created when somebody is
+  marked.
+- **The overview is empty today.** In the production org 0 of 20 contact persons carry the
+  mark, so the overview lists 0 customers. The feature is live, the data is not — the first
+  person a team lead marks is the first row.
+- **The order "oldest leaving date first" has never been seen.** Only one customer in the test
+  org matches the overview filter, so the sorting could not be observed anywhere yet. It needs
+  two customers whose contact teams left on different dates before anyone can confirm it.
+- **Nobody is blocked from clearing the mark today.** The undo right is currently held by both
+  people who work in the org; it becomes a real restriction as soon as a sales or service
+  colleague is added.
+
+**Evidence**
+
+- Released to the production org on 23.10.2026: fields 5/5, referencing 12/12 (layouts, lists,
+  the overview report), Apex handler and guard trigger; release tag
+  `release/2026-10-23-SCRUM-453` → commit `19ff1b6`.
+- Read back in the production org by the PO on 23.10.2026: the two contact fields, the three
+  per-customer figures and the case indicator are present; the leaving date is readable
+  through a real production session; the overview report is live; 0 of 20 contact persons
+  marked, 0 customers in the overview.
+- Measured in the test org before the release: 3 marked contact persons (all left 01.10.2026),
+  6 cases carrying the indicator, 1 opportunity still attributable to a marked person,
+  0 feed entries and 0 tasks created by the mark, 1 customer in the overview and 1 correctly
+  excluded.
+
 ## 19.10.2026 — Maintenance contracts show their dates and what is still ahead (SCRUM-451)
 
 **What changes**
