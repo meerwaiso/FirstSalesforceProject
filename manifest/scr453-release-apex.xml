@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://www.salesforce.com/xml/packageManifest">
+  <types>
+    <members>ContactLeftGuardTrigger</members>
+    <name>ApexTrigger</name>
+  </types>
+  <types>
+    <members>SCRUM453ContactLeftHandler</members>
+    <members>SCRUM453ContactLeftTest</members>
+    <members>SCRUM453ContactLeftFlsTest</members>
+    <name>ApexClass</name>
+  </types>
+  <version>68.0</version>
+</Package>
