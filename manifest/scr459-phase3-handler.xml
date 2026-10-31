@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-459 Phase 3: the handler alone (helper-first rule), then the two triggers in phase 3b. -->
+    <types>
+        <members>FollowupMonitoringHandler</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

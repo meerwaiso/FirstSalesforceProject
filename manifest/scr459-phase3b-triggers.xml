@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-459 Phase 3b: the two triggers (consumers of the handler class). -->
+    <types>
+        <members>FollowupObligationTrigger</members>
+        <members>OpportunityFollowupMonitorTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <version>67.0</version>
+</Package>

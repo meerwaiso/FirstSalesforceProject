@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns>OPPORTUNITY.NAME</columns>
+    <columns>OPPORTUNITY.AMOUNT</columns>
+    <columns>OPPORTUNITY.STAGE_NAME</columns>
+    <columns>Followup_Required__c</columns>
+    <columns>Next_Followup_Date__c</columns>
+    <columns>Overdue_Followup_Count__c</columns>
+    <columns>Last_Customer_Interaction__c</columns>
+    <columns>Followup_Status__c</columns>
+    <columns>Needs_Manager_Attention__c</columns>
+    <filters>
+        <field>Overdue_Followup_Count__c</field>
+        <operation>greaterThan</operation>
+        <value>0</value>
+    </filters>
+    <filterScope>Everything</filterScope>
+    <fullName>Follow_up_Monitoring</fullName>
+    <label>Follow-up Monitoring</label>
+</ListView>
