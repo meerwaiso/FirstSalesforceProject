@@ -26,5 +26,28 @@ Hard-won findings for this ticket; the build spec is `docs/SCRUM-459-design.md`.
   No PS in Test-Org grants edit on the six monitoring fields -> the trigger can never write for any non-System-Administrator user.
 - House precedent for the same shape (SCRUM-449): `SCRUM449OpportunityRisk` (read=true edit=false) PLUS a separate
   `SCRUM449OpportunityRiskWrite` (read=true edit=true), assigned to the CLI user only. That is the shape that makes a trigger write work.
-- The SCRUM-459 design says "exactly two PSs" and gives the six fields editable=false in both -> not implementable as written.
-  Escalated to the Architect; no third PS created by me.
+
+## Rework round 1 (measured 2026-10-31, after Architect comment 23582)
+
+- Third PS `SCRUM459_FollowupMonitoring_Write` (six fields read=true edit=true, NO objectPermissions) deployed and
+  assigned to BOTH Test-Org users; `scripts/fls-check.sh` then shows all six fields granted edit=true by it.
+- That grant alone did NOT fix the tests. Measured with a scratch probe (`sf apex run`):
+  * handler `recalculate` still failed at the `update` line with "fields being inaccessible on Sobject Opportunity";
+  * the same six fields written inline by the same user succeeded;
+  * with the guard trigger INACTIVE the handler write succeeded.
+- Root cause: `update` writes EVERY field in the record's cache. The Q1 record carries `IsClosed`, and the
+  compiler rejects it outright - `o.IsClosed = true;` -> "Field is not writeable: Opportunity.IsClosed".
+  Fix: the handler and the AC8 test now update FRESH sObjects whose cache holds only Id + the written fields.
+- Exception types for a save refusal, measured by dry-run compile: `Salesforce.ErrorException`,
+  `ApexException`, `UserOperationException`, `InternalError`, `UnknownError`, `Custom`, `Range`, ... are all
+  "Invalid type". Only `AuraHandledException` compiles - and at runtime it is restricted
+  ("Can only throw this exception type from VisualForce or Aura context"). A trigger therefore refuses a save
+  with `System.AssertEquals(false, true, msg)` (AssertionError), which also carries the message.
+- Reserved Apex identifiers hit twice in this ticket: `bulk` and `after` ("Unexpected token").
+- Anonymous Apex (`sf apex run`) parser quirks measured: a query cannot be assigned to a single sObject
+  (`Opportunity x = [SELECT ...]` -> "Unexpected token"), and `WHERE Id IN someId` needs the bind form `IN :set`.
+- Final state: 13/13 Apex tests green (`RunSpecifiedTests`, both classes), including
+  `ac6_userTypedMonitoringValue_refusedAndStoredValueUnchanged` and `readBackUnderSalesRepPermissions`.
+- AC6 is now an Apex contract, not an FLS property: `OpportunityFollowupGuardTrigger` (before update) calls
+  `FollowupMonitoringHandler.assertNoUserTypedValues(Trigger.new, Trigger.oldMap)`; the handler's own write is
+  skipped by a static flag (house shape: static `hasFired` in `OpportunityOverdueResetHandler`).
