@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { execSync } from 'node:child_process';
-import path from 'path';
+import { openRecordDetails } from './record-page';
 
 /**
  * [SCRUM-459] E2E: Follow-up Monitoring — the org/UI half of the ACs.
@@ -168,7 +168,7 @@ test.describe('[SCRUM-459] AC2 — overdue count counts only fully passed dates'
     const rec = soql(`SELECT Overdue_Followup_Count__c, Next_Followup_Date__c, Followup_Status__c FROM Opportunity WHERE Id='${oppAC2}'`);
     expect(Number(rec[0].Overdue_Followup_Count__c)).toBe(1);
     expect(String(rec[0].Followup_Status__c)).toBe('Overdue');
-    expect(String(rec[0].Next_Followup_Date__c)).toBe(`iso(-3)`);
+    expect(String(rec[0].Next_Followup_Date__c)).toBe(iso(-3));
   });
 });
 
@@ -189,7 +189,7 @@ test.describe('[SCRUM-459] AC3 — status precedence Overdue > Due Soon > Up to 
 test.describe('[SCRUM-459] AC4 — last completed interaction is the latest completion', () => {
   test('completed today-26 and today-13 -> Last Customer Interaction = today-13', async ({ page }) => {
     const rec = soql(`SELECT Last_Customer_Interaction__c FROM Opportunity WHERE Id='${oppAC4}'`);
-    expect(String(rec[0].Last_Customer_Interaction__c)).toBe(`iso(-13)`);
+    expect(String(rec[0].Last_Customer_Interaction__c)).toBe(iso(-13));
     // The list column shows the same date (locale DD.MM.YYYY).
     const { data } = await listRows(page);
     const row = data[`${TAG}AC4`];
@@ -207,7 +207,7 @@ test.describe('[SCRUM-459] AC5 — completing an obligation recomputes without t
     const after = soql(`SELECT Overdue_Followup_Count__c, Followup_Status__c, Last_Customer_Interaction__c, Followup_Required__c FROM Opportunity WHERE Id='${oppAC5}'`);
     expect(Number(after[0].Overdue_Followup_Count__c)).toBe(0);
     expect(String(after[0].Followup_Status__c)).toBe('Up to Date');
-    expect(String(after[0].Last_Customer_Interaction__c)).toBe(`iso(0)`);
+    expect(String(after[0].Last_Customer_Interaction__c)).toBe(iso(0));
     expect(after[0].Followup_Required__c).toBe(false);
     // The Opportunity record page cannot show it (Gap B) — the list column would
     // show it once the record is overdue again; org read-back is binding here.
@@ -239,14 +239,13 @@ test.describe('[SCRUM-459] AC7 — four outstanding, two overdue', () => {
     expect(row).toContain('Overdue Locked Follow-up Status');
     const rec = soql(`SELECT Overdue_Followup_Count__c, Next_Followup_Date__c FROM Opportunity WHERE Id='${oppAC7}'`);
     expect(Number(rec[0].Overdue_Followup_Count__c)).toBe(2);
-    expect(String(rec[0].Next_Followup_Date__c)).toBe(`iso(-5)`);
+    expect(String(rec[0].Next_Followup_Date__c)).toBe(iso(-5));
   });
 });
 
 test.describe('[SCRUM-459] AC8 — Closed Won clears the monitoring values', () => {
   test('set Stage Closed Won in the UI, values cleared, later completion keeps them', async ({ page }) => {
-    await page.goto(`/lightning/r/Opportunity/${oppAC8}/view`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.locator('div.slds-global-header, one-appnav').first().waitFor({ state: 'visible', timeout: 60000 });
+    await openRecordDetails(page, `/lightning/r/Opportunity/${oppAC8}/view`);
     const editStage = page.getByRole('button', { name: 'Edit Stage', exact: true });
     await expect(editStage).toBeVisible({ timeout: 15000 });
     await editStage.click();
