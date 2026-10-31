@@ -1,0 +1,65 @@
+# SCRUM-457 — Tester notizen
+
+Meister die Org 2026-10-31 (Tester). Every value below was read back by a command,
+not copied from another agent's report.
+
+## Org / Instance
+- Instance `resourceful-bear-6f1u4j-dev-ed.trailblaze.my.salesforce.com`
+  (Lightning `.lightning.force.com`, Setup `.my.salesforce-setup.com`).
+- CLI target org = `Test-Org` (alias, capital T), user `devops-agent@cline.test`.
+
+## Sharing model (OWD) — measured, not exposed by any API
+Route that works in an automated browser: classic page
+`GET https://<instance>/p/own/OrgSharingDetail?setupid=SecuritySharing` (plain HTML).
+The Lightning equivalents (`/lightning/setup/SecurityHub/...`, ObjectManager) render
+only the nav shell — srcdoc iframe never fills. Verified 2026-10-31.
+- Account: Public Read/Write (external Private)
+- Opportunity: Public Read/Write
+- Case: Public Read/Write/Transfer
+=> a `viewAllRecords` Permission Set grants nothing OWD does not already grant and
+can never revoke. AC5 ("once the absence is over the deputy loses the extra access")
+is a FINDING, not a test — never a PASS row.
+
+## Fixtures in Test-Org (live, 2026-10-31)
+- `Absence__c` ABSENCE-0001 `a04WU00000E0qWPYAZ`: Meerwais Osmani (005WU000017tBhRYAU),
+  2026-10-31..2026-11-20, deputy devops-agent (005WU000017tEKLYA2).
+- `Absence__c` ABSENCE-0002 `a04WU00000E0r97YAB`: Automated Process (005WU000017tBpWYAU),
+  2026-11-02..2026-11-12, **no deputy**.
+- 13 of 197 Accounts carry `Absence_In_Window__c = 'YES'`; exactly **1** carries
+  `Absence_Ohne_Deputy__c = 'OHNE DEPUTY'` = `Sample Account for Entitlements`
+  `001WU0000242xNSYAY` (owner Automated Process). 184 customers carry nothing.
+- All 13 rows still carry one `OwnerId` (AC7).
+- Customer used for the UI tests: `Burlington Textiles Corp of America`
+  `001WU0000242xNHYAY` (1 Opportunity, 2 Cases). `Edge Communications`
+  `001WU0000242xNGYAY` has 12 Opportunities / 3 Cases.
+
+## Report
+- `Fehlzeiten_nach_Kunde` = `00OWU00000RH0qT2AT`, ReportType `AccountList`,
+  resolved by Name via `SELECT Id, Name FROM Report WHERE Name = ...` (plain
+  `data query`, NOT `--use-tooling-api` — `Report` is not a Tooling sObject).
+- Renders in the cross-doc frame `lightningReportApp`; frame states
+  `Total Records N`; data rows are `table tbody tr`.
+
+## Apex run (Tester's own measurement, 2026-10-31)
+`sf apex run test --test-level RunSpecifiedTests --tests SCRUM457AbsenceSyncTest`
+→ 11/11 Pass, Test Run Id `707WU00001R3GZr`.
+
+## DOM facts (probe 2026-10-31)
+- Account layout section `Fehlzeit` (`detailHeading: true`) holds exactly ONE field:
+  `Absence_Anzeige__c`, label **Absence**. Outside an absence the label renders, the
+  value is empty.
+- Field VALUES live in closed shadow roots → `ariaSnapshot()` of body is the only
+  fast read; `querySelectorAll` sees labels but empty values.
+- `Absence__c` record page labels: `Absence ab`, `Absence until`,
+  `Abwesende Mitarbeiter`, `Deputy`. Dates are locale **DD.MM.YYYY** — ISO is
+  rejected by the form.
+- `Absence_Anzeige__c` renders verbatim: `Abwesent 2026-10-31 bis 2026-11-20 - Deputy: devops-agent`.
+
+## CLI quirks hit while writing this spec
+- `sf data create/update record --values` takes SPACE-separated pairs, not commas.
+- `Post` is NOT SOQL-queryable (`INVALID_TYPE`); `Task`, `EmailMessage`, `FeedItem` are.
+- `SELECT ... FROM Opportunity WHERE Status = ...` → "No such column 'Status'";
+  Opportunity uses `StageName`.
+- `Absence__c.Name` is AutoNumber → a recreated fixture gets a new name, so the
+  cancel is exercised on a throwaway record resolved by its dates, never on the
+  two fixtures the PO measures.
