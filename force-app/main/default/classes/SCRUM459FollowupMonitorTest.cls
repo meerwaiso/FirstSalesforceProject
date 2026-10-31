@@ -48,6 +48,17 @@ private class SCRUM459FollowupMonitorTest {
             new Opportunity(Name = '459 AC-RB', AccountId = a.Id, StageName = 'Prospecting', Amount = 60000, CloseDate = CLOSE_DATE)
         };
         insert ops;
+
+        // The read-back fixture is created HERE, not in the read-back test: that
+        // test inserts PermissionSetAssignment (a setup object), and MIXED_DML_OPERATION
+        // rejects a non-setup record in the same transaction (house SCRUM-438/442).
+        Opportunity rbOpp = [SELECT Id FROM Opportunity WHERE Name = '459 AC-RB'][0];
+        insert new Followup_Obligation__c(
+            Opportunity__c = rbOpp.Id,
+            Status__c = 'Outstanding',
+            Due_Date__c = Date.today() - 1,
+            Next_Action__c = 'Call customer, sensitive note'
+        );
     }
 
     private static Opportunity byName(String n) {
@@ -303,9 +314,9 @@ private class SCRUM459FollowupMonitorTest {
         insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = repPs.Id);
         insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = readPs.Id);
 
-        Opportunity o = byName('459 AC-RB');
-        insert mk(o.Id, 'Outstanding', Date.today() - 1, null, 'Call customer, sensitive note');
-
+        // The obligation fixture is created in setup_fixtures, not here: this test
+        // inserts PermissionSetAssignment, and a non-setup record in the same
+        // transaction is a MIXED_DML_OPERATION failure.
         System.runAs(u) {
             Opportunity r = [SELECT Id, Followup_Required__c, Overdue_Followup_Count__c, Followup_Status__c
                                     FROM Opportunity WHERE Name = '459 AC-RB'][0];

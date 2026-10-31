@@ -45,9 +45,11 @@ public without sharing class FollowupMonitoringHandler {
 
     private static final Decimal ATTENTION_THRESHOLD = 50000;
 
-    // Marks the handler's own `update toUpdate` inside this transaction, so the
-    // before-update guard does not refuse a system write (house: static hasFired).
-    private static Boolean systemWriteInFlight = false;
+    // The ids the handler wrote in THIS transaction. The before-update guard skips
+    // exactly those records, so any other save in the same transaction is still
+    // checked (house shape: static hasFired in OpportunityOverdueResetHandler,
+    // narrowed to ids per the round-2 review).
+    private static Set<Id> systemWrittenIds = new Set<Id>();
 
     // --- entry points ---------------------------------------------------------
 
@@ -203,13 +205,20 @@ public without sharing class FollowupMonitoringHandler {
             }
         }
         // ONE update batch; write only on actual change (idempotent, drift-free).
-        // The flag marks THIS write as a system write: the guard trigger below
-        // fires for it as well and must not refuse it (house shape: static
-        // hasFired in OpportunityOverdueResetHandler, SCRUM-449).
+        // The ids of THIS write are remembered so the before-update guard skips
+        // exactly those records; every other save in this transaction is still
+        // checked (house shape: static hasFired in OpportunityOverdueResetHandler).
         if (!toUpdate.isEmpty()) {
-            systemWriteInFlight = true;
-            update toUpdate;
-            systemWriteInFlight = false;
+            for (Opportunity upd : toUpdate) {
+                systemWrittenIds.add(upd.Id);
+            }
+            try {
+                update toUpdate;
+            } finally {
+                // Cleared even when the update throws: the window in which the
+                // guard is skipped is that one statement.
+                systemWrittenIds.clear();
+            }
         }
     }
 
@@ -224,10 +233,11 @@ public without sharing class FollowupMonitoringHandler {
     // guard needs no SOQL.
     //
     public static void assertNoUserTypedValues(List<Opportunity> newRecs, Map<Id, Opportunity> oldMap) {
-        if (systemWriteInFlight) {
-            return;
-        }
         for (Opportunity o : newRecs) {
+            if (systemWrittenIds.contains(o.Id)) {
+                // the handler's own write in this transaction, not a user save
+                continue;
+            }
             Opportunity old = oldMap.get(o.Id);
             if (old == null) {
                 continue;
