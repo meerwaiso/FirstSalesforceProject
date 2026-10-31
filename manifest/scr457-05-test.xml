@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-457 deploy step 5: the Apex test class for AbsenceSyncHandler, in
+     the same PR as the class it covers. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM457AbsenceSyncTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>62.0</version>
+</Package>
