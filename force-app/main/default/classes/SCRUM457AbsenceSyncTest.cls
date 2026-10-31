@@ -368,7 +368,7 @@ private class SCRUM457AbsenceSyncTest {
     @isTest
     static void managerCannotBeTheirOwnDeputy() {
         User solo = mkUser('solo');
-        User colleague = mkUser('colleague');
+        User colleague = mkUser('coll'); // User.Alias is Text(8) — 'colleague' is refused (STRING_TOO_LONG)
         List<User> guardUsers = new List<User>{solo, colleague};
         insert guardUsers;
 
@@ -411,13 +411,13 @@ private class SCRUM457AbsenceSyncTest {
         List<User> tlUsers = new List<User>{teamLead, offSick};
         insert tlUsers;
 
-        PermissionSet teamlead = [
+        PermissionSet tlSet = [
             SELECT Id FROM PermissionSet WHERE Name = 'SCRUM457_Absence_Teamleitung' LIMIT 1
         ];
-        System.assert(teamlead.Id != null, 'the team-lead set must exist');
+        System.assert(tlSet.Id != null, 'the team-lead set must exist');
         insert new PermissionSetAssignment(
             AssigneeId = teamLead.Id,
-            PermissionSetId = teamlead.Id
+            PermissionSetId = tlSet.Id
         );
 
         List<Account> accts = new List<Account>();

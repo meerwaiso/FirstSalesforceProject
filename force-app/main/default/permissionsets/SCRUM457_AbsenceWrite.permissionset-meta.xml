@@ -3,7 +3,11 @@
      CRUD/FLS row of the PO ticket, per data item: Create, Edit and Delete
      (= cancel) belong to the account manager themselves AND to team leads
      (a team lead records it for a colleague who is off sick and cannot do it
-     themselves, AC1). No Permission Profile is touched (house rule). -->
+     themselves, AC1). The five Apex-written mirror fields are editable=true
+     here: AbsenceSyncHandler writes them in USER mode, and FLS editable is what
+     allows that update — measured, with editable=false the whole create rolls
+     back ("fields being inaccessible on Sobject Account"). The three formula
+     fields stay editable=false. No Permission Profile is touched (house rule). -->
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>SCRUM457_AbsenceWrite</fullName>
     <label>SCRUM-457 Absence Write</label>
@@ -39,27 +43,27 @@
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>Account.Absence_Start__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>Account.Absence_End__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>Account.Absence_Deputy__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>Account.Absence_Deputy_Start__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
-        <editable>false</editable>
+        <editable>true</editable>
         <field>Account.Absence_Deputy_End__c</field>
         <readable>true</readable>
     </fieldPermissions>

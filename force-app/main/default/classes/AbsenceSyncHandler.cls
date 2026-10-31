@@ -117,7 +117,7 @@ public class AbsenceSyncHandler {
         Date today = Date.today();
         if (!deputyIds.isEmpty()) {
             for (Absence__c rec : [
-                    SELECT Id, Absent_User__c, Start__c, End__c
+                    SELECT Id, Absent_User__c, Start__c, End__c, Deputy__c
                     FROM Absence__c
                     WHERE Absent_User__c IN :deputyIds AND End__c >= :today
             ]) {

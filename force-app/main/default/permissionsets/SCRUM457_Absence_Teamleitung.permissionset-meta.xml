@@ -5,8 +5,10 @@
      SCRUM451_Wartungsvertrag_Dates_Teamleitung). It carries the SAME grants as
      SCRUM457_AbsenceWrite: FLS cannot scope a set to "only your own records"
      (design ADR-4 / G3), so the difference between an account manager and a
-     team lead is who holds the set, not what it contains. No Permission Profile
-     is touched (house rule). -->
+     team lead is who holds the set, not what it contains. The five Apex-written
+     mirror fields are editable=true — the handler writes them in USER mode
+     (measured: with editable=false the create rolls back). Formula fields stay
+     editable=false. No Permission Profile is touched (house rule). -->
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>SCRUM457_Absence_Teamleitung</fullName>
     <label>SCRUM-457 Fehlzeiten Teamleitung</label>
