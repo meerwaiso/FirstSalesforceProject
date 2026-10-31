@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-457: Team-lead PS — this set is what marks a team lead (PO answer 5:
+     "a team lead is whoever has the team-lead permission set for this feature",
+     house pattern SCRUM428_Teamleitung / SCRUM431_Wartungsvertrag_Teamleitung /
+     SCRUM451_Wartungsvertrag_Dates_Teamleitung). It carries the SAME grants as
+     SCRUM457_AbsenceWrite: FLS cannot scope a set to "only your own records"
+     (design ADR-4 / G3), so the difference between an account manager and a
+     team lead is who holds the set, not what it contains. No Permission Profile
+     is touched (house rule). -->
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SCRUM457_Absence_Teamleitung</fullName>
+    <label>SCRUM-457 Fehlzeiten Teamleitung</label>
+    <description>SCRUM-457: the team-lead set. Same grants as SCRUM457_AbsenceWrite — Create/Edit/Delete on Absence__c plus FLS on its data items and read on the customer mirror. Assigned to the team leads (PO answer 5); cancel = delete.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <objectPermissions>
+        <allowCreate>true</allowCreate>
+        <allowDelete>true</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Absence__c</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Absence__c.Absent_User__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Absence__c.Deputy__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Absence__c.Start__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Absence__c.End__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Absence_Start__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Absence_End__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Absence_Deputy__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Absence_Deputy_Start__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Absence_Deputy_End__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Absence_In_Window__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Absence_Ohne_Deputy__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Absence_Anzeige__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+</PermissionSet>

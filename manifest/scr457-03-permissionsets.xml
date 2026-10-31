@@ -8,6 +8,7 @@
     <types>
         <members>SCRUM457_AbsenceRead</members>
         <members>SCRUM457_AbsenceWrite</members>
+        <members>SCRUM457_Absence_Teamleitung</members>
         <name>PermissionSet</name>
     </types>
     <version>61.0</version>

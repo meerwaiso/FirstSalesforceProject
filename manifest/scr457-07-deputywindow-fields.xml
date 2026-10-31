@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-457 design revision 2, deploy step 7: the deputy's OWN absence window
+     mirrored onto the customer (AC10). Two Date fields, not a boolean — see
+     docs/SCRUM-457-design.md §2.2. Must land before the marker formula that
+     reads them and before the PSs that name them (F12). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Account.Absence_Deputy_Start__c</members>
+        <members>Account.Absence_Deputy_End__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>62.0</version>
+</Package>

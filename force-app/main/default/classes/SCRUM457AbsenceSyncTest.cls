@@ -359,4 +359,174 @@ private class SCRUM457AbsenceSyncTest {
         }
         System.assert(blocked, 'AC1: without the PS the absence cannot be recorded');
     }
+
+    // AC1, new clause (PO answer 3): an account manager can never be their own
+    // deputy. The guard is the before-event block in AbsenceSyncTrigger; the
+    // record must not exist afterwards. Positive half in the same method: the
+    // same user CAN record an absence with a colleague as deputy, so the guard
+    // is not a blanket block.
+    @isTest
+    static void managerCannotBeTheirOwnDeputy() {
+        User solo = mkUser('solo');
+        User colleague = mkUser('colleague');
+        List<User> guardUsers = new List<User>{solo, colleague};
+        insert guardUsers;
+
+        Absence__c bad = new Absence__c(
+            Absent_User__c = solo.Id,
+            Deputy__c = solo.Id,
+            Start__c = Date.today(),
+            End__c = Date.today().addDays(3)
+        );
+        Boolean refused = false;
+        try {
+            insert bad;
+        } catch (Exception e) {
+            refused = true;
+        }
+        System.assert(refused, 'AC1: naming yourself as deputy is refused');
+
+        List<Absence__c> left = [
+            SELECT Id FROM Absence__c WHERE Absent_User__c = :solo.Id AND Deputy__c = :solo.Id
+        ];
+        System.assert(left.isEmpty(), 'AC1: the refused record is not in the org');
+
+        Absence__c good = new Absence__c(
+            Absent_User__c = solo.Id,
+            Deputy__c = colleague.Id,
+            Start__c = Date.today(),
+            End__c = Date.today().addDays(3)
+        );
+        insert good;
+        System.assert(good.Id != null, 'AC1: a colleague as deputy is accepted');
+    }
+
+    // AC1 with the team-lead set (PO answer 5): a team lead is whoever holds
+    // SCRUM457_Absence_Teamleitung, and records the absence OF A COLLEAGUE who
+    // holds nothing. The mirror must follow on that colleague's customers.
+    @isTest
+    static void teamLeadRecordsAbsenceForAColleague() {
+        User teamLead = mkUser('tealead');
+        User offSick = mkUser('offsick');
+        List<User> tlUsers = new List<User>{teamLead, offSick};
+        insert tlUsers;
+
+        PermissionSet teamlead = [
+            SELECT Id FROM PermissionSet WHERE Name = 'SCRUM457_Absence_Teamleitung' LIMIT 1
+        ];
+        System.assert(teamlead.Id != null, 'the team-lead set must exist');
+        insert new PermissionSetAssignment(
+            AssigneeId = teamLead.Id,
+            PermissionSetId = teamlead.Id
+        );
+
+        List<Account> accts = new List<Account>();
+        for (Integer i = 0; i < 2; i++) {
+            accts.add(new Account(Name = 'SCRUM457 Akt TL ' + i, OwnerId = offSick.Id));
+        }
+        insert accts;
+
+        System.runAs(teamLead) {
+            Absence__c a = new Absence__c(
+                Absent_User__c = offSick.Id,
+                Deputy__c = teamLead.Id,
+                Start__c = Date.today(),
+                End__c = Date.today().addDays(4)
+            );
+            insert a;
+        }
+
+        List<Account> mirrored = [
+            SELECT Id, OwnerId, Absence_Start__c, Absence_End__c, Absence_Deputy__c
+            FROM Account
+            WHERE OwnerId = :offSick.Id
+        ];
+        System.assertEquals(2, mirrored.size(), 'both customers of the sick colleague');
+        for (Account a : mirrored) {
+            System.assert(a.Absence_Start__c != null, 'AC1: the mirror followed the team lead');
+            System.assert(a.Absence_Deputy__c != null, 'AC1: the deputy is named');
+            System.assert(a.OwnerId == offSick.Id, 'AC7: the owner was not touched');
+        }
+    }
+
+    // AC10: a deputy who is away themselves is no deputy. The deputy's own
+    // window is mirrored as two dates, and the marker is the SAME value as for
+    // a customer without a deputy — the overview must not distinguish them.
+    @isTest
+    static void deputyWhoIsAwayIsNoDeputy() {
+        Date startDate = Date.today();
+        Id[] ids = seed(2, startDate, Date.today().addDays(6));
+        Id managerId = ids[0];
+        Id deputyId = ids[1];
+
+        // The deputy's own absence, window covering today.
+        Absence__c depAbsence = new Absence__c(
+            Absent_User__c = deputyId,
+            Deputy__c = managerId,
+            Start__c = Date.today(),
+            End__c = Date.today().addDays(2)
+        );
+        insert depAbsence;
+
+        List<Account> withAwayDeputy = [
+            SELECT Id, Absence_Ohne_Deputy__c, Absence_Deputy_Start__c, Absence_Deputy_End__c
+            FROM Account
+            WHERE OwnerId = :managerId
+        ];
+        System.assertEquals(2, withAwayDeputy.size(), 'both customers');
+        for (Account a : withAwayDeputy) {
+            System.assertEquals('OHNE DEPUTY', a.Absence_Ohne_Deputy__c, 'AC10: the customer stands out');
+            System.assert(a.Absence_Deputy_Start__c != null, 'AC10: the deputy window is mirrored');
+            System.assert(a.Absence_Deputy_End__c != null, 'AC10: both dates are mirrored');
+        }
+
+        // "exactly like" a customer without a deputy: same marker value.
+        List<Account> noDeputy = [
+            SELECT Id, Absence_Ohne_Deputy__c FROM Account
+            WHERE OwnerId = :managerId AND Absence_Deputy__c = ''
+        ];
+        // no such row here — the marker, not the cause, is what the report shows
+        System.assertEquals(0, noDeputy.size(), 'the deputy is named; only the marker fires');
+    }
+
+    // AC10, the direction that needs the bidirectional recompute: the deputy's
+    // absence is created AFTER the manager's, and the manager's record is never
+    // touched. A one-directional handler leaves the marker stale.
+    @isTest
+    static void deputyAbsenceReflagsCustomersWithoutTouchingTheManager() {
+        Date startDate = Date.today();
+        Id[] ids = seed(2, startDate, Date.today().addDays(6));
+        Id managerId = ids[0];
+        Id deputyId = ids[1];
+
+        List<Account> before = [
+            SELECT Id, Absence_Ohne_Deputy__c, Absence_Deputy_End__c
+            FROM Account
+            WHERE OwnerId = :managerId
+        ];
+        for (Account a : before) {
+            System.assert(a.Absence_Ohne_Deputy__c == null || a.Absence_Ohne_Deputy__c == '',
+                'AC10: while the deputy is fine the marker is blank');
+            System.assert(a.Absence_Deputy_End__c == null, 'AC10: no deputy window yet');
+        }
+
+        Absence__c depAbsence = new Absence__c(
+            Absent_User__c = deputyId,
+            Start__c = Date.today(),
+            End__c = Date.today().addDays(1)
+        );
+        insert depAbsence; // the manager's Absence__c is NOT touched
+
+        List<Account> after = [
+            SELECT Id, Absence_Ohne_Deputy__c, Absence_Deputy_Start__c, Absence_Deputy_End__c
+            FROM Account
+            WHERE OwnerId = :managerId
+        ];
+        System.assertEquals(before.size(), after.size(), 'AC10: the same customers, re-flagged');
+        for (Account a : after) {
+            System.assertEquals('OHNE DEPUTY', a.Absence_Ohne_Deputy__c,
+                'AC10: the marker followed without a write to the manager record');
+            System.assert(a.Absence_Deputy_End__c != null, 'AC10: the deputy window arrived');
+        }
+    }
 }

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Absence_Deputy_Start__c</fullName>
+    <label>Deputy abwesent ab</label>
+    <description>SCRUM-457 AC10: Start of the named deputy's OWN open absence (blank when the deputy has none). Written only by AbsenceSyncHandler, mirrored from Absence__c WHERE Absent_User__c = deputy. Mirrored as dates, not as a boolean: a boolean written at save time is wrong the day the deputy's absence ends. Read by the Absence_Ohne_Deputy__c marker.</description>
+    <type>Date</type>
+    <required>false</required>
+    <unique>false</unique>
+    <externalId>false</externalId>
+    <trackTrending>false</trackTrending>
+</CustomField>
