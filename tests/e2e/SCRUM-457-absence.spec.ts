@@ -731,27 +731,3 @@ test.describe('[SCRUM-457] AC9 — nothing automatic beyond the display', () => 
     });
   });
 });
-
-  });
-});
-
-/* ==== AC9 — nothing automatic ==== */
-
-test.describe('[SCRUM-457] AC9 — nothing automatic beyond the display', () => {
-  test('AC9: no Task, no EmailMessage, no chatter created by the absence flow', async ({ page }) => {
-    const t0 = RUN_T0.toISOString().slice(0, 19) + 'Z';
-    const tasks = soqlCount(`SELECT COUNT() FROM Task`);
-    const emails = soqlCount(`SELECT COUNT() FROM EmailMessage`);
-    const chatter = soqlCount(`SELECT COUNT() FROM FeedItem WHERE CreatedDate > ${t0}`);
-    expect(tasks, 'the absence flow must not create a Task').toBe(0);
-    expect(emails, 'the absence flow must not create an EmailMessage').toBe(0);
-    expect(chatter, `no chatter may be created since the run started (window ${t0})`).toBe(0);
-
-    const absences = soql(`SELECT Id, Name FROM Absence__c`);
-    expect(absences.length, 'the flow must not leave extra Absence records behind').toBe(2);
-    test.info().annotations.push({
-      type: 'observed',
-      description: `AC9: Task=0, EmailMessage=0, FeedItem since ${t0}=0, Absence__c=${absences.length} (the two fixtures)`,
-    });
-  });
-});
