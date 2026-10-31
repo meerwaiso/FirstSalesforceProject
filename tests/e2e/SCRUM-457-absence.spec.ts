@@ -120,6 +120,31 @@ async function snapshot(page: Page): Promise<string> {
   return await page.locator('body').first().ariaSnapshot();
 }
 
+/* Lightning serves a cached render right after a server-side write: the field
+   value is already correct, the page repaints seconds later. Poll the render,
+   then assert on what is actually on the page — never on the field value. */
+async function snapshotWhen(page: Page, needle: string, timeoutMs = 20000): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+  let last = '';
+  for (;;) {
+    last = await snapshot(page);
+    if (last.includes(needle)) return last;
+    if (Date.now() > deadline) return last;
+    await page.waitForTimeout(2000);
+  }
+}
+
+async function snapshotWithout(page: Page, needle: string, timeoutMs = 20000): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+  let last = '';
+  for (;;) {
+    last = await snapshot(page);
+    if (!last.includes(needle)) return last;
+    if (Date.now() > deadline) return last;
+    await page.waitForTimeout(2000);
+  }
+}
+
 /** Reload a record page and land on its Details tab (a fresh page = post-save). */
 async function reloadRecord(page: Page, path: string): Promise<void> {
   await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -287,7 +312,7 @@ test.describe('[SCRUM-457] AC6 — changing or cancelling follows immediately', 
     expect(windowCount(), `the window must drop to ${windowBefore - 1} after the cancel`).toBe(windowBefore - 1);
 
     await reloadRecord(page, `/lightning/r/Account/${sample.Id}/view`);
-    const snap = await snapshot(page);
+    const snap = await snapshotWithout(page, 'OHNE DEPUTY');
     mustNotContain(snap, 'Abwesent', `page of ${sample.Name} must say nothing after the cancel`);
     mustNotContain(snap, 'OHNE DEPUTY', `page of ${sample.Name} must carry no marker after the cancel`);
 
@@ -303,7 +328,7 @@ test.describe('[SCRUM-457] AC6 — changing or cancelling follows immediately', 
     expect(windowCount(), 'the window must be back at 13 after the re-record').toBe(13);
 
     await reloadRecord(page, `/lightning/r/Account/${sample.Id}/view`);
-    const restored = await snapshot(page);
+    const restored = await snapshotWhen(page, 'OHNE DEPUTY');
     expect(restored, `reloaded page must show the marker again for ${sample.Name}`).toContain('OHNE DEPUTY');
     test.info().annotations.push({
       type: 'observed',
@@ -331,12 +356,12 @@ test.describe('[SCRUM-457] AC6 — changing or cancelling follows immediately', 
 
     // 3) the customer page follows — a fresh page load, not the edited one
     await reloadRecord(page, `/lightning/r/Account/${cust.Id}/view`);
+    const rendered = await snapshotWhen(page, ABSENCE_NEW_END);
     const mirrored = soql(`SELECT Id, Absence_End__c, Absence_Anzeige__c FROM Account WHERE Id = '${cust.Id}'`)[0];
     expect(blank(mirrored.Absence_End__c), `mirror on ${cust.Id} must carry the new end date`).toBe(ABSENCE_NEW_END);
     expect(blank(mirrored.Absence_Anzeige__c), `display line must carry the new end date`).toContain(ABSENCE_NEW_END);
-    const snap = await snapshot(page);
-    expect(snap, `reloaded customer page must render the new end date`).toContain(ABSENCE_NEW_END);
-    expect(snap, 'reloaded page must still name the deputy').toContain('Deputy:');
+    expect(rendered, `reloaded customer page must render the new end date`).toContain(ABSENCE_NEW_END);
+    expect(rendered, 'reloaded page must still name the deputy').toContain('Deputy:');
     test.info().annotations.push({
       type: 'observed',
       description: `AC6: End__c ${before} → ${ABSENCE_NEW_END}; mirror + reloaded page follow`,
@@ -410,7 +435,7 @@ test.describe('[SCRUM-457] AC6 — changing or cancelling follows immediately', 
     expect(blank(mirrored.Absence_In_Window__c), `ended absence must clear the window flag on ${cust.Id}`).toBe('');
 
     await reloadRecord(page, `/lightning/r/Account/${cust.Id}/view`);
-    const snap = await snapshot(page);
+    const snap = await snapshotWithout(page, 'Abwesent');
     mustNotContain(snap, 'Abwesent', `page of ${cust.Name} must not say "Abwesent" after the absence ended`);
     test.info().annotations.push({
       type: 'observed',
@@ -466,11 +491,11 @@ test.describe('[SCRUM-457] AC7 — ownership never moves', () => {
 
     // the fixture absence is still active, so its own page must still show it
     await reloadRecord(page, `/lightning/r/Account/${cust.Id}/view`);
-    const snap = await snapshot(page);
+    const snap = await snapshotWhen(page, 'Abwesent');
     expect(snap, `page of ${cust.Name} must still show its own absence after the cancel`).toContain('Abwesent');
     // the cancelled colleague's page must be back to looking exactly as today
     await reloadRecord(page, `/lightning/r/Account/${sample.Id}/view`);
-    const sampleSnap = await snapshot(page);
+    const sampleSnap = await snapshotWithout(page, 'OHNE DEPUTY');
     mustNotContain(sampleSnap, 'Abwesent', `page of ${sample.Name} must be blank after the cancel`);
     mustNotContain(sampleSnap, 'OHNE DEPUTY', `no marker may remain on ${sample.Name}`);
 
