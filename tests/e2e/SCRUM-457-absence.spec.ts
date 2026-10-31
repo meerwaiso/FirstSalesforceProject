@@ -62,7 +62,7 @@ const ABSENCE_ORIG_DEPUTY = '005WU000017tEKLYA2'; // devops-agent — ABSENCE-00
 const SEED_USER = '005WU000017tBpWYAU'; // Automated Process — the absent one
 const SEED_START = '2026-11-02';
 const SEED_END = '2026-11-12';
-const SWAP_DEPUTY = '005WU000017tBhRYAU'; // Meerwais Osmani — a normal colleague for the deputy swap
+const SWAP_DEPUTY = '005WU000017tBpWYAU'; // Automated Process — NOT the account manager: the handler refuses a manager as their own deputy (AC1)
 
 // Lightning pages plus a SOQL round-trip per assertion need far more than 30 s.
 test.setTimeout(180000);
@@ -671,6 +671,8 @@ test.describe('[SCRUM-457] AC10 — a deputy who is away is no deputy', () => {
     expect(deputy.length, 'the deputy must have exactly one own absence in the org').toBe(1);
     expect(blank(deputy[0].Deputy__c), 'the deputy must not name a deputy of their own').toBe('');
 
+    let windowNow = -1;
+    let totalCustomers = -1;
     // the cleanup must run even when an assertion below fails, otherwise a red
     // AC10 leaves a third Absence record in the org and every later run measures
     // a fixture the PO never measured.
@@ -681,8 +683,8 @@ test.describe('[SCRUM-457] AC10 — a deputy who is away is no deputy', () => {
     for (const r of covered) {
       expect(markedIds.has(r.Id), `${r.Name} must stand out exactly like a customer without a deputy`).toBe(true);
     }
-    const totalCustomers = soqlCount(`SELECT COUNT() FROM Account`);
-    const windowNow = windowCount();
+    totalCustomers = soqlCount(`SELECT COUNT() FROM Account`);
+    windowNow = windowCount();
     expect(windowNow, 'both managers away: every customer of the org is now in the window').toBe(totalCustomers);
     expect(marked.length, 'every customer in the window is covered by an absent manager whose deputy is absent too').toBe(windowNow);
 
