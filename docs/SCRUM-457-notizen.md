@@ -19,3 +19,16 @@ Hard-won findings; one line each. Read this first after any compaction.
 - `System.runAs` is refused outside test methods (`sf apex run` -> "System.runAs can only be used within a test method") — OWD/visibility probes need an @isTest class, not a script.
 - `Role` is not a valid Apex sObject type (compile error "Invalid type: Role"); query it via `--use-tooling-api` SOQL only.
 - PSA house shape: `insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);` (from *FlsTest classes). Cross-object bulk update idiom: `update accounts;` (CustomerTransferJob).
+
+## Developer ergbnungen (2026-10-31, alle measured in Test-Org)
+
+- `after save` is NOT an Apex event token ("Unexpected token 'save'") — one block `(after insert, after update, after delete)`; `Trigger.new`/`Trigger.oldMap` are SObject AND null on the event that does not apply — unguarded `Trigger.oldMap.values()` threw NullPointerException and rolled the whole insert back. Guard for null.
+- Apex Map method is `put`, not `set`. `Map<Id, Absence__c>` value type is refused ("no set(Id, Absence__c)") — keep plain Date/Id values in separate maps.
+- `rec.Deputy__c.Name` → "A non foreign key field cannot be referenced in a path expression". Display names: one `SELECT Id, Name FROM User WHERE Id IN :ids`.
+- SOQL column for the Account owner is `OwnerId`; `Owner` is only the relationship alias (report token `USERS.NAME`). `WHERE Owner IN :users` → "No such column 'Owner' on entity 'Account'".
+- PS `<tabSettings><tab>Absence__c</tab>` → "no CustomTab named Absence__c found" (the object carries no customTab) → element removed.
+- PS/report `<description>` must be ≤255 characters.
+- Deploy manifest shape: `<types><members>X</members><name>ApexClass</name></types>` with xmlns `http://soap.sforce.com/2006/04/metadata`. The `<Types name=... members=...>` shape → "NothingToDeploy".
+- Test class: `@isTest` on the CLASS and on every method; assertions are `System.assertEquals(exp, act, msg)` / `System.assert(cond, msg)`; `end` and `from` are reserved identifiers.
+- Live state Test-Org: Absence `a04WU00000E0qWPYAZ` (Meerwais Osmani, 2026-10-31..2026-11-20, deputy devops-agent) mirrored on all 12 Accounts; PSA: AbsenceRead/AbsenceWrite → 005WU000017tEKLYA2 + 005WU000017tBhRYAU, DeputyAccess → nobody (per-absence grant). SCRUM457AbsenceSyncTest 7/7 green (RunSpecifiedTests).
+- OWD of Account/Opportunity/Case NOT read back: no API exposes it, browser vault holds no saved login → not verifiable by the Developer. UNVERIFIED, assumed Private.
