@@ -27,7 +27,22 @@ Hard-won findings for this ticket; the build spec is `docs/SCRUM-459-design.md`.
 - House precedent for the same shape (SCRUM-449): `SCRUM449OpportunityRisk` (read=true edit=false) PLUS a separate
   `SCRUM449OpportunityRiskWrite` (read=true edit=true), assigned to the CLI user only. That is the shape that makes a trigger write work.
 
-## Rework round 1 (measured 2026-10-31, after Architect comment 23582)
+## Rework round 2 (measured 2026-10-31, after Architect comment 23584)
+
+- CI smoke failed with `Process completed with exit code 100` (annotations carry no test detail):
+  `gh api ".../check-runs/<jobId>/annotations"` is the way to read a red CI job when the run log is
+  still unavailable - the run log needs the WHOLE run to finish, the annotations do not.
+- Cause was a race, not the code: CI runs `sf apex run test --test-level RunSpecifiedTests --class-names ...`
+  against the ORG, and it started while my phase3/3b/4 deploys were still in flight, so it executed the
+  OLD test class (the one with the MIXED_DML failure). Reproducing CI's exact command after the deploys
+  landed: 15 tests, Pass Rate 100%, Outcome Passed.
+- MIXED_DML_OPERATION in `readBackUnderSalesRepPermissions`: `PermissionSetAssignment` is a setup object;
+  creating a `Followup_Obligation__c` in the same transaction fails in either order. Fix: the fixture moved
+  into `setup_fixtures` (own transaction), assertions unchanged.
+- Guard skip narrowed from a static Boolean to `Set<Id> systemWrittenIds` + `try/finally` clear: a throw at
+  the update statement no longer leaves the guard skipped for the rest of the transaction (round-2 nit).
+- `sf apex run test` counts 15 tests for the two classes (deploy `--test-level` reported 13); the number
+  CI prints is not the number the deploy prints - compare outcome, not counts.
 
 - Third PS `SCRUM459_FollowupMonitoring_Write` (six fields read=true edit=true, NO objectPermissions) deployed and
   assigned to BOTH Test-Org users; `scripts/fls-check.sh` then shows all six fields granted edit=true by it.
