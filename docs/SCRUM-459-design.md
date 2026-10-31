@@ -468,7 +468,40 @@ update only records whose values actually changed, in ONE update batch
 - **Recursion:** writing the Opportunity fields fires the Opportunity triggers, including our own `OpportunityFollowupMonitorTrigger`. Its relevance filter (`IsClosed` or `Amount` changed) sees no change on the second pass and returns. Terminates — this must be stated in the code, because unlike the SCRUM-416 rollup (Account write, no Opportunity trigger) here the trigger DOES fire.
 - Measured 2026-10-31 in Test-Org: `AssignmentRule` exists only for `Case` and `Lead` — **none on Opportunity** — so there is no second save cycle to double-count (the SCRUM-418 trap).
 
-## Permission Sets — exactly two, Profiles untouched
+## Permission Sets — AMENDED to three (PR round 1, 2026-10-31)
+
+The original design said "exactly two PSs with the six fields `editable=false`". That is **not implementable** — measured, see the amendment below. Three PSs, Profiles still untouched.
+
+| PS | Grants | Assigned to |
+|---|---|---|
+| `SCRUM459_FollowupObligation_Rep` | `objectPermissions` on `Followup_Obligation__c`: allowCreate/read/edit **true**, allowDelete **false**, viewAllRecords/modifyAllRecords false; `fieldPermissions` readable+editable on `Opportunity__c`, `Status__c`, `Due_Date__c`, `Completed_Date__c`, `Next_Action__c` | both Test-Org users |
+| `SCRUM459_FollowupMonitoring_Read` | `objectPermissions` on `Followup_Obligation__c`: allowRead true, everything else false; `fieldPermissions` readable **true / editable false** on the six Opportunity monitoring fields and readable on the obligation fields | both Test-Org users |
+| `SCRUM459_FollowupMonitoring_Write` | `fieldPermissions` on the **six Opportunity monitoring fields only**: readable **true / editable true**; no `objectPermissions` on the obligation | both Test-Org users |
+
+### Why the amendment is forced (measured 2026-10-31, Test-Org)
+
+- `scripts/fls-check.sh Opportunity Followup_Required__c` → granted ONLY by `SCRUM459_FollowupMonitoring_Read` with `read=true edit=false`, assigned to 2 users. **No PS in Test-Org grants edit on the six fields.**
+- The handler writes typed Opportunity records and ends in one `update toUpdate` batch; the trigger runs in **user mode**, so FLS applies to that write. Result: 11 of 13 Apex tests fail with `System.DmlException: Operation failed due to fields being inaccessible on Sobject Opportunity` at `FollowupMonitoringHandler.recalculate` line 187, and CI's "Metadata, Apex & Session Smoke" is red on the PR head.
+- `System.runAs_Use('...')` does **not** exist in this org — probe `sf apex run` with that call → `Method does not exist or incorrect signature: void runAs_Use(String) from the type System`. There is no way to borrow a Permission Set inside a trigger.
+- The house precedent `SCRUM449OpportunityRisk` + `SCRUM449OpportunityRiskWrite` was checked in the repo and the org: the Write PS carries 5 `editable=true` entries, the Read PS 0, and the Write PS is assigned to **one** user (the CLI user). That shape works only because the *acting* user holds the Write PS — it does not reproduce for a user holding only the Read PS, which is exactly the failing case here. Do not copy the "trigger path needs no Write-PS" sentence from SCRUM-449: it does not reproduce in Test-Org for these fields.
+
+### Consequence for AC 6 — the guard, not FLS
+
+Granting edit is what makes the write path work at all, so "sales reps never edit the monitoring values" can no longer be an FLS property. It becomes an **Apex contract**:
+
+- New component `OpportunityFollowupGuardTrigger` (`before update` on Opportunity) → `FollowupMonitoringHandler.assertNoUserTypedValues(newRecs, oldMap)`.
+- Rule: if the proposed value of any of the six fields differs from the value the handler computes for this transaction, the save is **refused** (German message naming the field). The handler's own write proposes the computed value and therefore passes.
+- Distinguishing the handler's write from a user's edit must not rely on field values alone — use a static flag set by the handler in the same transaction (house shape: static `hasFired` guard in `OpportunityOverdueResetHandler`, SCRUM-449 §Trigger recursion).
+- AC 12 (user without the PS cannot read the fields or the records) stays an FLS property: `read=false` for everyone outside the two PSs; the negative test runs under `System.runAs` with a created, licence-free user.
+- `SCRUM459FollowupFlsTest.withBothPS_readableButNeverEditable` must be rewritten: it currently asserts an FLS refusal. With edit=true the refusal comes from the guard — the test must assert the **save is refused and the stored value unchanged**, still under a user that holds the PSs.
+
+### Handler header correction
+
+The comment "Systemwrites here run in System context and bypass FLS" is false (triggers run in user mode; measured). Replace it with: writes pass FLS because `SCRUM459_FollowupMonitoring_Write` grants edit to the acting user; the six fields are never writable by a human *intent* because the guard refuses a value that is not the computed one.
+
+---
+
+## Permission Sets — original (superseded, kept for the record): exactly two, Profiles untouched
 
 | PS | Grants | Roles |
 |---|---|---|
