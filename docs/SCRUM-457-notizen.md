@@ -41,3 +41,14 @@ Hard-won findings; one line each. Read this first after any compaction.
 - AC8 measured live in Test-Org: absence `a04WU00000E0r97YAB` (autoproc owner, 2026-11-02..2026-11-12, NO deputy) → 13 Accounts in window, **1** carries `OHNE DEPUTY`. `Absence_Anzeige__c` stays blank there because the absence starts in the future (deliberate AC3/AC8 split).
 - `Absence_Anzeige__c` formula now one language + one marker: `Abwesent <start> bis <end> - Deputy: <name>` / `... - OHNE DEPUTY`. Read back: "Abwesent 2026-10-31 bis 2026-11-20 - Deputy: devops-agent".
 - Tests: 11/11 green (RunSpecifiedTests, Test-Org) — AC1 positive (create under the Write PS) + AC1 negative (blocked without it), AC4 deputy edits a non-owned customer's open Opportunity/Case under `System.runAs(deputy)`, AC8 no-deputy marker on 3/3 rows.
+
+## Architect revision 2 (2026-10-31, after the user's confirmed answers)
+
+- Branch head moved to `c3b3206` by the Tester (E2E spec + tester notizen) — written against the OLD AC list, superseded.
+- House has NO ValidationRule (`git grep -l validationRules origin/master -- force-app/main/default/objects/` -> no file) and NO `$Permission` merge field in any Apex file -> the AC1 own-deputy guard has no precedent; must be compile-proven, not assumed.
+- `$Permission.X` and even `$User.Name` are refused in an `sf apex run` SCRIPT ("Variable does not exist") — the script compiler has no merge fields. A script probe proves nothing about a class/trigger; only the class deploy (CI smoke) compiles it.
+- No PS in the repo carries `userPermissions` (`git grep -l userPermissions origin/master -- permissionsets/` -> no file) -> the house never grants RunReports; the overview is reachable through the report's Setup sharing (S3), not through a PS.
+- Report at head already carries the marker column `Account.Absence_Ohne_Deputy__c` -> AC10 needs no new report, only a wider marker formula + two new Date mirror fields.
+- AC10 makes the recompute BIDIRECTIONAL: changing the deputy's own absence must re-flag the manager's customers. A one-directional handler leaves a stale marker.
+- Mirror the deputy's own window as two Date fields, not a boolean: a boolean written at save time is wrong the day the deputy's absence ends and would need a nightly job (forbidden: nothing automatic).
+- Team-lead PS naming = house: `SCRUM457_Absence_Teamleitung` (cf. SCRUM428_Teamleitung, SCRUM431_..._Teamleitung, SCRUM451_..._Teamleitung).
