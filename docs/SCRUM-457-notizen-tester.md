@@ -50,12 +50,41 @@ is a FINDING, not a test — never a PASS row.
   value is empty.
 - Field VALUES live in closed shadow roots → `ariaSnapshot()` of body is the only
   fast read; `querySelectorAll` sees labels but empty values.
-- `Absence__c` record page labels: `Absence ab`, `Absence until`,
-  `Abwesende Mitarbeiter`, `Deputy`. Dates are locale **DD.MM.YYYY** — ISO is
-  rejected by the form.
+- **The `Absence__c` record page renders ONLY `Lauf-Nr.`, `Owner`, `Created By`,
+  `Last Modified By`** — on `/view` AND on `/edit`. Probe 2026-10-31: AXTree of the
+  edit form = 369 nodes, zero hits for the detail fields; `records-record-layout-item`
+  elements carry `field-label` only for those four. `Layout:Absence__c.*` cannot be
+  retrieved from the org ("Entity of type Layout ... cannot be found") and the repo
+  has no layout file for it. => there is NO UI entry point for recording/changing an
+  absence; every house custom object in the repo HAS a layout file, Absence__c does
+  not. FINDING for the Developer, not a locator problem.
 - `Absence_Anzeige__c` renders verbatim: `Abwesent 2026-10-31 bis 2026-11-20 - Deputy: devops-agent`.
 
-## CLI quirks hit while writing this spec
+## Report cache + fixture drift (2026-10-31, second run)
+- The report frame said **Total Records 9** while SOQL said 13 — mid-run, because an
+  earlier test had left `ABSENCE-0001.End__c = 2026-12-05` and the throwaway record
+  still in the org. With the fixtures restored the frame renders **13 rows** and they
+  match the 13 SOQL rows one-for-one, incl. `Sample Account for Entitlements |
+  Automated Process | 02.11.2026 | 12.11.2026 | - | OHNE DEPUTY`. Report results are
+  cached: measure the report only from a restored fixture state.
+- Every test that mutates `End__c` must restore it, otherwise the next test's fixture
+  precondition fails and the run looks red for the wrong reason.
+- A **new** absence for a colleague who owns many customers (devops-agent, 184) is
+  the wrong cancel fixture: it mirrors onto all 184 and every later test then reads a
+  polluted window (AC8 saw 185 rows / a cached 145). The cancel cycle runs ON the
+  deputy-less fixture ABSENCE-0002: delete it, assert the marker + window drop, re-record
+  it byte-identical, assert they come back. `Absence__c.Name` is AutoNumber, so the
+  restored record has a new name — the PO measures the ROWS, and 13/1 still holds.
+- For a deputy-less absence the mirror writes `Absence_Ohne_Deputy__c = 'OHNE DEPUTY'`
+  and leaves `Absence_Anzeige__c` EMPTY — the marker is the whole display there.
+
+## Playwright / SOQL quirks hit while fixing this spec
+- This Playwright release has **no `notToContain` and no `notToBe`** on `expect`
+  (`TypeError: not a function`). Use `mustNotContain(text, needle, why)`
+  (= `expect(text.includes(n), why).toBe(false)`) and explicit `!==` comparisons.
+- SOQL **Date literals are unquoted**: `WHERE Start__c = 2026-11-05`. The quoted
+  form is a syntax error and surfaces as `Command failed` from `execSync` — it looks
+  like a platform fault, it is not.
 - `sf data create/update record --values` takes SPACE-separated pairs, not commas.
 - `Post` is NOT SOQL-queryable (`INVALID_TYPE`); `Task`, `EmailMessage`, `FeedItem` are.
 - `SELECT ... FROM Opportunity WHERE Status = ...` → "No such column 'Status'";
