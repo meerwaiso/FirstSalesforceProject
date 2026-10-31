@@ -27,7 +27,7 @@
     <columns>
         <field>Account.Absence_Ohne_Deputy__c</field>
     </columns>
-    <description>SCRUM-457: Team-lead overview - every customer whose account manager is absent today or will be absent within the next 14 days, with the account manager, the absence period and the deputy. Rows without a named deputy carry "OHNE DEPUTY" (AC8). Row count must equal the number of customers with an absence in that window (PO measures before accepting).</description>
+    <description>SCRUM-457: Team-lead overview - every customer whose account manager is absent today or within the next 14 days, with account manager, absence period and deputy. Rows without a deputy carry OHNE DEPUTY (AC8).</description>
     <filter>
         <criteriaItems>
             <column>Account.Absence_In_Window__c</column>

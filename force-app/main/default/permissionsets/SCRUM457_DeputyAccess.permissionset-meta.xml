@@ -28,7 +28,7 @@
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>SCRUM457_DeputyAccess</fullName>
     <label>SCRUM-457 Deputy Access</label>
-    <description>SCRUM-457: Record access for the deputy of an active absence — read Account (never edit), read+edit Opportunity (the deputy must be able to work the open opportunities), read Case. viewAllRecords is what makes non-owned records reachable; the grant is per user, so it must be assigned only for the duration of an absence and removed when the absence ends or is cancelled (AC5). Never assigned to a user who is not a deputy of an active absence.</description>
+    <description>SCRUM-457: Deputy record access - read Account, read+edit Opportunity, read Case, viewAllRecords so non-owned records are reachable. Per user, not per record: assign only during an absence and remove it when the absence ends (AC5).</description>
     <hasActivationRequired>false</hasActivationRequired>
     <objectPermissions>
         <allowCreate>false</allowCreate>

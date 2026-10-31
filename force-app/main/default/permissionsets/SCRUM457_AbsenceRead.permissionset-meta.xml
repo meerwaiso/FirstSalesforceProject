@@ -8,7 +8,7 @@
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>SCRUM457_AbsenceRead</fullName>
     <label>SCRUM-457 Absence Read</label>
-    <description>SCRUM-457: Read access to the absence mirror on the customer (Account.Absence_Start__c, Absence_End__c, Absence_Deputy__c, Absence_In_Window__c) and to the Absence__c record itself. Assigned to every user who can open a customer. The absence data is internal company information, not customer PII, and is only ever populated inside an absence window (AC3).</description>
+    <description>SCRUM-457: Read access to the absence mirror on the customer and to the Absence__c record itself. For every user who can open a customer. Internal company data, not PII; only populated inside an absence window (AC3).</description>
     <hasActivationRequired>false</hasActivationRequired>
     <objectPermissions>
         <allowCreate>false</allowCreate>
@@ -69,8 +69,4 @@
         <field>Absence__c.Absent_User__c</field>
         <readable>true</readable>
     </fieldPermissions>
-    <tabSettings>
-        <tab>Absence__c</tab>
-        <visibility>Visible</visibility>
-    </tabSettings>
 </PermissionSet>

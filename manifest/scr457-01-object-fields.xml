@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-457 deploy step 1: the object before its fields, the fields before
+     anything that references them (F12: a PS naming a not-yet-deployed field
+     fails with "no CustomField named ... found"). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Absence__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>Absence__c.Absent_User__c</members>
+        <members>Absence__c.Deputy__c</members>
+        <members>Absence__c.Start__c</members>
+        <members>Absence__c.End__c</members>
+        <members>Account.Absence_Start__c</members>
+        <members>Account.Absence_End__c</members>
+        <members>Account.Absence_Deputy__c</members>
+        <members>Account.Absence_In_Window__c</members>
+        <members>Account.Absence_Ohne_Deputy__c</members>
+        <members>Account.Absence_Anzeige__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>61.0</version>
+</Package>

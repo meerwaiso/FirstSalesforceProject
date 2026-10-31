@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-457 deploy step 2a: the handler ALONE. Deploying handler and trigger
+     in one batch lets the trigger compile against the OLD live handler
+     (house finding), so the consumer follows in its own step. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>AbsenceSyncHandler</members>
+        <name>ApexClass</name>
+    </types>
+    <version>61.0</version>
+</Package>
