@@ -52,3 +52,14 @@ Hard-won findings; one line each. Read this first after any compaction.
 - AC10 makes the recompute BIDIRECTIONAL: changing the deputy's own absence must re-flag the manager's customers. A one-directional handler leaves a stale marker.
 - Mirror the deputy's own window as two Date fields, not a boolean: a boolean written at save time is wrong the day the deputy's absence ends and would need a nightly job (forbidden: nothing automatic).
 - Team-lead PS naming = house: `SCRUM457_Absence_Teamleitung` (cf. SCRUM428_Teamleitung, SCRUM431_..._Teamleitung, SCRUM451_..._Teamleitung).
+
+## Developer rework 2 (2026-10-31, design revision 2) — measured while implementing
+
+- `SavePointError` is NOT an Apex type in this org: the class deploy says "Invalid type: SavePointError (203:23)" and the trigger deploy says the same at its own line. The house exception type is `AuraHandledException` (`git grep -n "throw new" force-app/main/default/` → SCRUM428ContactFormController, CustomerTransferController). The guard check lives in the handler (`ownDeputyViolation()`), the throw lives in the trigger body.
+- Valid trigger event tokens are the six explicit ones; `after save` refused (measured earlier). The context flags that split before/after are `Trigger.isBefore` / `Trigger.isAfter` — `Trigger.beforeInsert` is refused ("Variable does not exist: beforeInsert (22:9)"). Without the split the handler also runs in the before-events and would read the not-yet-saved record.
+- The Apex SOQL parser refuses `TODAY()` inside a query that also binds a set ("Expecting ']' but was: '(' (118:75)"); bind a `Date today = Date.today()` instead.
+- `consider()` reads `rec.Deputy__c`, so EVERY query whose records go through it must SELECT `Deputy__c` — Q3 without it → "SObject row was retrieved via SOQL without querying the requested field: Absence__c.Deputy__c".
+- FLS `editable` is what lets the handler write a field in user mode: with `editable=false` on the five Apex-written mirror fields, a create under `System.runAs(teamLead)` fails "fields being inaccessible on Sobject Account". The two write PSs therefore carry `editable=true` on those five; the three formula fields stay `editable=false`. `SCRUM457_AbsenceRead` stays read-only.
+- Apex identifiers are case-INsensitive: `PermissionSet teamlead` collided with `User teamLead` ("Duplicate variable: teamlead (414:23)").
+- `User.Alias` is Text(8): `mkUser('colleague')` → STRING_TOO_LONG. Aliases in this test class must stay ≤8 chars.
+- PS assignment read-back: `assign-teamlead.apex` (sf apex run) assigned `SCRUM457_Absence_Teamleitung` to the CLI user `005WU000017tEKLYA2` (devops-agent@cline.test, = `UserInfo.getUserId()`) and to `005WU000017tBhRYAU`; the second iteration of the same script found the first insert already present, i.e. the assignment is visible through a real session. A `sf data query` on PermissionSetAssignment returns nothing (Tooling API), so the Apex read-back is the evidence.
