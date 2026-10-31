@@ -189,8 +189,12 @@ private class SCRUM459FollowupMonitorTest {
         System.assertEquals(1, (Integer) o.Overdue_Followup_Count__c, 'AC8: precondition');
         System.assertEquals('Overdue', o.Followup_Status__c, 'AC8: precondition');
 
-        o.StageName = 'Closed Won';
-        update o;
+        // Fresh sObject: the byName record carries IsClosed, which is not
+        // writeable (measured: "Field is not writeable: Opportunity.IsClosed";
+        // the update then fails as "fields being inaccessible").
+        Opportunity closeUpd = new Opportunity(Id = o.Id);
+        closeUpd.StageName = 'Closed Won';
+        update closeUpd;
 
         o = byName('459 AC8');
         System.assertEquals(true, o.IsClosed, 'AC8: stage Won -> closed');
