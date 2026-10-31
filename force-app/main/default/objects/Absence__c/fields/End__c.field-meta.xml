@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>End__c</fullName>
+    <label>Absence until</label>
+    <description>SCRUM-457: Last day of the absence - the manager is absent through this date inclusive (PO assumption 1) and back at work the following day. Mirror-copied to Account.Absence_End__c by AbsenceSyncHandler.</description>
+    <type>Date</type>
+    <required>false</required>
+    <unique>false</unique>
+    <externalId>false</externalId>
+    <trackTrending>false</trackTrending>
+</CustomField>

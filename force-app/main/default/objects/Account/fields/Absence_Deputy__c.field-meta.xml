@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Absence_Deputy__c</fullName>
+    <label>Deputy</label>
+    <description>SCRUM-457: Display name of the colleague covering the absent account manager, mirrored onto the customer so it is visible on the record page itself (AC2). Display only - the User Id lives on Absence__c.Deputy__c. Blank = no deputy named, which must stand out in the team-lead overview (AC8).</description>
+    <length>80</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+</CustomField>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-457: Write-side PS — record, change and cancel an absence.
+     CRUD/FLS row of the PO ticket, per data item: Create, Edit and Delete
+     (= cancel) belong to the account manager themselves AND to team leads
+     (a team lead records it for a colleague who is off sick and cannot do it
+     themselves, AC1). No Permission Profile is touched (house rule). -->
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SCRUM457_AbsenceWrite</fullName>
+    <label>SCRUM-457 Absence Write</label>
+    <description>SCRUM-457: Create/Edit/Delete on Absence__c and FLS edit on its three data items (start, end, deputy) plus the abwesende employee. Assigned to account managers and to team leads (AC1: a team lead may record the absence of a colleague who cannot do it themselves). Cancel = delete the record.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <objectPermissions>
+        <allowCreate>true</allowCreate>
+        <allowDelete>true</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Absence__c</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Absence__c.Absent_User__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Absence__c.Deputy__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Absence__c.Start__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Absence__c.End__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <tabSettings>
+        <tab>Absence__c</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+</PermissionSet>

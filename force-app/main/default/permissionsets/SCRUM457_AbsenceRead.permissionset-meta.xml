@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-457: Read-side PS — every user who can open the customer must see the
+     absence on the record page itself (AC2). The four mirror fields are written
+     only by AbsenceSyncHandler, so they are readable, never editable.
+     Account.Owner is NOT listed: it is a required field and the platform rejects
+     FLS on required fields (measured in SCRUM-451: "You cannot deploy to a
+     required field: Account.Owner"). -->
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SCRUM457_AbsenceRead</fullName>
+    <label>SCRUM-457 Absence Read</label>
+    <description>SCRUM-457: Read access to the absence mirror on the customer (Account.Absence_Start__c, Absence_End__c, Absence_Deputy__c, Absence_In_Window__c) and to the Absence__c record itself. Assigned to every user who can open a customer. The absence data is internal company information, not customer PII, and is only ever populated inside an absence window (AC3).</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Absence__c</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Absence_Start__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Absence_End__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Absence_Deputy__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Absence_In_Window__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Absence_Ohne_Deputy__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Absence_Anzeige__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Absence__c.Start__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Absence__c.End__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Absence__c.Deputy__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Absence__c.Absent_User__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <tabSettings>
+        <tab>Absence__c</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+</PermissionSet>

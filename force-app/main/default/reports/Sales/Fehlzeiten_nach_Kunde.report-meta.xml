@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-457 AC8: team-lead overview — every customer whose account manager is
+     absent now or will be absent within the next 14 days.
+     Columns: customer (ACCOUNT.NAME), account manager (USERS.NAME = Account.Owner),
+     absence period (Absence_Start__c / Absence_End__c), deputy (Absence_Deputy__c),
+     plus Absence_Ohne_Deputy__c so that rows without a named deputy stand out.
+     Filter shape measured in F11: <filter><criteriaItems><column/><operator/><value/>.
+     "equals" with a single value — "in"/"includes" are not valid FilterOperations.
+     scope=organization because the overview is one shared view for all team leads
+     (PO assumption 4), not filtered to the opener's own customers. -->
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns>
+        <field>ACCOUNT.NAME</field>
+    </columns>
+    <columns>
+        <field>USERS.NAME</field>
+    </columns>
+    <columns>
+        <field>Account.Absence_Start__c</field>
+    </columns>
+    <columns>
+        <field>Account.Absence_End__c</field>
+    </columns>
+    <columns>
+        <field>Account.Absence_Deputy__c</field>
+    </columns>
+    <columns>
+        <field>Account.Absence_Ohne_Deputy__c</field>
+    </columns>
+    <description>SCRUM-457: Team-lead overview - every customer whose account manager is absent today or will be absent within the next 14 days, with the account manager, the absence period and the deputy. Rows without a named deputy carry "OHNE DEPUTY" (AC8). Row count must equal the number of customers with an absence in that window (PO measures before accepting).</description>
+    <filter>
+        <criteriaItems>
+            <column>Account.Absence_In_Window__c</column>
+            <operator>equals</operator>
+            <value>YES</value>
+        </criteriaItems>
+    </filter>
+    <format>Summary</format>
+    <name>Fehlzeiten_nach_Kunde</name>
+    <reportType>AccountList</reportType>
+    <scope>organization</scope>
+    <showDetails>true</showDetails>
+    <sortColumn>Account.Absence_Start__c</sortColumn>
+    <sortOrder>Asc</sortOrder>
+</Report>

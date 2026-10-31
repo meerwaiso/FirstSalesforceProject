@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Absence_Ohne_Deputy__c</fullName>
+    <label>Absence ohne Deputy</label>
+    <description>SCRUM-457 AC8: "OHNE DEPUTY" while an absence is running today or starts within the next 14 days and no deputy has been named yet — exactly the customers that get forgotten, so they stand out in the team-lead overview. Blank otherwise. Formula field, read-only.</description>
+    <formula>IF(NOT(ISBLANK(Absence_Start__c)) &amp;&amp; NOT(ISBLANK(Absence_End__c)) &amp;&amp; Absence_End__c &gt;= TODAY() &amp;&amp; Absence_Start__c - TODAY() &lt;= 14 &amp;&amp; ISBLANK(Absence_Deputy__c), "OHNE DEPUTY", "")</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

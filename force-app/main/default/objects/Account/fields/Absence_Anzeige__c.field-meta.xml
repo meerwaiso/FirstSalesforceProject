@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Absence_Anzeige__c</fullName>
+    <label>Absence</label>
+    <description>SCRUM-457 AC2/AC3: the one line the customer page shows — who is absent from when to until when and which colleague covers. Populated ONLY while the absence covers today (Start &lt;= today &lt;= End); blank outside the absence, so the customer page looks exactly as it does today (AC3). A future absence is deliberately not shown here — it belongs to the team-lead overview (AC8), not to the customer page.</description>
+    <formula>IF(NOT(ISBLANK(Absence_Start__c)) &amp;&amp; NOT(ISBLANK(Absence_End__c)) &amp;&amp; Absence_Start__c &lt;= TODAY() &amp;&amp; Absence_End__c &gt;= TODAY(), "Abwesent " &amp; TEXT(Absence_Start__c) &amp; " until " &amp; TEXT(Absence_End__c) &amp; " - Deputy: " &amp; IF(ISBLANK(Absence_Deputy__c), "OHNE", Absence_Deputy__c), "")</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

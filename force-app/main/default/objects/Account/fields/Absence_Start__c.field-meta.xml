@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Absence_Start__c</fullName>
+    <label>Absence ab</label>
+    <description>SCRUM-457: Mirror of Absence__c.Start__c for the account manager who owns this customer. Written only by AbsenceSyncHandler (a formula field cannot traverse Account.Owner); never by hand. Blank = no absence, customer page looks exactly as today (AC3).</description>
+    <type>Date</type>
+    <required>false</required>
+    <unique>false</unique>
+    <externalId>false</externalId>
+    <trackTrending>false</trackTrending>
+</CustomField>

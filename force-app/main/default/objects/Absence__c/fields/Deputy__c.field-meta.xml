@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Deputy__c</fullName>
+    <label>Deputy</label>
+    <description>SCRUM-457: The colleague who covers this account manager during the absence - exactly one per absence (PO assumption 2). May be any valid user, not necessarily another account manager (PO assumption 3). Customers without a named deputy must stand out in the team-lead overview (AC8).</description>
+    <referenceTo>User</referenceTo>
+    <relationshipLabel>Fehlzeiten (Deputy)</relationshipLabel>
+    <relationshipName>Absences_Deputy</relationshipName>
+    <required>false</required>
+    <type>Lookup</type>
+</CustomField>

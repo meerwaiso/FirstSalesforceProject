@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Absence_End__c</fullName>
+    <label>Absence until</label>
+    <description>SCRUM-457: Mirror of Absence__c.End__c - last day of the absence, inclusive. Cleared by AbsenceSyncHandler when the absence is changed to a past window or cancelled, so the customer page shows nothing outside the absence (AC3, AC6).</description>
+    <type>Date</type>
+    <required>false</required>
+    <unique>false</unique>
+    <externalId>false</externalId>
+    <trackTrending>false</trackTrending>
+</CustomField>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-457: One record per account manager and absence. House shape from
+     CustomerTransfer__c (SCRUM-410): Lookup->User fields need relationshipLabel/
+     relationshipName + required=false; Lookup on the User object itself is
+     rejected by the platform, so the absence is its own object.
+     Cancel = delete the record (PO CRUD row). -->
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <label>Fehlzeit</label>
+    <pluralLabel>Fehlzeiten</pluralLabel>
+    <sharingModel>Private</sharingModel>
+    <nameField>
+        <displayFormat>ABSENCE-{0000}</displayFormat>
+        <label>Lauf-Nr.</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <description>SCRUM-457: One record per account manager and absence - who is away from when to until when, and which colleague covers during that period. Written by the account manager or a team lead; the mirror on the customer (Account.Absence_* ) is written by AbsenceSyncHandler. Cancel an absence = delete this record.</description>
+</CustomObject>

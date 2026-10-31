@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Start__c</fullName>
+    <label>Absence ab</label>
+    <description>SCRUM-457: First day of the absence. Day granularity, so Date not DateTime (the requirement says "from when, until when"). Mirror-copied to Account.Absence_Start__c by AbsenceSyncHandler.</description>
+    <type>Date</type>
+    <required>false</required>
+    <unique>false</unique>
+    <externalId>false</externalId>
+    <trackTrending>false</trackTrending>
+</CustomField>
