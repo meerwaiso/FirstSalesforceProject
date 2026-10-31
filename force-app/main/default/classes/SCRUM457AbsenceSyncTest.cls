@@ -1,21 +1,27 @@
 /**
- * SCRUM-457: Apex tests for AbsenceSyncHandler (ships in the same PR as the
- * class it covers).
+ * SCRUM-457: Apex tests for AbsenceSyncHandler and for the deputy's access
+ * (ships in the same PR as the class it covers).
  *
- * Integration-style: real Absence__c records, real Accounts owned by a test
- * user, the trigger does the propagation — the test asserts on the customer
- * page fields, not on the handler's internals.
+ * Integration-style: real Absence__c records, real Accounts/Opportunities/Cases
+ * owned by a test user, the trigger does the propagation — the test asserts on
+ * the customer page fields and on what a non-owner can actually do.
  *
  * House findings respected here:
  *  - The CLASS carries @isTest and every test method carries its own @isTest,
  *    otherwise "Tests Ran: 0" without an error.
- *  - ONE bulk insert for a seed batch: two separate insert statements would be
+ *  - ONE bulk insert per seed batch: two separate insert statements would be
  *    two trigger invocations.
  *  - Inside an Apex test, org-wide SOQL sees only the test's own records.
- *  - No System.runAs in this class: the FLS/visibility proofs (AC4, AC5) belong
- *    to the Tester and need PermissionSetAssignment DML in a separate
- *    transaction (MIXED_DML).
- *  - `end` is a reserved identifier in Apex.
+ *  - MIXED_DML: all setup DML (User, PSA) runs in System context FIRST, every
+ *    later DML happens inside one System.runAs of one user (SCRUM-432 form —
+ *    a User cannot grant himself a PermissionSetAssignment). Measured: this API
+ *    takes ONE argument, `System.runAs(user)`; the two-argument form with a
+ *    Profile is refused ("runAs requires a single argument of type 'User'").
+ *  - Measured API names (sf sobject describe): Opportunity.AccountId / OwnerId /
+ *    StageName / CloseDate, Case.AccountId / OwnerId / Status / Subject.
+ *  - Triggers run in USER mode: the handler's SOQL on the Account mirror fields
+ *    needs read FLS for the acting user, otherwise the whole create rolls back.
+ *  - `end` and `from` are reserved identifiers.
  */
 @isTest
 private class SCRUM457AbsenceSyncTest {
@@ -184,5 +190,173 @@ private class SCRUM457AbsenceSyncTest {
     static void bulkStaysWithinGovernorLimits() {
         Id[] ids = seed(50, Date.today(), Date.today().addDays(4));
         System.assertEquals(50, mirrorOf(ids[0]).size(), 'all 50 customers mirrored');
+    }
+
+    // AC8: "customers where no deputy has been named must stand out".
+    // The formula field Absence_Ohne_Deputy__c is the marker the report filters
+    // on; without this test that clause matches 0 records and is untested.
+    @isTest
+    static void absenceWithoutDeputyStandsOut() {
+        User manager = mkUser('mgr3');
+        insert manager;
+
+        List<Account> accts = new List<Account>();
+        for (Integer i = 0; i < 3; i++) {
+            accts.add(new Account(Name = 'SCRUM457 Ohne ' + i, OwnerId = manager.Id));
+        }
+        insert accts;
+
+        // No Deputy__c at all — the forgotten case the PO named.
+        Absence__c a = new Absence__c(
+            Absent_User__c = manager.Id,
+            Start__c = Date.today(),
+            End__c = Date.today().addDays(4)
+        );
+        insert a;
+
+        List<Account> rows = [
+            SELECT Id, Absence_Start__c, Absence_End__c, Absence_Deputy__c,
+                   Absence_Ohne_Deputy__c, Absence_In_Window__c
+            FROM Account
+            WHERE OwnerId = :manager.Id
+        ];
+        System.assertEquals(3, rows.size(), 'all three customers carry the absence');
+        Integer standingOut = 0;
+        for (Account row : rows) {
+            System.assertEquals(Date.today(), row.Absence_Start__c, 'start still mirrors');
+            System.assertEquals(null, row.Absence_Deputy__c, 'no deputy mirrored');
+            if ('OHNE DEPUTY'.equals(row.Absence_Ohne_Deputy__c)) {
+                standingOut++;
+            }
+        }
+        System.assertEquals(3, standingOut, 'AC8: every no-deputy row carries the marker');
+    }
+
+    // AC4: the deputy must be able to work the customer, its open Opportunities
+    // and its Cases without owning them. Measured OWD (Tester, Setup 2026-10-31):
+    // Account / Opportunity = Public Read/Write, Case = Public Read/Write/Transfer
+    // — so the access is org-wide, and a Permission Set can neither add nor revoke
+    // it. This test proves the deputy can actually do the work.
+    @isTest
+    static void deputyWorksNonOwnedCustomerRecords() {
+        User manager = mkUser('mgr4');
+        User deputy = mkUser('dep4');
+        List<User> users = new List<User>{manager, deputy};
+        insert users;
+
+        Account cust = new Account(Name = 'SCRUM457 Akt AC4', OwnerId = manager.Id);
+        insert cust;
+
+        Opportunity openOpp = new Opportunity(
+            AccountId = cust.Id,
+            OwnerId = manager.Id,
+            Name = 'SCRUM457 Open Opp',
+            CloseDate = Date.today().addDays(30),
+            StageName = 'Warm'
+        );
+        insert openOpp;
+
+        Case openCase = new Case(
+            AccountId = cust.Id,
+            OwnerId = manager.Id,
+            Subject = 'SCRUM457 Open Case',
+            Status = 'Open'
+        );
+        insert openCase;
+
+        Absence__c a = new Absence__c(
+            Absent_User__c = manager.Id,
+            Deputy__c = deputy.Id,
+            Start__c = Date.today(),
+            End__c = Date.today().addDays(6)
+        );
+        insert a;
+
+        System.runAs(deputy) {
+            // The deputy does not own anything here and still reaches it.
+            Account seen = [SELECT Id, Name FROM Account WHERE Id = :cust.Id LIMIT 1];
+            System.assert(seen.Name == 'SCRUM457 Akt AC4', 'AC4: deputy sees the non-owned customer');
+
+            List<Opportunity> opps = [
+                SELECT Id, StageName, AccountId, OwnerId
+                FROM Opportunity
+                WHERE AccountId = :cust.Id
+            ];
+            System.assertEquals(1, opps.size(), 'AC4: deputy sees the open opportunity');
+
+            List<Case> cases = [
+                SELECT Id, Status, AccountId
+                FROM Case
+                WHERE AccountId = :cust.Id
+            ];
+            System.assertEquals(1, cases.size(), 'AC4: deputy sees the open case');
+
+            Opportunity work = opps[0];
+            System.assertEquals('Warm', work.StageName, 'starts where the manager left it');
+            work.StageName = 'Hot';
+            update work;
+        }
+
+        Opportunity after = [
+            SELECT Id, StageName, OwnerId FROM Opportunity WHERE Id = :openOpp.Id LIMIT 1
+        ];
+        System.assertEquals('Hot', after.StageName, 'AC4: the deputy updated it');
+        System.assertEquals(manager.Id, after.OwnerId, 'AC7: the owner was not touched');
+    }
+
+    // AC1: an account manager (and a team lead for a colleague) records the
+    // absence. The capability is expressed as SCRUM457_AbsenceWrite; the create
+    // must work for a user that holds it. Setup DML (User + PSA) in System
+    // context first, business DML inside runAs — house form from SCRUM-432.
+    @isTest
+    static void absenceCreateRunsUnderTheWritePermissionSet() {
+        User writer = mkUser('writer');
+        insert writer;
+
+        PermissionSet ps = [
+            SELECT Id FROM PermissionSet WHERE Name = 'SCRUM457_AbsenceWrite' LIMIT 1
+        ];
+        insert new PermissionSetAssignment(
+            AssigneeId = writer.Id,
+            PermissionSetId = ps.Id
+        );
+
+        System.runAs(writer) {
+            Absence__c a = new Absence__c(
+                Absent_User__c = writer.Id,
+                Start__c = Date.today(),
+                End__c = Date.today().addDays(2)
+            );
+            insert a;
+            System.assert(a.Id != null, 'AC1: create under the PS');
+        }
+    }
+
+    // AC1 negative half, measured: a user who holds neither SCRUM457 PS cannot
+    // record an absence. The Standard User profile allows the create on
+    // Absence__c, but AbsenceSyncHandler runs in USER mode and its SOQL on the
+    // Account mirror fields is blocked by FLS ("No such column
+    // 'Absence_Start__c' on entity 'Account'"), which rolls the whole insert
+    // back. That is why SCRUM457_AbsenceWrite also carries read FLS on the
+    // mirror fields: whoever can record an absence must be able to see them.
+    @isTest
+    static void absenceCreateIsBlockedWithoutThePermissionSets() {
+        User outsider = mkUser('outsider');
+        insert outsider;
+
+        Boolean blocked = false;
+        try {
+            System.runAs(outsider) {
+                Absence__c a = new Absence__c(
+                    Absent_User__c = outsider.Id,
+                    Start__c = Date.today(),
+                    End__c = Date.today().addDays(1)
+                );
+                insert a;
+            }
+        } catch (Exception e) {
+            blocked = true;
+        }
+        System.assert(blocked, 'AC1: without the PS the absence cannot be recorded');
     }
 }

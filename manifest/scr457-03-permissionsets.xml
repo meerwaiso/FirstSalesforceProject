@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- SCRUM-457 deploy step 3: Permission Sets — only after the fields exist. -->
+<!-- SCRUM-457 deploy step 3: Permission Sets — only after the fields exist.
+     SCRUM457_DeputyAccess was dropped after the OWD was measured (Tester, Setup
+     2026-10-31): Account/Opportunity = Public Read/Write, Case = Public
+     Read/Write/Transfer, so a viewAllRecords PS grants nothing extra and can
+     never revoke it (AC5). It is deleted from the org, not deployed. -->
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
     <types>
         <members>SCRUM457_AbsenceRead</members>
         <members>SCRUM457_AbsenceWrite</members>
-        <members>SCRUM457_DeputyAccess</members>
         <name>PermissionSet</name>
     </types>
     <version>61.0</version>
