@@ -33,8 +33,10 @@
  * FLS AND THE WRITE PATH (measured 2026-10-31, PR round 1): trigger code runs in
  * USER mode, so FLS governs the `update toUpdate` batch below. It passes because
  * SCRUM459_FollowupMonitoring_Write grants edit on the six fields to the acting
- * user - a Read PS with editable=false made every trigger write fail
- * ("fields being inaccessible on Sobject Opportunity", 11 of 13 Apex tests).
+ * user - a Read PS with editable=false made every trigger write fail. The update
+ * also writes ONLY fresh sObjects whose cache holds Id + the six fields: `update`
+ * writes every cached field, and the Q1 record carries IsClosed, which is not
+ * writeable at all (the compiler says "Field is not writeable: Opportunity.IsClosed").
  * "A sales rep never edits the monitoring values" is therefore NOT an FLS
  * property: it is the Apex contract in assertNoUserTypedValues below (AC-6),
  * enforced by OpportunityFollowupGuardTrigger (before update).
@@ -183,13 +185,21 @@ public without sharing class FollowupMonitoringHandler {
                 || o.Last_Customer_Interaction__c != lastInteraction
                 || o.Followup_Status__c != status
                 || o.Needs_Manager_Attention__c != attention) {
-                o.Followup_Required__c = required;
-                o.Next_Followup_Date__c = nextDate;
-                o.Overdue_Followup_Count__c = overdueCount;
-                o.Last_Customer_Interaction__c = lastInteraction;
-                o.Followup_Status__c = status;
-                o.Needs_Manager_Attention__c = attention;
-                toUpdate.add(o);
+                // A FRESH sObject, not the record from Q1: `update` writes every
+                // field in the record's cache, and the Q1 record carries
+                // IsClosed - which the compiler rejects outright ("Field is not
+                // writeable: Opportunity.IsClosed", measured 2026-10-31). With the
+                // before-update guard trigger active that write failed as
+                // "fields being inaccessible on Sobject Opportunity"; with the
+                // cache reduced to Id + the six writable fields it succeeds.
+                Opportunity upd = new Opportunity(Id = oppId);
+                upd.Followup_Required__c = required;
+                upd.Next_Followup_Date__c = nextDate;
+                upd.Overdue_Followup_Count__c = overdueCount;
+                upd.Last_Customer_Interaction__c = lastInteraction;
+                upd.Followup_Status__c = status;
+                upd.Needs_Manager_Attention__c = attention;
+                toUpdate.add(upd);
             }
         }
         // ONE update batch; write only on actual change (idempotent, drift-free).
@@ -244,9 +254,11 @@ public without sharing class FollowupMonitoringHandler {
     }
 
     private static void refuseTypedValue(String field) {
-        // AuraHandledException is the house shape for a user-facing refusal
-        // (measured: ApexException and UserOperationException do not compile here).
-        throw new AuraHandledException(
+        // Measured: only AuraHandledException compiles, and it is runtime-restricted
+        // to Aura/Visualforce context ("Can only throw this exception type from
+        // VisualForce or Aura context") - unusable in a trigger. An assertion
+        // refuses the save and carries the message.
+        System.AssertEquals(false, true,
             'Follow-up Monitoring: "' + field + '" is written by the system - the user must not type a value there.'
         );
     }
