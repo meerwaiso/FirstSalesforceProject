@@ -52,7 +52,7 @@ private class SCRUM459FollowupFlsTest {
 
     @isTest
     static void obligationAndMonitoringFields_invisibleWithoutPS() {
-        User neg = mkUser('fls459neg');
+        User neg = mkUser('fls459n');
         insert neg;
 
         System.runAs(neg) {
@@ -117,7 +117,7 @@ private class SCRUM459FollowupFlsTest {
 
     @isTest
     static void withBothPS_readableButNeverEditable() {
-        User pos = mkUser('fls459pos');
+        User pos = mkUser('fls459p');
         insert pos;
         PermissionSet repPs = [SELECT Id FROM PermissionSet WHERE Name = 'SCRUM459_FollowupObligation_Rep' LIMIT 1];
         PermissionSet readPs = [SELECT Id FROM PermissionSet WHERE Name = 'SCRUM459_FollowupMonitoring_Read' LIMIT 1];

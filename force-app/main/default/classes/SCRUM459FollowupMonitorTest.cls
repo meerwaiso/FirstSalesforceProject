@@ -89,12 +89,12 @@ private class SCRUM459FollowupMonitorTest {
     static void ac2_overdueCount_countsOnlyFullyPassedDates() {
         // PO example: due 20.10., 25.10., 28.10., today 23.10. -> overdue count 1.
         Opportunity o = byName('459 AC2');
-        List<Followup_Obligation__c> bulk = new List<Followup_Obligation__c>{
+        List<Followup_Obligation__c> obligations = new List<Followup_Obligation__c>{
             mk(o.Id, 'Outstanding', Date.today() - 3, null, 'a'),
             mk(o.Id, 'Outstanding', Date.today() + 2, null, 'b'),
             mk(o.Id, 'Outstanding', Date.today() + 5, null, 'c')
         };
-        insert bulk;
+        insert obligations;
         o = byName('459 AC2');
         System.assertEquals(1, (Integer) o.Overdue_Followup_Count__c, 'AC2: only the fully passed due date counts');
         System.assertEquals(Date.today() - 3, o.Next_Followup_Date__c, 'AC2: earliest still open due date');
@@ -130,11 +130,11 @@ private class SCRUM459FollowupMonitorTest {
     static void ac4_lastInteractionIsLatestCompletedDate() {
         // PO example: completed 05.10. and 18.10. -> last interaction 18.10.
         Opportunity o = byName('459 AC4');
-        List<Followup_Obligation__c> bulk = new List<Followup_Obligation__c>{
+        List<Followup_Obligation__c> obligations = new List<Followup_Obligation__c>{
             mk(o.Id, 'Completed', Date.today() - 26, Date.today() - 26, 'a'),
             mk(o.Id, 'Completed', Date.today() - 13, Date.today() - 13, 'b')
         };
-        insert bulk;
+        insert obligations;
         o = byName('459 AC4');
         System.assertEquals(Date.today() - 13, o.Last_Customer_Interaction__c, 'AC4: max Completed_Date__c');
         System.assertEquals(false, o.Followup_Required__c, 'AC4: completed obligations -> none outstanding');
@@ -164,13 +164,13 @@ private class SCRUM459FollowupMonitorTest {
     @isTest
     static void ac7_fourOutstandingTwoOverdue() {
         Opportunity o = byName('459 AC7');
-        List<Followup_Obligation__c> bulk = new List<Followup_Obligation__c>{
+        List<Followup_Obligation__c> obligations = new List<Followup_Obligation__c>{
             mk(o.Id, 'Outstanding', Date.today() - 5, null, 'a'),
             mk(o.Id, 'Outstanding', Date.today() - 2, null, 'b'),
             mk(o.Id, 'Outstanding', Date.today() + 4, null, 'c'),
             mk(o.Id, 'Outstanding', Date.today() + 9, null, 'd')
         };
-        insert bulk;
+        insert obligations;
         o = byName('459 AC7');
         System.assertEquals(2, (Integer) o.Overdue_Followup_Count__c, 'AC7: two of four overdue');
         System.assertEquals('Overdue', o.Followup_Status__c, 'AC7: status Overdue');
@@ -234,17 +234,17 @@ private class SCRUM459FollowupMonitorTest {
     }
 
     @isTest
-    static void ac11_bulkSaveOfTwentyObligationsCountsEachOnce() {
+    static void ac11_obligationsSaveOfTwentyObligationsCountsEachOnce() {
         Opportunity o = byName('459 AC11');
-        List<Followup_Obligation__c> bulk = new List<Followup_Obligation__c>();
+        List<Followup_Obligation__c> obligations = new List<Followup_Obligation__c>();
         for (Integer i = 1; i <= 10; i++) {
-            bulk.add(mk(o.Id, 'Outstanding', Date.today() - i, null, 'overdue ' + i));
+            obligations.add(mk(o.Id, 'Outstanding', Date.today() - i, null, 'overdue ' + i));
         }
         for (Integer i = 1; i <= 10; i++) {
-            bulk.add(mk(o.Id, 'Outstanding', Date.today() + i, null, 'future ' + i));
+            obligations.add(mk(o.Id, 'Outstanding', Date.today() + i, null, 'future ' + i));
         }
-        System.assertEquals(20, bulk.size(), 'AC11: 20 obligations in ONE save');
-        insert bulk; // one statement -> one trigger invocation
+        System.assertEquals(20, obligations.size(), 'AC11: 20 obligations in ONE save');
+        insert obligations; // one statement -> one trigger invocation
         o = byName('459 AC11');
         System.assertEquals(20, ofOpp(o.Id).size(), 'AC11: all 20 stored');
         System.assertEquals(10, (Integer) o.Overdue_Followup_Count__c, 'AC11: each counted exactly once');
