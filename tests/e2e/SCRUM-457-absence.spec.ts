@@ -595,12 +595,26 @@ test.describe('[SCRUM-457] AC8 — team-lead overview report', () => {
     // Lightning for a fresh run — without it the row count compares a stale
     // artefact against a live org and the AC can never be decided.
     await page.goto(`/lightning/r/Report/${reportId}/view?cache=false`, { waitUntil: 'domcontentloaded', timeout: 90000 });
-    const frame = await openReportFrame(page);
+    let frame = await openReportFrame(page);
 
-    const frameText = await frame.locator('body').first().innerText();
-    const total = /Total Records\s*([\d,.]+)/.exec(frameText);
-    if (!total) throw new Error('report frame states no "Total Records N" figure — the row count cannot be compared');
-    const stated = Number(total[1].replace(/[.,](?=\d{3}\b)/g, ''));
+    // The report app serves an instance of its own choice: measured 2026-10-31,
+    // the same URL stated 13 records in one run and 8 in the next while the org
+    // held 13. So the frame is polled until it states the live count — bounded,
+    // and a frame that never catches up fails here rather than silently passing.
+    let frameText = '';
+    let stated = -1;
+    const deadline = Date.now() + 90000;
+    for (;;) {
+      frameText = await frame.locator('body').first().innerText();
+      const total = /Total Records\s*([\d,.]+)/.exec(frameText);
+      if (!total) throw new Error('report frame states no "Total Records N" figure — the row count cannot be compared');
+      stated = Number(total[1].replace(/[.,](?=\d{3}\b)/g, ''));
+      if (stated === inWindow.length) break;
+      if (Date.now() > deadline) break;
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: 90000 });
+      frame = await openReportFrame(page);
+      await page.waitForTimeout(3000);
+    }
     expect(stated, `report states ${stated} records, org has ${inWindow.length} in the window`).toBe(inWindow.length);
 
     const rowLoc = frame.locator('table tbody tr');
