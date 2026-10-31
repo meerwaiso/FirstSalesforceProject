@@ -244,7 +244,9 @@ public without sharing class FollowupMonitoringHandler {
     }
 
     private static void refuseTypedValue(String field) {
-        throw new Salesforce.ErrorException(
+        // AuraHandledException is the house shape for a user-facing refusal
+        // (measured: ApexException and UserOperationException do not compile here).
+        throw new AuraHandledException(
             'Follow-up Monitoring: "' + field + '" is written by the system - the user must not type a value there.'
         );
     }
