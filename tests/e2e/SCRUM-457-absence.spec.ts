@@ -52,8 +52,12 @@ const REPORT_NAME = 'Fehlzeiten_nach_Kunde';
 // The cancel is exercised on a throwaway the spec creates and deletes, never on
 // the two fixtures the PO measures (Absence__c.Name is AutoNumber, so a
 // recreated fixture would get a new name and the measured state would drift).
-const THROWAWAY_USER = '005WU000017tBpWYAU'; // Automated Process — owns exactly 1 customer
-const THROWAWAY_DEPUTY = '005WU000017tEKLYA2'; // devops-agent
+const ABSENCE_ORIG_DEPUTY = '005WU000017tEKLYA2'; // devops-agent — ABSENCE-0001's deputy
+// The cancel cycle runs on a colleague who owns customers and has NO absence yet.
+// Automated Process is not usable here: its only customer already carries the
+// deputy-less fixture ABSENCE-0002, so its mirror state is not a fresh one.
+const THROWAWAY_USER = '005WU000017tEKLYA2'; // devops-agent — owns 184 customers
+const THROWAWAY_DEPUTY = '005WU000017tBhRYAU'; // Meerwais Osmani covers them
 const THROWAWAY_START = '2026-11-05';
 const THROWAWAY_END = '2026-11-15';
 const SWAP_DEPUTY = '005WU000017tBhRYAU'; // Meerwais Osmani — a normal colleague for the deputy swap
@@ -160,12 +164,14 @@ function customerWithoutAbsence(): any {
   return rows[0];
 }
 
-/** The single customer of the deputy-less fixture (AC6/AC7 cancel cycle). */
+/** One customer of the colleague the spec records a throwaway absence for.
+    Resolved BEFORE the absence is written, so the mirror state is a fresh one. */
 function customerOfThrowaway(): any {
   const rows = soql(
-    `SELECT Id, Name, OwnerId, Owner.Name FROM Account WHERE Name = 'Sample Account for Entitlements'`
+    `SELECT Id, Name, OwnerId, Owner.Name FROM Account` +
+    ` WHERE Owner.Name = 'devops-agent' AND Absence_In_Window__c = NULL ORDER BY Name`
   );
-  expect(rows.length, 'the fixture customer must exist → cancel untested').toBe(1);
+  expect(rows.length, 'the colleague must own a customer without an absence → cancel untested').toBeGreaterThan(0);
   return rows[0];
 }
 
@@ -260,7 +266,8 @@ test.describe('[SCRUM-457] AC6 — changing or cancelling follows immediately', 
     const before = soql(
       `SELECT Id, Absence_Anzeige__c, Absence_Ohne_Deputy__c FROM Account WHERE Id = '${sample.Id}'`
     )[0];
-    expect(blank(before.Absence_Ohne_Deputy__c), 'fixture: the deputy-less absence marks this customer').toBe('OHNE DEPUTY');
+    expect(blank(before.Absence_Anzeige__c), 'fixture: this customer shows nothing before the absence').toBe('');
+    expect(blank(before.Absence_Ohne_Deputy__c), 'fixture: no marker before the absence').toBe('');
 
     sfCommand(
       `sf data create record --target-org ${ORG} --sobject Absence__c` +
@@ -274,7 +281,8 @@ test.describe('[SCRUM-457] AC6 — changing or cancelling follows immediately', 
       `SELECT Id, Absence_Anzeige__c, Absence_Ohne_Deputy__c, Absence_Deputy__c FROM Account WHERE Id = '${sample.Id}'`
     )[0];
     expect(blank(after.Absence_Anzeige__c), 'the new absence must be mirrored on the customer').toContain('Abwesent');
-    expect(blank(after.Absence_Ohne_Deputy__c), 'the new deputy must clear the no-deputy marker').toBe('');
+    expect(blank(after.Absence_Anzeige__c), 'the mirror must name the covering colleague').toContain(after.Absence_Deputy__c);
+    expect(blank(after.Absence_Ohne_Deputy__c), 'a named deputy must leave the no-deputy marker empty').toBe('');
 
     await reloadRecord(page, `/lightning/r/Account/${sample.Id}/view`);
     const snap = await snapshot(page);
@@ -282,7 +290,7 @@ test.describe('[SCRUM-457] AC6 — changing or cancelling follows immediately', 
     expect(snap, 'the reloaded page must name the new deputy').toContain(blank(after.Absence_Deputy__c));
     test.info().annotations.push({
       type: 'observed',
-      description: `AC6/AC7: new absence ${THROWAWAY_START}..${THROWAWAY_END} for Automated Process mirrors on ${sample.Name}; marker cleared, deputy ${after.Absence_Deputy__c}`,
+      description: `AC6/AC7: new absence ${THROWAWAY_START}..${THROWAWAY_END} for devops-agent mirrors on ${sample.Name} (${after.Absence_Anzeige__c}); reloaded page renders it`,
     });
   });
 
@@ -291,7 +299,6 @@ test.describe('[SCRUM-457] AC6 — changing or cancelling follows immediately', 
     const cust = customerOfAbsentManager();
     const before = blank(cust.Absence_End__c);
 
-    // 1) the change happens in the UI, on the absence record
     // 1) the change is written on the absence record. FINDING (see coverage
     //    comment): the Absence__c record page renders no detail fields at all,
     //    so there is no UI entry point for changing an absence; the write below
@@ -315,8 +322,16 @@ test.describe('[SCRUM-457] AC6 — changing or cancelling follows immediately', 
     expect(snap, 'reloaded page must still name the deputy').toContain('Deputy:');
     test.info().annotations.push({
       type: 'observed',
-      description: `AC6: End__c ${before} → ${ABSENCE_NEW_END} via inline edit + Save; reloaded page renders bis ${ABSENCE_NEW_END}`,
+      description: `AC6: End__c ${before} → ${ABSENCE_NEW_END}; mirror + reloaded page follow`,
     });
+
+    // the fixture must be back where the PO measured it for the next tests
+    sfCommand(
+      `sf data update record --target-org ${ORG} --sobject Absence__c --record-id ${absence.Id}` +
+        ` --values "End__c=${ABSENCE_ORIG_END}"`
+    );
+    const restored = soql(`SELECT Id, End__c FROM Absence__c WHERE Name = '${ABSENCE_NAME}'`)[0];
+    expect(restored.End__c, 'fixture must be restored to the original end date').toBe(ABSENCE_ORIG_END);
   });
 
   test('AC6: changing the deputy follows on the reloaded customer page', async ({ page }) => {
@@ -349,7 +364,7 @@ test.describe('[SCRUM-457] AC6 — changing or cancelling follows immediately', 
     // restore the fixture's deputy so the measured state survives the run
     sfCommand(
       `sf data update record --target-org ${ORG} --sobject Absence__c --record-id ${absence.Id}` +
-        ` --values "Deputy__c=${THROWAWAY_DEPUTY}"`
+        ` --values "Deputy__c=${ABSENCE_ORIG_DEPUTY}"`
     );
     const restored = soql(
       `SELECT Id, Absence_Deputy__c, Absence_Anzeige__c FROM Account WHERE Id = '${cust.Id}'`
@@ -430,11 +445,18 @@ test.describe('[SCRUM-457] AC7 — ownership never moves', () => {
     const cancelled = soql(
       `SELECT Id, Absence_Anzeige__c, Absence_Ohne_Deputy__c FROM Account WHERE Id = '${sample.Id}'`
     )[0];
-    expect(blank(cancelled.Absence_Ohne_Deputy__c), `the fixture marker must be back on ${sample.Id} after the cancel`).toBe('OHNE DEPUTY');
+    expect(blank(cancelled.Absence_Anzeige__c), `the cancelled absence must leave nothing on ${sample.Name}`).toBe('');
+    expect(blank(cancelled.Absence_Ohne_Deputy__c), `no marker may remain on ${sample.Id} after the cancel`).toBe('');
 
+    // the fixture absence is still active, so its own page must still show it
     await reloadRecord(page, `/lightning/r/Account/${cust.Id}/view`);
     const snap = await snapshot(page);
-    mustNotContain(snap, 'Abwesent', `page of ${cust.Name} must not say "Abwesent" after the cancel`);
+    expect(snap, `page of ${cust.Name} must still show its own absence after the cancel`).toContain('Abwesent');
+    // the cancelled colleague's page must be back to looking exactly as today
+    await reloadRecord(page, `/lightning/r/Account/${sample.Id}/view`);
+    const sampleSnap = await snapshot(page);
+    mustNotContain(sampleSnap, 'Abwesent', `page of ${sample.Name} must be blank after the cancel`);
+    mustNotContain(sampleSnap, 'OHNE DEPUTY', `no marker may remain on ${sample.Name}`);
 
     const after = ownedRecords(cust.Id);
     expect(after.ownerId, `OwnerId of ${cust.Id} must be unchanged across change AND cancel`).toBe(before.ownerId);
@@ -443,6 +465,14 @@ test.describe('[SCRUM-457] AC7 — ownership never moves', () => {
 
     const ownerLine = soql(`SELECT Id, Owner.Name FROM Account WHERE Id = '${cust.Id}'`)[0];
     expect(snap, `customer page must still name owner "${ownerLine.Owner.Name}"`).toContain(ownerLine.Owner.Name);
+
+    // the fixture must end where the PO measured it
+    sfCommand(
+      `sf data update record --target-org ${ORG} --sobject Absence__c --record-id ${absence.Id}` +
+        ` --values "End__c=${ABSENCE_ORIG_END}"`
+    );
+    const restored = soql(`SELECT Id, End__c FROM Absence__c WHERE Name = '${ABSENCE_NAME}'`)[0];
+    expect(restored.End__c, 'fixture end date must be restored after AC7').toBe(ABSENCE_ORIG_END);
     test.info().annotations.push({
       type: 'observed',
       description: `AC7: OwnerId ${before.ownerId} unchanged; ${before.opps.length} Opps + ${before.cases.length} Cases still parented after change + cancel`,
