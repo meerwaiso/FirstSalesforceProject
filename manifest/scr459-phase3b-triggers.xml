@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
-    <!-- SCRUM-459 Phase 3b: the two triggers (consumers of the handler class). -->
+    <!-- SCRUM-459 Phase 3b: the triggers (consumers of the handler class).
+         Phase 3 deployed the handler ALONE first (helper-before-consumer). -->
     <types>
         <members>FollowupObligationTrigger</members>
         <members>OpportunityFollowupMonitorTrigger</members>
+        <members>OpportunityFollowupGuardTrigger</members>
         <name>ApexTrigger</name>
     </types>
     <version>67.0</version>

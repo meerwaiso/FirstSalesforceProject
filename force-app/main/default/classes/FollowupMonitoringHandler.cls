@@ -30,12 +30,22 @@
  * exists on Opportunity in Test-Org (only Case and Lead), so no second save
  * cycle can double-count (the SCRUM-418 trap).
  *
- * Systemwrites here run in System context and bypass FLS; the six fields stay
- * editable=false for every human (AC-6).
+ * FLS AND THE WRITE PATH (measured 2026-10-31, PR round 1): trigger code runs in
+ * USER mode, so FLS governs the `update toUpdate` batch below. It passes because
+ * SCRUM459_FollowupMonitoring_Write grants edit on the six fields to the acting
+ * user - a Read PS with editable=false made every trigger write fail
+ * ("fields being inaccessible on Sobject Opportunity", 11 of 13 Apex tests).
+ * "A sales rep never edits the monitoring values" is therefore NOT an FLS
+ * property: it is the Apex contract in assertNoUserTypedValues below (AC-6),
+ * enforced by OpportunityFollowupGuardTrigger (before update).
  */
 public without sharing class FollowupMonitoringHandler {
 
     private static final Decimal ATTENTION_THRESHOLD = 50000;
+
+    // Marks the handler's own `update toUpdate` inside this transaction, so the
+    // before-update guard does not refuse a system write (house: static hasFired).
+    private static Boolean systemWriteInFlight = false;
 
     // --- entry points ---------------------------------------------------------
 
@@ -183,8 +193,59 @@ public without sharing class FollowupMonitoringHandler {
             }
         }
         // ONE update batch; write only on actual change (idempotent, drift-free).
+        // The flag marks THIS write as a system write: the guard trigger below
+        // fires for it as well and must not refuse it (house shape: static
+        // hasFired in OpportunityOverdueResetHandler, SCRUM-449).
         if (!toUpdate.isEmpty()) {
+            systemWriteInFlight = true;
             update toUpdate;
+            systemWriteInFlight = false;
         }
+    }
+
+    // --- AC-6 guard: a human may not type a monitoring value -------------------
+    //
+    // The Write PS grants FLS edit so the trigger path can write at all, so the
+    // rule cannot be a permission any more. It is checked here instead: a save
+    // that PROPOSES a value other than the stored one is refused. The stored
+    // value is the computed one - the handler rewrites it on every obligation
+    // save and on every IsClosed/Amount change - so "differs from the computed
+    // value" and "differs from the stored value" are the same test, and this
+    // guard needs no SOQL.
+    //
+    public static void assertNoUserTypedValues(List<Opportunity> newRecs, Map<Id, Opportunity> oldMap) {
+        if (systemWriteInFlight) {
+            return;
+        }
+        for (Opportunity o : newRecs) {
+            Opportunity old = oldMap.get(o.Id);
+            if (old == null) {
+                continue;
+            }
+            if (o.Followup_Required__c != old.Followup_Required__c) {
+                refuseTypedValue('Followup_Required__c');
+            }
+            if (o.Next_Followup_Date__c != old.Next_Followup_Date__c) {
+                refuseTypedValue('Next_Followup_Date__c');
+            }
+            if (o.Overdue_Followup_Count__c != old.Overdue_Followup_Count__c) {
+                refuseTypedValue('Overdue_Followup_Count__c');
+            }
+            if (o.Last_Customer_Interaction__c != old.Last_Customer_Interaction__c) {
+                refuseTypedValue('Last_Customer_Interaction__c');
+            }
+            if (o.Followup_Status__c != old.Followup_Status__c) {
+                refuseTypedValue('Followup_Status__c');
+            }
+            if (o.Needs_Manager_Attention__c != old.Needs_Manager_Attention__c) {
+                refuseTypedValue('Needs_Manager_Attention__c');
+            }
+        }
+    }
+
+    private static void refuseTypedValue(String field) {
+        throw new Salesforce.ErrorException(
+            'Follow-up Monitoring: "' + field + '" is written by the system - the user must not type a value there.'
+        );
     }
 }

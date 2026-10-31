@@ -6,10 +6,13 @@
  * obligation fails. A brand-new Custom Object is FLS-gated by default (house
  * SCRUM417OpenOpportunityHistoryFlsTest, verified pattern).
  *
- * AC6: even WITH both Permission Sets the six monitoring fields stay
- * editable=false - a Permission Set can grant, never revoke, so the negative
- * proof is only meaningful while the test user holds the READ-PS (house lesson
- * SCRUM-442/449).
+ * AC6 (amended, PR round 1): the six fields are EDITABLE by FLS - the third PS
+ * SCRUM459_FollowupMonitoring_Write grants edit, without it the trigger path
+ * could not write them at all (measured: 11 of 13 tests failed with
+ * "fields being inaccessible on Sobject Opportunity"). "A sales rep never types
+ * a monitoring value" is therefore an Apex contract: OpportunityFollowupGuardTrigger
+ * refuses a save that proposes a value other than the stored (computed) one.
+ * The test asserts BOTH halves: save refused AND stored value unchanged.
  *
  * Mixed-DML house rule (SCRUM-442): all setup inserts (User, PermissionSet)
  * first in System context - a user cannot grant himself a PermissionSet
@@ -116,13 +119,15 @@ private class SCRUM459FollowupFlsTest {
     }
 
     @isTest
-    static void withBothPS_readableButNeverEditable() {
+    static void ac6_userTypedMonitoringValue_refusedAndStoredValueUnchanged() {
         User pos = mkUser('fls459p');
         insert pos;
         PermissionSet repPs = [SELECT Id FROM PermissionSet WHERE Name = 'SCRUM459_FollowupObligation_Rep' LIMIT 1];
         PermissionSet readPs = [SELECT Id FROM PermissionSet WHERE Name = 'SCRUM459_FollowupMonitoring_Read' LIMIT 1];
+        PermissionSet writePs = [SELECT Id FROM PermissionSet WHERE Name = 'SCRUM459_FollowupMonitoring_Write' LIMIT 1];
         insert new PermissionSetAssignment(AssigneeId = pos.Id, PermissionSetId = repPs.Id);
         insert new PermissionSetAssignment(AssigneeId = pos.Id, PermissionSetId = readPs.Id);
+        insert new PermissionSetAssignment(AssigneeId = pos.Id, PermissionSetId = writePs.Id);
 
         System.runAs(pos) {
             System.assertEquals(true,
@@ -138,28 +143,37 @@ private class SCRUM459FollowupFlsTest {
                 Followup_Obligation__c.Next_Action__c.getDescribe().isAccessible(),
                 'With PS: sensitive Next_Action__c readable');
 
-            // AC6: typing into the monitoring values is refused - not editable.
+            // FLS now GRANTS edit (the Write PS) - that is what lets the trigger
+            // write at all. AC-6 is the guard, not the permission.
             System.assertEquals(true,
                 Opportunity.Followup_Required__c.getDescribe().isAccessible(),
                 'AC6: readable');
-            System.assertEquals(false,
-                Opportunity.Followup_Required__c.getDescribe().isUpdateable(),
-                'AC6: not editable');
-            System.assertEquals(false,
-                Opportunity.Next_Followup_Date__c.getDescribe().isUpdateable(),
-                'AC6: not editable');
-            System.assertEquals(false,
+            System.assertEquals(true,
                 Opportunity.Overdue_Followup_Count__c.getDescribe().isUpdateable(),
-                'AC6: typing into the overdue count is refused');
-            System.assertEquals(false,
-                Opportunity.Last_Customer_Interaction__c.getDescribe().isUpdateable(),
-                'AC6: not editable');
-            System.assertEquals(false,
-                Opportunity.Followup_Status__c.getDescribe().isUpdateable(),
-                'AC6: typing into the follow-up status is refused');
-            System.assertEquals(false,
-                Opportunity.Needs_Manager_Attention__c.getDescribe().isUpdateable(),
-                'AC6: not editable');
+                'AC6: FLS edit granted by the Write PS');
+
+            Opportunity o = [SELECT Id, Overdue_Followup_Count__c, Followup_Status__c
+                                    FROM Opportunity WHERE Name = '459 FLS Opp' LIMIT 1];
+            Integer typedAgainst = (Integer) o.Overdue_Followup_Count__c;
+            String statusBefore = o.Followup_Status__c;
+
+            // AC6: typing into the overdue count is refused by the guard trigger.
+            boolean refused = false;
+            try {
+                o.Overdue_Followup_Count__c = typedAgainst + 7;
+                update o;
+            } catch (Exception e) {
+                refused = true;
+                System.debug('AC6 expected refusal: ' + e.getMessage());
+            }
+            System.assertEquals(true, refused, 'AC6: save must be refused');
+
+            Opportunity after = [SELECT Id, Overdue_Followup_Count__c, Followup_Status__c
+                                        FROM Opportunity WHERE Name = '459 FLS Opp' LIMIT 1];
+            System.assertEquals(typedAgainst, (Integer) after.Overdue_Followup_Count__c,
+                'AC6: stored value unchanged after the refused save');
+            System.assertEquals(statusBefore, after.Followup_Status__c,
+                'AC6: stored status unchanged');
         }
     }
 }

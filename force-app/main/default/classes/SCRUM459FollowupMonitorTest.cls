@@ -5,9 +5,11 @@
  * fixtures in @TestSetup (own transaction, MIXED_DML rule SCRUM-442), looked up
  * by Name - TestSetup statics are not visible from test methods.
  *
- * The rollup itself is written by the triggers in SYSTEM context - exactly what
- * a save in the UI does (Apex systemwrites bypass FLS; the six fields stay
- * editable=false for every human, AC6 is proven in SCRUM459FollowupFlsTest).
+ * The rollup is written by the triggers, which run in USER mode: the write passes
+ * FLS because SCRUM459_FollowupMonitoring_Write grants edit on the six fields to
+ * the acting user (measured in PR round 1 - without that PS every trigger write
+ * failed). "Never typed by a human" is the guard trigger, tested in
+ * SCRUM459FollowupFlsTest.ac6_userTypedMonitoringValue_refusedAndStoredValueUnchanged.
  * readBackUnderSalesRepPermissions runs the read path under System.runAs of a
  * user holding both Permission Sets, which is also what CI's fls-gate demands
  * for a class touching fresh fields (house lesson SCRUM-430 CI #367).
