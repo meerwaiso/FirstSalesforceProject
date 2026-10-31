@@ -92,3 +92,21 @@ is a FINDING, not a test — never a PASS row.
 - `Absence__c.Name` is AutoNumber → a recreated fixture gets a new name, so the
   cancel is exercised on a throwaway record resolved by its dates, never on the
   two fixtures the PO measures.
+
+## AC10 — DEFECT (measured 2026-10-31, Test-Org)
+
+"A deputy who is away is no deputy" is not implemented. Repro, second route (no
+test involved):
+
+- `sf data create record --sobject Absence__c --values "Absent_User__c=005WU000017tEKLYA2 Start__c=2026-10-31 End__c=2026-11-20"`
+  -> ABSENCE-0012 (the deputy of ABSENCE-0010 goes away, overlapping)
+- `SELECT Absence_Ohne_Deputy__c, Absence_Anzeige__c FROM Account WHERE OwnerId = '005WU000017tBhRYAU'`
+  -> 12 rows, **0** carry the marker; every display line still reads
+  `Abwesent 2026-10-31 bis 2026-11-20 - Deputy: devops-agent`
+
+Expected: the 12 covered customers stand out in the overview exactly like the
+deputy-less one (`Absence_Ohne_Deputy__c = 'OHNE DEPUTY'`).
+Actual: the marker only fires when `Deputy__c` is empty — never when the named
+deputy has an own, overlapping absence.
+
+Fixture state after cleanup: 2 Absence records, window 13, marker 1.

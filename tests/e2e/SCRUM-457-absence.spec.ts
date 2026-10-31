@@ -657,6 +657,10 @@ test.describe('[SCRUM-457] AC10 — a deputy who is away is no deputy', () => {
     expect(deputy.length, 'the deputy must have exactly one own absence in the org').toBe(1);
     expect(blank(deputy[0].Deputy__c), 'the deputy must not name a deputy of their own').toBe('');
 
+    // the cleanup must run even when an assertion below fails, otherwise a red
+    // AC10 leaves a third Absence record in the org and every later run measures
+    // a fixture the PO never measured.
+    try {
     // every covered customer now stands out exactly like a customer without a deputy
     const marked = markedCustomers();
     const markedIds = new Set(marked.map((r) => r.Id));
@@ -675,15 +679,45 @@ test.describe('[SCRUM-457] AC10 — a deputy who is away is no deputy', () => {
     expect(rendered, `page of ${covered[0].Name} must still show the absence while the deputy is away`).toContain('Abwesent');
     expect(rendered, 'the page must still name the deputy (PO: the flag is only in the overview)').toContain('Deputy:');
 
-    // cancel the deputy's own absence: the flag must fall back to the measured state
-    sfCommand(`sf data delete record --target-org ${ORG} --sobject Absence__c --record-id ${deputy[0].Id}`);
-    expect(deputyAbsences().length, 'the deputy absence must be gone after the cleanup').toBe(0);
-    expect(markedCustomers().length, 'the marker must be back on exactly the deputy-less customer').toBe(1);
-    expect(windowCount(), 'the overview window must be back at 13 customers').toBe(13);
+
     test.info().annotations.push({
       type: 'observed',
       description: `AC10: deputy ${ABSENCE_ORIG_DEPUTY} absent ${ABSENCE_ORIG_START}..${ABSENCE_ORIG_END} -> all ${covered.length} covered customers carry OHNE DEPUTY (window ${windowNow}/${totalCustomers}); after the cleanup 1 marker / 13 in window`,
     });
+    } finally {
+      sfCommand(`sf data delete record --target-org ${ORG} --sobject Absence__c --record-id ${deputy[0].Id}`);
+      expect(deputyAbsences().length, 'the cleanup must leave the org at two Absence records').toBe(0);
+      expect(markedCustomers().length, 'the marker must be back on exactly the deputy-less customer').toBe(1);
+      expect(windowCount(), 'the overview window must be back at 13 customers').toBe(13);
+    }
+    test.info().annotations.push({
+      type: 'observed',
+      description: `AC10: deputy ${ABSENCE_ORIG_DEPUTY} absent ${ABSENCE_ORIG_START}..${ABSENCE_ORIG_END} -> all ${covered.length} covered customers carry OHNE DEPUTY (window ${windowNow}/${totalCustomers}); after the cleanup 1 marker / 13 in window`,
+    });
+  });
+});
+
+/* ==== AC9 — nothing automatic ==== */
+
+test.describe('[SCRUM-457] AC9 — nothing automatic beyond the display', () => {
+  test('AC9: no Task, no EmailMessage, no chatter created by the absence flow', async ({ page }) => {
+    const t0 = RUN_T0.toISOString().slice(0, 19) + 'Z';
+    const tasks = soqlCount(`SELECT COUNT() FROM Task`);
+    const emails = soqlCount(`SELECT COUNT() FROM EmailMessage`);
+    const chatter = soqlCount(`SELECT COUNT() FROM FeedItem WHERE CreatedDate > ${t0}`);
+    expect(tasks, 'the absence flow must not create a Task').toBe(0);
+    expect(emails, 'the absence flow must not create an EmailMessage').toBe(0);
+    expect(chatter, `no chatter may be created since the run started (window ${t0})`).toBe(0);
+
+    const absences = soql(`SELECT Id, Name FROM Absence__c`);
+    expect(absences.length, 'the flow must not leave extra Absence records behind').toBe(2);
+    test.info().annotations.push({
+      type: 'observed',
+      description: `AC9: Task=0, EmailMessage=0, FeedItem since ${t0}=0, Absence__c=${absences.length} (the two fixtures)`,
+    });
+  });
+});
+
   });
 });
 
