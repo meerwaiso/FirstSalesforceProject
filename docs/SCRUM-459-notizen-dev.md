@@ -66,3 +66,19 @@ Hard-won findings for this ticket; the build spec is `docs/SCRUM-459-design.md`.
 - AC6 is now an Apex contract, not an FLS property: `OpportunityFollowupGuardTrigger` (before update) calls
   `FollowupMonitoringHandler.assertNoUserTypedValues(Trigger.new, Trigger.oldMap)`; the handler's own write is
   skipped by a static flag (house shape: static `hasFired` in `OpportunityOverdueResetHandler`).
+
+## SCRUM-460 — record pages (measured 2026-11-01, dry-run + deploy + retrieve)
+- FlexiPage record pages live in `force-app/main/default/flexipages/`. `objects/<Obj>/flexiPages/` is rejected
+  by SDR type inference for BOTH a custom object and a standard one:
+  `TypeInferenceError: Unexpected child metadata [...] found for parent type [CustomObject]`.
+  The house User page sits in that folder but this CLI version never deploys it from there.
+- Field instance shape, taken from the official `forcedotcom/salesforcedx-templates` RecordPage template
+  (rendered, no template tags): `<fieldInstance>` with `fieldInstanceProperties` `uiBehavior`
+  (`none` | `readonly` | `required`), `<fieldItem>Record.<ApiName></fieldItem>`, `<identifier>`;
+  the fields sit in a Facet -> `flexipage:column` (property `body`) -> facet -> `flexipage:fieldSection`
+  (properties `columns`, `horizontalAlignment`, `label` = section heading) -> `detailTabContent` facet.
+- `Record.<field>` takes the API name from `sf sobject describe`, not the Apex shorthand:
+  Opportunity has `AccountId`, `StageName`, `OwnerId` — `Account`, `Stage`, `Owner` do not exist as fields.
+- `<description>` of a FlexiPage is capped at 255 chars ("Value too long for field: Description maximum length is:255").
+- Org read-back after deploy (`sf project retrieve start --metadata "FlexiPage:<Name>"`): both pages present,
+  all field items intact — six monitoring fields on the Opportunity page, six on the obligation page.
