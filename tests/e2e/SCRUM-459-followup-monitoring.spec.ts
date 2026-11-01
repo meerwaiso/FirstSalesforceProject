@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { execSync } from 'node:child_process';
-import { openRecordDetails, expectFieldVisible, startInlineEdit, saveInlineEdit } from './record-page';
+import { openRecordDetails, expectFieldVisible, saveInlineEdit } from './record-page';
 
 /**
  * [SCRUM-459] E2E: Follow-up Monitoring — the org/UI half of the ACs.
@@ -39,6 +39,15 @@ import { openRecordDetails, expectFieldVisible, startInlineEdit, saveInlineEdit 
  *   - Field labels (meta XML): Follow-up required / Next Followup Date /
  *     Overdue Follow-ups / Last Customer Interaction / Follow-up Status /
  *     Needs manager attention.
+ *   - List row cells after the layout fix (run 3 error context): monitoring
+ *     cells render "<value> Edit <Label>" (was "<value> Locked <Label>" —
+ *     FLS edit rights, not layout behavior, drive the list-view affordance;
+ *     the layout itself is Readonly in Test-Org, verified via retrieve).
+ *   - Lookup in new-record form: combobox click opens dialog "Advanced Search";
+ *     type name, "N result(s) found for", click radio "Choose a Row to Select",
+ *     then button "Select" (verified run 3 + probe-459f).
+ *   - Obligation record page edit: getByLabel('Status') matches 2 (probe-459f) —
+ *     scope by role: combobox 'Status', textbox 'Completed On'.
  *   - New-record form (probe 2026-11-01): dialog "New Follow-up Obligation";
  *     textbox "Next Action", combobox "Opportunity" (lookup), combobox
  *     "Status" (default Outstanding), textbox "Due Date" + "Completed On"
@@ -175,8 +184,8 @@ test.describe('[SCRUM-459] AC2 — overdue count counts only fully passed dates'
     const { data } = await listRows(page);
     const row = data[`${TAG}AC2`];
     expect(row).toBeTruthy();
-    expect(row).toContain('1 Locked Overdue Follow-ups');
-    expect(row).toContain('Overdue Locked Follow-up Status');
+    expect(row).toContain('1 Edit Overdue Follow-ups');
+    expect(row).toContain('Overdue Edit Follow-up Status');
     const rec = soql(`SELECT Overdue_Followup_Count__c, Next_Followup_Date__c, Followup_Status__c FROM Opportunity WHERE Id='${oppAC2}'`);
     expect(Number(rec[0].Overdue_Followup_Count__c)).toBe(1);
     expect(String(rec[0].Followup_Status__c)).toBe('Overdue');
@@ -194,7 +203,7 @@ test.describe('[SCRUM-459] AC3 — status precedence Overdue > Due Soon > Up to 
       expect(Number(rec[0].Overdue_Followup_Count__c)).toBe(0);
     }
     // Overdue beats everything: AC2 row in the list already shows Overdue with count 1.
-    expect(data[`${TAG}AC2`]).toContain('Overdue Locked Follow-up Status');
+    expect(data[`${TAG}AC2`]).toContain('Overdue Edit Follow-up Status');
   });
 });
 
@@ -206,7 +215,7 @@ test.describe('[SCRUM-459] AC4 — last completed interaction is the latest comp
     const { data } = await listRows(page);
     const row = data[`${TAG}AC4`];
     expect(row).toBeTruthy();
-    expect(row).toContain(`${rel(-13)} Locked Last Customer Interaction`);
+    expect(row).toContain(`${rel(-13)} Edit Last Customer Interaction`);
   });
 });
 
@@ -233,18 +242,17 @@ test.describe('[SCRUM-459] AC1 — the rep creates an obligation through the rec
 
     const lookup = page.getByRole('combobox', { name: 'Opportunity' }).first();
     await expect(lookup).toBeVisible({ timeout: 15000 });
-    await lookup.click();
+    await lookup.click(); // opens the "Advanced Search" lookup dialog (verified run 3)
     await page.keyboard.type(`${TAG}AC1UI`, { delay: 40 });
-    const found = page.getByRole('option', { name: new RegExp(`${TAG}AC1UI`) }).first();
-    await expect(found, 'the lookup did not find the fixture Opportunity').toBeVisible({ timeout: 15000 });
-    await found.click();
-
-    const status = page.getByRole('combobox', { name: 'Status' }).first();
-    await expect(status).toBeVisible({ timeout: 15000 });
-    await status.click();
-    const outstanding = page.getByRole('option', { name: 'Outstanding', exact: true }).first();
-    await expect(outstanding).toBeVisible({ timeout: 15000 });
-    await outstanding.click();
+    const found = page.getByText(/result[s]? found for/).first();
+    await expect(found, 'the lookup dialog found no match for the fixture Opportunity').toBeVisible({ timeout: 15000 });
+    const pick = page.getByRole('radio', { name: /Choose a Row to Select/ }).first();
+    await expect(pick).toBeVisible({ timeout: 15000 });
+    await pick.click();
+    const selectBtn = page.getByRole('button', { name: 'Select', exact: true }).first();
+    await expect(selectBtn).toBeVisible({ timeout: 15000 });
+    await selectBtn.click();
+    await page.waitForTimeout(2500);
 
     const due = page.getByLabel('Due Date', { exact: true }).first();
     await expect(due).toBeVisible({ timeout: 15000 });
@@ -274,8 +282,14 @@ test.describe('[SCRUM-459] AC5 — the rep completes an obligation on the record
   test('inline edit Status -> Completed, Completed On -> today, save', async ({ page }) => {
     const ob = soql(`SELECT Id FROM Followup_Obligation__c WHERE Opportunity__c='${oppAC5UI}'`)[0];
     await openRecordDetails(page, `/lightning/r/Followup_Obligation__c/${ob.Id}/view`);
-    const statusInput = await startInlineEdit(page, 'Status');
-    await statusInput.click();
+    const editStatus = page.getByRole('button', { name: 'Edit Status', exact: true });
+    await expect(editStatus).toBeVisible({ timeout: 15000 });
+    await editStatus.click();
+    await page.waitForTimeout(1500);
+    // getByLabel('Status') matches 2 here (verified probe-459f): scope by role.
+    const statusCombo = page.getByRole('combobox', { name: 'Status', exact: true }).first();
+    await expect(statusCombo).toBeVisible({ timeout: 15000 });
+    await statusCombo.click();
     const completed = page.getByRole('option', { name: 'Completed', exact: true }).first();
     await expect(completed).toBeVisible({ timeout: 15000 });
     await completed.click();
@@ -283,7 +297,12 @@ test.describe('[SCRUM-459] AC5 — the rep completes an obligation on the record
     await page.waitForTimeout(2000);
 
     await openRecordDetails(page, `/lightning/r/Followup_Obligation__c/${ob.Id}/view`);
-    const doneInput = await startInlineEdit(page, 'Completed On');
+    const editDone = page.getByRole('button', { name: 'Edit Completed On', exact: true });
+    await expect(editDone).toBeVisible({ timeout: 15000 });
+    await editDone.click();
+    await page.waitForTimeout(1500);
+    const doneInput = page.getByRole('textbox', { name: 'Completed On', exact: true }).first();
+    await expect(doneInput).toBeVisible({ timeout: 15000 });
     await doneInput.fill(rel(0)); // dates locale DD.MM.YYYY (SCRUM-451)
     await saveInlineEdit(page);
     await page.waitForTimeout(4000);
@@ -329,8 +348,8 @@ test.describe('[SCRUM-459] AC7 — four outstanding, two overdue', () => {
     const { data } = await listRows(page);
     const row = data[`${TAG}AC7`];
     expect(row).toBeTruthy();
-    expect(row).toContain('2 Locked Overdue Follow-ups');
-    expect(row).toContain('Overdue Locked Follow-up Status');
+    expect(row).toContain('2 Edit Overdue Follow-ups');
+    expect(row).toContain('Overdue Edit Follow-up Status');
     const rec = soql(`SELECT Overdue_Followup_Count__c, Next_Followup_Date__c FROM Opportunity WHERE Id='${oppAC7}'`);
     expect(Number(rec[0].Overdue_Followup_Count__c)).toBe(2);
     expect(String(rec[0].Next_Followup_Date__c)).toBe(iso(-5));
@@ -379,9 +398,9 @@ test.describe('[SCRUM-459] AC8 — Closed Won clears the monitoring values', () 
 test.describe('[SCRUM-459] AC9 — attention flag strictly above 50.000 EUR', () => {
   test('75000 flagged, 40000 not, exactly 50000 not', async ({ page }) => {
     const { data } = await listRows(page);
-    expect(data[`${TAG}AC9-high`]).toContain('True Needs manager attention Locked');
-    expect(data[`${TAG}AC9-low`]).toContain('False Needs manager attention Locked');
-    expect(data[`${TAG}AC9-exact`]).toContain('False Needs manager attention Locked');
+    expect(data[`${TAG}AC9-high`]).toContain('True Needs manager attention Edit Needs manager attention');
+    expect(data[`${TAG}AC9-low`]).toContain('False Needs manager attention Edit Needs manager attention');
+    expect(data[`${TAG}AC9-exact`]).toContain('False Needs manager attention Edit Needs manager attention');
     for (const [id, want] of [[oppAC9high, true], [oppAC9low, false], [oppAC9exact, false]] as [string, boolean][]) {
       const rec = soql(`SELECT Needs_Manager_Attention__c FROM Opportunity WHERE Id='${id}'`);
       expect(rec[0].Needs_Manager_Attention__c).toBe(want);
