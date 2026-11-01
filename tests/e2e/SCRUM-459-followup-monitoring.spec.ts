@@ -43,10 +43,10 @@ import { openRecordDetails, expectFieldVisible, saveInlineEdit } from './record-
  *     cells render "<value> Edit <Label>" (was "<value> Locked <Label>" —
  *     FLS edit rights, not layout behavior, drive the list-view affordance;
  *     the layout itself is Readonly in Test-Org, verified via retrieve).
- *   - Lookup in new-record form renders three ways across runs: "Advanced
- *     Search" dialog with radio + Select button (run 3), inline group (run 4),
- *     inline listbox with option "<Name> <StageName>" (run 5). The spec accepts
- *     option-or-radio and clicks the Select button only when present.
+ *   - Lookup in new-record form (probe-459i verified): inline option opens the
+ *     "Advanced Search" dialog; clicking the row gridcell "Select Item 1"
+ *     (force — a span intercepts) enables the "Select" button; clicking Select
+ *     closes the dialog and the form resumes.
  *   - Obligation record page edit: getByLabel('Status') matches 2 (probe-459f) —
  *     scope by role: combobox 'Status', textbox 'Completed On'.
  *   - New-record form (probe 2026-11-01): dialog "New Follow-up Obligation";
@@ -246,17 +246,18 @@ test.describe('[SCRUM-459] AC1 — the rep creates an obligation through the rec
     await lookup.click();
     await page.keyboard.type(`${TAG}AC1UI`, { delay: 40 });
     await page.waitForTimeout(3000);
-    // Three renderings seen (runs 3/4/5): dialog+radio+Select button; inline
-    // group; inline listbox with an option named "<Opportunity> <StageName>".
+    // Verified flow (probe-459i): inline option -> "Advanced Search" dialog;
+    // clicking the row gridcell enables "Select" (radio checked=true);
+    // clicking Select closes the dialog and resumes the form.
     const optRow = page.getByRole('option', { name: new RegExp(`${TAG}AC1UI`) }).first();
-    const radioRow = page.getByRole('radio', { name: /Choose a Row to Select/ }).first();
-    const rowCount = (await optRow.count()) + (await radioRow.count());
-    expect(rowCount).toBeGreaterThan(0); // the lookup found the fixture Opportunity
-    if (await optRow.count()) await optRow.click();
-    else await radioRow.click();
-    await page.waitForTimeout(1500);
+    if (await optRow.count()) await optRow.click(); // inline rendering opens the dialog
+    const cell = page.getByRole('gridcell', { name: /Select Item 1/ }).first();
+    await expect(cell, 'the lookup found no row to select for the fixture Opportunity').toBeVisible({ timeout: 15000 });
+    await cell.click({ force: true }); // the radio span intercepts pointer events
     const sel = page.getByRole('button', { name: 'Select', exact: true }).first();
-    if (await sel.count()) await sel.click(); // only the dialog rendering has it
+    await expect(sel).toBeVisible({ timeout: 15000 });
+    expect(await sel.evaluate((e) => e.getAttribute('aria-disabled'))).toBe('false'); // row selection enabled it
+    await sel.click();
     await page.waitForTimeout(2500);
 
     const due = page.getByLabel('Due Date', { exact: true }).first();
