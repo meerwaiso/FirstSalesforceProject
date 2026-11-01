@@ -26,4 +26,9 @@ Verified facts only; command named beside each.
 - Fixture cleanup: all TEST-SCRUM459-E2E-* records deleted in afterAll + manual sweep (sf data delete record); Followup_Obligation__c back to 0.
 
 ## Findings while testing (append one line each, with the command)
-- (pending)
+- ROUND 2 (2026-11-01, after SCRUM-460 fix — record pages are Layouts, not FlexiPages, ADR 8):
+- FIXED GAP A — `/lightning/o/Followup_Obligation__c/new` now renders the full form: dialog "New Follow-up Obligation", textbox "Next Action", combobox "Opportunity", combobox "Status" (default Outstanding), textbox "Due Date"+"Completed On", buttons "Save & New"/"Save" (probe-459e.mjs, fresh storageState after smoke run). Record view shows inline buttons "Edit Status"/"Edit Completed On"/"Edit Due Date"/"Edit Next Action"/"Edit Opportunity"; dates render DD.MM.YYYY.
+- FIXED GAP B — /ui-api/record-ui on Opportunity 006WU00000Q2RZqYAN (sf api request rest, scratch/recordui-opp.json): 9 sections incl. "Follow-up Monitoring" with all six fields; existing sections (Discount Approval, Risk Level, ...) intact.
+- Obligation layout via record-ui on probe record a05WU00001AtOGLYA3 (created+deleted by me): Name editableForNew/Update=false, Opportunity__c/Status__c/Due_Date__c/Next_Action__c/Completed_Date__c all true.
+- Apex budget 24h before round-2 run: 52 rows (ceiling 500).
+- CI on new head fbef189: gh pr checks 181 -> all 4 green (incl. Prod-Org Drift Gate).
