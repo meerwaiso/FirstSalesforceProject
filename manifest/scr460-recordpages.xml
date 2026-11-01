@@ -2,8 +2,11 @@
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
     <types>
         <members>Followup_Obligation_Record_Page</members>
-        <members>Opportunity_Followup_Monitoring_Page</members>
         <name>FlexiPage</name>
+    </types>
+    <types>
+        <members>Opportunity-Opportunity Layout</members>
+        <name>Layout</name>
     </types>
     <version>67.0</version>
 </Package>
