@@ -32,3 +32,4 @@ Verified facts only; command named beside each.
 - Obligation layout via record-ui on probe record a05WU00001AtOGLYA3 (created+deleted by me): Name editableForNew/Update=false, Opportunity__c/Status__c/Due_Date__c/Next_Action__c/Completed_Date__c all true.
 - Apex budget 24h before round-2 run: 52 rows (ceiling 500).
 - CI on new head fbef189: gh pr checks 181 -> all 4 green (incl. Prod-Org Drift Gate).
+- Apex round-2 run: deploy job 0AfWU00000ckj990AA reports Status: Failed BUT report numbers are green: numberComponentErrors=0, 463/463 deployed, numberTestErrors=0, 13/13 passing (sf project deploy report --job-id ... --json, scratch/deploy-report.json). Cause: codeCoverageWarnings for OTHER tickets' classes (SCRUM436LiveSeed, CaseReminderService, ...) counted as job failure. Not a defect of SCRUM-459 — my classes all pass.
