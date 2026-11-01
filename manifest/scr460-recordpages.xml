@@ -5,7 +5,7 @@
          /ui-api/record-ui: the house User page and the obligation page both stayed
          invisible; the house custom-object layouts DO render). -->
     <types>
-        <members>Followup_Obligation__c-Followup Obligation Layout</members>
+        <members>Followup_Obligation__c-Follow-up Obligation Layout</members>
         <members>Opportunity-Opportunity Layout</members>
         <name>Layout</name>
     </types>
