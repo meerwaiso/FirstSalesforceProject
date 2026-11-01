@@ -80,5 +80,23 @@ Hard-won findings for this ticket; the build spec is `docs/SCRUM-459-design.md`.
 - `Record.<field>` takes the API name from `sf sobject describe`, not the Apex shorthand:
   Opportunity has `AccountId`, `StageName`, `OwnerId` — `Account`, `Stage`, `Owner` do not exist as fields.
 - `<description>` of a FlexiPage is capped at 255 chars ("Value too long for field: Description maximum length is:255").
-- Org read-back after deploy (`sf project retrieve start --metadata "FlexiPage:<Name>"`): both pages present,
-  all field items intact — six monitoring fields on the Opportunity page, six on the obligation page.
+- Org read-back after deploy (`sf project retrieve start --metadata "FlexiPage:<Name>"`) proves the artefact EXISTS,
+  not that it renders. Both FlexiPages existed; neither rendered (see below).
+- **A deployed FlexiPage RecordPage is never activated as the record page.** Measured 2026-11-01 with
+  `sf api request rest "/services/data/v62.0/ui-api/record-ui/<recordId>?layoutTypes=Full&modes=View" --target-org Test-Org`:
+  for a User record the org returns the default layout (About/Contact/Background), not the house
+  `BetreuungsuebergabePage`; for a `Followup_Obligation__c` record it returns the auto default (Name, Owner),
+  not my RecordPage. FlexiPage is the wrong mechanism for record pages here.
+- **The record page of an object is its Layout, and the default layout of a custom object is named
+  `<ObjectName>-<object label> Layout`.** House proof: `CaseRebuildRun__c` label "Korrekturlauf Offene Faelle"
+  -> file `CaseRebuildRun__c-Korrekturlauf Offene Faelle Layout.layout-meta.xml`, deploy state Changed, renders.
+  A differently named file creates a SECOND, inactive layout (deploy state Created; the rendered page keeps
+  the old default). `Followup_Obligation__c` label is "Follow-up Obligation" -> file
+  `Followup_Obligation__c-Follow-up Obligation Layout.layout-meta.xml`.
+- `/ui-api/record-ui` is the verification tool for "what does the user see": sections + fields + apiNames.
+  `modes=Modify` is rejected (`ILLEGAL_QUERY_PARAMETER_VALUE`); `modes=View` works.
+- Org read-back after the layout fix: Opportunity page = 9 sections incl. "Follow-up Monitoring" with the six
+  fields (Discount Approval 8, Risk Level 6 and the rest intact); obligation page "Information" carries
+  `Opportunity__c`, `Status__c`, `Due_Date__c`, `Next_Action__c`, `Completed_Date__c`.
+- Deleting org metadata: `sf project delete source -o Test-Org -m "Layout:<name>" -r` (`--check-only` first).
+  Used to drop both FlexiPages and the stray second layout.
