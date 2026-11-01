@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-460 Phase 5: record pages as Layouts, not FlexiPages. A deployed FlexiPage
+         RecordPage is never activated as the record page (measured 2026-11-01 via
+         /ui-api/record-ui: the house User page and the obligation page both stayed
+         invisible; the house custom-object layouts DO render). -->
     <types>
-        <members>Followup_Obligation_Record_Page</members>
-        <name>FlexiPage</name>
-    </types>
-    <types>
+        <members>Followup_Obligation__c-Followup Obligation Layout</members>
         <members>Opportunity-Opportunity Layout</members>
         <name>Layout</name>
     </types>
