@@ -551,3 +551,40 @@ Required test artefacts (PR gate, house shapes): Apex classes `SCRUM459FollowupM
 - [ ] Creation path for the Sales Rep: the obligation is created as its own record with `Opportunity__c` filled (Lookup). Whether Lightning's related-list "New" action fills the parent automatically is an org/UI behaviour the Tester's E2E must exercise, not an assumption. Owner: @tester-agent.
 - [ ] Whether the Sales Rep profile in Test-Org is a distinct profile at all, or the CLI user stands in for both roles. Owner: @developer-agent — state which users hold which PS in the handoff.
 - [ ] The list view column resolution needs the six fields deployed in the same branch (see finding above). Owner: @developer-agent.
+
+## ADR 8 — Record pages are Layouts, not FlexiPages (PR #181 round 4, measured 2026-11-01)
+
+SCRUM-460 asked for a record page on `Followup_Obligation__c` and a section with the six
+monitoring fields on the Opportunity page. The FlexiPage shape was tried and does not work:
+
+- A deployed FlexiPage of type `RecordPage` is never activated as the record page. Measured
+  via `sf api request rest "/services/data/v62.0/ui-api/record-ui/<recordId>?layoutTypes=Full&modes=View" --target-org Test-Org`:
+  the Opportunity kept answering with the legacy layout `Opportunity-Opportunity Layout`
+  (46 fields, 8 sections) and none of the six monitoring fields was in it.
+- What renders for a custom object is its **Layout** (house precedent: SCRUM-449 risk fields,
+  commit `02ce6a1`, added to `layouts/Opportunity-Opportunity Layout.layout-meta.xml`).
+
+Decision (both halves, deployed in `manifest/scr460-recordpages.xml` as `Layout` members):
+
+1. `layouts/Opportunity-Opportunity Layout.layout-meta.xml` gains one `<layoutSections>`
+   labelled "Follow-up Monitoring", six items, `behavior=Readonly` (system-written values —
+   house precedent SCRUM-440). Additive only: the 29 existing fields stay.
+2. `layouts/Followup_Obligation__c-Follow-up Obligation Layout.layout-meta.xml` — the object
+   has no layout of its own, so this Layout *is* its record page. `Name` is `AutoNumber`
+   (`FU-{0000}`) in the object meta, so `behavior=Readonly` is correct; the five editable
+   obligation fields are `behavior=Edit`.
+3. Both FlexiPages (`Opportunity_Followup_Monitoring_Page`, `Followup_Obligation_Record_Page`)
+   are deleted from branch and org.
+
+Read-back at head `028b311` (same record-ui call, run 2026-11-01):
+
+- Opportunity record `006WU00000Q2RZqYAN` → 9 sections, 52 fields, section "Follow-up Monitoring"
+  carries `Followup_Required__c, Next_Followup_Date__c, Overdue_Followup_Count__c, Last_Customer_Interaction__c, Followup_Status__c, Needs_Manager_Attention__c`.
+- `Followup_Obligation__c` probe record `a05WU00001AtA2zYAF` (created, measured, deleted) → 2 sections,
+  "Information" carries `Name, Next_Action__c, Opportunity__c, Completed_Date__c, Status__c, Due_Date__c`.
+
+Consequence for the AC table above: the UI paths of AC 1, AC 5 and AC 11 are now *reachable* —
+the E2E spec must create and complete an obligation on the record page
+(`/lightning/o/Followup_Obligation__c/new` or `/lightning/r/Followup_Obligation__c/<id>/view`)
+and read the six fields on the Opportunity Details tab. Until that run is green those three
+criteria stay PARTIAL; the Apex artefacts prove the data, not the UI.
