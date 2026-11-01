@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { execSync } from 'node:child_process';
-import { openRecordDetails } from './record-page';
+import { openRecordDetails, expectFieldVisible, startInlineEdit, saveInlineEdit } from './record-page';
 
 /**
  * [SCRUM-459] E2E: Follow-up Monitoring — the org/UI half of the ACs.
@@ -20,17 +20,15 @@ import { openRecordDetails } from './record-page';
  *   AC9  attention flag: 75000+overdue -> true; 40000 -> false; 50000 exact -> false.
  *   AC10 the list shows exactly the open opportunities with overdue count >= 1.
  *
- * NOT here — blocked by a deployment gap found while probing (see
- * docs/SCRUM-459-notizen-tester.md and the linked bug ticket):
- *   Followup_Obligation__c has NO record-page FlexiPage: the new-record form
- *   renders only "Obligation Number"/"Owner", the record view renders no
- *   custom fields, and the Opportunity page has no "New Follow-up Obligation"
- *   action (Lookup relationship, no related list). So the rep's UI creation/
- *   completion path (AC1, AC5-UI, AC11-UI) cannot be exercised at all.
- *   The six monitoring fields are NOT on the Opportunity record page either
- *   (no FlexiPage section) — inline edit of them is unreachable, so AC6's UI
- *   half is proven at the guard level (CLI save refused), not by typing.
- *   AC1/AC11/AC12 are covered by the Apex classes (run by the Tester).
+ * NOT here — Apex only (see the two Apex classes run by the Tester):
+ *   AC11 bulk save of 20 obligations (DML path, no UI equivalent),
+ *   AC12 manager-attention handoff (pure logic).
+ *
+ * Record pages ARE layouts now (ADR 8, bug SCRUM-460 fixed): verified 2026-11-01
+ * via /ui-api/record-ui — the Opportunity layout has the section "Follow-up
+ * Monitoring" with all six fields, and Followup_Obligation__c renders
+ * Name (read-only) + Opportunity/Status/Due Date/Next Action/Completed On
+ * (editable). So AC1, AC5 and AC6 now run through the real UI.
  *
  * Locators VERIFIED via probe on 2026-10-31 (this org):
  *   - List view: /lightning/o/Opportunity/list?filterName=Follow_up_Monitoring;
@@ -41,6 +39,12 @@ import { openRecordDetails } from './record-page';
  *   - Field labels (meta XML): Follow-up required / Next Followup Date /
  *     Overdue Follow-ups / Last Customer Interaction / Follow-up Status /
  *     Needs manager attention.
+ *   - New-record form (probe 2026-11-01): dialog "New Follow-up Obligation";
+ *     textbox "Next Action", combobox "Opportunity" (lookup), combobox
+ *     "Status" (default Outstanding), textbox "Due Date" + "Completed On"
+ *     (dates locale DD.MM.YYYY), buttons "Save & New" and "Save".
+ *   - Obligation record page: inline buttons "Edit Status", "Edit Completed
+ *     On", "Edit Due Date", "Edit Next Action", "Edit Opportunity".
  */
 
 const TAG = 'TEST-SCRUM459-E2E-';
@@ -95,7 +99,7 @@ const rel = (offset: number) => {
 const oppIds: string[] = [];
 const oblIds: string[] = [];
 let oppAC2 = '', oppAC3soon = '', oppAC3today = '', oppAC3later = '', oppAC4 = '', oppAC5 = '';
-let oppAC7 = '', oppAC8 = '', oppAC9high = '', oppAC9low = '', oppAC9exact = '';
+let oppAC7 = '', oppAC8 = '', oppAC9high = '', oppAC9low = '', oppAC9exact = '', oppAC1UI = '', oppAC5UI = '';
 
 test.beforeAll(() => {
   const mk = (label: string, amount: number) => {
@@ -118,9 +122,17 @@ test.beforeAll(() => {
   oppAC9high = mk('AC9-high', 75000); oblIds.push(createObligation(oppAC9high, iso(-1), null, 'a'));
   oppAC9low = mk('AC9-low', 40000); oblIds.push(createObligation(oppAC9low, iso(-1), null, 'a'), createObligation(oppAC9low, iso(-2), null, 'b'));
   oppAC9exact = mk('AC9-exact', 50000); oblIds.push(createObligation(oppAC9exact, iso(-1), null, 'a'));
+  oppAC1UI = mk('AC1UI', 1000); // no obligation yet — the UI form creates it
+  oppAC5UI = mk('AC5UI', 1000); oblIds.push(createObligation(oppAC5UI, iso(-1), null, 'a')); // completed via UI
 });
 
 test.afterAll(() => {
+  // SOQL-driven: catches obligations created/edited through the UI, too.
+  for (const id of oppIds) {
+    for (const ob of soql(`SELECT Id FROM Followup_Obligation__c WHERE Opportunity__c='${id}'`)) {
+      try { shell(`sf data delete record -s Followup_Obligation__c -o Test-Org -i ${ob.Id} --json`); } catch {}
+    }
+  }
   for (const id of oblIds) {
     try { shell(`sf data delete record -s Followup_Obligation__c -o Test-Org -i ${id} --json`); } catch {}
   }
@@ -209,8 +221,90 @@ test.describe('[SCRUM-459] AC5 — completing an obligation recomputes without t
     expect(String(after[0].Followup_Status__c)).toBe('Up to Date');
     expect(String(after[0].Last_Customer_Interaction__c)).toBe(iso(0));
     expect(after[0].Followup_Required__c).toBe(false);
-    // The Opportunity record page cannot show it (Gap B) — the list column would
-    // show it once the record is overdue again; org read-back is binding here.
+  });
+});
+
+test.describe('[SCRUM-459] AC1 — the rep creates an obligation through the record page', () => {
+  test('new-record form: lookup, status, due date, next action, save', async ({ page }) => {
+    await page.goto('/lightning/o/Followup_Obligation__c/new', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    const dialog = page.getByText('New Follow-up Obligation', { exact: false }).first();
+    await expect(dialog, 'the new-record form for Followup_Obligation__c did not open — check the Layout deployment').toBeVisible({ timeout: 30000 });
+    await page.waitForTimeout(3000); // controls paint after the header (SCRUM-451)
+
+    const lookup = page.getByRole('combobox', { name: 'Opportunity' }).first();
+    await expect(lookup).toBeVisible({ timeout: 15000 });
+    await lookup.click();
+    await page.keyboard.type(`${TAG}AC1UI`, { delay: 40 });
+    const found = page.getByRole('option', { name: new RegExp(`${TAG}AC1UI`) }).first();
+    await expect(found, 'the lookup did not find the fixture Opportunity').toBeVisible({ timeout: 15000 });
+    await found.click();
+
+    const status = page.getByRole('combobox', { name: 'Status' }).first();
+    await expect(status).toBeVisible({ timeout: 15000 });
+    await status.click();
+    const outstanding = page.getByRole('option', { name: 'Outstanding', exact: true }).first();
+    await expect(outstanding).toBeVisible({ timeout: 15000 });
+    await outstanding.click();
+
+    const due = page.getByLabel('Due Date', { exact: true }).first();
+    await expect(due).toBeVisible({ timeout: 15000 });
+    await due.fill(rel(2)); // locale DD.MM.YYYY — ISO is rejected (SCRUM-451)
+
+    const action = page.getByLabel('Next Action', { exact: true }).first();
+    await expect(action).toBeVisible({ timeout: 15000 });
+    await action.fill('Review the customer request');
+
+    const save = page.getByRole('button', { name: 'Save', exact: true }).first();
+    await expect(save).toBeVisible({ timeout: 15000 });
+    await save.click();
+    await page.waitForTimeout(4000);
+
+    const ob = soql(`SELECT Opportunity__c, Status__c, Due_Date__c, Next_Action__c FROM Followup_Obligation__c WHERE Opportunity__c='${oppAC1UI}'`);
+    expect(ob.length).toBe(1);
+    expect(String(ob[0].Status__c)).toBe('Outstanding');
+    expect(String(ob[0].Due_Date__c)).toBe(iso(2));
+    expect(String(ob[0].Next_Action__c)).toBe('Review the customer request');
+    const rec = soql(`SELECT Followup_Required__c, Followup_Status__c FROM Opportunity WHERE Id='${oppAC1UI}'`);
+    expect(rec[0].Followup_Required__c).toBe(true);
+    expect(String(rec[0].Followup_Status__c)).toBe('Due Soon'); // due = today+2
+  });
+});
+
+test.describe('[SCRUM-459] AC5 — the rep completes an obligation on the record page', () => {
+  test('inline edit Status -> Completed, Completed On -> today, save', async ({ page }) => {
+    const ob = soql(`SELECT Id FROM Followup_Obligation__c WHERE Opportunity__c='${oppAC5UI}'`)[0];
+    await openRecordDetails(page, `/lightning/r/Followup_Obligation__c/${ob.Id}/view`);
+    const statusInput = await startInlineEdit(page, 'Status');
+    await statusInput.click();
+    const completed = page.getByRole('option', { name: 'Completed', exact: true }).first();
+    await expect(completed).toBeVisible({ timeout: 15000 });
+    await completed.click();
+    await saveInlineEdit(page);
+    await page.waitForTimeout(2000);
+
+    await openRecordDetails(page, `/lightning/r/Followup_Obligation__c/${ob.Id}/view`);
+    const doneInput = await startInlineEdit(page, 'Completed On');
+    await doneInput.fill(rel(0)); // dates locale DD.MM.YYYY (SCRUM-451)
+    await saveInlineEdit(page);
+    await page.waitForTimeout(4000);
+
+    const after = soql(`SELECT Overdue_Followup_Count__c, Followup_Status__c, Last_Customer_Interaction__c FROM Opportunity WHERE Id='${oppAC5UI}'`);
+    expect(Number(after[0].Overdue_Followup_Count__c)).toBe(0);
+    expect(String(after[0].Followup_Status__c)).toBe('Up to Date');
+    expect(String(after[0].Last_Customer_Interaction__c)).toBe(iso(0));
+    const obAfter = soql(`SELECT Status__c, Completed_Date__c FROM Followup_Obligation__c WHERE Opportunity__c='${oppAC5UI}'`);
+    expect(String(obAfter[0].Status__c)).toBe('Completed');
+    expect(String(obAfter[0].Completed_Date__c)).toBe(iso(0));
+  });
+});
+
+test.describe('[SCRUM-459] AC6 — the six monitoring values are visible on the Opportunity record page', () => {
+  test('all six labels render on the Details tab', async ({ page }) => {
+    await openRecordDetails(page, `/lightning/r/Opportunity/${oppAC9high}/view`);
+    for (const label of ['Follow-up required', 'Next Followup Date', 'Overdue Follow-ups',
+                         'Last Customer Interaction', 'Follow-up Status', 'Needs manager attention']) {
+      await expectFieldVisible(page, label);
+    }
   });
 });
 
