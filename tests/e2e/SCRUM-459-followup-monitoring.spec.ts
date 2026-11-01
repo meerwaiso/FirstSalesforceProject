@@ -43,9 +43,10 @@ import { openRecordDetails, expectFieldVisible, saveInlineEdit } from './record-
  *     cells render "<value> Edit <Label>" (was "<value> Locked <Label>" —
  *     FLS edit rights, not layout behavior, drive the list-view affordance;
  *     the layout itself is Readonly in Test-Org, verified via retrieve).
- *   - Lookup in new-record form: combobox click opens dialog "Advanced Search";
- *     type name, "N result(s) found for", click radio "Choose a Row to Select",
- *     then button "Select" (verified run 3 + probe-459f).
+ *   - Lookup in new-record form renders EITHER inline in the combobox
+ *     ("Search Results" group, run 4) or as an "Advanced Search" dialog (run 3);
+ *     both expose the row radio "Choose a Row to Select"; only the dialog has
+ *     the "Select" button.
  *   - Obligation record page edit: getByLabel('Status') matches 2 (probe-459f) —
  *     scope by role: combobox 'Status', textbox 'Completed On'.
  *   - New-record form (probe 2026-11-01): dialog "New Follow-up Obligation";
@@ -242,16 +243,17 @@ test.describe('[SCRUM-459] AC1 — the rep creates an obligation through the rec
 
     const lookup = page.getByRole('combobox', { name: 'Opportunity' }).first();
     await expect(lookup).toBeVisible({ timeout: 15000 });
-    await lookup.click(); // opens the "Advanced Search" lookup dialog (verified run 3)
+    await lookup.click();
     await page.keyboard.type(`${TAG}AC1UI`, { delay: 40 });
-    const found = page.getByText(/result[s]? found for/).first();
-    await expect(found, 'the lookup dialog found no match for the fixture Opportunity').toBeVisible({ timeout: 15000 });
+    await page.waitForTimeout(3000);
+    // The lookup renders either inline in the combobox ("Search Results" group)
+    // or as an "Advanced Search" dialog; both expose the row radio (run 3/4).
     const pick = page.getByRole('radio', { name: /Choose a Row to Select/ }).first();
-    await expect(pick).toBeVisible({ timeout: 15000 });
+    await expect(pick, 'the lookup found no row to select for the fixture Opportunity').toBeVisible({ timeout: 15000 });
     await pick.click();
-    const selectBtn = page.getByRole('button', { name: 'Select', exact: true }).first();
-    await expect(selectBtn).toBeVisible({ timeout: 15000 });
-    await selectBtn.click();
+    await page.waitForTimeout(1500);
+    const sel = page.getByRole('button', { name: 'Select', exact: true }).first();
+    if (await sel.count()) await sel.click(); // only the dialog rendering has it
     await page.waitForTimeout(2500);
 
     const due = page.getByLabel('Due Date', { exact: true }).first();
