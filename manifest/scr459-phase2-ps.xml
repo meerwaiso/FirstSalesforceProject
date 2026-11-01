@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-459 Phase 2: the two Permission Sets + the pre-filtered list view (needs the six fields live). -->
+    <types>
+        <members>SCRUM459_FollowupObligation_Rep</members>
+        <members>SCRUM459_FollowupMonitoring_Read</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>

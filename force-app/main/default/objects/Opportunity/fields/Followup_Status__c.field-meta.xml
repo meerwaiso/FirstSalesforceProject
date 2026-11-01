@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Followup_Status__c</fullName>
+    <description>SCRUM-459: Overdue beats Due Soon beats Up to Date. Written by Apex only.</description>
+    <label>Follow-up Status</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Up to Date</fullName>
+                <default>false</default>
+                <label>Up to Date</label>
+            </value>
+            <value>
+                <fullName>Due Soon</fullName>
+                <default>false</default>
+                <label>Due Soon</label>
+            </value>
+            <value>
+                <fullName>Overdue</fullName>
+                <default>false</default>
+                <label>Overdue</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>
