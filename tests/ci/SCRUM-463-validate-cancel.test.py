@@ -46,13 +46,24 @@ def sf_report(job):
     return jsonish(p.stdout + p.stderr).get("result", {})
 
 
+def report_done(job, tries=12):
+    """A cancellation finishes in the org seconds after the call — poll until done."""
+    rep = {}
+    for _ in range(tries):
+        rep = sf_report(job)
+        if rep.get("done") is True:
+            return rep
+        time.sleep(5)
+    return rep
+
+
 def sha(path):
     return hashlib.sha256(open(path, "rb").read()).hexdigest() if os.path.exists(path) else "MISSING"
 
 
 def validate_args(out, idfile):
     return [SCRIPT, "--org", ORG, "--source-dir", FIXTURE,
-            "--test-level", "RunLocalTests", "--wait", "12", "--out", out, "--id-file", idfile]
+            "--test-level", "RunLocalTests", "--wait", "20", "--out", out, "--id-file", idfile]
 
 
 def wait_for_id(idfile, limit=90):
@@ -68,8 +79,8 @@ def wait_for_id(idfile, limit=90):
 outA = os.path.join(ROOT, "test-results", "scr463-verdict-A.json")
 idA = os.path.join(ROOT, "test-results", ".ci-validate-job-id-A")
 os.makedirs(os.path.join(ROOT, "test-results"), exist_ok=True)
-pA = subprocess.run(validate_args(outA, idA) + ["-t", "SCRUM463ProbeTest"],
-                    capture_output=True, text=True, timeout=1200)
+pA = subprocess.run(validate_args(outA, idA),
+                    capture_output=True, text=True, timeout=1500)
 jobA = wait_for_id(idA)
 dA = jsonish(open(outA).read()) if os.path.exists(outA) else {}
 rA = dA.get("result", {})
@@ -96,7 +107,7 @@ jobB = wait_for_id(idB)
 pb.terminate()                      # GitHub kills the process: the trap gets TERM+EXIT
 outBtxt = pb.communicate(timeout=120)[0]
 rcB = pb.returncode
-repB = sf_report(jobB) if jobB else {}
+repB = report_done(jobB) if jobB else {}
 check("AC1a trap path: the live operation was cancelled in the org",
       str(repB.get("status", "")).lower().startswith("cancel") and repB.get("done") is True,
       "job=%s status=%s done=%s deployed=%s checkOnly=%s" % (
@@ -119,7 +130,7 @@ pc.wait(timeout=60)
 pC = subprocess.run([SCRIPT, "--cancel", "--org", ORG, "--id-file", idC],
                     capture_output=True, text=True, timeout=300)
 txtC = pC.stdout + pC.stderr
-repC = sf_report(jobC) if jobC else {}
+repC = report_done(jobC) if jobC else {}
 check("AC1b id-file path: the live operation was cancelled in the org",
       str(repC.get("status", "")).lower().startswith("cancel") and repC.get("done") is True,
       "job=%s status=%s done=%s deployed=%s" % (jobC, repC.get("status"), repC.get("done"),

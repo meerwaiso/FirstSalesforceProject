@@ -34,6 +34,19 @@ path · AC1b SIGKILL + `--cancel --id-file` (the `if: cancelled()` step) · AC4 
 Run: `python3 tests/ci/SCRUM-463-validate-cancel.test.py` from the repo root, Test-Org only,
 check-only. Log: `test-results/scr463-run.log`.
 
+## Fixture traps (measured, 2026-11-17)
+
+- The org rejects `@Test` on a method: componentFailure "Annotation does not exist: Test".
+  The house pattern (SCRUM319OverdueOpportunityTest.cls) annotates test METHODS with `@isTest`;
+  `@TestSetup` only marks the setup method. Fixture now uses `@isTest`.
+- The meta xmlns must be `http://soap.sforce.com/2006/04/metadata` — my first attempt used the
+  soap/v49 namespace and the org answered "Invalid api version:0.0".
+- A one-component validation still waits: with `--wait 5` the operation was still live after 5 min
+  (queue wait, the very pile-up this ticket is about). The test therefore uses `--wait 20` for the
+  finished-validation scenario; a full validation runs 9-12 min.
+- The trap path was seen working on that path: `cancel (trap): operation 0AfWU00000dBg8j0AC
+  cancelled (org answer: Canceled)`.
+
 ## Open items
 
 - AC2 (never more than one live validation per PR over six pushes) is NOT covered by a test of mine:
