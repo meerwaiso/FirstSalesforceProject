@@ -7,6 +7,10 @@
         <members>CompetitorNameGuard</members>
         <members>SCRUM461CompetitorLossTest</members>
         <members>SCRUM461CompetitorFlsTest</members>
+        <!-- SCRUM381LostReasonTest is not ours, but its fixture saved a Closed-Lost
+             deal with Loss_Reason__c = Wettbewerber and no competitor - the rule
+             deployed in phase 2 refuses it, so the fixture moves in this PR. -->
+        <members>SCRUM381LostReasonTest</members>
         <name>ApexClass</name>
     </types>
     <types>

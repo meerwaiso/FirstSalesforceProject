@@ -9,7 +9,6 @@
         <name>CustomObject</name>
     </types>
     <types>
-        <members>Competitor__c.Company_Name__c</members>
         <members>Opportunity.Competitor_Lost_To__c</members>
         <members>Opportunity.Competitor_Price__c</members>
         <members>Opportunity.Competitor_Gap__c</members>

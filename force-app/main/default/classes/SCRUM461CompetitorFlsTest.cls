@@ -22,7 +22,7 @@ private class SCRUM461CompetitorFlsTest {
     static void setup_fixtures() {
         Account a = new Account(Name = '461 FLS Account');
         insert a;
-        Competitor__c mueller = new Competitor__c(Company_Name__c = 'Müller GmbH');
+        Competitor__c mueller = new Competitor__c(Name = 'Müller GmbH');
         insert mueller;
         Opportunity o = new Opportunity(
             Name = '461 FLS Opp',
@@ -118,7 +118,7 @@ private class SCRUM461CompetitorFlsTest {
                 'AC4: a team lead reads the list');
             System.assertEquals(true, Competitor__c.SObjectType.getDescribe().isCreateable(),
                 'AC4: only the team lead PS grants create');
-            Competitor__c added = new Competitor__c(Company_Name__c = freshName);
+            Competitor__c added = new Competitor__c(Name = freshName);
             insert added;
             System.assert(added.Id != null, 'AC4: the team lead added a competitor');
         }
@@ -136,8 +136,8 @@ private class SCRUM461CompetitorFlsTest {
 
             // The record the team lead just added is immediately selectable.
             Set<String> selectable = new Set<String>();
-            for (Competitor__c c : [SELECT Id, Company_Name__c FROM Competitor__c]) {
-                selectable.add(c.Company_Name__c);
+            for (Competitor__c c : [SELECT Id, Name FROM Competitor__c]) {
+                selectable.add(c.Name);
             }
             System.assert(selectable.contains('Müller GmbH'),
                 'AC4: an existing entry is selectable by a plain reader');

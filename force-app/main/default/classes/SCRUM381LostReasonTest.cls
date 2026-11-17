@@ -147,7 +147,7 @@ private class SCRUM381LostReasonTest {
             Name = 'Won Opp',
             StageName = 'Closed Lost',
             CloseDate = Date.today().addDays(-10),
-            Loss_Reason__c = 'Wettbewerber'
+            Loss_Reason__c = 'ZuTeuer'
         );
         Test.startTest();
         insert o;

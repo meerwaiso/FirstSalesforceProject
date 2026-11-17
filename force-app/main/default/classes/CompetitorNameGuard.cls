@@ -1,8 +1,8 @@
 /**
  * SCRUM-461: duplicate guard for the controlled competitor list (AC3, TAC10).
  *
- * Company_Name__c is declared unique/case-sensitive, but its runtime enforcement
- * is unverified — this guard makes "one record per company" hold regardless.
+ * Name is a plain Text field, so nothing in the metadata keeps two records apart —
+ * this guard makes "one record per company" hold regardless.
  * One SOQL per batch, never per record. A refused save carries the name.
  *
  * @author developer-agent
@@ -17,9 +17,9 @@ public class CompetitorNameGuard {
         }
         Set<String> taken = new Set<String>();
         for (Competitor__c existing : [
-            SELECT Company_Name__c FROM Competitor__c WHERE Company_Name__c IN :names
+            SELECT Name FROM Competitor__c WHERE Name IN :names
         ]) {
-            taken.add(existing.Company_Name__c);
+            taken.add(existing.Name);
         }
         refuseDuplicates(newRecords, taken, null);
     }
@@ -30,8 +30,8 @@ public class CompetitorNameGuard {
         Set<Id> ownIds = new Set<Id>();
         for (Competitor__c record : newRecords) {
             Competitor__c before = oldMap.get(record.Id);
-            String oldName = before == null ? null : before.Company_Name__c;
-            if (record.Company_Name__c != oldName) {
+            String oldName = before == null ? null : before.Name;
+            if (record.Name != oldName) {
                 renamed.add(record);
                 ownIds.add(record.Id);
             }
@@ -42,11 +42,11 @@ public class CompetitorNameGuard {
         }
         Set<String> taken = new Set<String>();
         for (Competitor__c existing : [
-            SELECT Company_Name__c FROM Competitor__c WHERE Company_Name__c IN :names
+            SELECT Name FROM Competitor__c WHERE Name IN :names
         ]) {
             // Own records of this run must not serve as a DB reference (no self-match).
             if (!ownIds.contains(existing.Id)) {
-                taken.add(existing.Company_Name__c);
+                taken.add(existing.Name);
             }
         }
         refuseDuplicates(renamed, taken, ownIds);
@@ -55,8 +55,8 @@ public class CompetitorNameGuard {
     private static Set<String> namesOf(List<Competitor__c> records, Set<Id> ignored) {
         Set<String> names = new Set<String>();
         for (Competitor__c record : records) {
-            if (record.Company_Name__c != null && record.Company_Name__c != '') {
-                names.add(record.Company_Name__c);
+            if (record.Name != null && record.Name != '') {
+                names.add(record.Name);
             }
         }
         return names;
@@ -69,7 +69,7 @@ public class CompetitorNameGuard {
     ) {
         Set<String> seenInBatch = new Set<String>();
         for (Competitor__c record : records) {
-            String name = record.Company_Name__c;
+            String name = record.Name;
             if (name == null || name == '') {
                 continue;
             }

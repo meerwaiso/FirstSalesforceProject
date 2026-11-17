@@ -7,7 +7,7 @@
  * TAC4 a Closed-Lost save with Loss_Reason__c = Wettbewerber and no competitor throws
  *      a validation error that names the competitor (AC2).
  * TAC5 the same save with another loss reason succeeds without a competitor (AC1).
- * TAC10 a second Competitor__c with an existing Company_Name__c is refused (AC3).
+ * TAC10 a second Competitor__c with an existing Name is refused (AC3).
  *
  * Mixed-DML house rule (SCRUM-442): the User and its PermissionSetAssignment are
  * created in System context (a user cannot grant himself a PSA), the business
@@ -27,9 +27,9 @@ private class SCRUM461CompetitorLossTest {
     static void setup_fixtures() {
         Account a = new Account(Name = '461 Competitor Account');
         insert a;
-        Competitor__c mueller = new Competitor__c(Company_Name__c = 'Müller GmbH');
+        Competitor__c mueller = new Competitor__c(Name = 'Müller GmbH');
         insert mueller;
-        Competitor__c other = new Competitor__c(Company_Name__c = 'Müller Group');
+        Competitor__c other = new Competitor__c(Name = 'Müller Group');
         insert other;
     }
 
@@ -68,7 +68,7 @@ private class SCRUM461CompetitorLossTest {
         System.runAs(u) {
             Account a = [SELECT Id FROM Account WHERE Name = '461 Competitor Account' LIMIT 1];
             Competitor__c c = [
-                SELECT Id, Company_Name__c FROM Competitor__c WHERE Company_Name__c = 'Müller GmbH' LIMIT 1
+                SELECT Id, Name FROM Competitor__c WHERE Name = 'Müller GmbH' LIMIT 1
             ];
             System.assert(a != null && c != null, 'precondition: fixtures readable under the PSs');
 
@@ -190,7 +190,7 @@ private class SCRUM461CompetitorLossTest {
         boolean refused = false;
         String message = null;
         try {
-            insert new Competitor__c(Company_Name__c = 'Müller GmbH');
+            insert new Competitor__c(Name = 'Müller GmbH');
         } catch (Exception e) {
             refused = true;
             message = e.getMessage();
@@ -205,17 +205,18 @@ private class SCRUM461CompetitorLossTest {
     static void renamingOntoAnExistingCompany_refused() {
         // TAC10 / AC3, the update half of the guard.
         Competitor__c taken = [
-            SELECT Id, Company_Name__c FROM Competitor__c WHERE Company_Name__c = 'Müller GmbH' LIMIT 1
+            SELECT Id, Name FROM Competitor__c WHERE Name = 'Müller GmbH' LIMIT 1
         ];
         Competitor__c renamed = [
-            SELECT Id, Company_Name__c FROM Competitor__c WHERE Company_Name__c = 'Müller Group' LIMIT 1
+            SELECT Id, Name FROM Competitor__c WHERE Name = 'Müller Group' LIMIT 1
         ];
         System.assert(taken != null && renamed != null, 'precondition: two competitor fixtures');
 
-        // A fresh sObject holding only Id plus the written field: `update` on a record
-        // read from the org would also write the AutoNumber Name (SCRUM-459 lesson).
+        // A fresh sObject holding only Id plus the written field: `update` writes every
+        // field in the record cache, so a record read from the org would drag the
+        // competitor's own Name and the lookup into the save (SCRUM-459 lesson).
         Competitor__c clash = new Competitor__c(Id = renamed.Id);
-        clash.Company_Name__c = 'Müller GmbH';
+        clash.Name = 'Müller GmbH';
 
         boolean refused = false;
         try {
@@ -229,12 +230,12 @@ private class SCRUM461CompetitorLossTest {
 
         // A legal rename still saves - the guard must not block ordinary updates.
         Competitor__c legal = new Competitor__c(Id = renamed.Id);
-        legal.Company_Name__c = '461 Renamed Competitor';
+        legal.Name = '461 Renamed Competitor';
         update legal;
         Competitor__c back = [
-            SELECT Id, Company_Name__c FROM Competitor__c WHERE Company_Name__c = '461 Renamed Competitor' LIMIT 1
+            SELECT Id, Name FROM Competitor__c WHERE Name = '461 Renamed Competitor' LIMIT 1
         ];
-        System.assertEquals('461 Renamed Competitor', back.Company_Name__c,
+        System.assertEquals('461 Renamed Competitor', back.Name,
             'AC3: a rename to a fresh name still saves');
     }
 }
