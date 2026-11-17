@@ -62,9 +62,41 @@ Verified facts only; each line names the command that produced it.
 - Fixture names avoid `Müller GmbH` / `Müller Group`: the duplicate guard on `Competitor__c.Name`
   refuses an insert whose Name already exists in the org.
 
-## Apex run tally (Test-Org, 2026-11-17)
+## UI locators (probed 2026-11-17, `scripts/tmp-probe461g.js` / `h.js`)
 
-- `sf apex run test --test-level RunSpecifiedTests --class-names SCRUM461TesterSaveTest SCRUM461TesterFlsGateTest SCRUM461CompetitorLossTest SCRUM461CompetitorFlsTest` → **19/19 pass** (8 tester + 11 developer classes).
+- New-Form `/lightning/o/Opportunity/new`: textbox `Opportunity Name`, combobox
+  `Stage`, combobox `Verlustgrund`, combobox `Lost to competitor` (the Lookup picker),
+  button `Save`. `Competitor price` is NOT reachable as a combobox by that name
+  (probe H: count 0) — the UI never fills it, so the spec never touches it.
+- **The loss-reason label is dative: `An einen Wettbewerber verloren`.** `An einem …`
+  (which the design notes used) matches nothing. Full label set read from the opened
+  picker via `ariaSnapshot()`: `--None--`, `Zu teuer`, `An einen Wettbewerber verloren`,
+  `Kein Budget`, `Zeitpunkt passte nicht`, `Kein Bedarf mehr`, `Kontakt abgebrochen`,
+  `Sonstiges`.
+- Picklist options are in a shadow root: `[role=option]` elements exist, but
+  `getByRole('option', {name})` finds nothing — only `ariaSnapshot()` shows the name
+  (same trap as SCRUM-417). `pickOption()` in the spec clicks the element whose
+  snapshot contains `option "<label>"` and THROWS if it never appears.
+- Refused save renders `dialog "We hit a snag."` → `strong: Review the …` →
+  `listitem` naming the offending field. With Stage=Closed Lost and no reason the
+  listitem is `Bitte wählen Sie einen Verlustgrund, bevor Sie die Chance als verloren
+  markieren.` — i.e. a missing reason is a DIFFERENT message than a missing competitor.
+- Report rows (`lightningReportApp` iframe): first `<td>` of a group row is
+  `<name>, unchecked, Select row for Drill Down.<name>`; numbers render in the user's
+  locale (`490.000,00 €`), so the spec parses German and US separators.
+
+## Apex trap — the org ran a stale version
+
+- Run `707WU00001Udo0N` failed at `dealPermissionSet_makesPriceReadableAndEditable`
+  with stack `line 107`, but line 107 of the deployed source is a
+  `PermissionSetAssignment` insert — the assertion is at line 114. The reported line
+  only exists in the PRE-patch source, so that run executed the old bytecode.
+- Re-running the same class after `sf project deploy start` (which reported
+  `Unchanged`) gives **4/4 pass**, run `707WU00001Ue4lE`. Lesson: when an Apex failure
+  quotes a line that is not an assertion in your file, redeploy and re-run before
+  calling it a defect.
+
+## Apex run tally (Test-Org, 2026-11-17)
 - Tester classes: `SCRUM461TesterSaveTest` (AC2/AC6 save paths, AC9 silence), `SCRUM461TesterFlsGateTest` (positive + negative CRUD/FLS via `System.runAs`).
 
 ## Org side effects left by the Tester (read back 2026-11-17)
@@ -81,3 +113,15 @@ Closed Lost overall went 16 → 26.
 | AC6 test bumps one historical Closed Lost deal's `Amount` by 1 | deliberate: it proves the record still saves |
 
 Expected report numbers derived from that SOQL (not from the report): org overview Nordwind 6 / 490000 / avg gap 14000, Alpha Ventures 2 / 130000 / 5000, Beta Build 1 / 70000 / 10000; the "Meine" report shows 4 / 2 / 1 for the same competitors.
+
+## DEFECT: report average gap counts a blank gap as 0 (measured 2026-11-17)
+
+`/lightning/r/Report/00OWU00000RbBRZ2A3/view` renders Nordwind avg gap **11.666,67 EUR** and Alpha Ventures **2.500,00 EUR**; SOQL says 14.000 (5 of 6 deals known) and 5.000 (1 of 2). 11.666,67 = 70.000/6 and 2.500 = 5.000/2, so the blank `Competitor_Gap__c` is in the divisor and counted as 0. Beta Build (no blank) renders 10.000,00 = correct. Counts, sums and the sort order render correctly. Bug ticket SCRUM-462, linked to SCRUM-461 with "Relates".
+
+## Lightning Lookup value cache (measured 2026-11-17, tmp-probe461q.js / r.js)
+
+A Competitor created through the UI is NOT offered by the deal form's Lookup picker in the same browser session, not even after `page.goto` again (3 polls x 2 s, then 3 more after a reload: only "Add New Competitor" and "Search Show more results for ..."). The same entry IS offered from a fresh browser session ~2 min later. So the picker's value list is cached per session with a TTL; a test that creates an entry and then selects it has to poll for up to ~2 min, and the selection belongs in a separate test (fresh context).
+
+## Apex final tally (run 707WU00001UeODt, 2026-11-17)
+
+`sf apex run test --test-level RunSpecifiedTests --class-names SCRUM461TesterSaveTest SCRUM461TesterFlsGateTest SCRUM461CompetitorLossTest SCRUM461CompetitorFlsTest -r human` -> Outcome Passed, Tests Ran 19, Pass Rate 100 %.
