@@ -22,6 +22,8 @@ private class SCRUM461CompetitorFlsTest {
     static void setup_fixtures() {
         Account a = new Account(Name = '461 FLS Account');
         insert a;
+        Competitor__c mueller = new Competitor__c(Company_Name__c = 'Müller GmbH');
+        insert mueller;
         Opportunity o = new Opportunity(
             Name = '461 FLS Opp',
             AccountId = a.Id,
@@ -29,11 +31,9 @@ private class SCRUM461CompetitorFlsTest {
             CloseDate = Date.today() - 30,
             Amount = 60000,
             Loss_Reason__c = 'Wettbewerber',
-            Competitor_Lost_To__c = [SELECT Id FROM Competitor__c LIMIT 1].Id
+            Competitor_Lost_To__c = mueller.Id
         );
         insert o;
-        Competitor__c mueller = new Competitor__c(Company_Name__c = 'Müller GmbH');
-        insert mueller;
     }
 
     private static User mkUser(String alias) {
@@ -51,15 +51,15 @@ private class SCRUM461CompetitorFlsTest {
         );
     }
 
-    private static PermissionSet mkPs(String name) {
-        PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = name LIMIT 1];
-        System.assert(ps != null, 'precondition: Permission Set ' + name + ' deployed');
+    private static PermissionSet mkPs(String psName) {
+        PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = :psName LIMIT 1];
+        System.assert(ps != null, 'precondition: Permission Set ' + psName + ' deployed');
         return ps;
     }
 
     @isTest
     static void competitorFields_invisibleWithoutAnyPS() {
-        User neg = mkUser('fls461neg');
+        User neg = mkUser('fls461n');
         insert neg;
 
         System.runAs(neg) {
@@ -98,8 +98,8 @@ private class SCRUM461CompetitorFlsTest {
 
     @isTest
     static void teamLead_mayAdd_readOnlyUserMayNot() {
-        User reader = mkUser('fls461reader');
-        User lead = mkUser('fls461lead');
+        User reader = mkUser('fls461r');
+        User lead = mkUser('fls461l');
         insert reader;
         insert lead;
 
@@ -109,14 +109,18 @@ private class SCRUM461CompetitorFlsTest {
         insert new PermissionSetAssignment(AssigneeId = lead.Id, PermissionSetId = listRead.Id);
         insert new PermissionSetAssignment(AssigneeId = lead.Id, PermissionSetId = teamlead.Id);
 
+        // A name that is fresh per run: a previous test run may still hold a record
+        // of this name, and the duplicate guard would refuse it (TAC10).
+        String freshName = '461 Teamlead Competitor ' + DateTime.now().getTime();
+
         System.runAs(lead) {
             System.assertEquals(true, Competitor__c.SObjectType.getDescribe().isAccessible(),
                 'AC4: a team lead reads the list');
             System.assertEquals(true, Competitor__c.SObjectType.getDescribe().isCreateable(),
                 'AC4: only the team lead PS grants create');
-            Competitor__c added = new Competitor__c(Company_Name__c = '461 Teamlead Competitor');
-            Id addedId = insert added;
-            System.assert(addedId != null, 'AC4: the team lead added a competitor');
+            Competitor__c added = new Competitor__c(Company_Name__c = freshName);
+            insert added;
+            System.assert(added.Id != null, 'AC4: the team lead added a competitor');
         }
 
         System.runAs(reader) {
@@ -131,19 +135,22 @@ private class SCRUM461CompetitorFlsTest {
             );
 
             // The record the team lead just added is immediately selectable.
-            Competitor__c[] both = [SELECT Id, Company_Name__c FROM Competitor__c];
-            System.assertEquals(2, both.size(),
-                'AC4: both entries are selectable by a plain reader');
-
-            boolean refused = false;
-            try {
-                insert new Competitor__c(Company_Name__c = '461 Reader Attempt');
-            } catch (Exception e) {
-                refused = true;
-                System.debug('AC4 expected refusal: ' + e.getMessage());
+            Set<String> selectable = new Set<String>();
+            for (Competitor__c c : [SELECT Id, Company_Name__c FROM Competitor__c]) {
+                selectable.add(c.Company_Name__c);
             }
-            System.assertEquals(true, refused,
-                'AC4: the add attempt of a non-team-lead must be refused');
+            System.assert(selectable.contains('Müller GmbH'),
+                'AC4: an existing entry is selectable by a plain reader');
+            System.assert(selectable.contains(freshName),
+                'AC4: the entry the team lead just added is immediately selectable');
+
+            // Measured 2026-11-17 in Test-Org: Apex `insert` of a typed custom object is
+            // NOT blocked by the object-level create permission - isCreateable() reports
+            // false for this user, yet the insert saves. The gate the users actually
+            // meet (the Setup picker, an API call) reads that same flag, so the
+            // isCreateable assertion above is the enforceable one; the UI half of AC4
+            // is the Tester's Playwright test. Asserting a refused Apex insert would
+            // assert a guarantee the platform does not give.
         }
     }
 }

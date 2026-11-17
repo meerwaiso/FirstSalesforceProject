@@ -1,14 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Package xmlns="https://www.demandforce.com/api/metadata">
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-461 Phase 3: the duplicate guard on the competitor list plus the
+         two test classes. Deployed LAST - the guard compiles against the
+         Competitor__c object from phase 1. -->
     <types>
-        <member>CompetitorNameGuard</member>
-        <member>SCRUM461CompetitorLossTest</member>
-        <member>SCRUM461CompetitorFlsTest</member>
-        <type>ApexClass</type>
+        <members>CompetitorNameGuard</members>
+        <members>SCRUM461CompetitorLossTest</members>
+        <members>SCRUM461CompetitorFlsTest</members>
+        <name>ApexClass</name>
     </types>
     <types>
-        <member>CompetitorNameGuard</member>
-        <type>ApexTrigger</type>
+        <members>CompetitorNameGuard</members>
+        <name>ApexTrigger</name>
     </types>
     <version>67.0</version>
 </Package>

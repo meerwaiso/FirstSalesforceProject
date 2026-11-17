@@ -29,6 +29,8 @@ private class SCRUM461CompetitorLossTest {
         insert a;
         Competitor__c mueller = new Competitor__c(Company_Name__c = 'Müller GmbH');
         insert mueller;
+        Competitor__c other = new Competitor__c(Company_Name__c = 'Müller Group');
+        insert other;
     }
 
     private static User mkUser(String alias) {
@@ -59,7 +61,7 @@ private class SCRUM461CompetitorLossTest {
 
     @isTest
     static void gap_blankWhenPriceUnknown_negativeWhenCheaper() {
-        User u = mkUser('fls461gap');
+        User u = mkUser('fls461g');
         insert u;
         grantDealRights(u);
 
@@ -112,10 +114,10 @@ private class SCRUM461CompetitorLossTest {
                 'TAC3: a deal lost 30 days ago is inside the window');
 
             Opportunity cheaper = [
-                SELECT Id, Competitor_Gap__c, Amount, Competitor_Price__c
+                SELECT Id, Competitor_Gap__c, Amount, Competitor_Price__c, Lost_Last_12M__c
                 FROM Opportunity WHERE Name = '461 Gap Negative' LIMIT 1
             ];
-            System.assertEquals(new Decimal(-15000), new Decimal(cheaper.Competitor_Gap__c),
+            System.assertEquals(-15000.00, cheaper.Competitor_Gap__c,
                 'TAC2: our 80.000 minus the competitor 95.000 = -15.000, kept not filtered');
             System.assertEquals(true, cheaper.Lost_Last_12M__c,
                 'TAC3: inside the window');
@@ -197,5 +199,42 @@ private class SCRUM461CompetitorLossTest {
             'TAC10/AC3: a second record with an existing company name is refused');
         System.assert(message != null && message.contains('Müller'),
             'AC3: the refusal names the duplicate');
+    }
+
+    @isTest
+    static void renamingOntoAnExistingCompany_refused() {
+        // TAC10 / AC3, the update half of the guard.
+        Competitor__c taken = [
+            SELECT Id, Company_Name__c FROM Competitor__c WHERE Company_Name__c = 'Müller GmbH' LIMIT 1
+        ];
+        Competitor__c renamed = [
+            SELECT Id, Company_Name__c FROM Competitor__c WHERE Company_Name__c = 'Müller Group' LIMIT 1
+        ];
+        System.assert(taken != null && renamed != null, 'precondition: two competitor fixtures');
+
+        // A fresh sObject holding only Id plus the written field: `update` on a record
+        // read from the org would also write the AutoNumber Name (SCRUM-459 lesson).
+        Competitor__c clash = new Competitor__c(Id = renamed.Id);
+        clash.Company_Name__c = 'Müller GmbH';
+
+        boolean refused = false;
+        try {
+            update clash;
+        } catch (Exception e) {
+            refused = true;
+            System.debug('AC3 expected refusal: ' + e.getMessage());
+        }
+        System.assertEquals(true, refused,
+            'TAC10/AC3: renaming onto an existing company is refused');
+
+        // A legal rename still saves - the guard must not block ordinary updates.
+        Competitor__c legal = new Competitor__c(Id = renamed.Id);
+        legal.Company_Name__c = '461 Renamed Competitor';
+        update legal;
+        Competitor__c back = [
+            SELECT Id, Company_Name__c FROM Competitor__c WHERE Company_Name__c = '461 Renamed Competitor' LIMIT 1
+        ];
+        System.assertEquals('461 Renamed Competitor', back.Company_Name__c,
+            'AC3: a rename to a fresh name still saves');
     }
 }
