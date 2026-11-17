@@ -31,7 +31,7 @@ import { execSync } from 'node:child_process';
 
 const ORG = 'Test-Org';
 const P = 'TEST-SCRUM-461-';
-const COMPETITOR_NAMES = ['Nordwind Solutions', 'Alpha Ventures', 'Beta Build'];
+const COMPETITOR_NAMES = ['Nordwind Solutions', 'Alpha Ventures', 'Beta Build', 'Gamma Build'];
 const NOT_ON_LIST = 'Mueller';
 const LOOKUP_COMBO = 'Lost to competitor';
 const PICKER_HELPERS = ['Add New Competitor', 'Search Show more results'];
@@ -351,6 +351,10 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
     ensureLostDeal('A1', competitorIds['Alpha Ventures'], 90000, 85000, '2026-09-05');
     ensureLostDeal('A2', competitorIds['Alpha Ventures'], 40000, null, '2026-09-10');
     ensureLostDeal('B1', competitorIds['Beta Build'], 70000, 60000, '2026-10-05');
+    // Gamma Build: a competitor whose ONLY deal has no known price. The average
+    // column must then render nothing — the Architect's falsifier for the SCRUM-462
+    // formula, which is declared NULL for this group and typed currency.
+    ensureLostDeal('G1', competitorIds['Gamma Build'], 45000, null, '2026-10-20');
     // Outside the rolling twelve months — must not appear in either report.
     ensureLostDeal('OUT', competitorIds['Nordwind Solutions'], 99000, 50000, '2025-06-01');
     ensureForeignLostDeal(competitorIds['Nordwind Solutions']);
@@ -535,8 +539,21 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
       expect(hasNumber(nums, want.count), `AC7: row "${r.label}" does not show its deal count ${want.count}`).toBe(true);
       expect(hasNumber(nums, want.sum), `AC7: row "${r.label}" does not show the total value ${want.sum}`).toBe(true);
       if (want.avgGap !== null) {
+        // Falsifier 1 (Architect 2026-11-17): the average has to sit on the
+        // competitor row, not only in the grand-summary row. A row that shows
+        // count and sum but no third number fails here.
         expect(hasNumber(nums, want.avgGap),
           `AC7/AC5: row "${r.label}" shows no average over the deals with a known price (expected ${want.avgGap})`).toBe(true);
+      } else {
+        // Falsifier 2 (Architect 2026-11-17): a competitor whose deals all lack a
+        // known price must show NOTHING in the average column. The aggregate is
+        // typed currency, so a currency renderer that prints 0,00 breaks the PO's
+        // "never zero" rule — and a zero in this row is exactly that.
+        const zeros = nums.filter((n) => Math.abs(n) < 0.51);
+        expect(zeros.length,
+          `AC7/AC5: row "${r.label}" prints a zero average although no price is known (PO rule: never zero)`).toBe(0);
+        expect(nums.length,
+          `AC7/AC5: row "${r.label}" carries ${nums.length} numbers although no price is known (expected count + sum only)`).toBe(2);
       }
     }
     const order = seen.map((n) => expected[n].count);
