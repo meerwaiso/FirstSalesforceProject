@@ -153,3 +153,17 @@ Expected rows derived from that SOQL, org overview: Nordwind 6 / 490000 / avg 14
 Alpha Ventures 2 / 130000 / 5000 (1 of 2), Beta Build 1 / 70000 / 10000 (1 of 1),
 Gamma Build 1 / 45000 / NO average (0 of 1 — the SCRUM-462 falsifier for "never zero").
 The "Meine" report (owner devops-agent@cline.test): Nordwind 4 / 330000 / 10000, Alpha 2, Beta 1, Gamma 1.
+
+## Lookup picker: the value cache is per SESSION, not per TTL (2026-11-17, scripts/tmp-probe461s.mjs)
+
+`node scripts/tmp-probe461s.mjs` created `TEST-SCRUM-461-PROBE-<ts>` via
+`sf data create record -s Competitor__c -v "Name=..."` (no `-t`: the Tooling route
+answers NOT_FOUND for a custom object), waited 150 s, then opened the picker on
+`/lightning/o/Opportunity/new` in a session with its OWN frontdoor handshake.
+Result: the exact Name query offers the entry
+(`["Search Show more results for \"","TEST-SCRUM-461-PROBE-1794931177483","Add New Competitor"]`).
+Consequence: AC4b must NOT reuse the shared storageState — the session that ADDED an
+entry keeps its stale copy and never offers it (that is why the old polling flaked red
+in reports-461i/j). AC4b now runs `freshSession()` (own frontdoor + own baseURL).
+`sf data create record` refuses a value with a space ("Malformed key=value pair") —
+probe names must be hyphenated; the UI-created AC4 name may contain spaces.
