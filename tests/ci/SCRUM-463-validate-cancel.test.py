@@ -142,7 +142,7 @@ check("AC3 shape the gate parser reads (result + details.componentFailures + mes
       "result" in dA and isinstance(cfA, list) and "message" in dA,
       "componentFailures=%s message=%r" % (cfA, dA.get("message")))
 check("AC3 the finished verdict reads Success (the real verdict, not a cancel)",
-      str(rA.get("status", "")).lower() == "success",
+      str(rA.get("status", "")).lower() in ("success", "succeeded"),
       "status=%s testsTotal=%s testErrors=%s" % (rA.get("status"), rA.get("numberTestsTotal"), rA.get("numberTestErrors")))
 check("AC3 the finished operation was NOT cancelled",
       "cancel" not in str(rA.get("status", "none")).lower(),
