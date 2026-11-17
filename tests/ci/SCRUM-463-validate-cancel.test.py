@@ -15,12 +15,19 @@
 #
 # Test-Org only, check-only validations (--source-dir points at a one-component
 # fixture, so a run costs seconds, not the full force-app).
+#
+# Measured traps (see docs/SCRUM-463-notizen-tester.md):
+#  - a killed process's PIPE can lose its tail — the killed scenarios write their
+#    output to a FILE, which cannot;
+#  - stale id files from a previous run must be removed before each scenario, or
+#    a scenario reads the previous run's job id instead of its own.
 import json, os, re, subprocess, time, hashlib, sys
 
 ROOT = os.getcwd()
 SCRIPT = os.path.join(ROOT, "scripts", "ci-prod-validate.sh")
 FIXTURE = os.path.join(ROOT, "tests", "fixtures", "scr463-validate")
 ORG = "Test-Org"
+RESULTS = os.path.join(ROOT, "test-results")
 results = []
 
 
@@ -66,22 +73,50 @@ def validate_args(out, idfile):
             "--test-level", "RunLocalTests", "--wait", "20", "--out", out, "--id-file", idfile]
 
 
-def wait_for_id(idfile, limit=90):
-    """The id must be on disk before any polling — that is what the cancel step reads."""
-    for _ in range(limit):
-        if os.path.getsize(idfile) if os.path.exists(idfile) else False:
-            return open(idfile).read().strip()
-        time.sleep(2)
-    return ""
+def read_id(idfile):
+    return open(idfile).read().strip() if os.path.exists(idfile) else ""
 
+
+def start_and_kill(args, idfile, caplog, kill="term"):
+    """Run the gate script, wait until it published its job id, then kill it.
+    Returns (rc, job, captured output). Output goes to a FILE: a killed process's
+    pipe can lose the tail, a file cannot. Stale id/verdict/cap files are removed
+    first, so a scenario can never read a previous run's job id."""
+    for stale in (idfile, caplog):
+        if os.path.exists(stale):
+            os.remove(stale)
+    with open(caplog, "w") as lf:
+        p = subprocess.Popen(args, stdout=lf, stderr=subprocess.STDOUT)
+        t0 = time.time()
+        job = ""
+        while time.time() - t0 < 60:
+            job = read_id(idfile)
+            if job:
+                break
+            time.sleep(2)
+        (p.terminate() if kill == "term" else p.kill())
+        rc = p.wait()
+    return rc, job, open(caplog).read()
+
+
+def run_cancel(idfile):
+    """The `if: cancelled()` step: cancel exactly the id in the file."""
+    p = subprocess.run([SCRIPT, "--org", ORG, "--cancel", "--id-file", idfile],
+                       capture_output=True, text=True, timeout=300)
+    return p.returncode, p.stdout + p.stderr
+
+
+os.makedirs(RESULTS, exist_ok=True)
 
 # ---------- AC3: a validation that finishes normally keeps its verdict ----------
-outA = os.path.join(ROOT, "test-results", "scr463-verdict-A.json")
-idA = os.path.join(ROOT, "test-results", ".ci-validate-job-id-A")
-os.makedirs(os.path.join(ROOT, "test-results"), exist_ok=True)
+outA = os.path.join(RESULTS, "scr463-verdict-A.json")
+idA = os.path.join(RESULTS, ".ci-validate-job-id-A")
+for stale in (outA, idA):
+    if os.path.exists(stale):
+        os.remove(stale)
 pA = subprocess.run(validate_args(outA, idA),
                     capture_output=True, text=True, timeout=1500)
-jobA = wait_for_id(idA)
+jobA = read_id(idA)
 dA = jsonish(open(outA).read()) if os.path.exists(outA) else {}
 rA = dA.get("result", {})
 cfA = (rA.get("details") or {}).get("componentFailures")
@@ -97,16 +132,15 @@ check("AC3 shape the gate parser reads (result + details.componentFailures + mes
 check("AC3 the finished operation was NOT cancelled",
       "cancel" not in str(rA.get("status", "none")).lower(),
       "status=%s done=%s" % (rA.get("status"), rA.get("done")))
+shaA = sha(outA)
 
 # ---------- AC1a: the SIGTERM trap path ----------
-outB = os.path.join(ROOT, "test-results", "scr463-verdict-B.json")
-idB = os.path.join(ROOT, "test-results", ".ci-validate-job-id-B")
-pb = subprocess.Popen(validate_args(outB, idB), stdout=subprocess.PIPE,
-                      stderr=subprocess.STDOUT, text=True)
-jobB = wait_for_id(idB)
-pb.terminate()                      # GitHub kills the process: the trap gets TERM+EXIT
-outBtxt = pb.communicate(timeout=120)[0]
-rcB = pb.returncode
+outB = os.path.join(RESULTS, "scr463-verdict-B.json")
+idB = os.path.join(RESULTS, ".ci-validate-job-id-B")
+capB = os.path.join(RESULTS, "scr463-cap-B.out")
+if os.path.exists(outB):
+    os.remove(outB)
+rcB, jobB, outBtxt = start_and_kill(validate_args(outB, idB), idB, capB, kill="term")
 repB = report_done(jobB) if jobB else {}
 check("AC1a trap path: the live operation was cancelled in the org",
       str(repB.get("status", "")).lower().startswith("cancel") and repB.get("done") is True,
@@ -120,24 +154,25 @@ check("AC1a no verdict file was written (the parser cannot read green)",
       "out=%s exists=%s" % (outB, os.path.exists(outB)))
 
 # ---------- AC1b: the `if: cancelled()` step reads the id file (SIGKILL: no trap) ----------
-outC = os.path.join(ROOT, "test-results", "scr463-verdict-C.json")
-idC = os.path.join(ROOT, "test-results", ".ci-validate-job-id-C")
-pc = subprocess.Popen(validate_args(outC, idC), stdout=subprocess.PIPE,
-                      stderr=subprocess.STDOUT, text=True)
-jobC = wait_for_id(idC)
-pc.kill()                           # killed too fast for any handler: only the id file survives
-pc.wait(timeout=60)
-pC = subprocess.run([SCRIPT, "--cancel", "--org", ORG, "--id-file", idC],
-                    capture_output=True, text=True, timeout=300)
-txtC = pC.stdout + pC.stderr
+outC = os.path.join(RESULTS, "scr463-verdict-C.json")
+idC = os.path.join(RESULTS, ".ci-validate-job-id-C")
+capC = os.path.join(RESULTS, "scr463-cap-C.out")
+if os.path.exists(outC):
+    os.remove(outC)
+rcC, jobC, capCtxt = start_and_kill(validate_args(outC, idC), idC, capC, kill="kill")
+live = sf_report(jobC) if jobC else {}
+check("AC1b the operation stayed live after SIGKILL (no trap could run)",
+      live.get("done") is not True,
+      "job=%s rc=%s done=%s status=%s" % (jobC, rcC, live.get("done"), live.get("status")))
+rcD, txtC = run_cancel(idC)
 repC = report_done(jobC) if jobC else {}
 check("AC1b id-file path: the live operation was cancelled in the org",
       str(repC.get("status", "")).lower().startswith("cancel") and repC.get("done") is True,
-      "job=%s status=%s done=%s deployed=%s" % (jobC, repC.get("status"), repC.get("done"),
-                                                repC.get("numberComponentsDeployed")))
+      "job=%s status=%s done=%s deployed=%s canceledBy=%s" % (
+          jobC, repC.get("status"), repC.get("done"), repC.get("numberComponentsDeployed"), repC.get("canceledByName")))
 check("AC1b the cancel step names the operation it cancelled, not the most recent one",
       jobC in txtC and "most recent" not in txtC,
-      "job=%s in output; rc=%s" % (jobC, pC.returncode))
+      "job=%s in output; rc=%s" % (jobC, rcD))
 check("AC4 the cancelled run states plainly that there is no verdict",
       "no verdict" in txtC,
       "line=%s" % [l for l in txtC.splitlines() if "no verdict" in l][:1])
@@ -146,27 +181,28 @@ check("AC4 the cancelled run wrote no verdict file",
       "out=%s exists=%s" % (outC, os.path.exists(outC)))
 
 # ---------- negative case: a finished operation must not be cancelled ----------
-idD = os.path.join(ROOT, "test-results", ".ci-validate-job-id-D")
-open(idD, "w").write(jobA + "\n")
-before = sha(outA)
-pD = subprocess.run([SCRIPT, "--cancel", "--org", ORG, "--id-file", idD],
-                    capture_output=True, text=True, timeout=300)
-txtD = pD.stdout + pD.stderr
-after = sha(outA)
-check("negative: a finished operation is refused, not cancelled",
-      "already finished" in txtD and "CannotCancelDeployError" not in txtD,
-      "job=%s rc=%s line=%s" % (jobA, pD.returncode, [l for l in txtD.splitlines() if "finished" in l][:1]))
-check("negative: the real verdict file survived untouched",
-      before == after and before != "MISSING",
-      "sha256 before=%s after=%s" % (before[:16], after[:16]))
-check("negative: the cancel step wrote no verdict of its own",
-      not os.path.exists(os.path.join(ROOT, "test-results", "scr463-verdict-D.json")),
-      "no --out given; file absent")
+idD = os.path.join(RESULTS, ".ci-validate-job-id-D")
+if jobA:
+    open(idD, "w").write(jobA + "\n")
+    before = sha(outA)
+    rcE, txtD = run_cancel(idD)
+    after = sha(outA)
+    check("negative: a finished operation is refused, not cancelled",
+          "already finished" in txtD and "CannotCancelDeployError" not in txtD,
+          "job=%s rc=%s line=%s" % (jobA, rcE, [l for l in txtD.splitlines() if "finished" in l][:1]))
+    check("negative: the real verdict file survived untouched",
+          before == after and before != "MISSING",
+          "sha256 before=%s after=%s" % (before[:16], after[:16]))
+    check("negative: the cancel step wrote no verdict of its own",
+          not any("no verdict" in l for l in txtD.splitlines()),
+          "no --out given; file absent")
+else:
+    check("negative: a finished operation is refused, not cancelled", False, "scenario A produced no job id")
 
 print("\n--- SCRUM-463 coverage ---")
 for label, ok, ev in results:
     print("%-72s %s" % (label, "PASS" if ok else "FAIL"))
-failed = [r for r in results if not r[1]]
 print("AC2 (never more than one live validation per PR) NOT COVERED — it needs six pushes and the"
       " workflow wiring in .github/workflows/, which the user applies; no test of mine can reach it.")
+failed = [r for r in results if not r[1]]
 sys.exit(1 if failed else 0)
