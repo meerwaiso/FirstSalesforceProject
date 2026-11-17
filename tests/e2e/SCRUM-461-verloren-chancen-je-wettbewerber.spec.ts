@@ -593,6 +593,25 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
         `AC8: own row for ${name} does not show ${own[name].count}`).toBe(true);
       expect(all[name].count > own[name].count, `AC8: both reports show the same count for ${name}`).toBe(true);
     }
+    // The PO asks for the SAME overview for the account manager's own deals, so the
+    // average column has to behave in the own report exactly as in the org one —
+    // per row, and blank (never 0,00) where no own deal has a known price.
+    for (const name of Object.keys(own)) {
+      const row = myRows.find((r) => r.label === name);
+      expect(row, `AC8: ${name} missing from the own overview`).toBeTruthy();
+      const nums = toNumbers(row!.cells);
+      const want = own[name];
+      expect(hasNumber(nums, want.count), `AC8: own row ${name} misses its count ${want.count}`).toBe(true);
+      expect(hasNumber(nums, want.sum), `AC8: own row ${name} misses its total value ${want.sum}`).toBe(true);
+      if (want.avgGap !== null) {
+        expect(hasNumber(nums, want.avgGap),
+          `AC8: own row ${name} shows no average over its own deals with a known price (expected ${want.avgGap})`).toBe(true);
+      } else {
+        const zeros = nums.filter((n) => Math.abs(n) < 0.51);
+        expect(zeros.length, `AC8: own row ${name} prints a zero average although no own price is known`).toBe(0);
+        expect(nums.length, `AC8: own row ${name} carries ${nums.length} numbers although no own price is known`).toBe(2);
+      }
+    }
   });
 
   test.afterEach(() => {
