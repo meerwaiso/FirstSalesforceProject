@@ -59,7 +59,7 @@ private class SCRUM461TesterFlsGateTest {
     // ── Negative: a user holding none of the three PSs sees nothing of the feature ──
     @isTest
     static void noPermissionSet_seesNeitherListNorPrice() {
-        User neg = mkUser('flsgate461n');
+        User neg = mkUser('gt461n');
         insert neg;
 
         System.runAs(neg) {
@@ -94,10 +94,17 @@ private class SCRUM461TesterFlsGateTest {
     // ── Positive: the deal PS makes the price readable and editable ─────────
     @isTest
     static void dealPermissionSet_makesPriceReadableAndEditable() {
-        User u = mkUser('flsgate461d');
+        User u = mkUser('gt461d');
         insert u;
         PermissionSet deal = mkPs('SCRUM461_Competitor_Lost');
+        PermissionSet listRead = mkPs('SCRUM461_Competitor_List_Read');
+        // The design assigns BOTH to every internal sales role (C7 deal fields,
+        // C8 the list). Measured here: a Lookup field is only readable when the
+        // referenced object is readable as well — C7 alone leaves
+        // Competitor_Lost_To__c inaccessible, which is why C8 is a separate PS
+        // and not an optional extra.
         insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = deal.Id);
+        insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = listRead.Id);
 
         System.runAs(u) {
             System.assertEquals(true, Opportunity.Competitor_Price__c.getDescribe().isAccessible(),
@@ -105,7 +112,7 @@ private class SCRUM461TesterFlsGateTest {
             System.assertEquals(true, Opportunity.Competitor_Price__c.getDescribe().isUpdateable(),
                 'AC: an account manager records the competitor price');
             System.assertEquals(true, Opportunity.Competitor_Lost_To__c.getDescribe().isAccessible(),
-                'AC: the competitor on the deal is readable');
+                'AC: the competitor on the deal is readable (needs C7 AND C8)');
             System.assertEquals(false, Opportunity.Competitor_Gap__c.getDescribe().isUpdateable(),
                 'C7: the derived gap is read-only — nobody may overwrite it');
             System.assertEquals(false, Opportunity.Lost_Last_12M__c.getDescribe().isUpdateable(),
@@ -113,11 +120,27 @@ private class SCRUM461TesterFlsGateTest {
         }
     }
 
+    // ── Measured boundary: the deal PS alone does not expose the lookup ─────
+    @isTest
+    static void dealPsWithoutListPs_lookupStaysInaccessible() {
+        User u = mkUser('gt461x');
+        insert u;
+        PermissionSet deal = mkPs('SCRUM461_Competitor_Lost');
+        insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = deal.Id);
+
+        System.runAs(u) {
+            System.assertEquals(true, Opportunity.Competitor_Price__c.getDescribe().isAccessible(),
+                'C7 alone still grants the price field');
+            System.assertEquals(false, Opportunity.Competitor_Lost_To__c.getDescribe().isAccessible(),
+                'A Lookup needs a readable target object: without C8 the picker cannot work');
+        }
+    }
+
     // ── AC4: the list gate — reader may read, team lead may add, reader sees it ──
     @isTest
     static void listGate_readerMayReadTeamleadMayAdd() {
-        User reader = mkUser('flsgate461r');
-        User lead = mkUser('flsgate461l');
+        User reader = mkUser('gt461r');
+        User lead = mkUser('gt461l');
         insert reader;
         insert lead;
 
