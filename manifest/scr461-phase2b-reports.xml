@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-461 Phase 2b: the two overview reports, redeployed with an explicit
+         timeFrameFilter. The org had added CLOSE_DATE / INTERVAL_CURRENT on its own
+         after the first deploy; deploying without the element does not clear it, so
+         the frame is set here to a custom span and Lost_Last_12M__c does the
+         rolling twelve months. -->
+    <types>
+        <members>Sales/Verloren_Chancen_je_Wettbewerber</members>
+        <members>Sales/Verloren_Chancen_je_Wettbewerber_Meine</members>
+        <name>Report</name>
+    </types>
+    <version>67.0</version>
+</Package>

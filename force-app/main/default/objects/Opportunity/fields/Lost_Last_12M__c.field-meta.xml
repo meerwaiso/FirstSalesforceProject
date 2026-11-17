@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Lost_Last_12M__c</fullName>
+    <label>Lost in last 12 months</label>
+    <description>SCRUM-461: rolling twelve-month window on CloseDate (the date the deal was lost). House pattern Wartungsvertrag_Renewal_Soon__c with ADDMONTHS - the report metadata has no rolling 12-month interval. Deals without CloseDate are outside the window and are not retro-fixed. System-computed, read-only.</description>
+    <formula>AND(ISPICKVAL(StageName, "Closed Lost"), NOT(ISBLANK(CloseDate)), CloseDate &gt;= ADDMONTHS(TODAY(), -12))</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <type>Checkbox</type>
+</CustomField>

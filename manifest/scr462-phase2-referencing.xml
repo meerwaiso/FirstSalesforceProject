@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-462 Phase 2: FLS for the marker, and both SCRUM-461 reports redeployed
+         with the average-gap column as a custom summary formula (SUM gap / SUM marker)
+         instead of <aggregateTypes>Average, which counted price-unknown deals as 0. -->
+    <types>
+        <members>SCRUM461_Competitor_Lost</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Sales/Verloren_Chancen_je_Wettbewerber</members>
+        <members>Sales/Verloren_Chancen_je_Wettbewerber_Meine</members>
+        <name>Report</name>
+    </types>
+    <version>67.0</version>
+</Package>

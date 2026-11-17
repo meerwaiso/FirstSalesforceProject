@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns>
+        <aggregateTypes>Sum</aggregateTypes>
+        <field>AMOUNT</field>
+    </columns>
+    <aggregates>
+        <calculatedFormula>IF(Opportunity.Competitor_Price_Known__c:SUM = 0, NULL, Opportunity.Competitor_Gap__c:SUM / Opportunity.Competitor_Price_Known__c:SUM)</calculatedFormula>
+        <datatype>currency</datatype>
+        <description>SCRUM-462: average gap over the deals of this competitor whose Competitor_Price__c is known. NULL when none of them has a price, never 0.</description>
+        <developerName>FORMULA1</developerName>
+        <downGroupingContext>Opportunity.Competitor_Lost_To__c</downGroupingContext>
+        <isActive>true</isActive>
+        <isCrossBlock>false</isCrossBlock>
+        <masterLabel>Durchschnitt Lück (known price)</masterLabel>
+        <scale>2</scale>
+    </aggregates>
+    <description>SCRUM-461 AC7 (sales director, team leads): last 12 months per competitor — deals lost (RowCount), total value (Sum AMOUNT), average gap over deals with a known price (FORMULA1, SCRUM-462). Window = Lost_Last_12M__c gate.</description>
+    <filter>
+        <criteriaItems>
+            <column>Opportunity.Lost_Last_12M__c</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>false</isUnlocked>
+            <operator>equals</operator>
+            <value>1</value>
+        </criteriaItems>
+        <criteriaItems>
+            <column>Opportunity.Loss_Reason__c</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>false</isUnlocked>
+            <operator>equals</operator>
+            <value>Wettbewerber</value>
+        </criteriaItems>
+        <language>en_US</language>
+    </filter>
+    <format>Summary</format>
+    <groupingsDown>
+        <aggregateType>RowCount</aggregateType>
+        <dateGranularity>Day</dateGranularity>
+        <field>Opportunity.Competitor_Lost_To__c</field>
+        <sortByName>RowCount</sortByName>
+        <sortOrder>Desc</sortOrder>
+        <sortType>Aggregate</sortType>
+    </groupingsDown>
+    <name>Verloren_Chancen_je_Wettbewerber</name>
+    <params>
+        <name>open</name>
+        <value>all</value>
+    </params>
+    <params>
+        <name>probability</name>
+        <value>&gt;0</value>
+    </params>
+    <params>
+        <name>co</name>
+        <value>1</value>
+    </params>
+    <reportType>Opportunity</reportType>
+    <scope>organization</scope>
+    <showDetails>false</showDetails>
+    <showGrandTotal>true</showGrandTotal>
+    <showSubTotals>false</showSubTotals>
+    <timeFrameFilter>
+        <dateColumn>CLOSE_DATE</dateColumn>
+        <endDate>2099-12-31</endDate>
+        <interval>INTERVAL_CUSTOM</interval>
+        <startDate>2000-01-01</startDate>
+    </timeFrameFilter>
+</Report>
