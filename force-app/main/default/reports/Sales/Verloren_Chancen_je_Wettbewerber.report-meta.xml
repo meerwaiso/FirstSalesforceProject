@@ -9,7 +9,7 @@
         <datatype>currency</datatype>
         <description>SCRUM-462: average gap over the deals of this competitor whose Competitor_Price__c is known. NULL when none of them has a price, never 0.</description>
         <developerName>FORMULA1</developerName>
-        <downGroupingContext>0</downGroupingContext>
+        <downGroupingContext>Opportunity.Competitor_Lost_To__c</downGroupingContext>
         <isActive>true</isActive>
         <isCrossBlock>false</isCrossBlock>
         <masterLabel>Durchschnitt Lück (known price)</masterLabel>
