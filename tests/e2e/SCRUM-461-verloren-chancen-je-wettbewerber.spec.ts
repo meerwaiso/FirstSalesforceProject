@@ -490,6 +490,7 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
     for (let round = 0; round < 8 && hit === 0; round++) {
       offered = await openLookupPicker(page, addedCompetitorName!);
       hit = offered.filter((o) => o === addedCompetitorName).length;
+      console.log(`AC4b round ${round}: hit=${hit} offered=${JSON.stringify(offered)}`);
       if (hit === 0) await page.waitForTimeout(20000);
     }
     expect(hit, 'AC4: the entry just added is not selectable on the deal form').toBeGreaterThan(0);
