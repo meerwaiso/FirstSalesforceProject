@@ -36,3 +36,33 @@ Verified facts only; each line names the command that produced it.
 - `FieldDefinition` has `DataType`, not `Type`; `PermissionSetAssignment` has
   `PermissionSetId`/`AssigneeId`, not `AssignedUser`; `Report` has no `Scope` column.
 - `sf apex run test` flags: `--class-names`, `--tests`, `--test-level` (no `--async`).
+
+## Platform finding — a Lookup needs a readable target object
+
+- `Competitor_Lost_To__c.getDescribe().isAccessible()` is **false** for a user holding
+  ONLY `SCRUM461_Competitor_Lost` (C7); it is **true** once `SCRUM461_Competitor_List_Read`
+  (C8) is assigned as well. `Competitor_Price__c` was readable in both cases.
+  Command: `SCRUM461TesterFlsGateTest` (System.runAs over a synthetic User + PS
+  assignment), first run failed at the lookup assertion, second run 19/19 green.
+- Consequence: C8 is not an optional extra for the picker — every role that has to fill
+  the picker needs C8. The design already assigns C8 to all internal sales roles, so this
+  is a confirmation, not a defect. If a future role gets C7 without C8, the picker
+  silently disappears.
+
+## Test data seeded (idempotent, by Name)
+
+| What | Names | Command |
+|---|---|---|
+| 3 Competitor__c records | `Nordwind Solutions`, `Alpha Ventures`, `Beta Build` | `sf data create record -s Competitor__c -v "Name='...'"` + `SELECT Id, Name FROM Competitor__c` |
+| 8 own Closed-Lost competitor deals | `TEST-SCRUM-461-N1..N4`, `A1`, `A2`, `B1`, `OUT` | `sf data create record -s Opportunity ...` |
+| 1 deal owned by ANOTHER user (for AC8) | sample `Opportunity` renamed `TEST-SCRUM-461-FOREIGN`, Closed Won → Closed Lost + Wettbewerber, Amount 80000, price 60000, CloseDate 2026-06-01 | `sf data update record -s Opportunity -i 006WU00000Q2RZsYAN -v "..."` — read back: `Competitor_Gap__c = 20000`, `Lost_Last_12M__c = true` |
+
+- `sf data update record` on a record owned by another user of the org SUCCEEDS — the
+  foreign deal for AC8 is therefore reachable without a second licence.
+- Fixture names avoid `Müller GmbH` / `Müller Group`: the duplicate guard on `Competitor__c.Name`
+  refuses an insert whose Name already exists in the org.
+
+## Apex run tally (Test-Org, 2026-11-17)
+
+- `sf apex run test --test-level RunSpecifiedTests --class-names SCRUM461TesterSaveTest SCRUM461TesterFlsGateTest SCRUM461CompetitorLossTest SCRUM461CompetitorFlsTest` → **19/19 pass** (8 tester + 11 developer classes).
+- Tester classes: `SCRUM461TesterSaveTest` (AC2/AC6 save paths, AC9 silence), `SCRUM461TesterFlsGateTest` (positive + negative CRUD/FLS via `System.runAs`).
