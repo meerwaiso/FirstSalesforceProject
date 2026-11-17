@@ -74,9 +74,15 @@ def sha(path):
     return hashlib.sha256(open(path, "rb").read()).hexdigest() if os.path.exists(path) else "MISSING"
 
 
-def validate_args(out, idfile):
-    return [SCRIPT, "--org", ORG, "--source-dir", FIXTURE,
-            "--test-level", "RunLocalTests", "--wait", "20", "--out", out, "--id-file", idfile]
+def validate_args(out, idfile, tests=None):
+    """The CI call site uses RunLocalTests (the whole local suite, 492 tests measured in
+    Test-Org). Scenario A narrows to the fixture's own class so its verdict can be read
+    as Success without unrelated org failures in the way."""
+    a = [SCRIPT, "--org", ORG, "--source-dir", FIXTURE,
+         "--wait", "20", "--out", out, "--id-file", idfile]
+    a += (["--test-level", "RunSpecifiedTests", "--tests", tests] if tests
+          else ["--test-level", "RunLocalTests"])
+    return a
 
 
 def read_id(idfile):
@@ -120,7 +126,7 @@ idA = os.path.join(RESULTS, ".ci-validate-job-id-A")
 for stale in (outA, idA):
     if os.path.exists(stale):
         os.remove(stale)
-pA = subprocess.run(validate_args(outA, idA),
+pA = subprocess.run(validate_args(outA, idA, tests="SCRUM463ProbeTest"),
                     capture_output=True, text=True, timeout=1500)
 jobA = read_id(idA)
 dA = jsonish(open(outA).read()) if os.path.exists(outA) else {}
@@ -135,6 +141,9 @@ check("AC3 verdict file written and readable JSON",
 check("AC3 shape the gate parser reads (result + details.componentFailures + message)",
       "result" in dA and isinstance(cfA, list) and "message" in dA,
       "componentFailures=%s message=%r" % (cfA, dA.get("message")))
+check("AC3 the finished verdict reads Success (the real verdict, not a cancel)",
+      str(rA.get("status", "")).lower() == "success",
+      "status=%s testsTotal=%s testErrors=%s" % (rA.get("status"), rA.get("numberTestsTotal"), rA.get("numberTestErrors")))
 check("AC3 the finished operation was NOT cancelled",
       "cancel" not in str(rA.get("status", "none")).lower(),
       "status=%s done=%s" % (rA.get("status"), rA.get("done")))
