@@ -66,3 +66,18 @@ Verified facts only; each line names the command that produced it.
 
 - `sf apex run test --test-level RunSpecifiedTests --class-names SCRUM461TesterSaveTest SCRUM461TesterFlsGateTest SCRUM461CompetitorLossTest SCRUM461CompetitorFlsTest` → **19/19 pass** (8 tester + 11 developer classes).
 - Tester classes: `SCRUM461TesterSaveTest` (AC2/AC6 save paths, AC9 silence), `SCRUM461TesterFlsGateTest` (positive + negative CRUD/FLS via `System.runAs`).
+
+## Org side effects left by the Tester (read back 2026-11-17)
+
+`SELECT ... FROM Opportunity WHERE StageName='Closed Lost' AND Loss_Reason__c='Wettbewerber'` → 10 records:
+9 inside the window (`Lost_Last_12M__c = true`), 1 outside (`TEST-SCRUM-461-OUT`, false).
+Closed Lost overall went 16 → 26.
+
+| Side effect | Note |
+|---|---|
+| `Express Logistics Standby Generator` (sample record, owner Meerwais Osmani) is now Closed Lost + `Wettbewerber` + Nordwind, Amount 80000, price 60000 | my **manual probe** before the spec existed; it did NOT rename the record, so the spec flipped a second one |
+| `TEST-SCRUM-461-FOREIGN` (another sample record, owner Meerwais Osmani) | the spec's idempotent AC8 fixture |
+| `TEST-SCRUM-461-N1..N4 / A1 / A2 / B1 / OUT` | the spec's own deals (owner devops-agent@cline.test) |
+| AC6 test bumps one historical Closed Lost deal's `Amount` by 1 | deliberate: it proves the record still saves |
+
+Expected report numbers derived from that SOQL (not from the report): org overview Nordwind 6 / 490000 / avg gap 14000, Alpha Ventures 2 / 130000 / 5000, Beta Build 1 / 70000 / 10000; the "Meine" report shows 4 / 2 / 1 for the same competitors.
