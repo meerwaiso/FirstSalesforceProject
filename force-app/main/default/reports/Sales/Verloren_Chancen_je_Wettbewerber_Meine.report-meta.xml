@@ -53,11 +53,6 @@
     <showDetails>false</showDetails>
     <showGrandTotal>true</showGrandTotal>
     <showSubTotals>false</showSubTotals>
-    <!-- The org adds a timeFrameFilter on its own (measured: CLOSE_DATE / INTERVAL_CURRENT
-         after the first deploy of this report), which would cut the overview to the
-         current calendar year. The twelve months are the Lost_Last_12M__c gate, so the
-         frame is set explicitly to a custom span that covers every record (house
-         Hoeh_Risk_Chancen). Deploying WITHOUT the element does NOT clear it. -->
     <timeFrameFilter>
         <dateColumn>CLOSE_DATE</dateColumn>
         <endDate>2099-12-31</endDate>
