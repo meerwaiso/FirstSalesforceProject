@@ -8,7 +8,7 @@
         <aggregateTypes>Average</aggregateTypes>
         <field>Opportunity.Competitor_Gap__c</field>
     </columns>
-    <description>SCRUM-461 AC8 (account managers): same overview as Verloren_Chancen_je_Wettbewerber, but scope=user — only the account manager's own lost deals are counted. The Opportunity sharing model is untouched; scope is the whole AC8 mechanism.</description>
+    <description>SCRUM-461 AC8 (account managers): same overview as Verloren_Chancen_je_Wettbewerber, but scope=user — only the account manager&apos;s own lost deals are counted. The Opportunity sharing model is untouched; scope is the whole AC8 mechanism.</description>
     <filter>
         <criteriaItems>
             <column>Opportunity.Lost_Last_12M__c</column>
@@ -24,18 +24,44 @@
             <operator>equals</operator>
             <value>Wettbewerber</value>
         </criteriaItems>
+        <language>en_US</language>
     </filter>
     <format>Summary</format>
     <groupingsDown>
         <aggregateType>RowCount</aggregateType>
+        <dateGranularity>Day</dateGranularity>
         <field>Opportunity.Competitor_Lost_To__c</field>
+        <sortByName>RowCount</sortByName>
         <sortOrder>Desc</sortOrder>
         <sortType>Aggregate</sortType>
     </groupingsDown>
     <name>Verloren_Chancen_je_Wettbewerber_Meine</name>
+    <params>
+        <name>open</name>
+        <value>all</value>
+    </params>
+    <params>
+        <name>probability</name>
+        <value>&gt;0</value>
+    </params>
+    <params>
+        <name>co</name>
+        <value>1</value>
+    </params>
     <reportType>Opportunity</reportType>
     <scope>user</scope>
     <showDetails>false</showDetails>
     <showGrandTotal>true</showGrandTotal>
     <showSubTotals>false</showSubTotals>
+    <!-- The org adds a timeFrameFilter on its own (measured: CLOSE_DATE / INTERVAL_CURRENT
+         after the first deploy of this report), which would cut the overview to the
+         current calendar year. The twelve months are the Lost_Last_12M__c gate, so the
+         frame is set explicitly to a custom span that covers every record (house
+         Hoeh_Risk_Chancen). Deploying WITHOUT the element does NOT clear it. -->
+    <timeFrameFilter>
+        <dateColumn>CLOSE_DATE</dateColumn>
+        <endDate>2099-12-31</endDate>
+        <interval>INTERVAL_CUSTOM</interval>
+        <startDate>2000-01-01</startDate>
+    </timeFrameFilter>
 </Report>
