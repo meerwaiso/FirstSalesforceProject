@@ -74,3 +74,29 @@ Field read-back through that session: `SELECT Competitor_Lost_To__c, Competitor_
 Competitor_Gap__c, Lost_Last_12M__c FROM Opportunity` returns 3 rows.
 `scripts/fls-gate.py --base origin/master --org Test-Org` → green (4 fields ok,
 Company_Name__c skipped because required=true).
+
+## Rework 2026-11-17 (Architect rejection: Name = company name)
+
+- A custom object's `Name` can be `Text` with a `<length>`; the org echoes
+  `<nameField><label>Competitor Name</label><type>Text</type></nameField>` and drops
+  the length element — retrieve the org version and commit that (ADR-7).
+- While `Name` is still `AutoNumber` in the org, Apex cannot assign it:
+  `Field is not writeable: Competitor__c.Name`. Deploy the object with the Text
+  `nameField` FIRST, then the classes that write it.
+- `sf project delete source` refuses a field that deployed Apex still references:
+  "This custom field is referenced elsewhere in Apex Class - …". Redeploy the classes
+  without the reference, then delete the field. Order: object → classes → delete.
+- `sf project delete source -m` wants the SDR component form `CustomField:Obj.F__c`;
+  the bare `Obj.F__c` is a RegistryError.
+- `deploy start` takes `-d/--source-dir`, not `-p` (that flag belongs to
+  `delete source`).
+- `deploy validate` rejects `--test-level NoTestRun` (only the four test levels);
+  `RunRelevantTests` ran 0 tests for this manifest — use
+  `--test-level RunSpecifiedTests --tests <TestClass>` once per class to actually run
+  them. Measured: 15/15 green over the three SCRUM-461 classes plus the fixed
+  SCRUM381LostReasonTest.
+- A new blocking ValidationRule reddens existing test classes of other tickets that
+  save the blocked state — `SCRUM381LostReasonTest` inserted Closed Lost +
+  `Loss_Reason__c = Wettbewerber` with no competitor. Fixed by moving its fixture to
+  `ZuTeuer` (rule not weakened), and the class now travels in
+  `manifest/scr461-phase3-guard.xml`.
