@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="https://www.demandforce.com/api/metadata">
+    <types>
+        <member>CompetitorNameGuard</member>
+        <member>SCRUM461CompetitorLossTest</member>
+        <member>SCRUM461CompetitorFlsTest</member>
+        <type>ApexClass</type>
+    </types>
+    <types>
+        <member>CompetitorNameGuard</member>
+        <type>ApexTrigger</type>
+    </types>
+    <version>67.0</version>
+</Package>
