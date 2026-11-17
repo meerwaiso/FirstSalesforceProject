@@ -471,9 +471,19 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
   });
 
   test('AC4: the entry just added is selectable by an account manager on a fresh session', async ({ page }) => {
+    test.setTimeout(240000);
     expect(addedCompetitorName, 'AC4 precondition: no entry was added by the previous test').toBeTruthy();
     await openNewOpportunityForm(page);
-    const offered = await openLookupPicker(page, addedCompetitorName!);
+    // PROBED (tmp-probe461q.js / r.js): the Lightning Lookup value cache is
+    // per browser session and refreshes on a TTL. A fresh session seconds
+    // after a UI create still serves the old list; the same entry is offered
+    // once the TTL has passed (~2 min). The picker is therefore polled for
+    // up to two minutes rather than read once.
+    let offered: string[] = [];
+    for (let round = 0; round < 4 && offered.length === 0; round++) {
+      offered = await openLookupPicker(page, addedCompetitorName!);
+      if (offered.length === 0) await page.waitForTimeout(20000);
+    }
     expect(offered.filter((o) => o === addedCompetitorName).length,
       'AC4: the entry just added is not selectable on the deal form').toBeGreaterThan(0);
   });
