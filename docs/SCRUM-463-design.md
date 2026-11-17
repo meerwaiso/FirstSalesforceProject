@@ -119,7 +119,83 @@ This is a recommendation, not a decision — the user approves both lines or nei
 - `-r / --use-most-recent` is **not** acceptable here: with several PRs live it can cancel
   another PR's operation. Only the explicit `-i <id>`.
 
-## What is not decided here
+## User approval, 2026-11-17 (recorded in SCRUM-463 before any code)
+
+Approved: the Prod call site below, **and** the same script for the Test-Org smoke
+step with `--org Test-Org`. Change to the design: the shell trap alone is not enough —
+when GitHub cancels a run it kills the process after a few seconds, which may be too
+short for `sf project deploy cancel` to finish. So the job id goes to a file the moment
+it is known, and the workflow gets a **second step with `if: cancelled()`** that cancels
+exactly that id. The trap stays as the fallback.
+
+The workflow lines below are the user's to apply — no agent edits `.github/workflows/`.
+Each call site needs its **own** id file: the Drift Gate step and the smoke step run in
+the same job, so one shared file would let the second overwrite the first.
+
+```
+# Drift Gate step, replaces the direct CLI call
+scripts/ci-prod-validate.sh --org Prod-Org --source-dir force-app \
+  --test-level RunLocalTests --wait 30 --out prod-validate.json \
+  --id-file .ci-validate-job-id-prod
+
+# new step in the same job
+- name: Cancel the validation a cancelled run left in Prod-Org
+  if: cancelled()
+  run: scripts/ci-prod-validate.sh --cancel --org Prod-Org --id-file .ci-validate-job-id-prod
+```
+
+```
+# smoke step, replaces both CLI variants ($STUFE/$KLASSEN come from the scope step)
+scripts/ci-prod-validate.sh --org Test-Org --source-dir force-app \
+  --test-level "$STUFE" --tests "$KLASSEN" --wait 30 \
+  --id-file .ci-validate-job-id-testorg
+
+- name: Cancel the validation a cancelled run left in Test-Org
+  if: cancelled()
+  run: scripts/ci-prod-validate.sh --cancel --org Test-Org --id-file .ci-validate-job-id-testorg
+```
+
+## AC1 measured on a live validation, 2026-11-17 (Test-Org, check-only)
+
+The leg the Architect could not observe (item 4 above) is now measured. Both cancel
+paths of the script were run against a real validation of `force-app` (487 components,
+502 files) that was still live when the cancel came.
+
+| Path | Started | Cancel | DeployRequest read back |
+|---|---|---|---|
+| `if: cancelled()` step (`--cancel`, id from the file) | `0AfWU00000dBdpB0AS`, status at start `Queued` | 3 s later: `cancel … operation 0AfWU00000dBdpB0AS cancelled (org answer: Canceled)` | `status: Canceled`, `done: true`, `numberComponentsDeployed: 0`, `success: false` |
+| trap fallback (process killed with SIGTERM) | `0AfWU00000dBdFi0AK`, `Queued` | `cancel (trap): … cancelled (org answer: Canceled)` | `status: Canceled`, `done: true`, `numberComponentsDeployed: 0`, `success: false` |
+
+`sf project deploy report -i <id> --json` is the Tooling API DeployRequest read-back:
+the record ends **Canceled**, not Succeeded and not Failed — `canceledBy` names the
+user the CLI authenticates as. No verdict file was written in either case.
+
+AC3 measured the same way: a validation that finishes normally writes
+`{"result": …, "message": …}` — `result.done: true`, `status: Succeeded`,
+`details.componentFailures` present — the shape the existing parser reads unchanged.
+
+AC4 measured: both cancelled runs printed
+`::error … no verdict — validation <id> cancelled` and exited 1; the polling loop also
+refuses to write a verdict when the operation it was watching ends `Canceled`, so a
+cancelled validation can never become a green gate.
+
+## Interface of `scripts/ci-prod-validate.sh`
+
+| Flag | Meaning |
+|---|---|
+| `--org <alias>` | target org, required at both call sites (`-o` for the CLI) |
+| `--source-dir` / `--manifest` | what gets validated, one of the two required |
+| `--test-level`, `--tests`/`-t` | passed through; `--tests` accepts a comma list |
+| `--wait <minutes>` | the wait budget, unchanged from the current steps |
+| `--out <file>` | verdict file (Prod). Omitted: the report goes to stdout (smoke step) |
+| `--id-file <file>` | where the job id lives; per call site, see above |
+| `--cancel` | mode for the `if: cancelled()` step: cancel exactly the id in that file |
+
+Guards measured on this machine: the id file is truncated before the operation starts,
+so a stale file can never cancel another PR's finished operation; `--cancel` checks the
+`done` flag first and says "nothing to cancel" for a finished operation; `-r /
+--use-most-recent` is never used.
+
 
 The workflow line is not applied and will not be applied by any agent. Implementation of
 `scripts/ci-prod-validate.sh` starts only after the user's approval is recorded in SCRUM-463.

@@ -14,6 +14,7 @@ Bestandsaufnahme vom 21.09.2026.
 | `scripts/apex-probe.sh "<apex>"` | „Gibt es diese Apex-Klasse/Signatur, und was liefert sie?" in ~5 s | Agent, von Hand |
 | `npm run probe` (`scripts/probe-locators.js`) | echte Locators aus der laufenden Seite, statt sie zu raten | Agent, von Hand |
 | `scripts/fls-gate.py --base <ref> --org <org>` | blockiert Felder ohne wirksame FLS | **CI**, `org`-Job |
+| `scripts/ci-prod-validate.sh --org <org> …` | startet eine check-only Validation, remembers the job id, and cancels exactly that operation when the CI run is cancelled (`--cancel`) — a cancelled run never leaves a live validation in the org | **CI**, `org`-Job (Drift Gate + smoke) |
 
 Hintergrund zu den ersten beiden: Skill `salesforce-describe-first`, §4 und §10.
 
