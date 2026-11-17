@@ -234,10 +234,12 @@ async function openLookupPicker(page: Page, query: string): Promise<string[]> {
   const combo = page.getByRole('combobox', { name: LOOKUP_COMBO, exact: false }).first();
   await expect(await combo.count(), `the Lookup picker "${LOOKUP_COMBO}" is not on the form`).toBeGreaterThan(0);
   await combo.fill(query);
-  await page.waitForTimeout(1200);
-  for (let attempt = 0; attempt < 5; attempt++) {
+  await page.waitForTimeout(1500);
+  // The Lookup value cache refreshes a few seconds after a create, so the
+  // picker is polled rather than read once.
+  for (let attempt = 0; attempt < 8; attempt++) {
     await combo.click({ timeout: 15000 });
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(2000);
     const names = await offeredLookups(page);
     if (names.length > 0) return names;
   }
