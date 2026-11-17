@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Competitor_Gap__c</fullName>
+    <label>Gap to competitor price</label>
+    <description>SCRUM-461: Amount minus Competitor_Price__c. Positive = we were more expensive. NULL when the price is unknown, so the report average ignores the deal (AC5). Negative = we lost despite being cheaper; still counted. System-computed, read-only.</description>
+    <type>Number</type>
+    <precision>18</precision>
+    <scale>2</scale>
+    <unique>false</unique>
+    <formula>IF(ISBLANK(Competitor_Price__c), NULL, Amount - Competitor_Price__c)</formula>
+</CustomField>

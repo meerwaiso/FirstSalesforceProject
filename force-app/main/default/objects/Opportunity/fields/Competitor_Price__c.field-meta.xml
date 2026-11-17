@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Competitor_Price__c</fullName>
+    <label>Competitor price (approx.)</label>
+    <description>SCRUM-461: roughly what the competitor offered. Commercially sensitive third-party figure; readable only through SCRUM461_Competitor_Lost. Optional - unknown price stays blank.</description>
+    <externalId>false</externalId>
+    <required>false</required>
+    <precision>18</precision>
+    <scale>2</scale>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <type>Currency</type>
+</CustomField>
