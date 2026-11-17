@@ -34,6 +34,15 @@ path · AC1b SIGKILL + `--cancel --id-file` (the `if: cancelled()` step) · AC4 
 Run: `python3 tests/ci/SCRUM-463-validate-cancel.test.py` from the repo root, Test-Org only,
 check-only. Log: `test-results/scr463-run.log`.
 
+## Parser trap (measured, 2026-11-17)
+
+- `sf project deploy report --json` prints the JSON on stdout and a `Warning: @salesforce/cli update…`
+  line on stderr AFTER it. `json.loads(stdout + stderr)` fails with "Extra data" — the payload must be
+  cut at the LAST closing brace. Symptom: every org read-back returned `status=None`, which also made
+  the "operation stayed live" check pass vacuously (an empty report is not evidence).
+  Verified: `sf project deploy report -o Test-Org -i 0AfWU00000dBjD30AK --json` → 500,618 bytes stdout
+  + 72 bytes stderr; the cancelled operations carry `canceledBy`/`canceledByName`.
+
 ## Fixture traps (measured, 2026-11-17)
 
 - The org rejects `@Test` on a method: componentFailure "Annotation does not exist: Test".

@@ -43,7 +43,13 @@ def jsonish(text):
     try:
         return json.loads(text[i:])
     except Exception:
-        return {}
+        # The CLI appends a Warning line to stderr AFTER the JSON — the payload is
+        # the outermost object, so cut at the last closing brace.
+        j = text.rfind("}")
+        try:
+            return json.loads(text[i:j + 1])
+        except Exception:
+            return {}
 
 
 def sf_report(job):
@@ -162,7 +168,7 @@ if os.path.exists(outC):
 rcC, jobC, capCtxt = start_and_kill(validate_args(outC, idC), idC, capC, kill="kill")
 live = sf_report(jobC) if jobC else {}
 check("AC1b the operation stayed live after SIGKILL (no trap could run)",
-      live.get("done") is not True,
+      bool(live) and live.get("done") is not True,
       "job=%s rc=%s done=%s status=%s" % (jobC, rcC, live.get("done"), live.get("status")))
 rcD, txtC = run_cancel(idC)
 repC = report_done(jobC) if jobC else {}
