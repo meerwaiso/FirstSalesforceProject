@@ -33,4 +33,44 @@ Verified findings only, each with the command that produced it. Read this file f
 
 ## Deploy state / decisions
 
-- (fill in as deploys land)
+Phase 1 `manifest/scr461-phase1-fields.xml` — deployed (NoTestRun).
+Phase 2 `manifest/scr461-phase2-referencing.xml` — deployed (validation rule, 3 PS, 2 reports, layout).
+Phase 2b `manifest/scr461-phase2b-reports.xml` — deployed (reports with explicit timeFrameFilter).
+Phase 3 `manifest/scr461-phase3-guard.xml` — deployed (guard class + trigger + 2 test classes).
+
+Measured findings that changed the shape:
+
+- Lookup CustomField: `<relationshipOrder>` / `<reparentableMasterDetail>` are rejected
+  ("Can not specify relationshipOrder for a CustomField of type Lookup") — house
+  `Approval_Decided_By__c` carries neither.
+- Report grouping: `Opportunity$Competitor_Lost_To__c.Name` → "Invalid field name";
+  a Text formula mirror `Competitor_Lost_To__c.Name` is rejected by deploy-validate.
+  Grouping directly on `Opportunity.Competitor_Lost_To__c` validates and deploys.
+- Manifest member names use `<members>`/`<name>`; a `<member>`/`<type>` block is
+  rejected ("Invalid types definition in manifest file").
+- ValidationRule manifest member must be entity-qualified: `Opportunity.Competitor_PflichtBeiWettbewerber`.
+- `sf data create record`: the object is `-s/--sobject`; `-t` is `--use-tooling-api`,
+  which PermissionSetAssignment needs. Field pairs separated by SPACES.
+- The org adds a `timeFrameFilter` CLOSE_DATE / INTERVAL_CURRENT to a new report on its
+  own; deploying without the element does NOT clear it. Set explicitly to
+  INTERVAL_CUSTOM 2000-01-01..2099-12-31 (house Hoeh_Risk_Chancen), so
+  Lost_Last_12M__c is the rolling twelve months.
+- Apex `insert` of a typed custom object is NOT blocked by object-level create
+  permissions: `isCreateable()` reported false for a read-only user, yet the insert
+  saved. The enforceable assertion is the describe() flag (the Setup picker and the
+  API read that); the UI half of AC4 belongs to the Tester.
+- User `Alias` max length is 8 characters.
+- A SOQL row must select every field a test reads, otherwise
+  "SObject row was retrieved via SOQL without querying the requested field".
+- `cloneIdOnly()` does not exist on a typed sObject — build `new Competitor__c(Id = x.Id)`
+  before `update` (AutoNumber Name is not writeable).
+- RunRelevantTests requires >= 75% coverage on the deployed class; the update half of
+  the guard needed its own test method.
+
+PSA read-back (2026-11-17, `sf data query`): all 6 assignments exist — both
+`devops-agent@cline.test` and `meerwais.osmani@resourceful-bear-6f1u4j.com` hold
+SCRUM461_Competitor_Lost, SCRUM461_Competitor_List_Read, SCRUM461_Competitor_List_Teamleitung.
+Field read-back through that session: `SELECT Competitor_Lost_To__c, Competitor_Price__c,
+Competitor_Gap__c, Lost_Last_12M__c FROM Opportunity` returns 3 rows.
+`scripts/fls-gate.py --base origin/master --org Test-Org` → green (4 fields ok,
+Company_Name__c skipped because required=true).
