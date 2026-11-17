@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-462 Phase 1: the 0/1 marker behind the report's average-gap column.
+         Deployed FIRST — the Permission Set and both reports reference it. -->
+    <types>
+        <members>Opportunity.Competitor_Price_Known__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>

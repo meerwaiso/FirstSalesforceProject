@@ -4,10 +4,17 @@
         <aggregateTypes>Sum</aggregateTypes>
         <field>AMOUNT</field>
     </columns>
-    <columns>
-        <aggregateTypes>Average</aggregateTypes>
-        <field>Opportunity.Competitor_Gap__c</field>
-    </columns>
+    <aggregates>
+        <calculatedFormula>IF(Opportunity.Competitor_Price_Known__c:SUM = 0, NULL, Opportunity.Competitor_Gap__c:SUM / Opportunity.Competitor_Price_Known__c:SUM)</calculatedFormula>
+        <datatype>currency</datatype>
+        <description>SCRUM-462: average gap over the deals of this competitor whose Competitor_Price__c is known. NULL when none of them has a price, never 0.</description>
+        <developerName>FORMULA1</developerName>
+        <downGroupingContext>0</downGroupingContext>
+        <isActive>true</isActive>
+        <isCrossBlock>false</isCrossBlock>
+        <masterLabel>Durchschnitt Lück (known price)</masterLabel>
+        <scale>2</scale>
+    </aggregates>
     <description>SCRUM-461 AC8 (account managers): same overview as Verloren_Chancen_je_Wettbewerber, but scope=user — only the account manager&apos;s own lost deals are counted. The Opportunity sharing model is untouched; scope is the whole AC8 mechanism.</description>
     <filter>
         <criteriaItems>

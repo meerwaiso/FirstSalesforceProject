@@ -18,6 +18,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>false</editable>
+        <field>Opportunity.Competitor_Price_Known__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
         <field>Opportunity.Lost_Last_12M__c</field>
         <readable>true</readable>
     </fieldPermissions>

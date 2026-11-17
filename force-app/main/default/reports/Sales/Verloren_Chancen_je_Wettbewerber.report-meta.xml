@@ -4,11 +4,18 @@
         <aggregateTypes>Sum</aggregateTypes>
         <field>AMOUNT</field>
     </columns>
-    <columns>
-        <aggregateTypes>Average</aggregateTypes>
-        <field>Opportunity.Competitor_Gap__c</field>
-    </columns>
-    <description>SCRUM-461 AC7 (sales director, team leads): last 12 months per competitor — deals lost (RowCount), total value (Sum AMOUNT), average gap where the price is known (Average Competitor_Gap__c). Most business lost first. Window = Lost_Last_12M__c gate.</description>
+    <aggregates>
+        <calculatedFormula>IF(Opportunity.Competitor_Price_Known__c:SUM = 0, NULL, Opportunity.Competitor_Gap__c:SUM / Opportunity.Competitor_Price_Known__c:SUM)</calculatedFormula>
+        <datatype>currency</datatype>
+        <description>SCRUM-462: average gap over the deals of this competitor whose Competitor_Price__c is known. NULL when none of them has a price, never 0.</description>
+        <developerName>FORMULA1</developerName>
+        <downGroupingContext>0</downGroupingContext>
+        <isActive>true</isActive>
+        <isCrossBlock>false</isCrossBlock>
+        <masterLabel>Durchschnitt Lück (known price)</masterLabel>
+        <scale>2</scale>
+    </aggregates>
+    <description>SCRUM-461 AC7 (sales director, team leads): last 12 months per competitor — deals lost (RowCount), total value (Sum AMOUNT), average gap over deals with a known price (FORMULA1, SCRUM-462). Window = Lost_Last_12M__c gate.</description>
     <filter>
         <criteriaItems>
             <column>Opportunity.Lost_Last_12M__c</column>
