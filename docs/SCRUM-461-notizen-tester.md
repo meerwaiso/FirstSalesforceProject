@@ -125,3 +125,31 @@ A Competitor created through the UI is NOT offered by the deal form's Lookup pic
 ## Apex final tally (run 707WU00001UeODt, 2026-11-17)
 
 `sf apex run test --test-level RunSpecifiedTests --class-names SCRUM461TesterSaveTest SCRUM461TesterFlsGateTest SCRUM461CompetitorLossTest SCRUM461CompetitorFlsTest -r human` -> Outcome Passed, Tests Ran 19, Pass Rate 100 %.
+
+## runAs rewrite of SCRUM461TesterSaveTest (measured 2026-11-17, second round)
+
+The CI FLS gate (`scripts/fls-gate.py --base origin/master --org Test-Org`) flagged
+`SCRUM461TesterSaveTest.cls` for reading `Competitor_Gap__c`, `Competitor_Lost_To__c`,
+`Competitor_Price__c`, `Lost_Last_12M__c` as the executing user without `System.runAs(`.
+After the rewrite the gate prints "FLS-Gate grün." with all five fields `ok (SCRUM461_Competitor_Lost)`.
+
+Two measured traps on that path:
+
+- Deploying a changed test class needs `--metadata "ApexClass:<Name>"`; `--component-class`
+  and `--no-prompt` do not exist in CLI 2.150.6 ("Nonexistent flags").
+- A synthetic `System.runAs` user that only holds the two SCRUM-461 PSs cannot save an
+  Opportunity at all: the org's AfterUpdate trigger `OpportunityFollowupMonitorTrigger`
+  runs in user mode and dies with `No such column 'Followup_Required__c'`. The user has
+  to hold `SCRUM459_FollowupMonitoring_Read` + `SCRUM459_FollowupMonitoring_Write` too —
+  the same four PSs a real account manager holds. Apex after that: 19/19 Passed, run 707WU00001UezVW.
+
+## Coverage recount (2026-11-17, `sf data query --json --use-tooling-api`, scratch/recount461.py)
+
+Opportunities total 139, Closed Lost 27, Closed Lost + `Wettbewerber` 11, of those 11 with a
+competitor, 8 with a price, 10 inside the rolling twelve months; 10 records named
+`TEST-SCRUM-461-*`. `Competitor__c` = Alpha Ventures, Beta Build, Gamma Build, Nordwind Solutions.
+
+Expected rows derived from that SOQL, org overview: Nordwind 6 / 490000 / avg 14000 (price known on 5 of 6),
+Alpha Ventures 2 / 130000 / 5000 (1 of 2), Beta Build 1 / 70000 / 10000 (1 of 1),
+Gamma Build 1 / 45000 / NO average (0 of 1 — the SCRUM-462 falsifier for "never zero").
+The "Meine" report (owner devops-agent@cline.test): Nordwind 4 / 330000 / 10000, Alpha 2, Beta 1, Gamma 1.
