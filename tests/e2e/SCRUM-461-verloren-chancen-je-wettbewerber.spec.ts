@@ -224,12 +224,49 @@ async function offeredLookups(page: Page): Promise<string[]> {
   return names;
 }
 
-async function fillLookup(page: Page, query: string) {
+/**
+ * Open the Lookup picker for a query and return the entry names it offers.
+ * PROBED (tmp-probe461o.js): `fill(query)` alone types the text but leaves the
+ * picker closed; `combo.click()` AFTER the fill opens it and the matching list
+ * entries become real `[role=option]` elements with a bounding box.
+ */
+async function openLookupPicker(page: Page, query: string): Promise<string[]> {
   const combo = page.getByRole('combobox', { name: LOOKUP_COMBO, exact: false }).first();
   await expect(await combo.count(), `the Lookup picker "${LOOKUP_COMBO}" is not on the form`).toBeGreaterThan(0);
-  await combo.waitFor({ state: 'visible', timeout: 20000 });
   await combo.fill(query);
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(1200);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await combo.click({ timeout: 15000 });
+    await page.waitForTimeout(1200);
+    const names = await offeredLookups(page);
+    if (names.length > 0) return names;
+  }
+  return [];
+}
+
+/** Same, then click the wanted entry so the Lookup actually resolves. */
+async function pickLookup(page: Page, query: string, wanted: string) {
+  const combo = page.getByRole('combobox', { name: LOOKUP_COMBO, exact: false }).first();
+  await expect(await combo.count(), `the Lookup picker "${LOOKUP_COMBO}" is not on the form`).toBeGreaterThan(0);
+  await combo.fill(query);
+  await page.waitForTimeout(1200);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await combo.click({ timeout: 15000 });
+    await page.waitForTimeout(1200);
+    const els = await page.locator('[role=option]').all();
+    for (const el of els) {
+      const snap = await el.ariaSnapshot().catch(() => '');
+      if (!snap.includes(`option "${wanted}"`)) continue;
+      const box = await el.boundingBox();
+      if (!box) continue;
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.up();
+      await page.waitForTimeout(1500);
+      return;
+    }
+  }
+  throw new Error(`Lookup picker never offered "${wanted}" for query "${query}"`);
 }
 
 async function openNewOpportunityForm(page: Page) {
@@ -298,6 +335,7 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
 
   const competitorIds: Record<string, string> = {};
   const createdIds: string[] = [];
+  const createdCompetitors: string[] = [];
 
   test.beforeAll(() => {
     for (const name of COMPETITOR_NAMES) competitorIds[name] = ensureCompetitor(name);
@@ -318,13 +356,11 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
   // ── AC3: the picker offers list entries only ─────────────────────────────
   test('AC3: the competitor picker offers exactly the list entries, free text is not offered', async ({ page }) => {
     await openNewOpportunityForm(page);
-    await fillLookup(page, 'Nord');
-    const offered = await offeredLookups(page);
+    const offered = await openLookupPicker(page, 'Nord');
     expect(offered.filter((o) => o === 'Nordwind Solutions').length,
       'AC3: the list entry "Nordwind Solutions" is not offered by the picker').toBeGreaterThan(0);
 
-    await fillLookup(page, NOT_ON_LIST);
-    const second = await offeredLookups(page);
+    const second = await openLookupPicker(page, NOT_ON_LIST);
     for (const near of [NOT_ON_LIST, 'Müller GmbH', 'Müller Group']) {
       expect(second.filter((o) => o === near).length,
         `AC3: "${near}" is not on the list and must not be offered`).toBe(0);
@@ -380,7 +416,7 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
     await page.getByLabel('Close Date', { exact: false }).first().fill('01.08.2026');
     await pickOption(page, 'Stage', 'Closed Lost');
     await pickOption(page, 'Verlustgrund', 'An einen Wettbewerber verloren');
-    await fillLookup(page, 'Alpha Ventures');
+    await pickLookup(page, 'Alpha Ventures', 'Alpha Ventures');
 
     await page.getByRole('button', { name: 'Save', exact: true }).first().click({ timeout: 15000 });
     await page.waitForTimeout(4000);
@@ -420,11 +456,11 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
 
     const created = soql(`SELECT Id, Name FROM Competitor__c WHERE Name = '${freshName}' LIMIT 1`);
     expect(created.length, 'AC4: the team lead did not end up with a new list entry').toBeGreaterThan(0);
+    createdCompetitors.push(String(created[0].Id));
 
     // Immediately selectable by everyone who can read the list.
     await openNewOpportunityForm(page);
-    await fillLookup(page, freshName.slice(0, 30));
-    const offered = await offeredLookups(page);
+    const offered = await openLookupPicker(page, freshName);
     expect(offered.filter((o) => o === freshName).length,
       'AC4: the entry just added is not selectable on the deal form').toBeGreaterThan(0);
   });
@@ -520,6 +556,14 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
         sfRun(`data delete record -s Opportunity -i ${id}`);
       } catch {
         /* best effort — the fixtures are named TEST-SCRUM-461-* either way */
+      }
+    }
+    // AC4 adds a fresh list entry per run; nothing references it, so it is removed.
+    for (const id of createdCompetitors.splice(0)) {
+      try {
+        sfRun(`data delete record -s Competitor__c -i ${id}`);
+      } catch {
+        /* best effort */
       }
     }
   });
