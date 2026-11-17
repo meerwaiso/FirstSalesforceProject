@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-461: every internal sales role can read the competitor list, which is what makes the lookup picker work for account managers (AC4 second half). No write access - team leads get SCRUM461_Competitor_List_Teamleitung on top.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM461_Competitor_List_Read</label>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Competitor__c</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+</PermissionSet>

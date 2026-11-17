@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-461 AC4: only sales team leads may add or clear a competitor. Assigned to team leads only; everyone else gets the read-only SCRUM461_Competitor_List_Read.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM461_Competitor_List_Teamleitung</label>
+    <objectPermissions>
+        <allowCreate>true</allowCreate>
+        <allowDelete>true</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Competitor__c</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+</PermissionSet>
