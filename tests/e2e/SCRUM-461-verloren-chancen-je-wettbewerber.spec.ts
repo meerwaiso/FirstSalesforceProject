@@ -557,6 +557,11 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
       }
     }
     const order = seen.map((n) => expected[n].count);
+    // Evidence line: what the report itself rendered, so the coverage table can
+    // quote the artifact's output rather than the expectation.
+    for (const r of rows) {
+      console.log(`AC7 rendered row: ${r.label} -> ${JSON.stringify(r.cells)}`);
+    }
     for (let i = 1; i < order.length; i++) {
       expect(order[i] <= order[i - 1], `AC7: rows are not sorted by deal count at row ${i}`).toBe(true);
     }
