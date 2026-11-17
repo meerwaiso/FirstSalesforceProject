@@ -484,12 +484,15 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
     // once the TTL has passed (~2 min). The picker is therefore polled for
     // up to two minutes rather than read once.
     let offered: string[] = [];
-    for (let round = 0; round < 4 && offered.length === 0; round++) {
+    let hit = 0;
+    // The picker always offers the two helper entries, so "non-empty" is not a
+    // stop condition — poll until the entry itself shows up (measured TTL ~2 min).
+    for (let round = 0; round < 8 && hit === 0; round++) {
       offered = await openLookupPicker(page, addedCompetitorName!);
-      if (offered.length === 0) await page.waitForTimeout(20000);
+      hit = offered.filter((o) => o === addedCompetitorName).length;
+      if (hit === 0) await page.waitForTimeout(20000);
     }
-    expect(offered.filter((o) => o === addedCompetitorName).length,
-      'AC4: the entry just added is not selectable on the deal form').toBeGreaterThan(0);
+    expect(hit, 'AC4: the entry just added is not selectable on the deal form').toBeGreaterThan(0);
   });
 
   // ── AC6: a deal that predates the feature stays usable ──────────────────
