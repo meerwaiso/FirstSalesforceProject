@@ -1,5 +1,6 @@
 import { test, expect, type Page, type Frame } from '@playwright/test';
 import { execSync } from 'node:child_process';
+import { chromium } from 'playwright';
 
 /**
  * [SCRUM-461] „Verloren Chancen je Wettbewerber“ — UI-E2E against Test-Org (Lightning).
@@ -67,6 +68,30 @@ function createRecord(sobject: string, values: string): string {
   const id = doc?.result?.id ?? doc?.id;
   if (!id) throw new Error(`Create ${sobject} lieferte keine Id`);
   return String(id);
+}
+
+// A second, INDEPENDENT Lightning session: its own frontdoor.jsp handshake, no
+// shared storageState. This is the house route for a second UI session.
+// PROBED 2026-11-17 (scripts/tmp-probe461s.mjs): the Lightning Lookup value cache
+// belongs to the browser session — the session that created an entry keeps its
+// stale copy and never offers it, a session with its own handshake does.
+async function freshSession(): Promise<{ page: Page; close: () => Promise<void> }> {
+  const instanceUrl = String(sfRun('org display').result.instanceUrl);
+  const token = String(sfRun('org auth show-access-token').result.accessToken);
+  const lightningUrl = instanceUrl.replace('.my.salesforce.com', '.lightning.force.com');
+  const browser = await chromium.launch();
+  const context = await browser.newContext({ baseURL: lightningUrl });
+  const page = await context.newPage();
+  await page.goto(
+    `${instanceUrl}/secur/frontdoor.jsp?sid=${encodeURIComponent(token)}` +
+    `&retURL=${encodeURIComponent(`${lightningUrl}/lightning/page/home`)}`,
+    { waitUntil: 'commit', timeout: 60000 },
+  );
+  // Positive verification — a URL without "login" proves nothing on a bounce page.
+  await page.waitForURL(/lightning\.force\.com\/lightning/, { timeout: 60000 });
+  await page.locator('div.slds-global-header, one-appnav').first()
+    .waitFor({ state: 'visible', timeout: 60000 });
+  return { page, close: async () => { await context.close(); await browser.close(); } };
 }
 
 function updateRecord(sobject: string, id: string, values: string): void {
@@ -474,26 +499,30 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
     addedCompetitorName = freshName;
   });
 
-  test('AC4: the entry just added is selectable by an account manager on a fresh session', async ({ page }) => {
-    test.setTimeout(240000);
+  test('AC4: the entry just added is selectable by an account manager on a fresh session', async () => {
+    test.setTimeout(300000);
     expect(addedCompetitorName, 'AC4 precondition: no entry was added by the previous test').toBeTruthy();
-    await openNewOpportunityForm(page);
-    // PROBED (tmp-probe461q.js / r.js): the Lightning Lookup value cache is
-    // per browser session and refreshes on a TTL. A fresh session seconds
-    // after a UI create still serves the old list; the same entry is offered
-    // once the TTL has passed (~2 min). The picker is therefore polled for
-    // up to two minutes rather than read once.
-    let offered: string[] = [];
-    let hit = 0;
-    // The picker always offers the two helper entries, so "non-empty" is not a
-    // stop condition — poll until the entry itself shows up (measured TTL ~2 min).
-    for (let round = 0; round < 8 && hit === 0; round++) {
-      offered = await openLookupPicker(page, addedCompetitorName!);
-      hit = offered.filter((o) => o === addedCompetitorName).length;
-      console.log(`AC4b round ${round}: hit=${hit} offered=${JSON.stringify(offered)}`);
-      if (hit === 0) await page.waitForTimeout(20000);
+    // PROBED 2026-11-17 (scripts/tmp-probe461s.mjs): the Lightning Lookup value
+    // cache belongs to the browser SESSION — the session that added an entry keeps
+    // its stale copy and never offers it, a session with its own frontdoor
+    // handshake does. An account manager is a different user with their own
+    // session, so this runs on a second session, not on the shared storageState.
+    const session = await freshSession();
+    const page = session.page;
+    try {
+      await openNewOpportunityForm(page);
+      let offered: string[] = [];
+      let hit = 0;
+      for (let round = 0; round < 4 && hit === 0; round++) {
+        offered = await openLookupPicker(page, addedCompetitorName!);
+        hit = offered.filter((o) => o === addedCompetitorName).length;
+        console.log(`AC4b round ${round}: hit=${hit} offered=${JSON.stringify(offered)}`);
+        if (hit === 0) await page.waitForTimeout(20000);
+      }
+      expect(hit, 'AC4: the entry just added is not selectable on the deal form').toBeGreaterThan(0);
+    } finally {
+      await session.close();
     }
-    expect(hit, 'AC4: the entry just added is not selectable on the deal form').toBeGreaterThan(0);
   });
 
   // ── AC6: a deal that predates the feature stays usable ──────────────────
@@ -605,6 +634,7 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
       expect(row, `AC8: ${name} missing from the own overview`).toBeTruthy();
       const nums = toNumbers(row!.cells);
       const want = own[name];
+      console.log(`AC8 rendered own row: ${name} -> ${JSON.stringify(row!.cells)}`);
       expect(hasNumber(nums, want.count), `AC8: own row ${name} misses its count ${want.count}`).toBe(true);
       expect(hasNumber(nums, want.sum), `AC8: own row ${name} misses its total value ${want.sum}`).toBe(true);
       if (want.avgGap !== null) {
