@@ -4,29 +4,37 @@ import { execSync } from 'node:child_process';
 /**
  * [SCRUM-461] „Verloren Chancen je Wettbewerber“ — UI-E2E against Test-Org (Lightning).
  *
- * Session: frontdoor.jsp globalSetup (auth.setup.ts / storage-state.json), baseURL
+ * Session: frontdoor.jsp globalSetup (auth/setup.ts → storage-state.json), baseURL
  * from org.ts — never a hardcoded host, never networkidle on Lightning.
  *
- * Locators were PROBED against this org (npm run probe), not guessed:
+ * LOCATORS PROBED against this org on 2026-11-17 (scripts/tmp-probe461*.js, results
+ * in docs/SCRUM-461-notizen-tester.md) — not guessed:
  *   - New-Form /lightning/o/Opportunity/new: textbox "Opportunity Name",
  *     combobox "Stage", combobox "Verlustgrund", combobox "Lost to competitor"
- *     (the Lookup picker), combobox "Competitor price (approx.)", button "Save".
- *   - Picklist/Lookup options: role=option (see SCRUM-381 / SCRUM-430 house pattern).
- *   - Reports: /lightning/r/Report/<id>/view renders an iframe whose url contains
- *     "lightningReportApp" (house SCRUM-396 pattern).
+ *     (the Lookup picker, an <input> that accepts fill()), combobox
+ *     "Competitor price (approx.)", button "Save".
+ *   - Picklist options live in a shadow root: `[role=option]` elements exist, but
+ *     their accessible name is EMPTY for getByRole — only ariaSnapshot() sees it
+ *     (same trap as SCRUM-417). Every option lookup below reads ariaSnapshot().
+ *   - Refused save: dialog "We hit a snag." → "Review the following fields" →
+ *     listitem naming the field (errorDisplayField of the validation rule).
+ *   - /lightning/o/Competitor__c/new: textbox "Competitor Name" (the Name field).
+ *   - Report view: iframe url contains "lightningReportApp"; rows are <tr> whose
+ *     first cell is "<name>, unchecked, Select row for Drill Down.<name>".
+ *     Numbers render in the user's locale: 490.000,00 € (dot = thousands).
  *
- * Test data is SEEDED here (Test-Org had 0 competitor records and 0 Closed-Lost
- * deals with Loss_Reason__c = Wettbewerber, so AC2/AC5/AC7/AC8 matched nothing).
- * Seeding is idempotent: every fixture is looked up by Name before it is created.
- *
- * Counts are asserted against SOQL read back from the org, never against numbers
- * remembered in this file.
+ * Test data is SEEDED here — Test-Org had 0 Competitor records and 0 Closed-Lost
+ * deals with Loss_Reason__c = Wettbewerber, so AC2/AC5/AC7/AC8 matched nothing.
+ * Seeding is idempotent (lookup by Name before create). Counts are asserted
+ * against SOQL read back from the org, never against numbers kept in this file.
  */
 
 const ORG = 'Test-Org';
 const P = 'TEST-SCRUM-461-';
 const COMPETITOR_NAMES = ['Nordwind Solutions', 'Alpha Ventures', 'Beta Build'];
 const NOT_ON_LIST = 'Mueller';
+const LOOKUP_COMBO = 'Lost to competitor';
+const PICKER_HELPERS = ['Add New Competitor', 'Search Show more results'];
 
 // ── sf CLI helpers (house pattern of SCRUM-381 / SCRUM-396) ───────────────
 
@@ -65,14 +73,12 @@ function updateRecord(sobject: string, id: string, values: string): void {
   sfRun(`data update record -s ${sobject} -i ${id} -v "${values}"`);
 }
 
-/** Id of the Competitor record with this Name, creating it when absent. */
 function ensureCompetitor(name: string): string {
   const found = soql(`SELECT Id FROM Competitor__c WHERE Name = '${name}' LIMIT 1`);
   if (found.length > 0) return String(found[0].Id);
   return createRecord('Competitor__c', `Name='${name}'`);
 }
 
-/** Id of the fixture Opportunity with this Name, creating it when absent. */
 function ensureLostDeal(tag: string, competitorId: string, amount: number, price: number | null, closeDate: string): string {
   const name = `${P}${tag}`;
   const found = soql(`SELECT Id FROM Opportunity WHERE Name = '${name}' LIMIT 1`);
@@ -86,12 +92,11 @@ function ensureLostDeal(tag: string, competitorId: string, amount: number, price
 }
 
 /**
- * AC8 needs a competitor-lost deal that the report viewer does NOT own.
- * OwnerId cannot be set on create, so one sample Opportunity owned by another
- * user of this org is flipped to Closed Lost + Wettbewerber and renamed to
- * <P>FOREIGN, which makes the step idempotent. Checked against every existing
- * spec before choosing it: no suite asserts an org-wide Closed Lost Opportunity
- * count (SCRUM-449 filters IsClosed = false, SCRUM-381/416 use their own TAGs).
+ * AC8 needs a competitor-lost deal the report viewer does NOT own. OwnerId cannot
+ * be set on create, so a sample Opportunity owned by another user of this org is
+ * flipped and renamed to <P>FOREIGN (which makes the step idempotent). Checked
+ * against every existing spec before choosing it: no suite asserts an org-wide
+ * Closed Lost Opportunity count (SCRUM-449 filters IsClosed = false).
  */
 function ensureForeignLostDeal(competitorId: string): void {
   const already = soql(`SELECT Id FROM Opportunity WHERE Name = '${P}FOREIGN' LIMIT 1`);
@@ -111,7 +116,7 @@ function ensureForeignLostDeal(competitorId: string): void {
   );
 }
 
-/** Everything the reports must show, read out of the org — not out of this file. */
+/** What the reports must show, computed from the org — not from this file. */
 function expectedRows(ownOnly: boolean, sessionOwner: string): Record<string, { count: number; sum: number; avgGap: number | null }> {
   const deals = soql(
     `SELECT Id, Amount, Competitor_Price__c, Competitor_Gap__c, Lost_Last_12M__c, OwnerId, ` +
@@ -127,7 +132,8 @@ function expectedRows(ownOnly: boolean, sessionOwner: string): Record<string, { 
     if (ownOnly && String(d.OwnerId) !== sessionOwner) continue; // scope: user
     const name = names[String(d.Competitor_Lost_To__c)];
     if (!name) continue;
-    const row: { count: number; sum: number; gaps: number[] } = acc[name] ?? { count: 0, sum: 0, gaps: [] as number[] };
+    const row: { count: number; sum: number; gaps: number[] } =
+      acc[name] ?? { count: 0, sum: 0, gaps: [] as number[] };
     row.count += 1;
     row.sum += Number(d.Amount ?? 0);
     if (d.Competitor_Gap__c !== null && d.Competitor_Gap__c !== undefined) row.gaps.push(Number(d.Competitor_Gap__c));
@@ -139,19 +145,26 @@ function expectedRows(ownOnly: boolean, sessionOwner: string): Record<string, { 
     out[key] = {
       count: a.count,
       sum: a.sum,
+      // PO decision: the average is over the deals where the price is KNOWN.
       avgGap: a.gaps.length === 0 ? null : a.gaps.reduce((x, y) => x + y, 0) / a.gaps.length,
     };
   }
   return out;
 }
 
-function numbersIn(texts: string[]): number[] {
+/** German and US number rendering both parse: 490.000,00 € / 490,000.00 / -20.000 */
+function toNumbers(texts: string[]): number[] {
   const out: number[] = [];
   for (const t of texts) {
     for (const raw of t.match(/-?\d[\d.,]*/g) ?? []) {
       let s = raw;
-      if (/,/.test(s)) {
-        s = /^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s) ? s.replace(/,/g, '') : s.replace(/,/g, '.');
+      const lastComma = s.lastIndexOf(',');
+      const lastDot = s.lastIndexOf('.');
+      if (lastComma > lastDot) {
+        s = s.replace(/\./g, '').replace(/,/g, '.'); // German: 1.234,56
+      } else if (lastDot > lastComma) {
+        if (/\.\d{3}(\D|$)/.test(s) && !/\.\d{1,2}(\D|$)/.test(s)) s = s.replace(/\./g, ''); // -20.000
+        else s = s.replace(/,/g, ''); // US: 1,234.56
       }
       const n = Number(s);
       if (!Number.isNaN(n)) out.push(n);
@@ -164,7 +177,7 @@ function hasNumber(list: number[], wanted: number): boolean {
   return list.some((n) => Math.abs(n - wanted) < 0.51);
 }
 
-// ── Lightning helpers (house SCRUM-381) ───────────────────────────────────
+// ── Lightning helpers (all probed, see header) ─────────────────────────────
 
 async function dismissGuidance(page: Page) {
   const dlg = page.getByRole('dialog', { name: /Try the new Salesforce Setup/i });
@@ -174,21 +187,54 @@ async function dismissGuidance(page: Page) {
   }
 }
 
-async function clickOption(page: Page, optionName: string) {
-  const opt = page.getByRole('option', { name: optionName, exact: true }).last();
-  await opt.waitFor({ state: 'visible', timeout: 15000 });
-  for (let i = 0; i < 4; i++) {
-    await opt.click({ force: true }).catch(() => {});
-    await page.waitForTimeout(400);
-    if (!(await opt.isVisible().catch(() => false))) return;
+/**
+ * Open a picklist combobox and click one of its options. The option's accessible
+ * name is only visible through ariaSnapshot (shadow root), so the element is
+ * chosen by its snapshot text — and the helper THROWS when the option never
+ * appears, it never silently skips a step.
+ */
+async function pickOption(page: Page, comboName: string, optionName: string) {
+  const combo = page.getByRole('combobox', { name: comboName, exact: false }).first();
+  await expect(await combo.count(), `combobox "${comboName}" is not on the page`).toBeGreaterThan(0);
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const els = await page.locator('[role=option]').all();
+    for (const el of els) {
+      const snap = await el.ariaSnapshot().catch(() => '');
+      if (snap.includes(`option "${optionName}"`)) {
+        await el.click({ force: true });
+        await page.waitForTimeout(700);
+        return;
+      }
+    }
+    await combo.click({ timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(900);
   }
-  throw new Error(`Picklist-Option "${optionName}" not registered`);
+  throw new Error(`Picker "${comboName}" never offered "${optionName}"`);
+}
+
+/** Names the Lookup picker currently offers (helper entries excluded). */
+async function offeredLookups(page: Page): Promise<string[]> {
+  const els = await page.locator('[role=option]').all();
+  const names: string[] = [];
+  for (const el of els) {
+    const snap = await el.ariaSnapshot().catch(() => '');
+    const m = snap.match(/option "([^"]+)"/);
+    if (m && !PICKER_HELPERS.some((h) => m[1].startsWith(h))) names.push(m[1]);
+  }
+  return names;
+}
+
+async function fillLookup(page: Page, query: string) {
+  const combo = page.getByRole('combobox', { name: LOOKUP_COMBO, exact: false }).first();
+  await expect(await combo.count(), `the Lookup picker "${LOOKUP_COMBO}" is not on the form`).toBeGreaterThan(0);
+  await combo.waitFor({ state: 'visible', timeout: 20000 });
+  await combo.fill(query);
+  await page.waitForTimeout(1500);
 }
 
 async function openNewOpportunityForm(page: Page) {
   await page.goto('/lightning/o/Opportunity/new', { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.locator('.slds-global-header').first().waitFor({ state: 'visible', timeout: 60000 });
-  // Controls paint ~6 s after the header on this org — wait for a real field label.
   await page.getByLabel('Opportunity Name', { exact: false }).first().waitFor({ state: 'visible', timeout: 30000 });
   await dismissGuidance(page);
 }
@@ -206,11 +252,7 @@ async function openRecordDetails(page: Page, path: string) {
 async function reportFrame(page: Page, reportId: string): Promise<Frame> {
   await page.goto(`/lightning/r/Report/${reportId}/view`, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.locator('.slds-global-header').first().waitFor({ state: 'visible', timeout: 60000 });
-  await page.waitForFunction(
-    () => document.querySelectorAll('iframe').length > 0,
-    null,
-    { timeout: 60000 },
-  );
+  await dismissGuidance(page);
   const deadline = Date.now() + 90000;
   for (;;) {
     const f = page.frames().find((fr) => fr.url().includes('lightningReportApp'));
@@ -219,18 +261,20 @@ async function reportFrame(page: Page, reportId: string): Promise<Frame> {
       return f;
     }
     if (Date.now() > deadline) throw new Error('report iframe never appeared');
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
   }
 }
 
+/** Group rows of a matrix report: first cell is "<name>, unchecked, …<name>". */
 async function groupRows(frame: Frame, knownNames: string[]): Promise<Array<{ label: string; cells: string[] }>> {
   const trs = await frame.locator('tr').all();
   const rows: Array<{ label: string; cells: string[] }> = [];
   for (const tr of trs) {
-    const cells = await tr.locator('td').allTextContents();
+    const cells = await tr.locator('td, th').allTextContents();
     if (cells.length === 0) continue;
     const label = cells[0].replace(/\s+/g, ' ').trim();
-    if (knownNames.some((n) => label.startsWith(n))) rows.push({ label, cells });
+    const hit = knownNames.find((n) => label === `${n}, unchecked, Select row for Drill Down.${n}`);
+    if (hit) rows.push({ label: hit, cells });
   }
   return rows;
 }
@@ -239,6 +283,12 @@ function resolveReportId(name: string): string {
   const found = soql(`SELECT Id FROM Report WHERE Name = '${name}' LIMIT 1`);
   expect(found.length, `Report '${name}' is not deployed in Test-Org`).toBeGreaterThan(0);
   return String(found[0].Id);
+}
+
+function sessionOwner(): string {
+  const mine = soql(`SELECT OwnerId FROM Opportunity WHERE Name = '${P}N1' LIMIT 1`);
+  expect(mine.length, 'precondition: fixture N1 exists').toBeGreaterThan(0);
+  return String(mine[0].OwnerId);
 }
 
 // ── The suite ──────────────────────────────────────────────────────────────
@@ -251,8 +301,8 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
 
   test.beforeAll(() => {
     for (const name of COMPETITOR_NAMES) competitorIds[name] = ensureCompetitor(name);
-    // Nordwind gets four own deals: two we were too expensive on, one where we
-    // were cheaper (negative gap, still counted), one without a price at all.
+    // Nordwind: two deals we were too expensive on, one where we were cheaper
+    // (negative gap, still counted), one with no price at all (AC5/TAC1/TAC2).
     ensureLostDeal('N1', competitorIds['Nordwind Solutions'], 100000, 80000, '2026-05-05');
     ensureLostDeal('N2', competitorIds['Nordwind Solutions'], 120000, 90000, '2026-06-05');
     ensureLostDeal('N3', competitorIds['Nordwind Solutions'], 50000, 70000, '2026-07-05');
@@ -268,21 +318,22 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
   // ── AC3: the picker offers list entries only ─────────────────────────────
   test('AC3: the competitor picker offers exactly the list entries, free text is not offered', async ({ page }) => {
     await openNewOpportunityForm(page);
-    const combo = page.getByRole('combobox', { name: 'Lost to competitor', exact: false }).first();
-    await expect(combo, 'the Lookup field is not on the record form').toBeVisible({ timeout: 20000 });
-    await combo.click();
-    await page.waitForTimeout(1500);
+    await fillLookup(page, 'Nord');
+    const offered = await offeredLookups(page);
+    expect(offered.filter((o) => o === 'Nordwind Solutions').length,
+      'AC3: the list entry "Nordwind Solutions" is not offered by the picker').toBeGreaterThan(0);
 
-    const offered = (await page.locator('[role=option]').allTextContents())
-      .map((s) => s.replace(/\s+/g, ' ').trim());
-    for (const name of COMPETITOR_NAMES) {
-      expect(offered.filter((o) => o === name).length,
-        `AC3: "${name}" is on the list but the picker does not offer it`).toBeGreaterThan(0);
+    await fillLookup(page, NOT_ON_LIST);
+    const second = await offeredLookups(page);
+    for (const near of [NOT_ON_LIST, 'Müller GmbH', 'Müller Group']) {
+      expect(second.filter((o) => o === near).length,
+        `AC3: "${near}" is not on the list and must not be offered`).toBe(0);
     }
-    expect(offered.filter((o) => o === NOT_ON_LIST).length,
-      `AC3: "${NOT_ON_LIST}" is not on the list and must not be offered`).toBe(0);
-    expect(offered.filter((o) => o === 'Müller Group').length,
-      'AC3: a near-duplicate of a company that is not on the list must not be offered').toBe(0);
+    // Everything the picker offers has to be a real list entry.
+    const list = soql('SELECT Name FROM Competitor__c').map((r) => String(r.Name));
+    for (const o of second) {
+      expect(list.includes(o), `AC3: the picker offers "${o}", which is not a list entry`).toBe(true);
+    }
   });
 
   // ── AC2: a competitor loss without a competitor is refused ──────────────
@@ -290,19 +341,17 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
     await openNewOpportunityForm(page);
     await page.getByLabel('Opportunity Name', { exact: false }).first().fill(`${P}AC2-UI`);
     await page.getByLabel('Close Date', { exact: false }).first().fill('01.08.2026');
-    await page.getByRole('combobox', { name: 'Stage', exact: false }).first().click();
-    await clickOption(page, 'Closed Lost');
-    await page.getByRole('combobox', { name: 'Verlustgrund', exact: false }).first().click();
-    await clickOption(page, 'An einen Wettbewerber verloren');
+    await pickOption(page, 'Stage', 'Closed Lost');
+    await pickOption(page, 'Verlustgrund', 'An einen Wettbewerber verloren');
 
     await page.getByRole('button', { name: 'Save', exact: true }).first().click({ timeout: 15000 });
+    await page.waitForTimeout(4000);
 
-    // Still on the form: nothing was created.
-    await expect(page).toHaveURL(/lightning\/o\/Opportunity\/new/, { timeout: 20000 });
-    await expect(
-      page.getByText(/Was denn für ein Wettbewerber/).first(),
-      'AC2: the save was refused but the validation-rule message is not shown',
-    ).toBeVisible({ timeout: 20000 });
+    await expect(page.url(), 'AC2: the save went through despite the missing competitor').toContain('Opportunity/new');
+    const dialog = page.getByRole('dialog').first();
+    await expect(dialog, 'AC2: the refusal shows no error dialog').toBeVisible({ timeout: 20000 });
+    const aria = await dialog.ariaSnapshot();
+    expect(aria, 'AC2: the error dialog does not name the competitor field').toContain('Lost to competitor');
     const created = soql(`SELECT Id FROM Opportunity WHERE Name = '${P}AC2-UI' LIMIT 1`);
     expect(created.length, 'AC2: a record was created despite the refusal').toBe(0);
   });
@@ -312,34 +361,29 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
     await openNewOpportunityForm(page);
     await page.getByLabel('Opportunity Name', { exact: false }).first().fill(`${P}AC1-UI`);
     await page.getByLabel('Close Date', { exact: false }).first().fill('01.08.2026');
-    await page.getByRole('combobox', { name: 'Stage', exact: false }).first().click();
-    await clickOption(page, 'Closed Lost');
-    await page.getByRole('combobox', { name: 'Verlustgrund', exact: false }).first().click();
-    await clickOption(page, 'Kontakt abgebrochen');
+    await pickOption(page, 'Stage', 'Closed Lost');
+    await pickOption(page, 'Verlustgrund', 'Kontakt abgebrochen');
 
     await page.getByRole('button', { name: 'Save', exact: true }).first().click({ timeout: 15000 });
-    await page.waitForURL(/lightning\/r\/006[a-zA-Z0-9]+\/view|lightning\/r\/Opportunity\//, { timeout: 30000 });
+    await page.waitForTimeout(4000);
 
     const created = soql(`SELECT Id, Loss_Reason__c, Competitor_Lost_To__c FROM Opportunity WHERE Name = '${P}AC1-UI' LIMIT 1`);
     expect(created.length, 'AC1: the deal did not save').toBeGreaterThan(0);
-    expect(created[0].Competitor_Lost_To__c, 'AC1: no competitor was demanded').toBeNull();
+    expect(created[0].Competitor_Lost_To__c, 'AC1: a competitor was demanded').toBeNull();
     createdIds.push(String(created[0].Id));
   });
 
-  // ── AC5 + AC9: a competitor without a price saves, counts, and stays silent ──
+  // ── AC5 + AC9: a competitor without a price saves, counts, stays silent ──
   test('AC5+AC9: competitor without a price saves, gap stays blank, nothing automatic', async ({ page }) => {
     await openNewOpportunityForm(page);
     await page.getByLabel('Opportunity Name', { exact: false }).first().fill(`${P}AC5-UI`);
     await page.getByLabel('Close Date', { exact: false }).first().fill('01.08.2026');
-    await page.getByRole('combobox', { name: 'Stage', exact: false }).first().click();
-    await clickOption(page, 'Closed Lost');
-    await page.getByRole('combobox', { name: 'Verlustgrund', exact: false }).first().click();
-    await clickOption(page, 'An einen Wettbewerber verloren');
-    await page.getByRole('combobox', { name: 'Lost to competitor', exact: false }).first().click();
-    await clickOption(page, 'Alpha Ventures');
+    await pickOption(page, 'Stage', 'Closed Lost');
+    await pickOption(page, 'Verlustgrund', 'An einen Wettbewerber verloren');
+    await fillLookup(page, 'Alpha Ventures');
 
     await page.getByRole('button', { name: 'Save', exact: true }).first().click({ timeout: 15000 });
-    await page.waitForURL(/lightning\/r\//, { timeout: 30000 });
+    await page.waitForTimeout(4000);
 
     const created = soql(
       `SELECT Id, Amount, Competitor_Price__c, Competitor_Gap__c, Lost_Last_12M__c, ` +
@@ -367,23 +411,22 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
     const freshName = `${P}ADDED ${Date.now()}`;
     await page.goto('/lightning/o/Competitor__c/new', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.locator('.slds-global-header').first().waitFor({ state: 'visible', timeout: 60000 });
-    await page.getByLabel('Name', { exact: true }).first().waitFor({ state: 'visible', timeout: 30000 });
+    const nameField = page.getByLabel('Competitor Name', { exact: false }).first();
+    await expect(nameField, 'the Competitor form has no Name field').toBeVisible({ timeout: 30000 });
     await dismissGuidance(page);
-    await page.getByLabel('Name', { exact: true }).first().fill(freshName);
+    await nameField.fill(freshName);
     await page.getByRole('button', { name: 'Save', exact: true }).first().click({ timeout: 15000 });
-    await page.waitForURL(/lightning\/r\//, { timeout: 30000 });
+    await page.waitForTimeout(4000);
 
     const created = soql(`SELECT Id, Name FROM Competitor__c WHERE Name = '${freshName}' LIMIT 1`);
     expect(created.length, 'AC4: the team lead did not end up with a new list entry').toBeGreaterThan(0);
 
     // Immediately selectable by everyone who can read the list.
     await openNewOpportunityForm(page);
-    await page.getByRole('combobox', { name: 'Lost to competitor', exact: false }).first().click();
-    await page.waitForTimeout(1500);
-    await expect(
-      page.getByRole('option', { name: freshName, exact: true }).first(),
-      'AC4: the entry just added is not selectable on the deal form',
-    ).toBeVisible({ timeout: 20000 });
+    await fillLookup(page, freshName.slice(0, 30));
+    const offered = await offeredLookups(page);
+    expect(offered.filter((o) => o === freshName).length,
+      'AC4: the entry just added is not selectable on the deal form').toBeGreaterThan(0);
   });
 
   // ── AC6: a deal that predates the feature stays usable ──────────────────
@@ -397,93 +440,77 @@ test.describe('[SCRUM-461] Verloren Chancen je Wettbewerber (UI)', () => {
     const before = Number(target.Amount ?? 0);
 
     await openRecordDetails(page, `/lightning/r/Opportunity/${target.Id}/view`);
-    await expect(
-      page.getByText(/Was denn für ein Wettbewerber/).first(),
-      'AC6: opening the historical record demanded a competitor',
-    ).toHaveCount(0);
+    const body = await page.locator('body').first().ariaSnapshot();
+    expect(body.includes('We hit a snag'), 'AC6: opening the historical record demanded something').toBe(false);
 
     const edit = page.getByRole('button', { name: 'Edit Amount', exact: true }).first();
     await expect(edit, 'AC6: the record offers no way to edit it').toBeVisible({ timeout: 20000 });
     await edit.click();
     const input = page.getByLabel('Amount', { exact: true }).first();
-    await expect(input).toBeVisible({ timeout: 20000 });
+    await expect(input, 'AC6: the Amount editor has no input').toBeVisible({ timeout: 20000 });
     await input.fill(String(before + 1));
     await page.getByRole('button', { name: 'Save', exact: true }).first().click({ timeout: 15000 });
-    await page.waitForURL(/\/view/, { timeout: 30000 });
+    await page.waitForTimeout(4000);
 
-    const after = soql(`SELECT Id, Amount, StageName, Loss_Reason__c FROM Opportunity WHERE Id = '${target.Id}' LIMIT 1`);
+    const after = soql(`SELECT Id, Amount, StageName FROM Opportunity WHERE Id = '${target.Id}' LIMIT 1`);
     expect(Number(after[0].Amount), `AC6: the save of ${target.Name} did not persist`).toBe(before + 1);
     expect(after[0].StageName, 'AC6: the stage survived the save').toBe('Closed Lost');
   });
 
-  // ── AC7: the org-wide overview, one row per company, biggest first ──────
+  // ── AC7: the org-wide overview ───────────────────────────────────────────
   test('AC7: org overview shows per competitor count, total value and average gap, biggest first', async ({ page }) => {
-    const reportId = resolveReportId('Verloren_Chancen_je_Wettbewerber');
-    const frame = await reportFrame(page, reportId);
-
-    const owners = soql(`SELECT OwnerId FROM Opportunity WHERE Name = '${P}N1' LIMIT 1`);
-    const sessionOwner = String(owners[0].OwnerId);
-    const expected = expectedRows(false, sessionOwner);
+    const owner = sessionOwner();
+    const expected = expectedRows(false, owner);
     const names = Object.keys(expected);
     expect(names.length, 'AC7 precondition: no competitor has a lost deal in the window').toBeGreaterThan(0);
 
+    const frame = await reportFrame(page, resolveReportId('Verloren_Chancen_je_Wettbewerber'));
     const rows = await groupRows(frame, COMPETITOR_NAMES);
     expect(rows.length, `AC7: the report shows ${rows.length} rows for ${names.length} competitors`).toBe(names.length);
 
-    // Sorted by the deal count, highest first.
-    const counts = names.map((n) => expected[n].count).sort((a, b) => b - a);
-    const observedCounts = rows.map((r) => numbersIn(r.cells));
-    const orderCounts = rows.map((r) => {
-      const wanted = expected[r.label].count;
-      const hit = observedCounts[rows.indexOf(r)].find((n) => Math.abs(n - wanted) < 0.01);
-      expect(hit, `AC7: row "${r.label}" does not show its deal count ${wanted}`).toBeGreaterThan(-1);
-      return wanted;
-    });
-    for (let i = 1; i < orderCounts.length; i++) {
-      expect(orderCounts[i] <= orderCounts[i - 1], `AC7: rows are not sorted by deal count at row ${i}`).toBe(true);
-    }
-    const topName = names.sort((a, b) => expected[b].count - expected[a].count)[0];
-    expect(rows[0].label, `AC7: the competitor that took the most business is not on top (${rows[0].label})`).toBe(topName);
-
+    const seen: string[] = [];
     for (const r of rows) {
       const want = expected[r.label];
-      const nums = observedCounts[rows.indexOf(r)];
-      expect(hasNumber(nums, want.sum), `AC7: row "${r.label}" misses the total value ${want.sum}`).toBe(true);
+      const nums = toNumbers(r.cells);
+      seen.push(r.label);
+      expect(hasNumber(nums, want.count), `AC7: row "${r.label}" does not show its deal count ${want.count}`).toBe(true);
+      expect(hasNumber(nums, want.sum), `AC7: row "${r.label}" does not show the total value ${want.sum}`).toBe(true);
       if (want.avgGap !== null) {
-        expect(hasNumber(nums, want.avgGap), `AC7: row "${r.label}" misses the average gap ${want.avgGap}`).toBe(true);
+        expect(hasNumber(nums, want.avgGap),
+          `AC7/AC5: row "${r.label}" shows no average over the deals with a known price (expected ${want.avgGap})`).toBe(true);
       }
     }
+    const order = seen.map((n) => expected[n].count);
+    for (let i = 1; i < order.length; i++) {
+      expect(order[i] <= order[i - 1], `AC7: rows are not sorted by deal count at row ${i}`).toBe(true);
+    }
+    const top = names.slice().sort((a, b) => expected[b].count - expected[a].count || expected[b].sum - expected[a].sum)[0];
+    expect(rows[0].label, `AC7: the competitor that took the most business (${top}) is not on top`).toBe(top);
   });
 
-  // ── AC8: own deals for the account manager, all deals for director/team leads ──
+  // ── AC8: own deals for the account manager, all deals for the director ───
   test('AC8: the own-deals overview counts only the viewer’s deals, the org one counts all', async ({ page }) => {
-    const owners = soql(`SELECT OwnerId FROM Opportunity WHERE Name = '${P}N1' LIMIT 1`);
-    const sessionOwner = String(owners[0].OwnerId);
-    const all = expectedRows(false, sessionOwner);
-    const own = expectedRows(true, sessionOwner);
-
+    const owner = sessionOwner();
+    const all = expectedRows(false, owner);
+    const own = expectedRows(true, owner);
     const foreign = Object.keys(all).filter((n) => all[n].count > own[n].count);
     expect(foreign.length, 'AC8 precondition: no competitor has a deal owned by another user').toBeGreaterThan(0);
 
-    const orgId = resolveReportId('Verloren_Chancen_je_Wettbewerber');
-    const ownId = resolveReportId('Verloren_Chancen_je_Wettbewerber_Meine');
-
-    const orgFrame = await reportFrame(page, orgId);
+    const orgFrame = await reportFrame(page, resolveReportId('Verloren_Chancen_je_Wettbewerber'));
     const orgRows = await groupRows(orgFrame, COMPETITOR_NAMES);
-    await page.goto('/lightning/page/home', { waitUntil: 'domcontentloaded', timeout: 60000 });
-    const myFrame = await reportFrame(page, ownId);
+    const myFrame = await reportFrame(page, resolveReportId('Verloren_Chancen_je_Wettbewerber_Meine'));
     const myRows = await groupRows(myFrame, COMPETITOR_NAMES);
 
     for (const name of foreign) {
-      const orgRow = orgRows.find((r) => r.label.startsWith(name));
-      const myRow = myRows.find((r) => r.label.startsWith(name));
+      const orgRow = orgRows.find((r) => r.label === name);
+      const myRow = myRows.find((r) => r.label === name);
       expect(orgRow, `AC8: ${name} missing from the org overview`).toBeTruthy();
       expect(myRow, `AC8: ${name} missing from the own overview`).toBeTruthy();
-      const orgCount = numbersIn(orgRow!.cells).some((n) => Math.abs(n - all[name].count) < 0.01);
-      const myCount = numbersIn(myRow!.cells).some((n) => Math.abs(n - own[name].count) < 0.01);
-      expect(orgCount, `AC8: org row for ${name} does not show ${all[name].count}`).toBe(true);
-      expect(myCount, `AC8: own row for ${name} does not show ${own[name].count}`).toBe(true);
-      expect(all[name].count > own[name].count, `AC8: the two reports show the same count for ${name}`).toBe(true);
+      expect(hasNumber(toNumbers(orgRow!.cells), all[name].count),
+        `AC8: org row for ${name} does not show ${all[name].count}`).toBe(true);
+      expect(hasNumber(toNumbers(myRow!.cells), own[name].count),
+        `AC8: own row for ${name} does not show ${own[name].count}`).toBe(true);
+      expect(all[name].count > own[name].count, `AC8: both reports show the same count for ${name}`).toBe(true);
     }
   });
 
