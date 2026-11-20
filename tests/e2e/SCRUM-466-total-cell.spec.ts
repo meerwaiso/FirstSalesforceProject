@@ -168,7 +168,7 @@ test.describe('[SCRUM-466] Report total cell (UI)', () => {
     const id = await createCase('MIXED', MIELE_ID, 500);
     fixtureIds.push(id);
     const org = orgRow(MIELE_ID);
-    expect(org.sum, 'precondition: the group now has a known cost').notToBeNull();
+    expect(org.sum, 'precondition: the group now has a known cost').notToBe(null);
 
     for (const reportName of REPORTS) {
       const frame = await reportFrame(page, reportName);
