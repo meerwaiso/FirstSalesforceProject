@@ -515,12 +515,24 @@ test.describe('[SCRUM-464] Drittparty-Fabrikant (UI)', () => {
     expect(after[0].Drittparty_Fixkosten__c, 'AC10: the re-save demanded a cost').toBeNull();
     expect(String(after[0].Ursache__c), 'AC10: the cause was not preserved').toBe('RechnungAbrechnung');
 
-    // "lists": a re-saved closed case appears in the Cases list view.
+    // The "lists" half moved to its own test (AC10b) with a fresh page:
+    // on this page the EDIT FORM was the last thing open, and page.goto from
+    // there died with "Target page, context or browser has been closed"
+    // (measured 2026-11-20, run 15,6 min, log scratch/e2e-464-ac10.log).
+  });
+
+  // AC10b: after the re-save the old-style closed case is listed in the Cases list.
+  test('AC10b: the re-saved old-style case is listed in the Cases list view', async ({ page }) => {
+    const listed = soql(`SELECT Id, Subject FROM Case WHERE Subject = '${P}OLD-SAVES' LIMIT 1`);
+    expect(listed.length, 'AC10b: the re-saved case is not in the org at all').toBe(1);
+
     await page.goto('/lightning/o/Case/list?filterName=Recent', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.locator('.slds-global-header').first().waitFor({ state: 'visible', timeout: 60000 });
-    await expect(
+    const body = await page.locator('body').first().ariaSnapshot();
+    expect(body.includes('We hit a snag'), 'AC10b: the Cases list view hit a snag').toBe(false);
+    expect(
       await page.getByText(`${P}OLD-SAVES`, { exact: false }).count(),
-      'AC10: the re-saved case is not listed in the Cases list',
+      'AC10b: the re-saved case is not listed in the Cases list',
     ).toBeGreaterThan(0);
   });
 
