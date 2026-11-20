@@ -539,10 +539,16 @@ test.describe('[SCRUM-464] Drittparty-Fabrikant (UI)', () => {
 
     await page.goto('/lightning/o/Case/list?filterName=Recent', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.locator('.slds-global-header').first().waitFor({ state: 'visible', timeout: 60000 });
-    const body = await boundedSnap(page.locator('body').first());
-    expect(body.includes('We hit a snag'), 'AC10b: the Cases list view hit a snag').toBe(false);
+    // The list body paints well after the global header (house lesson: wait for
+    // the content, not the header). Rows are links to the records.
+    await expect(
+      await page.locator('a[href*="/lightning/r/Case/"]').count(),
+      'AC10b: the Cases list view rendered no record rows at all',
+    ).toBeGreaterThan(0);
+    const links = await page.locator('a[href*="/lightning/r/Case/"]').allTextContents();
+    console.log(`AC10b Cases list (${P} filter=Recent) row labels: ${JSON.stringify(links.slice(0, 12))}`);
     expect(
-      await page.getByText(`${P}OLD-SAVES`, { exact: false }).count(),
+      links.filter((t) => t.includes(`${P}OLD-SAVES`)).length,
       'AC10b: the re-saved case is not listed in the Cases list',
     ).toBeGreaterThan(0);
   });
