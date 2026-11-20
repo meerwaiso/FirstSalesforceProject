@@ -33,3 +33,39 @@ Every fact below was read back by me on 2026-11-20; command named where it is no
 
 - Closing via UI is NOT reachable (house SCRUM-442 probe: Status picklist never offers `Closed`, Close button vis:false). UI close-path = inline edit on an already-closed Case; the combined save is one `Edit`-form Save.
 - My fixtures (deleted in afterAll): Fabrikant `Bosch` (3 cases, all cost unknown) + `Atlas` (1 case, foreign-owned) + `TEST-SCRUM-464-CLOSE-PATH`, `OLD-SAVES`, `B1..B3`, `FOREIGN`. During the run the org reports Siemens 2 / Miele 2 / Bosch 3 / Atlas 1 (8 third-party cases); after cleanup back to 2 manufacturers / 4 cases.
+
+## Tester measurement 2026-11-20 (post-rebase run)
+
+- Apex run 707WU00001VPhl8 (started 2026-11-20T19:23:04Z): 18 tests, 18 pass, 0 fail —
+  SCRUM464TesterCoverageTest 4, SCRUM464DrittpartyTest 8, SCRUM464DrittpartyFlsTest 3.
+  `sf apex run test --json` returns ONLY `{"result":{"testRunId":...}}`; the verdict comes
+  from `sf apex get test -o Test-Org -i <runId> --json` (summary.outcome / tests[].Outcome).
+- Apex has no `savepoint()` / `Savepoint.save()` in this org (scripts/apex-probe.sh, exit 1
+  "Method does not exist or incorrect signature: void savepoint()"). No rollback in the class:
+  a refused save throws and is asserted via the throw; nothing persists.
+- Aggregate SOQL `Integer x = SELECT Count() FROM X` is refused by the Apex parser
+  ("Unexpected token 'SELECT'"). Side-effect counts use `FeedItem[]`/`EmailMessage[]`
+  with `WHERE CreatedDate = TODAY` and `.size()`.
+- `User` entity: no `Profile`/`ProfileId` column (SOQL), `Alias` max length 8
+  (STRING_TOO_LONG), and creating a User on an Experience Cloud profile throws
+  FIELD_INTEGRITY_EXCEPTION ("Allow using standard external profiles..." off) => no
+  customer-facing System.runAs and no second UI session in this Developer Edition org
+  (2 licences, both held by admins). AC12 = FLS boundary + org read-back, licence gap named.
+- A restricted user's `SELECT` of an invisible field does NOT throw — it returns rows
+  (measured in ac13_negative). The falsifier is therefore the VALUE: the new fields must
+  come back null.
+- Org layout read-back: `SELECT Id, Name FROM Layout` (209 layouts, Tooling SOQL), per-layout
+  fields via `sf data get record -o Test-Org -s Layout -i <id> --use-tooling-api`.
+  `RelatedList` is NOT a valid sObject ("sObject type 'RelatedList' is not supported") and
+  `project retrieve` rejects Layout/RelatedList (not in metadataRegistry).
+  The SCRUM464 fields appear on the internal `Case Layout` only — not on Account layouts.
+- Reports under test: `Faelle_Drittparty_Fabrikante` (00OWU00000RgRnR2AV) and
+  `Faelle_Drittparty_Fabrikante_Meine` (00OWU00000RgRnS2AV); groupingDown
+  `Case.Drittparty_Fabrikant__c` by RowCount desc, showGrandTotal=true, showSubTotals=false,
+  FORMULA1 = `IF(Case.Drittparty_Fixkosten_Known__c:SUM = 0, NULL, Case.Drittparty_Fixkosten__c:SUM)`,
+  FORMULA2 = the same over known costs only.
+- Playwright in a worktree: `npm run test:e2e*` fails ("unknown command 'test'") and
+  `npx playwright` installs a temp 1.65.1 CLI whose config load throws MODULE_NOT_FOUND.
+  Fix that works: symlink the main checkout's node_modules
+  (`ln -sfn .../FirstSalesforceProject/node_modules node_modules`, @playwright/test 1.61.0)
+  and run `node_modules/.bin/playwright test -c playwright.config.ts <spec>`.
