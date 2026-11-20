@@ -44,3 +44,40 @@ Survey base: `git fetch origin`; origin/master @ `3eb2ac1`; live org read via `s
 - Assigned all three released SCRUM464 PSs to BOTH users (`sf org assign permset -n <PS> -b <user> -o Test-Org`); fls-check.sh then reads: existence yes Lookup(Fabrikant), granted by SCRUM464_Drittparty_Team read/edit true, 2 users assigned.
 - Real-session read-back after the assignment (`sf data query -o Test-Org`): two created closed third-party Cases for Siemens read `ClosedDate=2026-11-20T15:10`, `Closed_Last_12M__c=true`, `Drittparty_Fabrikant__c=a07WU00001VNfeUYAT`, cost `1450` with `Drittparty_Fixkosten_Known__c=1` and blank cost with `Known=0`.
 - Org data now for the Tester: Fabrikant__c "Siemens" (a07WU00001VNfeUYAT) + 2 closed third-party Cases (500WU000031aaiqYAA cost 1450 known, 500WU000031bSZaYAM cost unknown) → the report row must read Siemens: 2 cases, Sum 1450.00, average 1450.00 (average over known costs only — 725.00 would prove the denominator is ignored).
+
+## Round 2 (rework after the Architect rejection, 2026-11-20)
+
+- **SCRUM-434 pin re-anchored (the drift gate was red on head 894503f).**
+  `SCRUM434UrsacheTest.test_AC1_Picklist_ExaktFuenfWerte` pinned `assertEquals(5, size())`
+  plus the exact five-label set. Reproduced on the org, not inferred: `sf apex run test
+  -o Test-Org -l RunSpecifiedTests -n SCRUM434UrsacheTest` → "AC1: genau 5 Picklist-Werte
+  erwartet, gefunden: 6", Outcome Failed, Tests Ran 6 / Pass Rate 83%.
+  Replaced by `test_AC1_Picklist_POLabelsIntact`: the 5 PO labels must still exist, at
+  most ONE value beyond them, that value must be exactly `Drittparty / Fremdfabrik Produkt`,
+  and PO-labels + foreign must equal the size. After deploying the class: 6/6 Passed in
+  Test-Org (6 values); it also holds with 5 values (Prod-Org, not released yet — 0 foreign).
+  Only this one class pins the cause picklist (git grep getPicklistValues: every other hit
+  is another object's field).
+- `sf apex run test` runs the ORG's deployed copy and is async by default (prints a TestRunId;
+  use `--synchronous` or `sf apex get test -i <id>`). A changed test class must be deployed
+  before the re-run can show the new code.
+- `AggregateResult` is not a usable type in an anonymous `sf apex run` script
+  (`List<AggregateResult>` → "Unexpected token '<'", `AggregateResult x` → "Unexpected token");
+  it compiles only inside a class. SOQL also accepts ONE aggregate per query
+  (`SELECT COUNT(), SUM(x)` → "unexpected token ','"). Measurement route: `sf data query`, one query per aggregate.
+- Closed-case fixtures also carry the SCRUM-442 rule: creating a closed Case without
+  `Customer_Satisfaction__c` is refused ("Bitte wählen eine Kundansatisfaction (1–5) …").
+- **AC7 measured for an all-unknown manufacturer (the gap the Architect named).**
+  Added org data: `Fabrikant__c` "Miele" = `a07WU00001VNl6AYAT` (it already existed — the
+  guard refused a second one: `"Miele" is already on the list`), plus 2 closed third-party
+  Cases for it, both with blank cost: `500WU000031cANeYAM` "464 Org Miele washing machine",
+  `500WU000031c0XyYAI` "464 Org Miele dryer". Measured with SOQL aggregates:
+  COUNT() = 2 · `SUM(Drittparty_Fixkosten__c)` = **null** · `SUM(Drittparty_Fixkosten_Known__c)` = 0
+  → the FORMULA1 average hits its NULL branch. So the Miele row shows 2 cases and TWO EMPTY
+  cost cells; a zero is not what the platform feeds those cells.
+  Siemens (unchanged): COUNT 2, SUM 1450, KNOWN 1 → average 1450.00, not 725.00.
+  NOT verifiable from the CLI: the rendered cell. `GET /services/data/v62.0/reports` → NOT_FOUND
+  (no report-instance API at v62), and a Currency aggregate column cannot carry the literal
+  text "cost not known" — that wording would need a Text column of its own (PO decision).
+- CI on the new head `eea690e`: all four jobs SUCCESS — Lint & Format, README aus Release Notes,
+  Metadata/Apex/Session Smoke, Prod-Org Drift Gate (run 44766274613, conclusion success).
