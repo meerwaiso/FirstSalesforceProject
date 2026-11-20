@@ -15,7 +15,7 @@
         <masterLabel>Durchschnitt Fixkosten (known)</masterLabel>
         <scale>2</scale>
     </aggregates>
-    <description>SCRUM-464 AC9 (service agents): same overview as Faelle_Drittparty_Fabrikante, but scope=user - only the agent&apos;s own cases are counted. The Case sharing model, sharing rules and case owners are untouched; scope is the whole AC9 mechanism (house SCRUM-394/461).</description>
+    <description>SCRUM-464 AC8/AC9: third-party Cases closed in the rolling twelve months, per manufacturer, most cases first; Sum of the known repair costs plus the average over known costs only (never over all cases).</description>
     <filter>
         <criteriaItems>
             <column>CLOSED</column>

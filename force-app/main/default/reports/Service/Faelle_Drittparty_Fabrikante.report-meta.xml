@@ -15,7 +15,7 @@
         <masterLabel>Durchschnitt Fixkosten (known)</masterLabel>
         <scale>2</scale>
     </aggregates>
-    <description>SCRUM-464 AC8 (service director, team leads): last twelve months per manufacturer - cases they caused (RowCount), total known cost (Sum), average known cost (FORMULA1). Window = Closed_Last_12M__c gate + INTERVAL_CUSTOM; sort = most cases first (the tie-break by higher total cost is not expressible, one sort key only).</description>
+    <description>SCRUM-464 AC8/AC9: third-party Cases closed in the rolling twelve months, per manufacturer, most cases first; Sum of the known repair costs plus the average over known costs only (never over all cases).</description>
     <filter>
         <criteriaItems>
             <column>CLOSED</column>
