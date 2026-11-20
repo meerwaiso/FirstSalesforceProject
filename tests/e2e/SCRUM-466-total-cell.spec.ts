@@ -38,8 +38,7 @@ function sfRun(args: string): any {
 function soql(query: string): any[] {
   // NO --use-tooling-api here: it switches the sObject namespace and makes
   // `FROM Case` fail with "sObject type 'Case' is not supported" (measured 2026-11-20).
-  const doc = sfRun(`data query -q "${query}"`);
-  return doc?.result?.records ?? [];
+  return sfRun(`data query -q "${query}"`).records ?? [];
 }
 
 // The Developer's all-unknown fixtures: never touched, only counted.
@@ -113,7 +112,7 @@ function createCase(subjectTag: string, fabrikantId: string, cost: number | null
 
 function createRecord(sobject: string, values: string): string {
   const doc = sfRun(`data create record -s ${sobject} -v "${values}"`);
-  const id = doc?.result?.id ?? doc?.id;
+  const id = doc?.id;
   if (!id) throw new Error(`create ${sobject} lieferte keine Id`);
   return String(id);
 }
