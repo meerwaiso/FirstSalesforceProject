@@ -148,7 +148,7 @@ test.describe('[SCRUM-466] Report total cell (UI)', () => {
   test('[SCRUM-466][AC-total] all costs unknown => total cell empty, count and average still right', async ({ page }) => {
     const org = orgRow(MIELE_ID);
     expect(org.count, 'precondition: Miele must have closed all-unknown third-party cases in the window').toBeGreaterThan(0);
-    expect(org.sum, 'precondition: every cost of the group is unknown (the NULL branch of the formula)').toBeNull();
+    expect(org.sum, 'precondition: every cost of the group is unknown (the NULL branch of the formula)').toBe(null);
 
     for (const reportName of REPORTS) {
       const frame = await reportFrame(page, reportName);
@@ -168,7 +168,7 @@ test.describe('[SCRUM-466] Report total cell (UI)', () => {
     const id = await createCase('MIXED', MIELE_ID, 500);
     fixtureIds.push(id);
     const org = orgRow(MIELE_ID);
-    expect(org.sum, 'precondition: the group now has a known cost').notToBe(null);
+    expect(org.sum === null, 'precondition: the group now has a known cost').toBe(false);
 
     for (const reportName of REPORTS) {
       const frame = await reportFrame(page, reportName);
