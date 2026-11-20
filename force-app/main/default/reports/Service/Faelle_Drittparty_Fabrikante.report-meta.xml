@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Report xmlns="http://soap.sforce.com/2006/04/metadata">
-    <columns>
-        <aggregateTypes>Sum</aggregateTypes>
-        <field>Case.Drittparty_Fixkosten__c</field>
-    </columns>
     <aggregates>
         <calculatedFormula>IF(Case.Drittparty_Fixkosten_Known__c:SUM = 0, NULL, Case.Drittparty_Fixkosten__c:SUM / Case.Drittparty_Fixkosten_Known__c:SUM)</calculatedFormula>
         <datatype>currency</datatype>
@@ -15,6 +11,10 @@
         <masterLabel>Durchschnitt Fixkosten (known)</masterLabel>
         <scale>2</scale>
     </aggregates>
+    <columns>
+        <aggregateTypes>Sum</aggregateTypes>
+        <field>Case.Drittparty_Fixkosten__c</field>
+    </columns>
     <description>SCRUM-464 AC8/AC9: third-party Cases closed in the rolling twelve months, per manufacturer, most cases first; Sum of the known repair costs plus the average over known costs only (never over all cases).</description>
     <filter>
         <criteriaItems>
@@ -43,12 +43,21 @@
     <format>Summary</format>
     <groupingsDown>
         <aggregateType>RowCount</aggregateType>
+        <dateGranularity>Day</dateGranularity>
         <field>Case.Drittparty_Fabrikant__c</field>
         <sortByName>RowCount</sortByName>
         <sortOrder>Desc</sortOrder>
         <sortType>Aggregate</sortType>
     </groupingsDown>
     <name>Faelle_Drittparty_Fabrikante</name>
+    <params>
+        <name>units</name>
+        <value>m</value>
+    </params>
+    <params>
+        <name>co</name>
+        <value>1</value>
+    </params>
     <reportType>CaseList</reportType>
     <scope>organization</scope>
     <showDetails>false</showDetails>
