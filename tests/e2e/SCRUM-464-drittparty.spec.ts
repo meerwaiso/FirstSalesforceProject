@@ -536,20 +536,34 @@ test.describe('[SCRUM-464] Drittparty-Fabrikant (UI)', () => {
   test('AC10b: the re-saved old-style case is listed in the Cases list view', async ({ page }) => {
     const listed = soql(`SELECT Id, Subject FROM Case WHERE Subject = '${P}OLD-SAVES' LIMIT 1`);
     expect(listed.length, 'AC10b: the re-saved case is not in the org at all').toBe(1);
+    const caseId = String(listed[0].Id);
 
-    // Proven list-view pattern (SCRUM-378, green): goto -> '.slds-global-header,
-    // one-appnav' -> wait for the list's OWN rendered line, not for the header.
+    // Opening the record is what puts it into the "Recently Viewed" list, so this
+    // session has to view it before the list can be expected to show it.
+    await openRecordDetails(page, `/lightning/r/Case/${caseId}/view`);
+
+    // Proven list-view pattern (SCRUM-378): goto -> header -> wait for the list's
+    // OWN grid, never for networkidle. Measured 2026-11-20 (probe-list5.log): the
+    // grid is role="grid" and every row links the record as
+    // a[href*="/lightning/r/<Id>/view"] with the Subject as its label.
     await page.goto('/lightning/o/Case/list?filterName=Recent', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForSelector('.slds-global-header, one-appnav', { timeout: 60000 });
-    const body = page.locator('body');
     await expect(
-      body.getByText(/Sorted by|Filtered by/).first(),
-      'AC10b: the Cases list view never rendered its list header',
+      page.locator('[role="grid"]').first(),
+      'AC10b: the Cases list view rendered no grid at all',
     ).toBeVisible({ timeout: 30000 });
-    const rendered = await body.getByText(`${P}OLD-SAVES`, { exact: false }).count();
-    console.log(`AC10b Cases list rows matching ${P}OLD-SAVES: ${rendered}`);
-    expect(rendered, 'AC10b: the re-saved case is not listed in the Cases list').toBeGreaterThan(0);
+    const rowLinks = await page.locator(`a[href*="/lightning/r/${caseId}/"]`).allTextContents();
+    console.log(`AC10b Cases list rows for ${caseId}: ${JSON.stringify(rowLinks)}`);
+    expect(
+      rowLinks.length,
+      'AC10b: the re-saved case is not listed in the Cases list view',
+    ).toBeGreaterThan(0);
+    expect(
+      rowLinks.some((t) => t.includes(`${P}OLD-SAVES`)),
+      'AC10b: the listed row does not carry the re-saved case as Subject',
+    ).toBe(true);
   });
+
 
 
   test.afterEach(() => {});
