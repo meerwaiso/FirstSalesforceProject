@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-464 Phase 2c: the TEST-LOCAL object-level Permission Set. Deployed
+         before the test classes, which query it by name in System context.
+         Never assigned to a real user (house SCRUM442/451_TestObjectAccess). -->
+    <types>
+        <members>SCRUM464_TestObjectAccess</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>

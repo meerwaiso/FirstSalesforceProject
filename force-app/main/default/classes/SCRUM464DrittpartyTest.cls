@@ -75,13 +75,13 @@ private class SCRUM464DrittpartyTest {
             'SCRUM464_Fabrikant_List_Read',
             'SCRUM434_Ursache',
             'SCRUM442_Satisfaction_Write',
-            'SCRUM451_TestObjectAccess'
+            'SCRUM464_TestObjectAccess'
         };
     }
 
     @isTest
     static void thirdPartyCase_withoutManufacturer_refused() {
-        User u = mkUser('fls464a');
+        User u = mkUser('f464a');
         insert u;
         grantPS(closerRights(), u.Id);
 
@@ -114,7 +114,7 @@ private class SCRUM464DrittpartyTest {
 
     @isTest
     static void closedCase_otherCause_savesWithoutManufacturer() {
-        User u = mkUser('fls464b');
+        User u = mkUser('f464b');
         insert u;
         grantPS(closerRights(), u.Id);
 
@@ -146,7 +146,7 @@ private class SCRUM464DrittpartyTest {
 
     @isTest
     static void manufacturerOrCost_onNonThirdPartyCase_refused() {
-        User u = mkUser('fls464c');
+        User u = mkUser('f464c');
         insert u;
         grantPS(closerRights(), u.Id);
 
@@ -193,7 +193,7 @@ private class SCRUM464DrittpartyTest {
 
     @isTest
     static void thirdPartyCase_knownAndUnknownCost_denominator() {
-        User u = mkUser('fls464d');
+        User u = mkUser('f464d');
         insert u;
         grantPS(closerRights(), u.Id);
 
@@ -245,7 +245,7 @@ private class SCRUM464DrittpartyTest {
 
     @isTest
     static void windowGate_falseWhileOpen() {
-        User u = mkUser('fls464e');
+        User u = mkUser('f464e');
         insert u;
         grantPS(closerRights(), u.Id);
 
@@ -272,9 +272,9 @@ private class SCRUM464DrittpartyTest {
     static void duplicateManufacturer_refused_anyCasing() {
         // TAC10 / AC5: the list may not hold the same company twice, so the overview
         // shows the company exactly once. Guard only - no email, no task, no alert (AC11).
-        User u = mkUser('fls464lead');
+        User u = mkUser('f464lead');
         insert u;
-        grantPS(new String[] { 'SCRUM464_Fabrikant_List_Read', 'SCRUM464_Fabrikant_List_Lead', 'SCRUM451_TestObjectAccess' }, u.Id);
+        grantPS(new String[] { 'SCRUM464_Fabrikant_List_Read', 'SCRUM464_Fabrikant_List_Lead', 'SCRUM464_TestObjectAccess' }, u.Id);
 
         System.runAs(u) {
             boolean refused = false;
@@ -312,7 +312,7 @@ private class SCRUM464DrittpartyTest {
         // this run created carries a manufacturer, so the overview row is comparable
         // to a real count. The count is a lower bound, never a cross-method total -
         // Apex rolls back per test method, so the order of the methods must not matter.
-        User u = mkUser('fls464f');
+        User u = mkUser('f464f');
         insert u;
         grantPS(closerRights(), u.Id);
 

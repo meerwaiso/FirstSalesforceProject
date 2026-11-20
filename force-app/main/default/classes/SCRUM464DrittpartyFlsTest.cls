@@ -69,10 +69,11 @@ private class SCRUM464DrittpartyFlsTest {
 
     @isTest
     static void newFields_invisibleWithoutAnySCRUM464PS() {
-        User neg = mkUser('fls464neg');
+        User neg = mkUser('f464neg');
+        insert neg;
         // Object-level CRUD only: without it Case would be unreachable and every
         // assert below would pass for the wrong reason.
-        grantPS(new String[] { 'SCRUM451_TestObjectAccess' }, neg.Id);
+        grantPS(new String[] { 'SCRUM464_TestObjectAccess' }, neg.Id);
 
         System.runAs(neg) {
             System.assertEquals(
@@ -100,7 +101,7 @@ private class SCRUM464DrittpartyFlsTest {
 
     @isTest
     static void teamMember_reads_theNewFields() {
-        User u = mkUser('fls464team');
+        User u = mkUser('f464team');
         insert u;
         grantPS(
             new String[] {
@@ -108,7 +109,7 @@ private class SCRUM464DrittpartyFlsTest {
                 'SCRUM464_Fabrikant_List_Read',
                 'SCRUM434_Ursache',
                 'SCRUM442_Satisfaction_Write',
-                'SCRUM451_TestObjectAccess'
+                'SCRUM464_TestObjectAccess'
             },
             u.Id
         );
@@ -124,6 +125,14 @@ private class SCRUM464DrittpartyFlsTest {
                 Case.Drittparty_Fixkosten__c.getDescribe().isAccessible(),
                 'AC13: the Permission Set grants the cost'
             );
+            // The two system-computed fields stay read-only even for the team (AC1/AC8
+            // gate must not be editable): the write gate is isUpdateable(), not isEditable()
+            // (measured: isEditable() does not exist on DescribeFieldResult).
+            DescribeFieldResult gate = Case.Closed_Last_12M__c.getDescribe();
+            System.assertEquals(true, gate.isAccessible(),
+                'AC8: the window gate is readable');
+            System.assertEquals(false, gate.isUpdateable(),
+                'AC8: the window gate is never editable, even for the team');
             // A real read, not just the flag: the values come back.
             Case back = [
                 SELECT Id, Drittparty_Fabrikant__c, Drittparty_Fixkosten__c, Closed_Last_12M__c
@@ -141,13 +150,13 @@ private class SCRUM464DrittpartyFlsTest {
 
     @isTest
     static void listRead_mayNotAdd_listLead_mayAndIsImmediatelyVisible() {
-        User reader = mkUser('fls464reader');
-        User lead = mkUser('fls464lead');
+        User reader = mkUser('f464read');
+        User lead = mkUser('f464lead');
         insert reader;
         insert lead;
-        grantPS(new String[] { 'SCRUM464_Fabrikant_List_Read', 'SCRUM451_TestObjectAccess' }, reader.Id);
+        grantPS(new String[] { 'SCRUM464_Fabrikant_List_Read', 'SCRUM464_TestObjectAccess' }, reader.Id);
         grantPS(
-            new String[] { 'SCRUM464_Fabrikant_List_Read', 'SCRUM464_Fabrikant_List_Lead', 'SCRUM451_TestObjectAccess' },
+            new String[] { 'SCRUM464_Fabrikant_List_Read', 'SCRUM464_Fabrikant_List_Lead', 'SCRUM464_TestObjectAccess' },
             lead.Id
         );
 
