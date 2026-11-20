@@ -69,3 +69,12 @@ Every fact below was read back by me on 2026-11-20; command named where it is no
   Fix that works: symlink the main checkout's node_modules
   (`ln -sfn .../FirstSalesforceProject/node_modules node_modules`, @playwright/test 1.61.0)
   and run `node_modules/.bin/playwright test -c playwright.config.ts <spec>`.
+
+
+## Tester measurement 2026-11-20 (final, this turn)
+- E2E `tests/e2e/SCRUM-464-drittparty.spec.ts` 6/6 PASS, 3.3 min (scratch/e2e-464-full.log); AC10 split into AC10 + AC10b (fresh page) - `page.goto` from the edit form died ("browser closed"), 900s timeout was the unguarded `ariaSnapshot()` on the record body, fixed with `boundedSnap` (Promise.race 20s cap).
+- List-view rows are NOT light-DOM anchors of the form `/lightning/r/Case/`; the grid is `role="grid"` and each row links `a[href*="/lightning/r/<Id>/view"]` (measured in probe-list6, Recently Viewed list). `allTextContents()` on the Subject anchor returns "" -> the Subject check reads the grid ARIA.
+- `filterName=Recent` = Recently Viewed: the session has to open the record before the list can be expected to contain it.
+- Org counts read this turn (stable after cleanup): 50 closed Cases; 4 closed with `Ursache__c = DrittpartyProdukt`; 4 of those carry `Drittparty_Fabrikant__c`; 1 carries `Drittparty_Fixkosten__c`. Leftover `TEST-SCRUM-464*` records: 0.
+- AC12 (customer-facing surface) cannot be exercised: no Experience Cloud user available (2 licences, both admins; `System.runAs` on an Experience Cloud profile throws FIELD_INTEGRITY_EXCEPTION) -> row is NOT COVERED, named as a licence gap.
+- PR #185 head after my pushes: 6cd1417; CI: Lint & Format, README, Metadata/Apex/Session Smoke SUCCESS; Prod-Org Drift Gate in_progress (run 6cd1417). All intermediate heads -> CI cancelled.
