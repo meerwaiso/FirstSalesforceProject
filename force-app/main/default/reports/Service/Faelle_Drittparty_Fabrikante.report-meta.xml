@@ -1,20 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Report xmlns="http://soap.sforce.com/2006/04/metadata">
     <aggregates>
+        <calculatedFormula>IF(Case.Drittparty_Fixkosten_Known__c:SUM = 0, NULL, Case.Drittparty_Fixkosten__c:SUM)</calculatedFormula>
+        <datatype>currency</datatype>
+        <description>SCRUM-464 AC8 / SCRUM-466: sum of the known repair costs. NULL when no case of the group has a known cost, so the cell renders empty - a missing cost is never printed as 0,00.</description>
+        <developerName>FORMULA1</developerName>
+        <downGroupingContext>Case.Drittparty_Fabrikant__c</downGroupingContext>
+        <isActive>true</isActive>
+        <isCrossBlock>false</isCrossBlock>
+        <masterLabel>Total Fixkosten (known)</masterLabel>
+        <scale>2</scale>
+    </aggregates>
+    <aggregates>
         <calculatedFormula>IF(Case.Drittparty_Fixkosten_Known__c:SUM = 0, NULL, Case.Drittparty_Fixkosten__c:SUM / Case.Drittparty_Fixkosten_Known__c:SUM)</calculatedFormula>
         <datatype>currency</datatype>
-        <description>SCRUM-464 AC8/AC9: third-party Cases closed in the rolling twelve months, per manufacturer, most cases first; Sum of the known repair costs plus the average over known costs only (never over all cases).</description>
-        <developerName>FORMULA1</developerName>
+        <description>SCRUM-464 AC8/AC9: average over the known costs only (never over all cases). NULL when none is known.</description>
+        <developerName>FORMULA2</developerName>
         <downGroupingContext>Case.Drittparty_Fabrikant__c</downGroupingContext>
         <isActive>true</isActive>
         <isCrossBlock>false</isCrossBlock>
         <masterLabel>Durchschnitt Fixkosten (known)</masterLabel>
         <scale>2</scale>
     </aggregates>
-    <columns>
-        <aggregateTypes>Sum</aggregateTypes>
-        <field>Case.Drittparty_Fixkosten__c</field>
-    </columns>
     <description>SCRUM-464 AC8/AC9: third-party Cases closed in the rolling twelve months, per manufacturer, most cases first; Sum of the known repair costs plus the average over known costs only (never over all cases).</description>
     <filter>
         <criteriaItems>
