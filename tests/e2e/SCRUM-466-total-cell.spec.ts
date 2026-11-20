@@ -36,7 +36,10 @@ function sfRun(args: string): any {
   ).result;
 }
 function soql(query: string): any[] {
-  return sfRun(`data query --use-tooling-api -q "${query}"`).records;
+  // NO --use-tooling-api here: it switches the sObject namespace and makes
+  // `FROM Case` fail with "sObject type 'Case' is not supported" (measured 2026-11-20).
+  const doc = sfRun(`data query -q "${query}"`);
+  return doc?.result?.records ?? [];
 }
 
 // The Developer's all-unknown fixtures: never touched, only counted.
