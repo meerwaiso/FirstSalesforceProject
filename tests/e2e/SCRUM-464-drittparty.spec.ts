@@ -539,18 +539,15 @@ test.describe('[SCRUM-464] Drittparty-Fabrikant (UI)', () => {
 
     await page.goto('/lightning/o/Case/list?filterName=Recent', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.locator('.slds-global-header').first().waitFor({ state: 'visible', timeout: 60000 });
-    // The list body paints well after the global header (house lesson: wait for
-    // the content, not the header). Rows are links to the records.
-    await expect(
-      await page.locator('a[href*="/lightning/r/Case/"]').count(),
-      'AC10b: the Cases list view rendered no record rows at all',
-    ).toBeGreaterThan(0);
-    const links = await page.locator('a[href*="/lightning/r/Case/"]').allTextContents();
-    console.log(`AC10b Cases list (${P} filter=Recent) row labels: ${JSON.stringify(links.slice(0, 12))}`);
-    expect(
-      links.filter((t) => t.includes(`${P}OLD-SAVES`)).length,
-      'AC10b: the re-saved case is not listed in the Cases list',
-    ).toBeGreaterThan(0);
+    // The list rows are NOT anchors in the light DOM (measured 2026-11-20:
+    // locator('a[href*="/lightning/r/Case/"]') -> 0). Like the SCRUM-417 related
+    // list, the rows live in a shadow subtree that only the ARIA snapshot reads.
+    const aria = await boundedSnap(page.locator('body').first(), 30000);
+    expect(aria.includes('We hit a snag'), 'AC10b: the Cases list view hit a snag').toBe(false);
+    expect(aria.length, 'AC10b: the Cases list view rendered no content at all').toBeGreaterThan(2000);
+    const hit = aria.indexOf(`${P}OLD-SAVES`);
+    console.log(`AC10b aria len=${aria.length} subject found at=${hit} context=${hit >= 0 ? aria.slice(Math.max(0, hit - 120), hit + 60) : 'n/a'}`);
+    expect(hit >= 0, 'AC10b: the re-saved case is not listed in the Cases list').toBe(true);
   });
 
   test.afterEach(() => {});
