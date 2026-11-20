@@ -558,8 +558,13 @@ test.describe('[SCRUM-464] Drittparty-Fabrikant (UI)', () => {
       rowLinks.length,
       'AC10b: the re-saved case is not listed in the Cases list view',
     ).toBeGreaterThan(0);
+    // allTextContents() on the Subject anchor returned "" (measured 2026-11-20,
+    // AC10g: ["00003089",""]) - the Subject text lives in the row's ARIA subtree
+    // (probe-list6 showed gridcell "00003089 ... Subject ..." there), so the name
+    // check reads the grid, the row identity check keeps the anchor locator.
+    const gridAria = await boundedSnap(page.locator('[role="grid"]').first(), 30000);
     expect(
-      rowLinks.some((t) => t.includes(`${P}OLD-SAVES`)),
+      gridAria.includes(`${P}OLD-SAVES`),
       'AC10b: the listed row does not carry the re-saved case as Subject',
     ).toBe(true);
   });
