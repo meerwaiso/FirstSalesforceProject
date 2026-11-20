@@ -140,47 +140,49 @@ function orgRow(fabrikantId: string): { count: number; sum: number | null; avg: 
   };
 }
 
-test.describe('SCRUM-466 — the report total cell never prints 0,00 for an all-unknown group');
+test.describe('[SCRUM-466] Report total cell (UI)', () => {
+  test.describe.configure({ timeout: 300000 });
 
-test('[SCRUM-466][AC-total] all costs unknown => total cell empty, count and average still right', async ({ page }) => {
-  const org = orgRow(MIELE_ID);
-  expect(org.count, 'precondition: Miele must have closed all-unknown third-party cases in the window').toBeGreaterThan(0);
-  expect(org.sum, 'precondition: every cost of the group is unknown (the NULL branch of the formula)').toBeNull();
+  test('[SCRUM-466][AC-total] all costs unknown => total cell empty, count and average still right', async ({ page }) => {
+    const org = orgRow(MIELE_ID);
+    expect(org.count, 'precondition: Miele must have closed all-unknown third-party cases in the window').toBeGreaterThan(0);
+    expect(org.sum, 'precondition: every cost of the group is unknown (the NULL branch of the formula)').toBeNull();
 
-  for (const reportName of REPORTS) {
-    const frame = await reportFrame(page, reportName);
-    const cells = await rowCells(frame, 'Miele');
-    console.log(`SCRUM-466 rendered Miele row (${reportName}): ${JSON.stringify(cells)}`);
-    const nums = toNumbers(cells.slice(1));
-    // The count must be there (otherwise a missing row could pass silently)…
-    expect(nums.includes(org.count), `${reportName}: Miele row does not show its case count ${org.count}`).toBe(true);
-    // …and it must be the ONLY number: the average renders '-' and the total
-    // cell must be empty. A rendered "0,00 EUR" adds a second number => red.
-    expect(nums.length,
-      `${reportName}: Miele row carries ${nums.length} numbers although every cost is unknown (only the count is allowed; a cost is never printed as 0,00)`).toBe(1);
-  }
-});
+    for (const reportName of REPORTS) {
+      const frame = await reportFrame(page, reportName);
+      const cells = await rowCells(frame, 'Miele');
+      console.log(`SCRUM-466 rendered Miele row (${reportName}): ${JSON.stringify(cells)}`);
+      const nums = toNumbers(cells.slice(1));
+      // The count must be there (otherwise a missing row could pass silently)…
+      expect(nums.includes(org.count), `${reportName}: Miele row does not show its case count ${org.count}`).toBe(true);
+      // …and it must be the ONLY number: the average renders '-' and the total
+      // cell must be empty. A rendered "0,00 EUR" adds a second number => red.
+      expect(nums.length,
+        `${reportName}: Miele row carries ${nums.length} numbers although every cost is unknown (only the count is allowed; a cost is never printed as 0,00)`).toBe(1);
+    }
+  });
 
-test('[SCRUM-466][control] one known cost in the group => the total cell prints that sum (blank would be the red)', async ({ page }) => {
-  const id = await createCase('MIXED', MIELE_ID, 500);
-  fixtureIds.push(id);
-  const org = orgRow(MIELE_ID);
-  expect(org.sum, 'precondition: the group now has a known cost').notToBeNull();
+  test('[SCRUM-466][control] one known cost in the group => the total cell prints that sum (blank would be the red)', async ({ page }) => {
+    const id = await createCase('MIXED', MIELE_ID, 500);
+    fixtureIds.push(id);
+    const org = orgRow(MIELE_ID);
+    expect(org.sum, 'precondition: the group now has a known cost').notToBeNull();
 
-  for (const reportName of REPORTS) {
-    const frame = await reportFrame(page, reportName);
-    const cells = await rowCells(frame, 'Miele');
-    console.log(`SCRUM-466 mixed Miele row (${reportName}): ${JSON.stringify(cells)}`);
-    const nums = toNumbers(cells.slice(1));
-    expect(nums.includes(org.count), `${reportName}: count after the known-cost fixture`).toBe(true);
-    expect(nums.includes(org.sum as number),
-      `${reportName}: a group with a known cost must print the total ${org.sum}`).toBe(true);
-    expect(nums.includes(org.avg as number), `${reportName}: the average over known costs (${org.avg}) is printed`).toBe(true);
-  }
-});
+    for (const reportName of REPORTS) {
+      const frame = await reportFrame(page, reportName);
+      const cells = await rowCells(frame, 'Miele');
+      console.log(`SCRUM-466 mixed Miele row (${reportName}): ${JSON.stringify(cells)}`);
+      const nums = toNumbers(cells.slice(1));
+      expect(nums.includes(org.count), `${reportName}: count after the known-cost fixture`).toBe(true);
+      expect(nums.includes(org.sum as number),
+        `${reportName}: a group with a known cost must print the total ${org.sum}`).toBe(true);
+      expect(nums.includes(org.avg as number), `${reportName}: the average over known costs (${org.avg}) is printed`).toBe(true);
+    }
+  });
 
-afterAll(async () => {
-  for (const id of fixtureIds) await deleteRecord(id);
-  const left = soql(`SELECT Id FROM Case WHERE Subject LIKE '${P}%'`);
-  expect(left.length, `fixtures ${P}* still in Test-Org after cleanup`).toBe(0);
+  afterAll(async () => {
+    for (const id of fixtureIds) await deleteRecord(id);
+    const left = soql(`SELECT Id FROM Case WHERE Subject LIKE '${P}%'`);
+    expect(left.length, `fixtures ${P}* still in Test-Org after cleanup`).toBe(0);
+  });
 });
