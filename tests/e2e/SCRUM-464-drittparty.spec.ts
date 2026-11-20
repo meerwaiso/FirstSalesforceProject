@@ -334,7 +334,7 @@ async function expectRefusalDialog(page: Page, namesField: string) {
 // ── the suite ───────────────────────────────────────────────────────────────
 
 test.describe('[SCRUM-464] Drittparty-Fabrikant (UI)', () => {
-  test.describe.configure({ timeout: 300000 });
+    test.describe.configure({ timeout: 900000 }); // AC10 needs the record+edit+list round trip; 300s expired mid-test (measured 2026-11-20)
 
   const createdCases: string[] = [];
   const createdFabrikants: string[] = [];
