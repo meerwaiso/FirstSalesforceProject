@@ -316,9 +316,10 @@ async function pickLookup(page: Page, query: string, wanted: string) {
 
 async function openEditForm(page: Page, caseId: string) {
   await openRecordDetails(page, `/lightning/r/Case/${caseId}/view`);
+  await dismissGuidance(page);
   const edit = page.getByRole('button', { name: 'Edit', exact: true }).first();
   await expect(edit, 'the record page offers no full inline edit').toBeVisible({ timeout: 20000 });
-  await edit.click();
+  await edit.click({ timeout: 15000 });
   const save = page.getByRole('button', { name: 'Save', exact: true }).first();
   await expect(save, 'the inline edit form shows no Save button').toBeVisible({ timeout: 20000 });
 }

@@ -21,5 +21,15 @@ Every fact below was read back by me on 2026-11-20; command named where it is no
 ## Fixtures and quirks (measured)
 - `OwnerId` reassignment on an existing Case works: create (session user owns) → `sf data update record -s Case -i X -v "OwnerId='005WU000017tBhRYAU'"` → success (needed for AC9 user-scope discrimination; all 25 foreign CLOSED cases are unscored or older than 12 months, and every scored closed case within the 12-month window is session-owned).
 - Re-saving a historical closed Case without `Customer_Satisfaction__c` is refused by the SCRUM-442 rule — old house rule, not a SCRUM-464 defect; no scored historical closed Case exists in Test-Org. AC10 re-save therefore runs on my own fixture (closed, scored, no new data).
+
+## Run 1 (2026-11-20, `scratch-run464b.log`, 10.8 min, 5 tests → 1 pass / 4 fail)
+- T1 `openEditForm`: `edit.click()` timed out — the "Try the new Salesforce Setup" guidance dialog covers the Edit button; fixed by calling `dismissGuidance` before the click (patched, committed).
+- Report column order (rendered, `tr.locator('td, th').allTextContents()`): `[label, total, count, average]`.
+- AC8 org report render during run: Siemens `["…","1.450,00 €","3","1.450,00 €"]` (3 = 2 dev + my saved CLOSE-PATH; average still 1.450,00 → unknown costs EXCLUDED from total/avg ✓), Bosch `["…","0,00 €","3","-"]` → **DEFECT: total cell renders 0,00 € although no cost is known** (PO rule: never zero); average "-" is fine.
+- AC9 `_Meine` render: Siemens `["…","1.450,00 €","2","1.450,00 €"]`, Miele `["…","0,00 €","2","-"]` → same zero in the user variant. Open point (unexplained, re-measure after fix): `_Meine` Siemens shows 2 although the session-owned CLOSE-PATH was saved with Fabrikant Siemens — org report counts it (3), `_Meine` does not.
+- T5 AC10 failed at `soql()`: `SELECT Id, Subject, Cause__c FROM Case WHERE Subject = 'TEST-SCRUM-464-OLD-SAVES'` — CLI threw (exact error not captured); rerun will reveal whether the standard `Cause__c` names are the issue.
+- afterAll cleanup verified green: after the run the org holds only `Fabrikant__c` Siemens+Miele and 0 TEST-SCRUM-464-* records (measured).
+- CI on fix head 9fd94b7 (run 44768789585) measured via gh api: all 4 jobs `completed success` (Prod-Org Drift Gate / Lint & Format / README / Metadata, Apex & Session Smoke). PR = #185 (`gh api repos/.../pulls/185` → open, head = my branch).
+
 - Closing via UI is NOT reachable (house SCRUM-442 probe: Status picklist never offers `Closed`, Close button vis:false). UI close-path = inline edit on an already-closed Case; the combined save is one `Edit`-form Save.
 - My fixtures (deleted in afterAll): Fabrikant `Bosch` (3 cases, all cost unknown) + `Atlas` (1 case, foreign-owned) + `TEST-SCRUM-464-CLOSE-PATH`, `OLD-SAVES`, `B1..B3`, `FOREIGN`. During the run the org reports Siemens 2 / Miele 2 / Bosch 3 / Atlas 1 (8 third-party cases); after cleanup back to 2 manufacturers / 4 cases.
