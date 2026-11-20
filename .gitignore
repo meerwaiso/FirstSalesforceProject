@@ -79,3 +79,6 @@ scripts/_*
 
 # Rollentexte des Users fuer andere Werkzeuge (Cline u. a.)
 .cline-roles/
+
+# SCRUM-463: id of the live CI validation (scripts/ci-prod-validate.sh)
+.ci-validate-job-id

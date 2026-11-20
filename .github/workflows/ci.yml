@@ -62,7 +62,9 @@ jobs:
   org:
     name: Metadata, Apex & Session Smoke
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # SCRUM-463: above the validate step's own 35-minute limit, so the step
+    # times out first and its cleanup can still cancel the org operation.
+    timeout-minutes: 45
     # Salesforce runs at most ONE broad Apex test run per org at a time. A
     # second one is refused — sometimes as ALREADY_IN_PROCESS, sometimes as a
     # bare UNKNOWN_EXCEPTION that aborts in two seconds with no test results.
@@ -251,19 +253,25 @@ jobs:
         env:
           STUFE: ${{ steps.scope.outputs.level }}
           KLASSEN: ${{ steps.scope.outputs.classes }}
+        # SCRUM-463: through scripts/ci-prod-validate.sh, so a cancelled run also
+        # cancels the validation in Test-Org (it burns the 24-hour Apex budget).
+        # The step stays red when the validation fails, as the bare CLI call was.
+        timeout-minutes: 35
         run: |
           if [ "$STUFE" = "RunSpecifiedTests" ]; then
-            sf project deploy validate \
-              --source-dir force-app \
-              --test-level RunSpecifiedTests \
-              --tests "$KLASSEN" \
-              --wait 30
+            scripts/ci-prod-validate.sh --org Test-Org --source-dir force-app \
+              --test-level RunSpecifiedTests --tests "$KLASSEN" \
+              --wait 30 --out test-validate.json
           else
-            sf project deploy validate \
-              --source-dir force-app \
+            scripts/ci-prod-validate.sh --org Test-Org --source-dir force-app \
               --test-level RunLocalTests \
-              --wait 30
+              --wait 30 --out test-validate.json
           fi
+          python3 -c 'import json,sys; r=json.load(open("test-validate.json"))["result"]; print("Test-Org validate:", r.get("status")); sys.exit(0 if r.get("success") else 1)'
+
+      - name: Cancel a Test-Org validation the run left behind
+        if: cancelled() && steps.guard.outputs.has_auth == 'true'
+        run: scripts/ci-prod-validate.sh --cancel --org Test-Org
 
       # Gate 3 — proves the Playwright auth layer still works against this org
       - name: Install Chromium
@@ -296,7 +304,8 @@ jobs:
   prod-drift:
     name: Prod-Org Drift Gate
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # SCRUM-463: above the validate step's own 35-minute limit (wait budget 30).
+    timeout-minutes: 40
     env:
       SFDX_AUTH_URL_PROD: ${{ secrets.SFDX_AUTH_URL_PROD }}
     steps:
@@ -354,11 +363,14 @@ jobs:
       # written, and cost a full round trip back to Implementierung.
       - name: Validate against Prod-Org (check-only)
         if: steps.guard.outputs.has_auth == 'true'
+        # SCRUM-463: the script starts the validation async, writes its id to
+        # .ci-validate-job-id and the verdict to prod-validate.json. Without a
+        # verdict it writes nothing, and the parser below turns that red.
+        timeout-minutes: 35
         run: |
           set +e
-          sf project deploy validate --source-dir force-app \
-            --target-org Prod-Org --test-level RunLocalTests \
-            --wait 30 --json > prod-validate.json
+          scripts/ci-prod-validate.sh --org Prod-Org --source-dir force-app \
+            --test-level RunLocalTests --wait 30 --out prod-validate.json
           set -e
           python3 - <<'EOF'
           import json, re, sys
@@ -438,6 +450,19 @@ jobs:
           # "Class.method - System."):  Failed to validate ... Due To:
           #   ClassA.m1 - System.QueryException: ...,ClassB.m2 - System.DmlException: ...
           testfehler = []
+          # SCRUM-463: the script writes `sf project deploy report`, which always has
+          # a "result" and keeps the failing tests in details.runTestResult.failures,
+          # never in "message". Without this branch a validation that failed only on
+          # tests read as "no component drift" and went GREEN (measured on Prod
+          # validation 0Afg500000GO6avCAD, SCRUM-457: 12 failures, exit 0).
+          if not befunde and r:
+              fl = ((r.get("details") or {}).get("runTestResult") or {}).get("failures") or []
+              if isinstance(fl, dict):
+                  fl = [fl]
+              for f in fl:
+                  meldung = " ".join((f.get("message") or "").split())
+                  testfehler.append((f"{f.get('name', '?')}.{f.get('methodName', '?')}",
+                                     meldung.split(":", 1)[0] or "?", meldung))
           if not befunde and not r:
               text = d.get("message") or ""
               rumpf = text.split("Due To:", 1)[1] if "Due To:" in text else ""
@@ -550,6 +575,10 @@ jobs:
               print(f"::warning title=Prod test phase::{nt} test failure(s) — not gated here, "
                     f"org-wide coverage is below the 75% production threshold.")
           EOF
+
+      - name: Cancel a Prod-Org validation the run left behind
+        if: cancelled() && steps.guard.outputs.has_auth == 'true'
+        run: scripts/ci-prod-validate.sh --cancel --org Prod-Org
 
       - name: Upload validate result
         if: always() && steps.guard.outputs.has_auth == 'true'
