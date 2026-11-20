@@ -486,7 +486,9 @@ test.describe('[SCRUM-464] Drittparty-Fabrikant (UI)', () => {
   // AC10: a closed case without the new data opens, lists and re-saves — the
   // new rules must not demand anything.
   test('AC10: old-style closed case opens, re-saves unflagged, new fields stay blank', async ({ page }) => {
-    const before = soql(`SELECT Id, Subject, Cause__c FROM Case WHERE Subject = '${P}OLD-SAVES' LIMIT 1`);
+    // `Cause__c` does not exist on Case (measured 2026-11-20: INVALID_FIELD "No such
+  // column 'Cause__c' on entity 'Case'"); the picklist is Ursache__c.
+  const before = soql(`SELECT Id, Subject, Ursache__c FROM Case WHERE Subject = '${P}OLD-SAVES' LIMIT 1`);
     const targetId = before[0]?.Id ?? ensureOldStyleClosed('OLD-SAVES', 'RechnungAbrechnung', 'Score_3');
     if (!createdCases.includes(targetId)) createdCases.push(targetId);
 
