@@ -92,8 +92,8 @@ private class SCRUM464TesterCoverageTest {
     // ── AC7 + AC11: a third-party case closes with no cost; nothing is produced ──
     @isTest
     static void ac7_costOptional_ac11_noSideEffects() {
-        Integer feedBefore = SELECT COUNT() FROM FeedItem;
-        Integer emailBefore = SELECT COUNT() FROM EmailMessage;
+        Integer feedBefore = SELECT Count() FROM FeedItem;
+        Integer emailBefore = SELECT Count() FROM EmailMessage;
 
         Fabrikant__c maker = [SELECT Id FROM Fabrikant__c WHERE Name = '464 Tester Maker' LIMIT 1];
         Case unknownCost = new Case(Subject = 'TESTSCRUM464-AC7-UNKNOWN', Status = 'Closed',
@@ -108,8 +108,8 @@ private class SCRUM464TesterCoverageTest {
         System.assertEquals(0, read.Drittparty_Fixkosten_Known__c,
             'AC7/TAC4: the unknown cost must count 0 in the denominator, not 1');
 
-        Integer feedAfter = SELECT COUNT() FROM FeedItem;
-        Integer emailAfter = SELECT COUNT() FROM EmailMessage;
+        Integer feedAfter = SELECT Count() FROM FeedItem;
+        Integer emailAfter = SELECT Count() FROM EmailMessage;
         System.assertEquals(feedBefore, feedAfter, 'AC11: closing a third-party case created a FeedItem');
         System.assertEquals(emailBefore, emailAfter, 'AC11: closing a third-party case created an EmailMessage');
     }
@@ -157,7 +157,7 @@ private class SCRUM464TesterCoverageTest {
             // A real read attempt must be refused, not only the flag.
             Boolean refused = false;
             try {
-                Case[] probe = [SELECT Drittparty_Fixkosten__c FROM Case WHERE Name = 'x' LIMIT 1];
+                Case[] probe = [SELECT Drittparty_Fixkosten__c FROM Case WHERE Subject = 'TESTSCRUM464-NO-SUCH' LIMIT 1];
                 System.assertEquals(0, probe.size(), 'AC13: the restricted user got a row for a field they cannot see');
             } catch (Exception e) {
                 refused = true;
