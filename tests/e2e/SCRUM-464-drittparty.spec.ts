@@ -537,18 +537,20 @@ test.describe('[SCRUM-464] Drittparty-Fabrikant (UI)', () => {
     const listed = soql(`SELECT Id, Subject FROM Case WHERE Subject = '${P}OLD-SAVES' LIMIT 1`);
     expect(listed.length, 'AC10b: the re-saved case is not in the org at all').toBe(1);
 
+    // Proven list-view pattern (SCRUM-378, green): goto -> '.slds-global-header,
+    // one-appnav' -> wait for the list's OWN rendered line, not for the header.
     await page.goto('/lightning/o/Case/list?filterName=Recent', { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await page.locator('.slds-global-header').first().waitFor({ state: 'visible', timeout: 60000 });
-    // The list rows are NOT anchors in the light DOM (measured 2026-11-20:
-    // locator('a[href*="/lightning/r/Case/"]') -> 0). Like the SCRUM-417 related
-    // list, the rows live in a shadow subtree that only the ARIA snapshot reads.
-    const aria = await boundedSnap(page.locator('body').first(), 30000);
-    expect(aria.includes('We hit a snag'), 'AC10b: the Cases list view hit a snag').toBe(false);
-    expect(aria.length, 'AC10b: the Cases list view rendered no content at all').toBeGreaterThan(2000);
-    const hit = aria.indexOf(`${P}OLD-SAVES`);
-    console.log(`AC10b aria len=${aria.length} subject found at=${hit} context=${hit >= 0 ? aria.slice(Math.max(0, hit - 120), hit + 60) : 'n/a'}`);
-    expect(hit >= 0, 'AC10b: the re-saved case is not listed in the Cases list').toBe(true);
+    await page.waitForSelector('.slds-global-header, one-appnav', { timeout: 60000 });
+    const body = page.locator('body');
+    await expect(
+      body.getByText(/Sorted by|Filtered by/).first(),
+      'AC10b: the Cases list view never rendered its list header',
+    ).toBeVisible({ timeout: 30000 });
+    const rendered = await body.getByText(`${P}OLD-SAVES`, { exact: false }).count();
+    console.log(`AC10b Cases list rows matching ${P}OLD-SAVES: ${rendered}`);
+    expect(rendered, 'AC10b: the re-saved case is not listed in the Cases list').toBeGreaterThan(0);
   });
+
 
   test.afterEach(() => {});
 
