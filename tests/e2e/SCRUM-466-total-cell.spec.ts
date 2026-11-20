@@ -140,12 +140,6 @@ function orgRow(fabrikantId: string): { count: number; sum: number | null; avg: 
   };
 }
 
-afterAll(async () => {
-  for (const id of fixtureIds) await deleteRecord(id);
-  const left = soql(`SELECT Id FROM Case WHERE Subject LIKE '${P}%'`);
-  expect(left.length, `fixtures ${P}* still in Test-Org after cleanup`).toBe(0);
-});
-
 test.describe('SCRUM-466 — the report total cell never prints 0,00 for an all-unknown group');
 
 test('[SCRUM-466][AC-total] all costs unknown => total cell empty, count and average still right', async ({ page }) => {
@@ -183,4 +177,10 @@ test('[SCRUM-466][control] one known cost in the group => the total cell prints 
       `${reportName}: a group with a known cost must print the total ${org.sum}`).toBe(true);
     expect(nums.includes(org.avg as number), `${reportName}: the average over known costs (${org.avg}) is printed`).toBe(true);
   }
+});
+
+afterAll(async () => {
+  for (const id of fixtureIds) await deleteRecord(id);
+  const left = soql(`SELECT Id FROM Case WHERE Subject LIKE '${P}%'`);
+  expect(left.length, `fixtures ${P}* still in Test-Org after cleanup`).toBe(0);
 });
