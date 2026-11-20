@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Fixkosten_NurBeiDrittparty</fullName>
+    <active>true</active>
+    <description>SCRUM-464 AC4/AC7: a repair cost on a case whose cause is NOT a third-party product is refused. No rule requires the cost itself - a third-party case with unknown cost saves (AC7).</description>
+    <errorConditionFormula>AND(NOT(ISBLANK(Drittparty_Fixkosten__c)), NOT(ISPICKVAL(Ursache__c, "DrittpartyProdukt")))</errorConditionFormula>
+    <errorDisplayField>Drittparty_Fixkosten__c</errorDisplayField>
+    <errorMessage>Kein Fixkosten: the cost of fixing a third-party product only exists on a case whose cause is a third-party product.</errorMessage>
+</ValidationRule>

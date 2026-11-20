@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-464 AC6 (first half) + CRUD row &quot;list entry&quot;: only service team leads may add, change or clear a manufacturer. Assigned to team leads ONLY; everyone else gets the read-only SCRUM464_Fabrikant_List_Read.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM464_Fabrikant_List_Lead</label>
+    <objectPermissions>
+        <allowCreate>true</allowCreate>
+        <allowDelete>true</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Fabrikant__c</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+</PermissionSet>

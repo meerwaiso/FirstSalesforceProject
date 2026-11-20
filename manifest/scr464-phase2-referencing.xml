@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-464 Phase 2: everything that REFERENCES the phase-1 fields -
+         the conditional requirement (AC2), the two refuse-a-value rules (AC4),
+         the three Permission Sets and the Case record page. -->
+    <types>
+        <members>Case.Fabrikant_PflichtBeiDrittpartyClosed</members>
+        <members>Case.Fabrikant_NurBeiDrittparty</members>
+        <members>Case.Fixkosten_NurBeiDrittparty</members>
+        <name>ValidationRule</name>
+    </types>
+    <types>
+        <members>SCRUM464_Drittparty_Team</members>
+        <members>SCRUM464_Fabrikant_List_Read</members>
+        <members>SCRUM464_Fabrikant_List_Lead</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Case-Case Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>
