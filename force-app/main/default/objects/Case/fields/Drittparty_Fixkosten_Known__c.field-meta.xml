@@ -8,5 +8,4 @@
     <scale>0</scale>
     <unique>false</unique>
     <formula>IF(ISBLANK(Drittparty_Fixkosten__c), 0, 1)</formula>
-    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
 </CustomField>

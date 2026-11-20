@@ -307,38 +307,106 @@ private class SCRUM464DrittpartyTest {
     }
 
     @isTest
-    static void thirdPartyCases_qualifyingForTheOverview() {
-        // AC8 precondition that travels to the Tester: every closed third-party case
-        // this run created carries a manufacturer, so the overview row is comparable
-        // to a real count. The count is a lower bound, never a cross-method total -
-        // Apex rolls back per test method, so the order of the methods must not matter.
-        User u = mkUser('f464f');
+    static void renamingOntoAnExistingManufacturer_refused() {
+        // AC5 second half: a rename that would put a company on the list twice is
+        // refused, a legal rename saves. Also the update path of the guard.
+        User u = mkUser('f464ln2');
+        insert u;
+        grantPS(new String[] { 'SCRUM464_Fabrikant_List_Read', 'SCRUM464_Fabrikant_List_Lead', 'SCRUM464_TestObjectAccess' }, u.Id);
+
+        System.runAs(u) {
+            Fabrikant__c miele = [SELECT Id, Name FROM Fabrikant__c WHERE Name = 'Miele' LIMIT 1];
+            System.assert(miele != null, 'precondition: fixture manufacturer readable');
+
+            boolean refused = false;
+            try {
+                miele.Name = 'Siemens';
+                update miele;
+            } catch (Exception e) {
+                refused = true;
+            }
+            System.assertEquals(true, refused,
+                'AC5: renaming a manufacturer onto an existing company is refused');
+
+            Fabrikant__c legal = [SELECT Id, Name FROM Fabrikant__c WHERE Name = 'Miele' LIMIT 1];
+            legal.Name = 'Miele GmbH';
+            update legal;
+            Fabrikant__c back = [SELECT Id, Name FROM Fabrikant__c WHERE Name = 'Miele GmbH' LIMIT 1];
+            System.assertEquals('Miele GmbH', back.Name,
+                'AC5: a rename to a name nobody uses yet saves');
+        }
+    }
+
+    @isTest
+    static void thirdPartyCases_countedInTheOverviewWindow() {
+        // AC8/AC9 numbers that must travel to the Tester. Apex rolls back PER test
+        // method, so this method seeds its own records and counts exactly what it
+        // created - never a total an earlier method left behind.
+        //
+        // Seed: 2 closed third-party cases for Siemens (one cost 300.00 known,
+        //       one cost unknown) + 1 open third-party case.
+        User u = mkUser('f464over');
         insert u;
         grantPS(closerRights(), u.Id);
 
         System.runAs(u) {
-            Integer qualifying = 0;
-            Integer withoutManufacturer = 0;
+            Contact c = [SELECT Id FROM Contact WHERE LastName = '464 Drittparty Contact' LIMIT 1];
+            Fabrikant__c siemens = [SELECT Id, Name FROM Fabrikant__c WHERE Name = 'Siemens' LIMIT 1];
+
+            insert new Case[] {
+                new Case(
+                    Subject = '464 overview known',
+                    ContactId = c.Id,
+                    Status = 'Closed',
+                    Ursache__c = 'DrittpartyProdukt',
+                    Customer_Satisfaction__c = 'Score_4',
+                    Drittparty_Fabrikant__c = siemens.Id,
+                    Drittparty_Fixkosten__c = 300.00
+                ),
+                new Case(
+                    Subject = '464 overview unknown',
+                    ContactId = c.Id,
+                    Status = 'Closed',
+                    Ursache__c = 'DrittpartyProdukt',
+                    Customer_Satisfaction__c = 'Score_3',
+                    Drittparty_Fabrikant__c = siemens.Id
+                ),
+                new Case(
+                    Subject = '464 overview still open',
+                    ContactId = c.Id,
+                    Status = 'Working',
+                    Ursache__c = 'DrittpartyProdukt'
+                )
+            };
+
+            Integer closed = 0;
             Integer inWindow = 0;
-            for (Case c : [
-                SELECT Id, Drittparty_Fabrikant__c, Closed_Last_12M__c
-                FROM Case WHERE IsClosed = true AND Ursache__c = 'DrittpartyProdukt'
+            Integer withKnownCost = 0;
+            Decimal totalKnownCost = 0;
+            for (Case c2 : [
+                SELECT Id, Closed_Last_12M__c, Drittparty_Fixkosten__c, Drittparty_Fixkosten_Known__c
+                FROM Case WHERE Subject LIKE '464 overview%' AND Ursache__c = 'DrittpartyProdukt'
             ]) {
-                qualifying++;
-                if (c.Drittparty_Fabrikant__c == null) {
-                    withoutManufacturer++;
-                }
-                if (c.Closed_Last_12M__c) {
+                if (c2.Closed_Last_12M__c) {
+                    closed++;
                     inWindow++;
+                    if (c2.Drittparty_Fixkosten_Known__c == 1) {
+                        withKnownCost++;
+                        totalKnownCost += c2.Drittparty_Fixkosten__c;
+                    }
                 }
             }
-            System.assert(qualifying >= 2,
-                'AC8: at least the two Siemens cases of this run are closed third-party cases');
-            System.assertEquals(0, withoutManufacturer,
-                'AC2: no closed third-party case survived without a manufacturer');
-            System.assertEquals(qualifying, inWindow,
-                'AC8: every case closed today is inside the rolling twelve months');
-            System.debug('SCRUM-464 AC8 count: qualifying=' + qualifying + ' inWindow=' + inWindow);
+            System.assertEquals(2, closed,
+                'AC8: two closed third-party cases qualify (the open one is out)');
+            System.assertEquals(2, inWindow,
+                'AC8: both were closed today, so both are inside the rolling twelve months');
+            System.assertEquals(1, withKnownCost,
+                'AC7: only one of the two has a known cost, so total and average use one record');
+            System.assertEquals(300.00, totalKnownCost,
+                'AC7: total of the known costs = 300.00, the unknown case contributes nothing');
+            System.assertEquals(300.00, totalKnownCost / withKnownCost,
+                'AC7: average over known costs only = 300.00, never 150.00 (300/2)');
+            System.debug('SCRUM-464 AC8/AC9 seed: Siemens 2 cases, 1 known cost, total 300.00, average 300.00');
         }
     }
 }
