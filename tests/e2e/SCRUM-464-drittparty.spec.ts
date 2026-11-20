@@ -185,6 +185,17 @@ function resolveReportId(name: string): string {
   return String(found[0].Id);
 }
 
+async function boundedSnap(node, ms = 20000): Promise<string> {
+  // An unguarded ariaSnapshot() on a Lightning record page hung (measured in
+  // SCRUM-417 and again 2026-11-20 in AC10, where it burned the whole test
+  // timeout). Every read of a big subtree goes through this cap.
+  return await Promise.race([
+    node.ariaSnapshot(),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`ariaSnapshot exceeded ${ms}ms`)), ms)),
+  ]);
+}
+
 async function reportFrame(page: Page, reportName: string): Promise<Frame> {
   await page.goto(`/lightning/r/Report/${resolveReportId(reportName)}/view`, {
     waitUntil: 'domcontentloaded', timeout: 60000,
@@ -493,7 +504,7 @@ test.describe('[SCRUM-464] Drittparty-Fabrikant (UI)', () => {
     if (!createdCases.includes(targetId)) createdCases.push(targetId);
 
     await openRecordDetails(page, `/lightning/r/Case/${targetId}/view`);
-    const body = await page.locator('body').first().ariaSnapshot();
+    const body = await boundedSnap(page.locator('body').first());
     expect(body.includes('We hit a snag'), 'AC10: opening the case demanded something').toBe(false);
 
     await openEditForm(page, targetId);
@@ -504,7 +515,7 @@ test.describe('[SCRUM-464] Drittparty-Fabrikant (UI)', () => {
     await page.waitForTimeout(4000);
 
     const dialog = page.getByRole('dialog').first();
-    const aria = await dialog.ariaSnapshot().catch(() => '');
+    const aria = await boundedSnap(dialog).catch(() => '');
     expect(aria.includes('We hit a snag'), 'AC10: the re-save was refused').toBe(false);
 
     const after = soql(
@@ -528,7 +539,7 @@ test.describe('[SCRUM-464] Drittparty-Fabrikant (UI)', () => {
 
     await page.goto('/lightning/o/Case/list?filterName=Recent', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.locator('.slds-global-header').first().waitFor({ state: 'visible', timeout: 60000 });
-    const body = await page.locator('body').first().ariaSnapshot();
+    const body = await boundedSnap(page.locator('body').first());
     expect(body.includes('We hit a snag'), 'AC10b: the Cases list view hit a snag').toBe(false);
     expect(
       await page.getByText(`${P}OLD-SAVES`, { exact: false }).count(),
