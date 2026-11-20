@@ -51,25 +51,45 @@ private class SCRUM434UrsacheTest {
         );
     }
 
-    // 1. AC1 — exakt 5 Picklist-Werte (Labels = die vom PO 28.09. fixierten).
+    // 1. AC1 — die 5 PO-Labels stay; a 6th value is allowed only if it is exactly
+    //    the third-party value SCRUM-464 appended, and nothing else may appear.
+    //    RE-ANCHORED in SCRUM-464: the old pin "genau 5 / exakt this set" broke the
+    //    drift gate as soon as a later story added a cause value (Prod-Org still
+    //    has 5, Test-Org has 6). The surviving invariant is: PO-labels intact,
+    //    at most one extra value, and that extra is the third-party option.
     @isTest
-    static void test_AC1_Picklist_ExaktFuenfWerte() {
+    static void test_AC1_Picklist_POLabelsIntact() {
         List<Schema.PicklistEntry> entries = Case.Ursache__c.getDescribe().getPicklistValues();
-        Set<String> expected = new Set<String>{
+        Set<String> poLabels = new Set<String>{
             'How-to / Anfrage',
             'Rechnung / Abrechnung',
             'Technischer Fehler',
             'Fehlkonfiguration',
             'Kein Fehler / Keine Maßnahme'
         };
-        System.assertEquals(5, entries.size(),
-            'AC1: genau 5 Picklist-Werte erwartet, gefunden: ' + entries.size());
-        Set<String> actual = new Set<String>();
+        String thirdPartyLabel = 'Drittparty / Fremdfabrik Produkt';
+
+        String found = '';
+        Integer foreign = 0;
         for (Schema.PicklistEntry e : entries) {
-            actual.add(e.getLabel());
+            String label = e.getLabel();
+            found += (found == '' ? '' : ', ') + label;
+            if (!poLabels.contains(label)) {
+                System.assertEquals(thirdPartyLabel, label,
+                    'AC1: a cause value outside the PO set is only allowed if it is exactly the third-party option');
+                foreign++;
+            }
         }
-        System.assertEquals(expected, actual,
-            'AC1: die 5 Picklist-Labels müssen exakt mit den PO-Optionen übereinstimmen');
+        // a) none of the PO-fixed labels may have vanished
+        for (String po : poLabels) {
+            System.assert(found.contains(po),
+                'AC1: PO-Label "' + po + '" must still exist — found: ' + found);
+        }
+        // b) at most ONE value beyond the 5 PO labels, and every label is accounted for
+        System.assert(entries.size() <= poLabels.size() + 1,
+            'AC1: at most one extra cause value (the third-party option) — found: ' + entries.size() + ' (' + found + ')');
+        System.assertEquals(poLabels.size() + foreign, entries.size(),
+            'AC1: every cause value is either a PO label or the third-party option — found: ' + entries.size() + ' (' + found + ')');
     }
 
     // 2. AC2 — geschlossener Case OHNE Ursache MUSS blockiert werden (ValRule,
