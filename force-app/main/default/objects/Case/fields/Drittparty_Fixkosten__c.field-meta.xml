@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Drittparty_Fixkosten__c</fullName>
+    <label>Fixkosten (Teile + Spesen + Zusathre)</label>
+    <description>SCRUM-464: roughly what fixing the third-party product cost us - ONE figure covering parts, travel and extra hours together (PO decision, not three numbers). Org default currency, no per-record currency. Blank when nobody knows: unknown cost counts in the case count, never in total or average, and is shown as &quot;cost not known&quot;, not 0.</description>
+    <externalId>false</externalId>
+    <required>false</required>
+    <precision>18</precision>
+    <scale>2</scale>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <type>Currency</type>
+</CustomField>

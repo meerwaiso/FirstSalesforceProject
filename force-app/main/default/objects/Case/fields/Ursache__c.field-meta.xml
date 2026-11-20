@@ -2,7 +2,7 @@
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Ursache__c</fullName>
     <label>Ursache</label>
-    <description>Grundkategorie, warum der Fall geschlossen (SCRUM-434). Fest 5 Werte, kein Freitext. Nur beim Schliessen Pflicht (ValRule Ursache_PflichtBeiGeschlossen); solange offen freiwillig. Intern, nicht PII.</description>
+    <description>Grundkategorie, warum der Fall geschlossen (SCRUM-434); SCRUM-464 added the 6th value DrittpartyProdukt, the 5 existing untouched. Fest 6 Werte, kein Freitext. Nur beim Schliessen Pflicht (ValRule Ursache_PflichtBeiGeschlossen); solange offen freiwillig. Intern, nicht PII.</description>
     <required>false</required>
     <trackFeedHistory>false</trackFeedHistory>
     <type>Picklist</type>
@@ -14,6 +14,7 @@
             <value><fullName>TechnischerFehler</fullName><default>false</default><label>Technischer Fehler</label></value>
             <value><fullName>Fehlkonfiguration</fullName><default>false</default><label>Fehlkonfiguration</label></value>
             <value><fullName>KeinFehlerKeineMassnahme</fullName><default>false</default><label>Kein Fehler / Keine Maßnahme</label></value>
+            <value><fullName>DrittpartyProdukt</fullName><default>false</default><label>Drittparty / Fremdfabrik Produkt</label></value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-464 Phase 1: the controlled manufacturer object + the four new Case
+         fields (Lookup, one cost figure, the 0/1 denominator, the 12-month gate)
+         plus the 6th Ursache__c value appended to the existing picklist.
+         Deployed FIRST; the validation rules, the Permission Sets, the reports and
+         the Apex guard all reference these. -->
+    <types>
+        <members>Fabrikant__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>Case.Drittparty_Fabrikant__c</members>
+        <members>Case.Drittparty_Fixkosten__c</members>
+        <members>Case.Drittparty_Fixkosten_Known__c</members>
+        <members>Case.Closed_Last_12M__c</members>
+        <members>Case.Ursache__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>

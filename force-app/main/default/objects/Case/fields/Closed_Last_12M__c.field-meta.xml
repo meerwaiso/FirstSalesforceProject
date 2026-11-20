@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Closed_Last_12M__c</fullName>
+    <label>Closed in last 12 months</label>
+    <description>SCRUM-464: rolling twelve-month window on ClosedDate (the date the case was closed). The report metadata has no rolling 12-month interval, so the window is this gate plus INTERVAL_CUSTOM (house Lost_Last_12M__c). Cases without ClosedDate are outside the window and are never retro-fixed (PO decision). System-computed, read-only.</description>
+    <formula>AND(IsClosed, NOT(ISBLANK(ClosedDate)), ClosedDate &gt;= ADDMONTHS(TODAY(), -12))</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <type>Checkbox</type>
+</CustomField>
