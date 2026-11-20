@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-464 AC6 (second half): every internal service role can read the manufacturer list - that is what makes the picker work for a plain service agent. No write access; team leads get SCRUM464_Fabrikant_List_Lead on top.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM464_Fabrikant_List_Read</label>
+    <objectPermissions>
+        <allowCreate>false</allowCreate>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Fabrikant__c</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+</PermissionSet>

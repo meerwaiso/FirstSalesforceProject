@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Fabrikant_PflichtBeiDrittpartyClosed</fullName>
+    <active>true</active>
+    <description>SCRUM-464 AC2: a third-party Case must name its manufacturer before it closes - the supplier renegotiation needs a name, not a comment. Refuses the value; the Case is not changed behind the user's back.</description>
+    <errorConditionFormula>AND(OR(IsClosed, ISPICKVAL(Status, "Closed")), ISPICKVAL(Ursache__c, "DrittpartyProdukt"), ISBLANK(Drittparty_Fabrikant__c))</errorConditionFormula>
+    <errorDisplayField>Drittparty_Fabrikant__c</errorDisplayField>
+    <errorMessage>Was farab ein Fabrikant? Ist die Fall caused by a third-party product, pick the manufacturer from the list - the case cannot be closed without.</errorMessage>
+</ValidationRule>

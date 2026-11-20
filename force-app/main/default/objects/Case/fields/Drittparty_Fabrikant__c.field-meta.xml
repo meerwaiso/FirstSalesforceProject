@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Drittparty_Fabrikant__c</fullName>
+    <label>Fabrikant (Drittparty-Produkt)</label>
+    <description>SCRUM-464: which manufacturer&apos;s product caused the problem. Only meaningful with Ursache__c = DrittpartyProdukt; enforced by Fabrikant_PflichtBeiDrittpartyClosed. Never free text - the picker offers only existing Fabrikant__c records. Intern, commercially sensitive supplier information, never on a customer-facing surface.</description>
+    <relationshipLabel>Faelle</relationshipLabel>
+    <relationshipName>Cases_Drittparty_Fabrikant</relationshipName>
+    <referenceTo>Fabrikant__c</referenceTo>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <type>Lookup</type>
+</CustomField>

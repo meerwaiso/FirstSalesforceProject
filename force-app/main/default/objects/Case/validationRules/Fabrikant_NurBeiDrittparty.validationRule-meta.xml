@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Fabrikant_NurBeiDrittparty</fullName>
+    <active>true</active>
+    <description>SCRUM-464 AC4: a manufacturer on a case whose cause is NOT a third-party product is refused - the field stays empty for how-to, billing or our own misconfiguration. Refuse-a-value, never auto-clear: nothing is ever written behind the user&apos;s back (AC11).</description>
+    <errorConditionFormula>AND(NOT(ISBLANK(Drittparty_Fabrikant__c)), NOT(ISPICKVAL(Ursache__c, "DrittpartyProdukt")))</errorConditionFormula>
+    <errorDisplayField>Drittparty_Fabrikant__c</errorDisplayField>
+    <errorMessage>Kein Fabrikant: der Ursache of this case is not a third-party product, so no manufacturer may be recorded.</errorMessage>
+</ValidationRule>

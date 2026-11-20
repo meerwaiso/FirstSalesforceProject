@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-464 Phase 2b: the two overview reports (AC8 org-wide, AC9 own cases).
+         The timeFrameFilter is set EXPLICITLY here: the org adds its own
+         DUE_DATE/INTERVAL_CUSTOM after a first deploy, and deploying without the
+         element does not clear it (house lesson SCRUM-461 phase 2b / SCRUM-432). -->
+    <types>
+        <members>Service/Faelle_Drittparty_Fabrikante</members>
+        <members>Service/Faelle_Drittparty_Fabrikante_Meine</members>
+        <name>Report</name>
+    </types>
+    <version>67.0</version>
+</Package>
