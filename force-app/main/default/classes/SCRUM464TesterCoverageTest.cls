@@ -118,7 +118,9 @@ private class SCRUM464TesterCoverageTest {
     static void ac12_customerFacingUserSeesNeitherManufacturerNorCost() {
         Profile p = [SELECT Id FROM Profile WHERE Name = 'Customer Community User' LIMIT 1];
         System.assert(p != null, 'precondition: the org has the Customer Community User profile');
-        String alias = 't464cust' + DateTime.now().getTime();
+        // Alias is a unique field of max length 8 — scratchpad users only need to
+        // be unique inside one run, so a fixed name per test is enough.
+        String alias = 'T464CU1';
         User cust = new User(
             ProfileId = p.Id, LastName = 'Tester464Cust', Alias = alias,
             Email = alias + '@example.invalid', Username = alias + '@example.invalid',
@@ -145,7 +147,8 @@ private class SCRUM464TesterCoverageTest {
     @isTest
     static void ac13_negative_noFieldAccessWithoutSCRUM464PS() {
         Profile p = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
-        String alias = 't464neg' + DateTime.now().getTime();
+        // Same 8-char limit as AC12; unique inside the run because the name differs.
+        String alias = 'T464NEG1';
         User neg = new User(
             ProfileId = p.Id, LastName = 'Tester464Neg', Alias = alias,
             Email = alias + '@example.invalid', Username = alias + '@example.invalid',
