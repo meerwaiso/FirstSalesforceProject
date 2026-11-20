@@ -151,6 +151,9 @@ Nothing is added to any portal/customer surface (AC12).
   <aggregateType>RowCount</aggregateType>
   <sortByName>RowCount</sortByName><sortOrder>Desc</sortOrder><sortType>Aggregate</sortType>
 </groupingsDown>
+<!-- SUPERSEDED by ADR 10 (see below): the plain Sum column printed 0,00 for an
+     all-unknown group (SCRUM-466). At the approved head 71e7010 the report carries
+     NO plain Sum column — total = FORMULA1, average = FORMULA2. -->
 <columns><aggregateTypes>Sum</aggregateTypes><field>Case.Drittparty_Fixkosten__c</field></columns>
 <aggregates>
   <calculatedFormula>IF(Case.Drittparty_Fixkosten_Known__c:SUM = 0, NULL, Case.Drittparty_Fixkosten__c:SUM / Case.Drittparty_Fixkosten_Known__c:SUM)</calculatedFormula>
@@ -181,6 +184,8 @@ Filter value = the picklist **fullName** `DrittpartyProdukt` (house SCRUM-461 fi
 7. **Refuse, never auto-clear/auto-fill** (PO decision): the two `..._NurBeiDrittparty` rules refuse a manufacturer/cost on a non-third-party case; nothing is ever written by the system. Historical records are untouched because all rules fire only on records being saved (AC10).
 8. ⚠️ **FLS cannot separate "set" from "clear"** (F7: `fieldPermissions` = `editable`/`readable` only). So the PO CRUD column "delete/clear: team leads only" is **not expressible** on the Case fields: a service agent who may edit the field may also blank it. What IS expressible — and is enforced — is the list-entry level: create/edit/delete of `Fabrikant__c` records only via `SCRUM464_Fabrikant_List_Lead`. This is the same reading the house shipped in SCRUM-461 ("only team leads may add or clear a competitor" = the list object). PO veto requested if he wants a Case-level protection: that would need a runtime "does this user hold PS X" check in Apex, and **no such pattern exists in this repo** (all role logic lives in Permission Sets; the repo's Apex never inspects permissions) — I verified by `git grep`, so the escalation is new code, not a reuse.
 9. ⚠️ **Tie-break "equal case count → higher total cost first" is not expressible** in report XML (F8: one `sortByName` only). Default: sort by case count Desc, ties in report order. If the ordering inside ties must be exact, the overview has to become an Apex artefact (out of house scope, and against "look at it once a month" simplicity). PO veto requested.
+10. **The overview's total is a formula aggregate with a NULL branch, not a plain Sum column** (landed after the approval at head 9fd94b7; approved at head `71e7010`, PR #185, measured 2026-11-20). SCRUM-466 reproduced it: with every cost of a group unknown, the plain Sum column rendered `0,00 EUR` — the PO rule says *never zero*. Fix shape: drop the `<columns><aggregateTypes>Sum` member, add FORMULA1 `IF(Case.Drittparty_Fixkosten_Known__c:SUM = 0, NULL, Case.Drittparty_Fixkosten__c:SUM)` (`masterLabel` "Total Fixkosten (known)"), keep the average as FORMULA2. Read back from the org (`sf project retrieve start --metadata "Report:Service/Faelle_Drittparty_Fabrikante" --output-dir scratch/org464rep`, then `cat` that file): the deployed report carries exactly those two aggregates. Consequences: the §2 C11/C12 block above is superseded, the total can no longer be used as a filter or sort column, and ADR 9 stays as it stands (still one sort key, `sortByName = RowCount`, `sortOrder = Desc`).
+    ⚠️ Wording gap: the PO's literal wording "cost not known" cannot be carried by a currency aggregate — an empty cell is what the platform renders (`-`, measured in the E2E row read: Miele `["2", "-", "-"]`). That satisfies "never zero"; the literal text would need a Text column of its own. Owner for that decision: @po-agent / the user, not a blocker for this merge.
 
 ## 4. Data model, sharing, governor limits
 
