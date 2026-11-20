@@ -16,6 +16,55 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 01.11.2026 — Every open Opportunity shows its outstanding follow-ups by itself (SCRUM-459, Fix SCRUM-460)
+
+**What changes**
+
+- A follow-up obligation is now a record of its own: it carries its due date, the next action
+  as a short text, whether it is still outstanding or already completed, and the date it was
+  completed.
+- Six values on the Opportunity are **calculated on their own** — nobody types them and nobody
+  can: follow-up required, the date of the next planned follow-up, how many obligations are
+  already overdue, the date of the last completed customer interaction, the follow-up status
+  (Up to Date / Due Soon / Overdue), and "needs management attention". The last one fires only
+  when the expected revenue is **strictly above 50.000 EUR** and at least one obligation is
+  overdue — exactly 50.000 EUR does not fire.
+- An obligation whose due date is **today** counts as Due Soon, not Overdue; Overdue means the
+  date has fully passed. An obligation without a due date is outstanding but never overdue.
+- An opportunity that was won or lost leaves the monitoring and its values are cleared.
+- The fix that belongs to this delivery: **the record pages**. Before it the follow-ups existed
+  only in a list view — a sales representative could neither see the monitoring values on the
+  opportunity nor open an obligation to complete one. Now both pages exist.
+
+**Where you see it**
+
+- On the opportunity: a section "Follow-up Monitoring" with the six values, all read-only, on
+  the record page — next to the sections that were already there.
+- On the obligation: its own record page with due date, next action, status, completed date and
+  the opportunity — a sales representative completes an obligation right there.
+- In the list view "Follow up Monitoring".
+
+**What is deliberately not in there**
+
+- **There is no shortcut on the opportunity that creates a new follow-up obligation.** The
+  obligation is a separate record and gets its own record page. A decision was taken on
+  20.11.2026 to keep it out; if the sales team wants a shortcut, it has to be asked for as new
+  work.
+- **The production org has no follow-up data yet**: 0 obligation records exist, so 0 of the 31
+  opportunities in the production org show a follow-up value today. The feature is live, the
+  data starts with the first obligation a sales representative records.
+
+**Evidence**
+
+- Released to the production org on 01.11.2026 with PR #181 (merge commit `f4fb858`), carried by
+  the release tag `release/2026-11-01-SCRUM-459`.
+- Read back in the production org by the PO on 20.11.2026: the opportunity layout carries the
+  section "Follow-up Monitoring" with exactly the six fields, every one read-only; the sections
+  that were there before are intact (Opportunity Information 18 fields, Discount Approval 8,
+  Risk Level 6); the obligation object has its own record page with due date, next action, status,
+  completed date and the opportunity settable by hand; 0 obligation records and 0 of 31
+  opportunities carry a follow-up value.
+
 ## 23.10.2026 — A contact person who left the company stays in the record, but stands out (SCRUM-453)
 
 **What changes**
