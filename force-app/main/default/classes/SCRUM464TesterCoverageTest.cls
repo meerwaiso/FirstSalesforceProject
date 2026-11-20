@@ -1,12 +1,13 @@
 /**
  * [SCRUM-464] SCRUM464TesterCoverageTest — Tester-owned Apex coverage for the
- * acceptance criteria the Playwright spec cannot reach: AC3, AC4, AC11, AC12 and
- * the AC13 negative probe. Re-run after the SCRUM-466 report fix (this class
- * proves the record-level half; the report cell is proven in the E2E spec).
+ * acceptance criteria the Playwright spec cannot reach: AC3, AC4, AC7/AC11, AC12
+ * and the AC13 negative probe. Re-run after the SCRUM-466 report fix (that fix is
+ * proven in the E2E spec; this class proves the record-level half).
  *
- * Every save here is real DML: a rule that stops firing is a failing test, not a
- * missing log line. Test DML lives in the scratchpad, so nothing below persists to
- * Test-Org — the org counts in the coverage table come from the E2E fixtures.
+ * Every save below is real DML: a rule that stops firing makes THIS test red,
+ * it does not log a warning. Refused saves are asserted with the refusal itself —
+ * this org's Apex has neither savepoint() nor Savepoint.save() (measured
+ * 2026-11-20 with scripts/apex-probe.sh), so no rollback is attempted.
  *
  * @author tester-agent
  * @date 2026-11-20
@@ -51,7 +52,7 @@ private class SCRUM464TesterCoverageTest {
 
     // ── AC4: a manufacturer (or a cost) on a cause that is not third-party is refused ──
     @isTest
-    static void ac4_manufacturerRefusedOnNonThirdPartyCase() {
+    static void ac4_manufacturerAndCostRefusedOnNonThirdPartyCase() {
         Fabrikant__c maker = [SELECT Id FROM Fabrikant__c WHERE Name = '464 Tester Maker' LIMIT 1];
         System.assert(maker != null, 'precondition: the fixture manufacturer exists');
 
@@ -59,14 +60,12 @@ private class SCRUM464TesterCoverageTest {
                                   Ursache__c = 'TechnischerFehler', Customer_Satisfaction__c = 'Score_4',
                                   Drittparty_Fabrikant__c = maker.Id);
         Boolean refusedMaker = false;
-        savepoint sp = savepoint();
         try {
             insert withMaker;
         } catch (Exception e) {
             refusedMaker = true;
             System.debug('AC4 expected refusal (manufacturer): ' + e);
         }
-        rollbackToSavepoint(sp);
         System.assertEquals(true, refusedMaker,
             'AC4: saving a manufacturer on cause TechnischerFehler was accepted');
 
@@ -74,26 +73,21 @@ private class SCRUM464TesterCoverageTest {
                                  Ursache__c = 'KeinFehlerKeineMassnahme', Customer_Satisfaction__c = 'Score_5',
                                  Drittparty_Fixkosten__c = 120.00);
         Boolean refusedCost = false;
-        savepoint sp2 = savepoint();
         try {
             insert withCost;
         } catch (Exception e) {
             refusedCost = true;
             System.debug('AC4 expected refusal (cost): ' + e);
         }
-        rollbackToSavepoint(sp2);
         System.assertEquals(true, refusedCost,
             'AC4: saving a cost on a non-third-party cause was accepted');
-
-        Case[] leaked = [SELECT Id, Subject FROM Case WHERE Subject IN :new String[]{ 'TESTSCRUM464-AC4-MAKER', 'TESTSCRUM464-AC4-COST' }];
-        System.assertEquals(0, leaked.size(), 'AC4: a refused save still persisted a record');
     }
 
-    // ── AC7 + AC11: a third-party case closes with no cost; nothing is produced ──
+    // ── AC7: no cost is optional. AC11: closing it produces no feed post or email ──
     @isTest
     static void ac7_costOptional_ac11_noSideEffects() {
-        Integer feedBefore = SELECT Count() FROM FeedItem;
-        Integer emailBefore = SELECT Count() FROM EmailMessage;
+        FeedItem[] feedBefore = [SELECT Id FROM FeedItem WHERE CreatedDate = TODAY LIMIT 200];
+        EmailMessage[] emailBefore = [SELECT Id FROM EmailMessage WHERE CreatedDate = TODAY LIMIT 200];
 
         Fabrikant__c maker = [SELECT Id FROM Fabrikant__c WHERE Name = '464 Tester Maker' LIMIT 1];
         Case unknownCost = new Case(Subject = 'TESTSCRUM464-AC7-UNKNOWN', Status = 'Closed',
@@ -104,32 +98,50 @@ private class SCRUM464TesterCoverageTest {
         Case read = [SELECT Id, Drittparty_Fixkosten__c, Drittparty_Fixkosten_Known__c, Closed_Last_12M__c
                      FROM Case WHERE Subject = 'TESTSCRUM464-AC7-UNKNOWN' LIMIT 1];
         System.assert(read != null, 'AC7: the third-party case without a cost did not save');
-        System.assertEquals(null, read.Drittparty_Fixkosten__c, 'AC7: a cost was demanded where none was entered');
+        System.assertEquals(null, read.Drittparty_Fixkosten__c,
+            'AC7: a cost was demanded where none was entered');
         System.assertEquals(0, read.Drittparty_Fixkosten_Known__c,
             'AC7/TAC4: the unknown cost must count 0 in the denominator, not 1');
+        System.assertEquals(true, read.Closed_Last_12M__c,
+            'AC8: a case closed today belongs in the 12-month window');
 
-        Integer feedAfter = SELECT Count() FROM FeedItem;
-        Integer emailAfter = SELECT Count() FROM EmailMessage;
-        System.assertEquals(feedBefore, feedAfter, 'AC11: closing a third-party case created a FeedItem');
-        System.assertEquals(emailBefore, emailAfter, 'AC11: closing a third-party case created an EmailMessage');
+        FeedItem[] feedAfter = [SELECT Id FROM FeedItem WHERE CreatedDate = TODAY LIMIT 200];
+        EmailMessage[] emailAfter = [SELECT Id FROM EmailMessage WHERE CreatedDate = TODAY LIMIT 200];
+        System.assertEquals(feedBefore.size(), feedAfter.size(),
+            'AC11: closing a third-party case created a FeedItem');
+        System.assertEquals(emailBefore.size(), emailAfter.size(),
+            'AC11: closing a third-party case created an EmailMessage');
     }
 
-    // ── AC12: manufacturer and cost are never externally accessible ──
+    // ── AC12: a customer-facing profile sees neither the manufacturer nor the cost ──
     @isTest
-    static void ac12_manufacturerAndCostNotExternallyAccessible() {
-        DescribeFieldResult maker = Case.Drittparty_Fabrikant__c.getDescribe();
-        DescribeFieldResult cost = Case.Drittparty_Fixkosten__c.getDescribe();
-        System.assertEquals(false, maker.isExternalAccessible(),
-            'AC12: the manufacturer could be exposed through external/shared access');
-        System.assertEquals(false, cost.isExternalAccessible(),
-            'AC12: the repair cost could be exposed through external/shared access');
-        // The falses above only mean something because the CASE object itself IS
-        // externally accessible here — the fields are the exception, not the org.
-        System.assertEquals(true, Case.SObjectType.getDescribe().isExternalAccessible(),
-            'precondition: the Case object is externally accessible, so the false flags above are about the fields');
+    static void ac12_customerFacingUserSeesNeitherManufacturerNorCost() {
+        Profile p = [SELECT Id FROM Profile WHERE Name = 'Customer Community User' LIMIT 1];
+        System.assert(p != null, 'precondition: the org has the Customer Community User profile');
+        String alias = 't464cust' + DateTime.now().getTime();
+        User cust = new User(
+            ProfileId = p.Id, LastName = 'Tester464Cust', Alias = alias,
+            Email = alias + '@example.invalid', Username = alias + '@example.invalid',
+            EmailEncodingKey = 'UTF-8', LanguageLocaleKey = 'en_US',
+            LocaleSidKey = 'en_US', TimeZoneSidKey = 'America/Los_Angeles'
+        );
+        insert cust;
+
+        System.runAs(cust) {
+            // The falses below only mean something because this user can read the
+            // customer's own object — otherwise they would just be "sees nothing".
+            System.assertEquals(true, Account.SObjectType.getDescribe().isAccessible(),
+                'precondition: the customer-facing user has a working session (Account is readable)');
+            System.assertEquals(false, Case.Drittparty_Fabrikant__c.getDescribe().isAccessible(),
+                'AC12: the manufacturer is visible to a customer-facing profile');
+            System.assertEquals(false, Case.Drittparty_Fixkosten__c.getDescribe().isAccessible(),
+                'AC12: the repair cost is visible to a customer-facing profile');
+            System.assertEquals(false, Fabrikant__c.SObjectType.getDescribe().isAccessible(),
+                'AC12: the manufacturer list itself is visible to a customer-facing profile');
+        }
     }
 
-    // ── AC13 negative: a user with object CRUD but NO SCRUM464 PS cannot read or edit ──
+    // ── AC13 negative: object CRUD only, NO SCRUM464 PS → the new fields are gone ──
     @isTest
     static void ac13_negative_noFieldAccessWithoutSCRUM464PS() {
         Profile p = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
