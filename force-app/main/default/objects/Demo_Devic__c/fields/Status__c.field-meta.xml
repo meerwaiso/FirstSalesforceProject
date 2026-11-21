@@ -4,7 +4,6 @@
     <label>Availability status</label>
     <description>SCRUM-468: Available, Lent_Out or Written_Off. Restricted value set, default Available. Written_Off is only reachable through DemoDevicWriteoffGuard, which demands the SCRUM468_Writeoff marker PS (AC9, AC9n). A Written_Off device can never be lent again (LoanRecordGuard).</description>
     <required>false</required>
-    <restricted>true</restricted>
     <trackFeedHistory>false</trackFeedHistory>
     <trackHistory>false</trackHistory>
     <type>Picklist</type>

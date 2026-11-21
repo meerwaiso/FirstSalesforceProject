@@ -17,10 +17,13 @@ after every compaction; commit it with the ticket.
   `AssigneeId`; `Assignee` is rejected ("No such column 'Assignee' on entity
   'PermissionSetAssignment'", probe q1). `SELECT Id FROM PermissionSet WHERE Name = :x`
   works; the marker lookup + PSA filter returned rows=1 for the CLI user (probe q3).
-- `sharingModel` values on a CustomObject are FullyReadWrite/ReadWrite/ViewOnly/Locked/
-  ControlledByParent; the design doc said "Private", which is only valid for
-  `externalSharingModel`. Built with `Locked` + `Private` (internal-only, matches the PO
-  intent: no Experience Cloud, no customer-facing access).
+- `<sharingModel>` enum, read from the CLI's own schema
+  (`@salesforce/types/lib/metadata.d.ts:194`):
+  `Private | Read | ReadSelect | ReadWrite | ReadWriteTransfer | FullAccess |
+   ControlledByParent | ControlledByLeadOrContact | ControlledByCampaign`.
+  The design doc said `Private` -> kept it. My first guess `Locked` was rejected by
+  validate ("'Locked' is not a valid value for the enum 'CustomSharingModel'").
+  `externalSharingModel Private` is the house value (Competitor__c, origin/master).
 - Number formula field shape (house Competitor_Gap__c): fullName, label, description,
   formula, precision, scale, type, unique; no <length>.
 - Picklist house shape (Customer_Satisfaction__c): required/restricted/trackFeedHistory/
