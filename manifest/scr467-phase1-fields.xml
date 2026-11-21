@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-467 phase 1: the seven Opportunity offer fields.
+     Order carries the formula dependencies: the two HAND-RECORDED dates first,
+     then Offer_Expires_On__c (the single home of the sent + 30 default rule),
+     then the four fields that read Offer_Expires_On__c.
+     Shapes are the Architect's verified files (docs/SCRUM-467-shapes/, check-only op
+     0AfWU00000dIgjt0AC, Succeeded 13/13). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Opportunity.Offer_Sent_On__c</members>
+        <members>Opportunity.Offer_Valid_Until__c</members>
+        <members>Opportunity.Offer_Expires_On__c</members>
+        <members>Opportunity.Offer_Days_Left__c</members>
+        <members>Opportunity.Offer_Status__c</members>
+        <members>Opportunity.Offer_Expired__c</members>
+        <members>Opportunity.Offer_Expiring_14D__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>
