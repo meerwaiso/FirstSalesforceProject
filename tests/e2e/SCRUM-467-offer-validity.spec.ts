@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type Locator } from '@playwright/test';
 import { execSync } from 'node:child_process';
 import { openRecordDetails, expectFieldVisible, startInlineEdit, saveInlineEdit } from './record-page';
 
@@ -671,17 +671,20 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
    *  assumption is made about how a group is rendered (leader row, repeated cell,
    *  or a separate heading row). */
   async function expiryColumnValues(frame: Locator, rows: string[][]): Promise<string[]> {
-    const header = rows.find((r) => r.some((c) => /expires on/i.test(c)));
+    const header = rows.find((r) => r.some((c) => /offer expiry|offer_expires_on__c/i.test(c)));
     if (!header) {
-      throw new Error(`report table has no header cell saying "Expires On"; headers seen: ${JSON.stringify(rows.slice(0, 2))}`);
+      throw new Error(`report table has no column for the expiry grouping; headers seen: ${JSON.stringify(rows.slice(0, 2))}`);
     }
-    const idx = header.findIndex((c) => /expires on/i.test(c));
+    const idx = header.findIndex((c) => /offer expiry|offer_expires_on__c/i.test(c));
+    // The group cell carries the date PLUS drill-down controls and the group size,
+    // e.g. "22.10.2026, unchecked, Select row for Drill Down.22.10.2026(1)" ->
+    // read the DATE TOKENS in that cell, in DOM order.
     const out: string[] = [];
     for (const r of rows) {
       const cell = r[idx] ?? '';
-      if (/^\d{2}\.\d{2}\.\d{4}$/.test(cell)) out.push(cell);
+      for (const m of cell.match(/\d{2}\.\d{2}\.\d{4}/g) ?? []) out.push(m);
     }
-    expect(out.length, `AC: the expiry column (index ${idx}) rendered no values`).toBeGreaterThan(0);
+    expect(out.length, `AC: the expiry column (index ${idx}) rendered no dates`).toBeGreaterThan(0);
     return out;
   }
 });
