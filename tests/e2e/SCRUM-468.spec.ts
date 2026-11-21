@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { execSync } from 'node:child_process';
 import { openRecordPage } from './record-page';
 
@@ -183,20 +183,21 @@ function cust(): string {
 
 /* -------------------------------- the suite ------------------------------- */
 
-const block = test.describe('SCRUM-468 Lend Devices (Test-Org)');
+test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
+  test.configure({ timeout: 180000 });
 
-block.beforeAll(async () => {
+  test.beforeAll(async () => {
   seedFixtures();
   // fixture read-backs must be real before any UI test trusts them
   expect(soql(`SELECT Id FROM Demo_Devic__c WHERE Designation_Name__c LIKE '${TAG}%'`).length, 'fixtures: 4 live devices').toBe(4);
   expect(soql(`SELECT Id FROM Loan_Record__c`).length, 'fixtures: 6 live loans').toBe(6);
 });
 
-block.afterAll(async () => {
+  test.afterAll(async () => {
   cleanupFixtures(); // the org keeps its 0 lending baseline between runs
 });
 
-block.test('AC1 exactly one fresh device record with serial and status Available', async () => {
+  test('AC1 exactly one fresh device record with serial and status Available', async () => {
   const id = createRecord('Demo_Devic__c', `Designation_Name__c='${TAG} AC1-e2e' Serial_Number__c='SCRUM468-E2E-1'`);
   try {
     const rows = soql(`SELECT Id, Name, Status__c, Serial_Number__c FROM Demo_Devic__c WHERE Designation_Name__c = '${TAG} AC1-e2e'`);
@@ -209,15 +210,15 @@ block.test('AC1 exactly one fresh device record with serial and status Available
   }
 });
 
-block.test('AC2 used serial refused and the refusal names the device', async () => {
+  test('AC2 used serial refused and the refusal names the device', async () => {
   const dup = failingRun(`sf data create record -s Demo_Devic__c -v "Designation_Name__c='${TAG} dup' Serial_Number__c='SCRUM468-TEST-1'" --target-org Test-Org --json`);
-  expect(dup, 'AC2 the duplicate serial WAS refused (message expected)').notToBe('');
+  expect(dup.length, 'AC2 the duplicate serial WAS refused (message expected)').toBeGreaterThan(0);
   expect(/serial "SCRUM468-TEST-1" is already on device DEV-\d+/.test(dup), 'AC2 refusal names the serial AND the owning device').toBe(true);
   expect(/one serial number may belong to exactly one device/.test(dup), 'AC2 refusal wording (Lend Devices guard)').toBe(true);
   expect(soql(`SELECT Id FROM Demo_Devic__c WHERE Designation_Name__c = '${TAG} dup'`).length, 'AC2 the refused save stored nothing').toBe(0);
 });
 
-block.test('AC3 lending writes device side AND one loan record', async () => {
+  test('AC3 lending writes device side AND one loan record', async () => {
   const devRow = soql(`SELECT Id, Name, Status__c, Current_Customer__c, Current_Loan_Colleague__c, Current_Loan_Due_Date__c FROM Demo_Devic__c WHERE Id='${devs['1']}'`);
   expect(devRow.length, 'AC3 device readable').toBe(1);
   expect(devRow[0].Status__c, 'AC3 device shows status lent out').toBe('Lent_Out');
@@ -230,9 +231,9 @@ block.test('AC3 lending writes device side AND one loan record', async () => {
   expect(openForD1.length, 'AC3 one open loan on D1').toBe(1);
 });
 
-block.test('AC4 second lending on a busy device refused, still one open loan', async () => {
+  test('AC4 second lending on a busy device refused, still one open loan', async () => {
   const msg = failingRun(`sf data create record -s Loan_Record__c -v "Loan_Devic__c='${devs['1']}' Loan_Customer__c='${accts.B}' Loan_Colleague__c='${soql(`SELECT Id FROM User WHERE Name='Integration User'`)[0].Id}' Loan_Start_Datum__c='${iso(-3)}' Loan_Due_Datum__c='${iso(1)}'" --target-org Test-Org --json`);
-  expect(msg, 'AC4 the second lending WAS refused').notToBe('');
+  expect(msg.length, 'AC4 the second lending WAS refused').toBeGreaterThan(0);
   expect(/already on loan/.test(msg), 'AC4 refusal wording').toBe(true);
   const devRow = soql(`SELECT Status__c, Current_Customer__c FROM Demo_Devic__c WHERE Id='${devs['1']}'`);
   expect(devRow[0].Current_Customer__c, 'AC4 the device still shows customer A').toBe(accts.A);
@@ -240,7 +241,7 @@ block.test('AC4 second lending on a busy device refused, still one open loan', a
   expect(open.length, 'AC4 open lending records for D1 still exactly one').toBe(1);
 });
 
-block.test('AC5 customer page lists the two current loans with due dates', async ({ page }) => {
+  test('AC5 customer page lists the two current loans with due dates', async ({ page }) => {
   const open = soql(`SELECT Id, Loan_Due_Datum__c FROM Loan_Record__c WHERE Loan_Customer__c='${accts.A}' AND Loan_Return_Datum__c=null`);
   expect(open.length, 'fixture: two open loans for Kunde A').toBe(2);
   const returned = soql(`SELECT Id FROM Loan_Record__c WHERE Loan_Customer__c='${accts.A}' AND Loan_Return_Datum__c!=null`);
@@ -257,7 +258,7 @@ block.test('AC5 customer page lists the two current loans with due dates', async
   }
 });
 
-block.test('AC6 return clears the device side, loan keeps its dates', async () => {
+  test('AC6 return clears the device side, loan keeps its dates', async () => {
   const devRow = soql(`SELECT Status__c, Current_Customer__c FROM Demo_Devic__c WHERE Id='${devs['3']}'`);
   expect(devRow[0].Status__c, 'AC6 D3 shows status Available after the return').toBe('Available');
   const loan = soql(`SELECT Loan_Start_Datum__c, Loan_Due_Datum__c, Loan_Return_Datum__c, Loan_Duration_Days__c FROM Loan_Record__c WHERE Id='${loans.L3}'`);
@@ -270,19 +271,18 @@ block.test('AC6 return clears the device side, loan keeps its dates', async () =
   expect(stillCurrent.map((r) => r.Id), 'AC6 only D1/D2 loans stay current for A').toEqual([loans.L1, loans.L2]);
 });
 
-block.test('AC7 device page shows the whole loan history', async ({ page }) => {
+  test('AC7 device page shows the whole loan history', async ({ page }) => {
   const hist = soql(`SELECT Id, Loan_Customer__c, Loan_Start_Datum__c, Loan_Due_Datum__c, Loan_Return_Datum__c, Loan_Duration_Days__c FROM Loan_Record__c WHERE Loan_Devic__c='${devs['3']}'`);
   expect(hist.length, 'fixture: D3 has 2 loans in its history').toBe(2);
   await openRecordPage(page, `/lightning/r/Demo_Devic__c/${devs['3']}/view`);
   const snap = await page.ariaSnapshot();
   // history rows would carry the loan records' names (LOAN-xxxx)
-  const names = hist.map(() => ''); // names come from the SAME query for the row check:
   const named = soql(`SELECT Id, Name FROM Loan_Record__c WHERE Loan_Devic__c='${devs['3']}'`);
   const onPage = named.filter((r) => snap.includes(r.Name));
   expect(onPage.length, 'AC7 every loan of D3 appears on the device page (history rows == loans)').toBe(named.length);
 });
 
-block.test('AC8+AC9 overdue ListView: exactly the overdue devices, all columns, longest first, no written-off row', async ({ page }) => {
+  test('AC8+AC9 overdue ListView: exactly the overdue devices, all columns, longest first, no written-off row', async ({ page }) => {
   // ground truth from the org (the Checkbox formula, not assumed):
   const flagged = soql(`SELECT Id, Name FROM Demo_Devic__c WHERE Overdue_Today__c = true`);
   expect(flagged.length, 'org flags exactly 2 devices overdue').toBe(2);
@@ -292,16 +292,16 @@ block.test('AC8+AC9 overdue ListView: exactly the overdue devices, all columns, 
   const body = await page.evaluate('document.body.innerText');
   expect(/2 items •/.test(body), 'AC8 the status line says 2 items').toBe(true);
   const snap = await page.ariaSnapshot();
-  const rows = snap.split('\n').filter((l) => /^\s*- row "/.test(l) && !/Row Number/.test(l));
+  const rows = snap.split('\n').filter((l: string) => /^\s*- row "/.test(l) && !/Row Number/.test(l));
   expect(rows.length, 'AC8 the list view shows exactly 2 record rows').toBe(2);
-  const r1 = rows.find((t) => t.includes(dev('1')));
-  const r2 = rows.find((t) => t.includes(dev('2')));
+  const r1 = rows.find((t: string) => t.includes(dev('1')));
+  const r2 = rows.find((t: string) => t.includes(dev('2')));
   expect(r1 != null && r2 != null, 'AC8 both overdue devices appear once').toBe(true);
-  expect(rows.indexOf(r1) < rows.indexOf(r2), 'AC8 longest overdue first (30 days before 15)').toBe(true);
+  expect(rows.indexOf(String(r1)) < rows.indexOf(String(r2)), 'AC8 longest overdue first (30 days before 15)').toBe(true);
   for (const [row, serial, colleague, dueOff, days] of [
     [r1, 'SCRUM468-TEST-1', 'Meerwais Osmani', -30, '30'],
     [r2, 'SCRUM468-TEST-2', 'Integration User', -15, '15'],
-  ]) {
+  ] as Array<[string | null, string, string, number, string]>) {
     const rowText = String(row);
     expect(rowText.includes(serial), `AC8 row shows the serial (${serial})`).toBe(true);
     expect(rowText.includes(cust()), 'AC8 row shows the current customer').toBe(true);
@@ -310,7 +310,7 @@ block.test('AC8+AC9 overdue ListView: exactly the overdue devices, all columns, 
     expect(rowText.includes(days), `AC8 row shows days overdue ${days}`).toBe(true);
   }
   // AC9 negative half: written-off and available devices never in the view
-  expect(rows.every((t) => !t.includes(dev('3')) && !t.includes(dev('4'))), 'AC9/AC8 no Available, no Written_Off row').toBe(true);
+  expect(rows.every((t: string) => !t.includes(dev('3')) && !t.includes(dev('4'))), 'AC9/AC8 no Available, no Written_Off row').toBe(true);
   // AC9 positive: D4 written off, history still there, lending refused
   expect(soql(`SELECT Status__c FROM Demo_Devic__c WHERE Id='${devs['4']}'`)[0].Status__c, 'AC9 D4 shows status Written_Off').toBe('Written_Off');
   const hist = soql(`SELECT Id FROM Loan_Record__c WHERE Loan_Devic__c='${devs['4']}'`);
@@ -325,7 +325,7 @@ block.test('AC8+AC9 overdue ListView: exactly the overdue devices, all columns, 
     });
 });
 
-block.test('AC12 overdue stays put, nothing happens on its own', async ({ page }) => {
+  test('AC12 overdue stays put, nothing happens on its own', async ({ page }) => {
   const flagged = soql(`SELECT Id, Name, Status__c, Current_Loan_Overdue_Days__c FROM Demo_Devic__c WHERE Overdue_Today__c = true`);
   expect(flagged.map((r) => r.Current_Loan_Overdue_Days__c), 'AC12 org says 30 and 15 overdue days').toEqual([30, 15]);
   expect(flagged.every((r) => r.Status__c === 'Lent_Out'), 'AC12 no automation changed the status').toBe(true);
@@ -344,4 +344,5 @@ block.test('AC12 overdue stays put, nothing happens on its own', async ({ page }
   const body = await page.evaluate('document.body.innerText');
   expect(/2 items •/.test(body), 'AC12 the second, fresh load still lists the 2 overdue devices').toBe(true);
   expect(body.includes(de(-30)) && body.includes(de(-15)), 'AC12 same due dates as the Apex ground truth').toBe(true);
+});
 });
