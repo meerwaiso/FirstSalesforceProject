@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Offer_Status__c</fullName>
+    <label>Offer status</label>
+    <description>SCRUM-467: expiry state at a glance - "offer expired", "offer valid today", "offer valid for N more days". No offer recorded = blank. System-computed formula field, read-only; no length element on Text formula fields.</description>
+    <formula>IF(ISBLANK(Offer_Expires_On__c), null, IF(Offer_Expires_On__c &lt; TODAY(), "offer expired", IF(Offer_Expires_On__c = TODAY(), "offer valid today", "offer valid for " &amp; TEXT(Offer_Expires_On__c - TODAY()) &amp; " more days")))</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Offer_Expired__c</fullName>
+    <label>Offer expired</label>
+    <description>SCRUM-467: expiry gate = expiry date recorded AND expiry date before today. Never-recorded and live offers are false. System-computed, read-only; single source of truth for "expired" with the won-deal ValidationRule.</description>
+    <formula>AND(NOT(ISBLANK(Offer_Expires_On__c)), Offer_Expires_On__c &lt; TODAY())</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <type>Checkbox</type>
+</CustomField>

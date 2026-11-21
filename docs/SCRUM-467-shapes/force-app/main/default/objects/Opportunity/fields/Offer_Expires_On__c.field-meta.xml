@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Offer_Expires_On__c</fullName>
+    <label>Offer expiry (last valid day)</label>
+    <description>SCRUM-467: the last valid day of the offer, computed at read = Offer valid until if recorded, else Offer sent on + 30 days. Blank = no offer recorded. System-computed, never written.</description>
+    <formula>IF(ISBLANK(Offer_Sent_On__c), IF(ISBLANK(Offer_Valid_Until__c), null, Offer_Valid_Until__c), IF(ISBLANK(Offer_Valid_Until__c), Offer_Sent_On__c + 30, Offer_Valid_Until__c))</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <type>Date</type>
+    <unique>false</unique>
+</CustomField>

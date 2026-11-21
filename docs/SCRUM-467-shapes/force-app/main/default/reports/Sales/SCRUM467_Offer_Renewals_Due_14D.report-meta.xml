@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-467: overview 1 = open deals whose offer expires within the next 14 days.
+     Column tokens read from the Analytics API reportTypes/Opportunity (ACCOUNT_NAME,
+     FULL_NAME = "Opportunity Owner", AMOUNT, OPPORTUNITY_NAME, STAGE_NAME, CREATED_DATE)
+     plus custom fields as Opportunity.X__c (house proof: Hoeh_Risk_Chancen).
+     The grouping field is NOT repeated in <columns> - the deploy rejects that
+     ("You can't include groupings in the selected columns list", house caution in
+     Kunde_ohne_Kontaktperson). Grouping = expiry date (Day, Asc) = soonest expiry first.
+     STAGE_NAME filter "Closed Won,Closed Lost" = house-proven multi-value notEqual.
+     timeFrameFilter on CREATED_DATE with a span that covers every record: a fiscal or
+     CloseDate frame silently drops rows (measured on Hoeh_Risk_Chancen: 1 row instead
+     of 14; open deals have no CloseDate). -->
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns>
+        <field>OPPORTUNITY_NAME</field>
+    </columns>
+    <columns>
+        <field>ACCOUNT_NAME</field>
+    </columns>
+    <columns>
+        <field>FULL_NAME</field>
+    </columns>
+    <columns>
+        <field>AMOUNT</field>
+    </columns>
+    <columns>
+        <field>STAGE_NAME</field>
+    </columns>
+    <columns>
+        <field>Opportunity.Offer_Sent_On__c</field>
+    </columns>
+    <columns>
+        <field>Opportunity.Offer_Status__c</field>
+    </columns>
+    <description>SCRUM-467 AC9: open deals whose offer expires within the next 14 days (window gate Offer_Expiring_14D__c). Grouped by expiry date, soonest first; deal, customer, account manager, amount, stage, sent on and the status wording per row.</description>
+    <filter>
+        <criteriaItems>
+            <column>Opportunity.Offer_Expiring_14D__c</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>false</isUnlocked>
+            <operator>equals</operator>
+            <value>True</value>
+        </criteriaItems>
+        <criteriaItems>
+            <column>STAGE_NAME</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>false</isUnlocked>
+            <operator>notEqual</operator>
+            <value>Closed Won,Closed Lost</value>
+        </criteriaItems>
+        <language>en_US</language>
+    </filter>
+    <format>Summary</format>
+    <groupingsDown>
+        <dateGranularity>Day</dateGranularity>
+        <field>Opportunity.Offer_Expires_On__c</field>
+        <sortOrder>Asc</sortOrder>
+    </groupingsDown>
+    <name>SCRUM467_Offer_Renewals_Due_14D</name>
+    <params>
+        <name>open</name>
+        <value>all</value>
+    </params>
+    <params>
+        <name>probability</name>
+        <value>&gt;0</value>
+    </params>
+    <params>
+        <name>co</name>
+        <value>1</value>
+    </params>
+    <reportType>Opportunity</reportType>
+    <scope>organization</scope>
+    <showDetails>true</showDetails>
+    <showGrandTotal>true</showGrandTotal>
+    <showSubTotals>true</showSubTotals>
+    <timeFrameFilter>
+        <dateColumn>CREATED_DATE</dateColumn>
+        <endDate>2099-12-31</endDate>
+        <interval>INTERVAL_CUSTOM</interval>
+        <startDate>2000-01-01</startDate>
+    </timeFrameFilter>
+</Report>

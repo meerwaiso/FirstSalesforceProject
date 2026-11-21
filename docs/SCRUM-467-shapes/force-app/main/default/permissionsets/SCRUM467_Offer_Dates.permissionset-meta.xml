@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-467 PROBE (check-only, nothing deploys): the ONE new Permission Set.
+     House shape: SCRUM451_Wartungsvertrag_Dates_Teamleitung (fieldPermissions only,
+     no object-level userPermissions - a PS must not grant broader object access).
+     Edit true on the two HAND-RECORDED dates, Edit false / Read true on the five
+     derived formula fields (they are never writable by hand).
+     AC13 (user without this set cannot fill the dates) is the negative test.
+     Assignment is a deploy-time duty of the Developer (PSAssignment + read-back). -->
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-467: Read+Edit on the two hand-recorded offer dates of an Opportunity, read-only on the five derived expiry fields. Assigned to the account managers and the Sales Team Leads. No Permission Profile edits.</description>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Opportunity.Offer_Sent_On__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Opportunity.Offer_Valid_Until__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Opportunity.Offer_Expires_On__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Opportunity.Offer_Days_Left__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Opportunity.Offer_Status__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Opportunity.Offer_Expired__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Opportunity.Offer_Expiring_14D__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM467_Offer_Dates</label>
+</PermissionSet>

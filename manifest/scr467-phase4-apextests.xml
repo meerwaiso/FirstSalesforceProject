@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-467 phase 4: the Apex test classes and the TEST-LOCAL object-access set
+     they need. Deployed AFTER the fields, the Permission Set and the ValidationRules,
+     because every assertion reads the declarative behaviour that is live in the org.
+     Run with --test-level RunSpecifiedTests --tests <each class>: Test-Org has a 24 h
+     test budget and one broad run per org belongs to CI, not to this deploy. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM467_TestObjectAccess</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>SCRUM467OfferExpiryTest</members>
+        <members>SCRUM467OfferFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-467 phase 2: the two ValidationRules, the ONE new Permission Set and the
+     two team-lead Reports. Everything here references the phase-1 fields, so it deploys
+     after scr467-phase1-fields.xml.
+     PS assignment to the CLI target-org user and the human test account is a deploy-time
+     duty (see the handoff comment read-back) — deploying the set grants nobody anything. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Opportunity.Offer_Won_With_Expired_Offer</members>
+        <members>Opportunity.Offer_Dates_Kept_When_Closed</members>
+        <name>ValidationRule</name>
+    </types>
+    <types>
+        <members>SCRUM467_Offer_Dates</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Sales/SCRUM467_Offer_Renewals_Due_14D</members>
+        <members>Sales/SCRUM467_Offer_Expired_Renewals</members>
+        <name>Report</name>
+    </types>
+    <version>67.0</version>
+</Package>
