@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { execSync } from 'node/child_process';
+import { execSync } from 'node:child_process';
 import { openRecordDetails, expectFieldVisible, startInlineEdit, saveInlineEdit } from './record-page';
 
 /**
