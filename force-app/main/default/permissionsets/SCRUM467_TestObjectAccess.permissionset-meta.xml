@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-467: TEST-LOCAL object-level access for the fixture users ONLY
+     (house pattern: SCRUM442_TestObjectAccess / SCRUM451_TestObjectAccess / SCRUM464_TestObjectAccess).
+     Reason measured in the SCRUM-464 run: a User created inside a test needs object-level
+     CRUD so a refused save is about the FIELD and not about the object (skill
+     salesforce-describe-first: DmlException "fields being inaccessible on Sobject X" has
+     three causes and object access is one of them).
+     Deliberately NOT a released PS: assigned only to the Users the SCRUM-467 test classes
+     create, never to a real user, so the released SCRUM467_Offer_Dates stays field-only. -->
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SCRUM467_TestObjectAccess</fullName>
+    <description>Test-local object-level CRUD on Opportunity for the SCRUM-467 fixture users. Never assigned to real users.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM-467 Test Object Access (fixture users only)</label>
+    <objectPermissions>
+        <allowCreate>true</allowCreate>
+        <allowDelete>true</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>Opportunity</object>
+        <viewAllRecords>true</viewAllRecords>
+    </objectPermissions>
+</PermissionSet>
