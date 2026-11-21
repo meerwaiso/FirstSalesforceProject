@@ -396,7 +396,7 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     const id = fixtureId('C1');
     await openRecordDetails(page, `/lightning/r/Opportunity/${id}/view`);
     await dismissGuidance(page);
-    await setPicklist(page, 'Stage', 'Closed Won');
+    await setPicklistVerified(page, 'Stage', 'Closed Won');
     await saveInlineEdit(page);
     // The refusal must be on screen and the record must not have moved.
     await expect(
@@ -433,7 +433,7 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     // Now closing as Won must work.
     await openRecordDetails(page, `/lightning/r/Opportunity/${id}/view`);
     await dismissGuidance(page);
-    await setPicklist(page, 'Stage', 'Closed Won');
+    await setPicklistVerified(page, 'Stage', 'Closed Won');
     await saveInlineEdit(page);
     const closed = soqlOffer(id);
     expect(closed.IsClosed, `AC6 after renewing, Closed Won must persist (IsClosed=${closed.IsClosed})`).toBe(true);
@@ -509,7 +509,7 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     expect(total, `AC9 Report total (${total}) vs SOQL ${dueCount} open records with Offer_Expiring_14D__c`).toBe(dueCount);
     const rows = await reportDataRows(frame);
     const data = rows; // presence scan over EVERY row - no row-shape assumption
-    const groups = distinctInOrder(groupLeadersOf(rows));
+    const groups = distinctInOrder(await expiryColumnValues(frame, rows));
     const groupsSorted = groups.slice().sort((a, b) => dateKeyOfDe(a) - dateKeyOfDe(b));
     expect(groups, `AC9 soonest-expiry-first: the report's group order ${groups} must already be ascending (${groupsSorted})`).toEqual(groupsSorted);
     const soqlGroups = distinctInOrder(dueRecs.map((r: any) => isoToDe(r.Offer_Expires_On__c)))
@@ -544,7 +544,7 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     expect(total, `AC10 Report total (${total}) vs SOQL ${expiredCount}`).toBe(expiredCount);
     const rows = await reportDataRows(frame);
     const data = rows; // presence scan over EVERY row - no row-shape assumption
-    const groupsX = distinctInOrder(groupLeadersOf(rows));
+    const groupsX = distinctInOrder(await expiryColumnValues(frame, rows));
     const groupsXSorted = groupsX.slice().sort((a, b) => dateKeyOfDe(a) - dateKeyOfDe(b));
     expect(groupsX, `AC10 oldest-expiry-first: the report's group order ${groupsX} must already be ascending (${groupsXSorted})`).toEqual(groupsXSorted);
     const soqlGroupsX = distinctInOrder(expiredRecs.map((r: any) => isoToDe(r.Offer_Expires_On__c)))
@@ -667,10 +667,21 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
   function dataRowsOf(rows: string[][]): string[][] {
     return rows.filter((r) => r.length >= 7 && !r.some((c) => /subtotal|total records|grouped in/i.test(c)));
   }
-  /** The expiry groups, in DOM order: the row that STARTS with a date heads a group. */
-  function groupLeadersOf(rows: string[][]): string[] {
-    return rows
-      .filter((r) => /^\d{2}\.\d{2}\.\d{4}$/.test(r[0] ?? ''))
-      .map((r) => r[0]);
+  /** The report's GROUPING column (Offer Expires On) read by header index, so no
+   *  assumption is made about how a group is rendered (leader row, repeated cell,
+   *  or a separate heading row). */
+  async function expiryColumnValues(frame: Locator, rows: string[][]): Promise<string[]> {
+    const header = rows.find((r) => r.some((c) => /expires on/i.test(c)));
+    if (!header) {
+      throw new Error(`report table has no header cell saying "Expires On"; headers seen: ${JSON.stringify(rows.slice(0, 2))}`);
+    }
+    const idx = header.findIndex((c) => /expires on/i.test(c));
+    const out: string[] = [];
+    for (const r of rows) {
+      const cell = r[idx] ?? '';
+      if (/^\d{2}\.\d{2}\.\d{4}$/.test(cell)) out.push(cell);
+    }
+    expect(out.length, `AC: the expiry column (index ${idx}) rendered no values`).toBeGreaterThan(0);
+    return out;
   }
 });
