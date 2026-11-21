@@ -21,7 +21,7 @@ Hard-won facts, one line each. Read this first after every compaction.
 
 ## CI verdict measured 2026-11-21 on PR #190 head 9f91b7b
 
-gh pr checks 190: Lint & Format pass 48s | Metadata, Apex & Session Smoke pass 3m2s | Prod-Org Drift Gate pass 12m4s | README pass 6s — all four green ON THIS HEAD (architect/dev open item closed).
+gh pr checks 190 on run 44950552347 (head ad7714c): Lint & Format pass 46s | Metadata, Apex & Session Smoke pass 4m3s | Prod-Org Drift Gate pass 12m30s | README pass 6s — four green on THAT head. On the last pushes (5c32cd5..2353c95) Smoke and Drift were still pending when last read (run 44954500269) - DevOps reads the verdicts of the head it merges. (architect/dev open item closed).
 
 ## Test budget measured before Apex run
 
@@ -38,7 +38,7 @@ ApexTestQueueItem rows in 24h: 255 vs ceiling 500 (max(500, 10×classes)) — ro
   AC5/AC7 therefore covered at org level: relationshipLabel/Name read back from DEPLOYED metadata + live SOQL + the
   deployed ListView columns. Coverage table says so explicitly - not claimed as a browser assertion.
 
-- PS read-back (Apex session, today): PermissionSet WHERE Name LIKE 'SCRUM468%' -> 3 sets SCRUM468_Loan/Read/Writeoff; PermissionSetAssignment per set: 2 rows each (devops-agent@cline.test = CLI target-org user, and the human test account) = 6 rows total. Marker set = membership only (no CRUD): proven by the green negative Apex test - a colleague holding SCRUM468_Loan/Read WITHOUT SCRUM468_Writeoff is refused the write-off, and the positive test passes with it.
+- PS read-back (SOQL, --use-tooling-api): 3 sets SCRUM468_Loan/Read/Writeoff; PermissionSetAssignment per set: 2 rows each (devops-agent@cline.test = CLI target-org user, and the human test account) = 6 rows total. Marker set = membership only (no CRUD): proven by the green negative Apex test - a colleague holding SCRUM468_Loan/Read WITHOUT SCRUM468_Writeoff is refused the write-off, and the positive test passes with it.
 - Live field reads through the session: ListView SCRUM468_Overdue rendered Current_Loan_Overdue_Days**c 30/15 and Loan_Colleague**c (fields readable via session holding SCRUM468_Loan/Read); Loan_Record**c Loan_Due_Datum**c + Loan_Status**c rendered in the same rows. fls-check.sh: Overdue_Today**c Formula granted read in Loan and Read, 2 users each.
 
 Loan_Record**c field census (deployed): Loan_Colleague**c Loan_Customer**c Loan_Devic**c Loan_Due_Datum**c Loan_Duration_Days**c Loan_Return_Datum**c Loan_Start_Datum**c — NO Loan_Status**c. "Returned" = Loan_Return_Datum**c != null. Seeding historical loans must interleave lend -> return (the one-customer guard refuses a 2nd OPEN loan on a device).
