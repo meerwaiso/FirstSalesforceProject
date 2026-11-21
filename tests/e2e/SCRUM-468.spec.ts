@@ -158,9 +158,6 @@ function colleagueIds(): string[] {
 async function listStatus(page: any, items: number): Promise<void> {
   await page.goto('/lightning/o/Demo_Devic__c/list?filterName=SCRUM468_Overdue', { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForSelector('table', { state: 'visible', timeout: 30000 });
-  await page
-    .locator('text')
-    .evaluate(() => {});
   await page.waitForFunction(
     (n: number) => (document.body.innerText || '').includes(`${n} items •`),
     items,
@@ -211,7 +208,7 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
     const dup = failingRun(
       `sf data create record -s Demo_Devic__c -v "Designation_Name__c='${TAG} dup' Serial_Number__c='SCRUM468-TEST-1'" --target-org Test-Org --json`
     );
-    expect(dup, 'AC2 the duplicate serial WAS refused (message expected)').notToBe('').toBe;
+    expect(dup.length, 'AC2 the duplicate serial WAS refused (message expected)').toBeGreaterThan(0);
     expect(/serial "SCRUM468-TEST-1" is already on device DEV-\d+/.test(dup), 'AC2 refusal names serial AND owning device').toBe(true);
     expect(/one serial number may belong to exactly one device/.test(dup), 'AC2 refusal wording (Lend Devices guard)').toBe(true);
     expect(soql(`SELECT Id FROM Demo_Devic__c WHERE Designation_Name__c = '${TAG} dup'`).length, 'AC2 the refused save stored nothing').toBe(0);
@@ -232,7 +229,7 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
     expect(loanRows[0].Loan_Due_Datum__c, 'AC3 due date on the loan').toBe(iso(-30));
     const openForD1 = soql(`SELECT Id FROM Loan_Record__c WHERE Loan_Devic__c='${devs['1']}' AND Loan_Return_Datum__c=null`);
     expect(openForD1.length, 'AC3 one open loan on D1').toBe(1);
-    expect(devRow[0].Current_Loan_Due_Date__c, 'AC3 the open loans due date exists').notToBeNull;
+    expect(devRow[0].Current_Loan_Due_Date__c, 'AC3 the open loans due date exists').toBe(iso(-30));
   });
 
   test('AC4 second lending on a busy device refused, still one open loan', async () => {
@@ -296,9 +293,10 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
     ).toEqual([14, 14]);
     const started = new Date();
     expect(Number((started.getTime() - TODAY.getTime()) / 1000), 'sanity: seed ran after module load').toBeGreaterThanOrEqual(0);
-    const named = soql(`SELECT Id, Name FROM Loan_Record__c WHERE Loan_Devic__c='${devs['4']}'`);
+    const named = soql(`SELECT Id, Loan_Duration_Days__c, Loan_Return_Datum__c FROM Loan_Record__c WHERE Loan_Devic__c='${devs['4']}'`);
     expect(named.length, 'AC7 the written-off device still has its full history').toBe(2);
-    expect(named.map((r: any) => r.Name).sort(), 'AC7 the two written-off loans keep their record-names').toEqual(['LOAN-0023', 'LOAN-0024']);
+    expect(named.every((r: any) => r.Loan_Return_Datum__c != null), 'AC7 both written-off loans stay returned, not erased').toBe(true);
+    expect(named.map((r: any) => r.Loan_Duration_Days__c).sort(), 'AC7 the two written-off loans keep their durations (25 and 28)').toEqual([25, 28]);
   });
 
   test('AC8+AC9 overdue ListView: exactly the overdue devices, all columns, longest first, no written-off row', async ({ page }) => {
@@ -344,7 +342,8 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
   test('AC12 overdue stays put, nothing happens on its own', async ({ page }) => {
     const flagged = soql(`SELECT Id, Name, Status__c, Current_Loan_Overdue_Days__c FROM Demo_Devic__c WHERE Status__c = 'Lent_Out'`)
       .filter((r: any) => Number(r.Current_Loan_Overdue_Days__c || 0) > 0);
-    expect(flagged.map((r: any) => r.Current_Loan_Overdue_Days__c), 'AC12 org says 30 and 15 overdue days').toEqual([30, 15]);
+    expect(flagged.map((r: any) => Number(r.Current_Loan_Overdue_Days__c)).sort(), 'AC12 org says 30 and 15 overdue days').toEqual([15, 30]);
+    expect(flagged.length, 'AC12 still exactly 2 overdue devices').toBe(2);
     expect(flagged.every((r: any) => r.Status__c === 'Lent_Out'), 'AC12 no automation changed the status').toBe(true);
     const tasks = soql(`SELECT Id, Subject FROM Task WHERE Subject LIKE '%SCRUM-468%'`);
     expect(tasks.length, 'AC12 no Task was created for the overdue devices').toBe(0);
@@ -358,6 +357,8 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
     await listStatus(page, 2);
     const body = await page.evaluate('document.body.innerText');
     expect(/2 items •/.test(body), 'AC12 the second, fresh load still lists the 2 overdue devices').toBe(true);
-    expect(rows.some((r) => r.includes(de(-30))) && rows.some((r) => r.includes(de(-15))), 'AC12 same due dates as the Apex ground truth (in list rows)').toBe(true);
+    const rows12 = await listRows(page);
+    expect(rows12.length, 'AC12 the fresh load still shows 2 rows').toBe(2);
+    expect(rows12.some((r: string) => r.includes(de(-30))) && rows12.some((r: string) => r.includes(de(-15))), 'AC12 same due dates as the Apex ground truth (in list rows)').toBe(true);
   });
 });
