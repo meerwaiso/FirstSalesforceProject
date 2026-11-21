@@ -42,6 +42,32 @@ jira_get_issue fields=status,assignee before the first tool call).
   all three must be seeded non-zero by me; the org has 0 offer records today.
 - AC9/AC10 have NO automated artefact at all (Architect comment 23715 says exactly that).
 
+## Fixture ownership (measured 2026-11-21, runs 4-7)
+
+Tests share one seed per describe block, so a fixture an earlier test MUTATED must never be
+read by a later report test. Measured chain: AC6 renews C1 (no longer expired), AC7 closes C2
+(Closed Lost), AC8 closes D1. Consequence: the report ACs need their own untouched records.
+
+- due-soon fixtures B1 (expiry today+14 = window edge), B2 (today+5), B3 (default rule -> today)
+- expired-open fixture E1 (sent today-60, no end date -> expiry today-30)
+  Without E1 the AC10 SOQL ground truth was 0 records -> "at least one expired offer" failed,
+  i.e. the criterion would have shipped UNTESTED (house rule: zero records = not met).
+  AC9's earlier "first group 26.11 instead of 21.11" was AC8 having closed B3 in the same block,
+  NOT a report bug - REPORT_STAGE excludes Closed Lost.
+
+## Edge measurement (EDGE probe, created+deleted 2026-11-21, org-verified)
+
+`sf data create record` + SOQL read-back on three throwaway records:
+
+- sent 2026-10-22, no end date -> Offer_Expires_On**c 2026-11-21 (= sent+30), Days_Left 0,
+  Status "offer valid today", Offer_Expiring_14D**c TRUE, Offer_Expired\_\_c FALSE
+- sent 2026-10-23, no end date -> expires 2026-11-22, Days 1, due TRUE
+- sent 2026-11-02 until 2026-12-14 -> expires 2026-12-14, Days 23, due FALSE, expired FALSE
+  Confirms: default rule = sent + 30 days; the 14-day window is inclusive of today AND of
+  today+14; expiry today is DUE, not expired.
+  CLI note: delete uses `-i <id>` (NOT -r); record names with spaces need Name='...' inside the
+  -v string, and Opportunity's account field is `AccountId` (Account\_\_c / AccountName = INVALID_FIELD).
+
 ## Measured late on 2026-11-21 (report + Apex + DOM)
 
 - Apex run 707WU00001Valek: 12/12 Pass, failRate 0%, testTotalTime 15523 ms, user devops-agent@cline.test.
