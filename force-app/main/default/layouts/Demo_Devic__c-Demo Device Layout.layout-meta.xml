@@ -72,6 +72,13 @@
         </layoutColumns>
         <style>TwoColumnsLeftToRight</style>
     </layoutSections>
+    <layoutSections>
+        <customLabel>false</customLabel>
+        <detailHeading>false</detailHeading>
+        <editHeading>false</editHeading>
+        <layoutColumns />
+        <style>CustomLinks</style>
+    </layoutSections>
     <relatedLists>
         <fields>Loan_Customer__c</fields>
         <fields>Loan_Start_Datum__c</fields>
