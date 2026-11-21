@@ -120,23 +120,21 @@ async function offerValues(page: Page): Promise<Record<string, string>> {
   ];
   const out: Record<string, string> = {};
   for (const label of wanted) {
-    let value: string | null = null;
+    const matches: string[] = [];
     for (const raw of snap.split('\n')) {
-      const line = raw.trim();
-      if (line.includes('Edit ' + label)) continue; // the inline-edit button, not the value
-      const at = line.lastIndexOf(label);
-      if (at < 0) continue;
-      let rest = line.slice(at + label.length).trim();
-      // "Offer expired" line repeats the label after the boolean value.
-      if (rest.endsWith(label)) rest = rest.slice(0, rest.length - label.length).trim();
-      if (rest.startsWith(label)) continue; // a longer label that merely contains this one
-      value = rest;
-      break;
+      const i = raw.indexOf(': ');
+      const t = (i >= 0 ? raw.slice(i + 2) : raw).trim();
+      if (!t.startsWith(label)) continue;
+      let rest = t.slice(label.length).trim();
+      if (rest === label || rest.startsWith(label)) rest = ''; // the label repeats, nothing between
+      else if (rest.endsWith(' ' + label)) rest = rest.slice(0, rest.length - label.length - 1).trim();
+      matches.push(rest);
     }
-    if (value === null) {
+    if (!matches.length) {
       throw new Error(`"${label}" not in the accessibility tree at all (Offer validity section missing?) :: ${snap.slice(0, 400)}`);
     }
-    out[label] = value;
+    const nonEmpty = matches.find((m) => m !== '');
+    out[label] = nonEmpty ?? '';
   }
   return out;
 }
@@ -147,6 +145,11 @@ type Fix = { tag: string; id: string; acct: string };
 const FIXTURES: Fix[] = [];
 
 function seedFixtures() {
+  // FIXTURES is shared across the six describe blocks; Playwright runs beforeAll
+  // ONCE PER BLOCK. Without this reset the array accumulates, fixtureId() resolves
+  // to the FIRST entry (the ids an earlier afterAll already DELETED), and every
+  // later block opens a 404 record page.
+  FIXTURES.length = 0;
   // A: no offer data at all            B1: expiry exactly today+14 (window edge)
   // B2: live, 5 days left              B3: default rule -> expiry = sent+30 = today
   // C1: explicit expiry in the past    C2: default rule expired (sent+30 = today-7)
@@ -156,7 +159,7 @@ function seedFixtures() {
     ['B2', -2, 5],
     ['B3', -30, null],
     ['C1', -30, -11],
-    ['C2', -21, null],
+    ['C2', -45, null],
   ];
   for (const [name, sentOff, untilOff] of spec) {
     const acct = createRecord('Account', `Name='${TAG}-${name}'`);
@@ -170,9 +173,10 @@ function seedFixtures() {
 }
 
 function fixtureId(name: string): string {
-  const f = FIXTURES.find((x) => x.tag === name);
-  if (!f) throw new Error('fixture ' + name + ' missing');
-  return f.id;
+  let hit: Fix | null = null;
+  for (const f of FIXTURES) if (f.tag === name) hit = f; // latest seed wins, not the first
+  if (!hit) throw new Error('fixture ' + name + ' missing');
+  return hit.id;
 }
 
 function fixtureName(name: string): string {
@@ -189,8 +193,14 @@ function soqlOffer(id: string): any {
   return recs[0];
 }
 
-function countOpen(cond: string): number {
-  return soql(`SELECT Id FROM Opportunity WHERE IsClosed=false AND ${cond} LIMIT 500`).length;
+// The report's own filter (measured from the deployed Report metadata 2026-11-21):
+//   Offer_Expiring_14D__c equals 1  AND  STAGE_NAME notEqual 'Closed Won,Closed Lost'
+// The SOQL ground truth must use the SAME criteria, otherwise the totals can never
+// agree and the difference is unattributable.
+const REPORT_STAGE = `StageName != 'Closed Won' AND StageName != 'Closed Lost'`;
+
+function countWhere(cond: string): number {
+  return soql(`SELECT Id FROM Opportunity WHERE ${cond} LIMIT 500`).length;
 }
 
 /* --------------------------- picklist click (house) ------------------------ */
@@ -216,6 +226,50 @@ async function dismissGuidance(page: Page) {
   }
 }
 
+/**
+ * Set a picklist on a RECORD page (house pattern, SCRUM-381 lines 60-85).
+ *
+ * `startInlineEdit` + `getByLabel` cannot be used here: on an Opportunity the
+ * Details section carries the label "Stage" twice (field row + the Path-Chevron
+ * area), so the label locator resolves to 2 elements and the helper's toHaveCount(1)
+ * guard fires. The picklist itself is a `combobox "<Label>"` whose options only
+ * exist once the combo is clicked — and the Path-Chevron `listbox "Path Options"`
+ * already contributes options, so the open-state check is a DELTA on the option
+ * count, never an absolute count.
+ */
+async function setPicklist(page: Page, fieldLabel: string, optionName: string) {
+  const btn = page.getByRole('button', { name: `Edit ${fieldLabel}`, exact: true }).first();
+  await btn.waitFor({ state: 'visible', timeout: 30000 });
+  await btn.click();
+  const combo = page.getByRole('combobox', { name: fieldLabel, exact: false }).first();
+  await combo.waitFor({ state: 'visible', timeout: 20000 });
+  const all = page.getByRole('option', { name: optionName, exact: true });
+  const base = await all.count(); // Path-Chevron options present before the combo opens
+  let opened = false;
+  for (let i = 0; i < 5 && !opened; i++) {
+    await combo.click({ timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(600);
+    opened = (await all.count()) > base;
+  }
+  if (!opened) throw new Error(`Picklist "${fieldLabel}" never opened: option "${optionName}" count stayed ${base}`);
+  await expect(all, `picklist option "${optionName}" must appear exactly once beyond the Path listbox`).toHaveCount(base + 1, { timeout: 15000 });
+  await all.last().click({ force: true }).catch(() => {});
+  await page.waitForTimeout(600);
+}
+
+/** Type a date into its inline-edit input. Date inputs are unique per label. */
+async function setDateField(page: Page, fieldLabel: string, value: string) {
+  const btn = page.getByRole('button', { name: `Edit ${fieldLabel}`, exact: true }).first();
+  await btn.waitFor({ state: 'visible', timeout: 30000 });
+  await btn.click();
+  // The controls paint several seconds after the shell (house finding SCRUM-451):
+  // wait for THIS field's own label, not a generic form element.
+  const input = page.getByLabel(fieldLabel, { exact: true }).last();
+  await input.waitFor({ state: 'visible', timeout: 30000 });
+  await input.fill(value);
+  await page.waitForTimeout(400);
+}
+
 /* ============================ THE ACCEPTANCE TESTS ========================= */
 
 test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
@@ -231,9 +285,13 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
   });
 
   test.afterAll(async () => {
-    for (const f of FIXTURES) {
-      deleteRecord('Opportunity', f.id);
-      deleteRecord('Account', f.acct);
+    // Sweep by NAME, not only by the ids this block remembers: a block that aborts
+    // mid-way leaves its seed behind, and the NEXT block's seed then adds a second
+    // copy of every category -> report totals and row counts stop matching SOQL.
+    for (const obj of ['Opportunity', 'Account']) {
+      for (const r of soql(`SELECT Id FROM ${obj} WHERE Name LIKE '${TAG}%' LIMIT 300`)) {
+        deleteRecord(obj, r.Id);
+      }
     }
   });
 
@@ -301,8 +359,7 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     const id = fixtureId('C1');
     await openRecordDetails(page, `/lightning/r/Opportunity/${id}/view`);
     await dismissGuidance(page);
-    await startInlineEdit(page, 'Stage');
-    await clickOption(page, 'Closed Won');
+    await setPicklist(page, 'Stage', 'Closed Won');
     await saveInlineEdit(page);
     // The refusal must be on screen and the record must not have moved.
     await expect(
@@ -321,10 +378,8 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     const id = fixtureId('C1');
     await openRecordDetails(page, `/lightning/r/Opportunity/${id}/view`);
     await dismissGuidance(page);
-    const sent = await startInlineEdit(page, 'Offer sent on');
-    await sent.fill(de(0));
-    const until = await startInlineEdit(page, 'Offer valid until');
-    await until.fill(de(10));
+    await setDateField(page, 'Offer sent on', de(0));
+    await setDateField(page, 'Offer valid until', de(10));
     await saveInlineEdit(page);
 
     // The renewal persisted: reload the record and read the rendered values.
@@ -340,8 +395,8 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
 
     // Now closing as Won must work.
     await openRecordDetails(page, `/lightning/r/Opportunity/${id}/view`);
-    await startInlineEdit(page, 'Stage');
-    await clickOption(page, 'Closed Won');
+    await dismissGuidance(page);
+    await setPicklist(page, 'Stage', 'Closed Won');
     await saveInlineEdit(page);
     const closed = soqlOffer(id);
     expect(closed.IsClosed, `AC6 after renewing, Closed Won must persist (IsClosed=${closed.IsClosed})`).toBe(true);
@@ -359,29 +414,39 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     const before = soqlOffer(id);
     expect(before.IsClosed, 'AC7 fixture must start open').toBe(false);
     await dismissGuidance(page);
-    await startInlineEdit(page, 'Verlustgrund');
-    await clickOption(page, 'Zu teuer');
-    await startInlineEdit(page, 'Stage');
-    await clickOption(page, 'Closed Lost');
+    await setPicklist(page, 'Verlustgrund', 'Zu teuer');
+    await setPicklist(page, 'Stage', 'Closed Lost');
     await saveInlineEdit(page);
     const after = soqlOffer(id);
     expect(after.IsClosed, `AC7 Closed Lost must persist despite an expired offer (IsClosed=${after.IsClosed})`).toBe(true);
     expect(after.StageName, `AC7 stage expected Closed Lost, got ${after.StageName}`).toBe('Closed Lost');
     expect(after.Loss_Reason__c != null, `AC7 loss reason persisted (${after.Loss_Reason__c})`).toBe(true);
-    expect(String(after.Offer_Sent_On__c), `AC7 closing must not clear the offer history (${iso(-21)}`).toContain(iso(-21));
+    expect(String(after.Offer_Sent_On__c), `AC7 closing must not clear the offer history (${iso(-45)}`).toContain(iso(-45));
     test
       .info()
       .annotations.push({ type: 'observed', description: `AC7: Closed Lost + reason persisted, offer history kept (${after.Offer_Sent_On__c})` });
   });
 
   test('AC8: after the deal is closed the offer dates are frozen', async ({ page }) => {
-    const id = fixtureId('C1'); // closed as Won in AC6, offer dates still filled
+    const id = fixtureId('C2'); // open, expired, offer dates filled by the seed
     const before = soqlOffer(id);
-    expect(before.IsClosed, 'AC8 fixture is the closed deal from AC6 (IsClosed must be true)').toBe(true);
+    expect(before.IsClosed, 'AC8 fixture must start open (the freeze is about LATER saves)').toBe(false);
+    expect(before.Offer_Sent_On__c != null, 'AC8 fixture must carry an offer history').toBe(true);
+
+    // Close it first — through the path AC7 proved is allowed for an expired offer.
     await openRecordDetails(page, `/lightning/r/Opportunity/${id}/view`);
     await dismissGuidance(page);
-    const sent = await startInlineEdit(page, 'Offer sent on');
-    await sent.fill(de(-40));
+    await setPicklist(page, 'Verlustgrund', 'Zu teuer');
+    await setPicklist(page, 'Stage', 'Closed Lost');
+    await saveInlineEdit(page);
+    const closed = soqlOffer(id);
+    expect(closed.IsClosed, 'AC8 precondition: the deal is now closed').toBe(true);
+    expect(String(closed.Offer_Sent_On__c), `AC8 closing alone must not move the dates (${String(before.Offer_Sent_On__c)} -> ${String(closed.Offer_Sent_On__c)})`).toBe(String(before.Offer_Sent_On__c));
+
+    // On the closed deal a further date fill is refused and nothing moves.
+    await openRecordDetails(page, `/lightning/r/Opportunity/${id}/view`);
+    await dismissGuidance(page);
+    await setDateField(page, 'Offer sent on', de(-90));
     await saveInlineEdit(page);
     await expect(
       page.getByText(/already closed|cannot be changed/i).first(),
@@ -390,13 +455,14 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     const after = soqlOffer(id);
     expect(String(after.Offer_Sent_On__c), `AC8 refusal must not move the dates (${String(before.Offer_Sent_On__c)} expected, got ${String(after.Offer_Sent_On__c)})`).toBe(String(before.Offer_Sent_On__c));
     expect(String(after.Offer_Valid_Until__c), 'AC8 the other date must be untouched too').toBe(String(before.Offer_Valid_Until__c));
+    expect(after.Offer_Sent_On__c != de(-90), 'AC8 the refused value must not have landed anywhere').toBe(true);
     test
       .info()
-      .annotations.push({ type: 'observed', description: `AC8: refusal shown, dates unchanged ${String(after.Offer_Sent_On__c)}/${String(after.Offer_Valid_Until__c)}` });
+      .annotations.push({ type: 'observed', description: `AC8: closed + refused fill -> dates still ${String(after.Offer_Sent_On__c)}/${String(after.Offer_Valid_Until__c)}` });
   });
 
   test('AC9: Report shows the open deals expiring within 14 days, soonest first', async ({ page }) => {
-    const dueCount = countOpen('Offer_Expiring_14D__c=true');
+    const dueCount = countWhere(`Offer_Expiring_14D__c = true AND ${REPORT_STAGE}`);
     expect(dueCount, 'AC9 ground truth: at least one offer must expire within 14 days, else the criterion is untested').toBeGreaterThan(0);
     const frame = await openReportFrame(page, 'SCRUM467_Offer_Renewals_Due_14D');
     const total = await reportTotalRecords(frame);
@@ -423,7 +489,7 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
   });
 
   test('AC10: Report shows the expired offers, kept apart from the due-soon ones', async ({ page }) => {
-    const expiredCount = countOpen('Offer_Expired__c=true');
+    const expiredCount = countWhere(`Offer_Expired__c = true AND ${REPORT_STAGE}`);
     expect(expiredCount, 'AC10 ground truth: at least one expired offer must exist, else untested').toBeGreaterThan(0);
     const frame = await openReportFrame(page, 'SCRUM467_Offer_Expired_Renewals');
     const total = await reportTotalRecords(frame);
@@ -434,8 +500,8 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     const firstExp = data.length > 0 ? (data[0][0].match(/^\d{2}\.\d{2}\.\d{4}/) ?? [''])[0] : '';
     expect(
       firstExp,
-      `AC10 sort order oldest-first: first group must be ${de(-11)} (C1 = today-11), got "${firstExp}"`
-    ).toBe(de(-11));
+      `AC10 sort order oldest-first: first group must be ${de(-15)} (C2 = today-45, no end date -> sent+30), got "${firstExp}"`
+    ).toBe(de(-15));
     for (const name of ['C1', 'C2']) {
       const hit = data.some((r) => r.some((c) => c.includes(fixtureName(name))));
       expect(hit, `AC10 fixture ${name} missing from the expired report`).toBe(true);
@@ -458,8 +524,8 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     // No Task objects were introduced for these deals, and no new sObject type.
     const tasks = soql(`SELECT Id, Subject FROM Task WHERE Subject LIKE '%SCRUM-467%'`);
     expect(tasks.length, `AC11 auto-tasks introduced for these deals (${tasks.length}) must be 0`).toBe(0);
-    const objs = soqlTooling(`SELECT Queryable, Name FROM EntityDefinition WHERE Name LIKE 'Offer%'`);
-    expect(objs.length, `AC11 a dedicated offer object would violate "no new objects" (${objs.map((o: any) => o.Name)})`).toBe(0);
+    const objs = soqlTooling(`SELECT QualifiedApiName, Label FROM EntityDefinition WHERE QualifiedApiName LIKE 'Offer%'`);
+    expect(objs.length, `AC11 a dedicated offer object would violate "no new objects" (${objs.map((o: any) => o.QualifiedApiName)})`).toBe(0);
     test
       .info()
       .annotations.push({ type: 'observed', description: `AC11: no Task/Mail rows, no new EntityDefinition, no self-changes` });
@@ -471,8 +537,7 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     const id = fixtureId('B2');
     await openRecordDetails(page, `/lightning/r/Opportunity/${id}/view`);
     await dismissGuidance(page);
-    const until = await startInlineEdit(page, 'Offer valid until');
-    await until.fill(de(20));
+    await setDateField(page, 'Offer valid until', de(20));
     await saveInlineEdit(page);
     const after = soqlOffer(id);
     expect(String(after.Offer_Valid_Until__c), `AC12 set holder's write expected ${iso(20)}, SOQL shows ${String(after.Offer_Valid_Until__c)}`).toContain(iso(20));
@@ -511,7 +576,9 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
       }
     }
     await frame.waitForLoadState('domcontentloaded').catch(() => {});
-    await frame.locator('table tbody tr').first().waitFor({ timeout: 60000 });
+    // NO tbody in these report tables (measured) - wait for the table itself.
+    await frame.waitForSelector('table', { state: 'attached', timeout: 60000 });
+    await page.waitForTimeout(1500);
     return frame;
   }
 
@@ -522,16 +589,22 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     return parseInt(m[1], 10);
   }
 
-  async function reportDataRows(frame: any): Promise<string[][]> {
-    const rowsLoc = frame.locator('table tbody tr');
-    const n = await rowsLoc.count();
-    const out: string[][] = [];
-    for (let i = 0; i < n; i++) {
-      const cells = await rowsLoc.nth(i).locator('td').allTextContents().catch(() => []);
-      const t = cells.map((c: string) => c.trim());
-      if (t.length > 0 && t.join('').length > 0) out.push(t);
-    }
-    return out;
+  /** Read the report tables as rows of cell text. The report tables have NO tbody
+   * (measured in the live frame 2026-11-21), so the only reliable selector is 'tr'
+   * under 'table' inside the inner iframe. */
+  async function reportDataRows(frame: Page): Promise<string[][]> {
+    const rows: string[][] = await frame.evaluate(() => {
+      const out: string[][] = [];
+      document.querySelectorAll('table').forEach((t) => {
+        t.querySelectorAll('tr').forEach((tr) => {
+          const cells: string[] = [];
+          tr.querySelectorAll('th,td').forEach((c) => cells.push((c.textContent || '').replace(/\s+/g, ' ').trim()));
+          if (cells.length > 0) out.push(cells);
+        });
+      });
+      return out;
+    });
+    return rows;
   }
 
   /** Rows of the GROUPED report that carry a record: first cell starts with the
