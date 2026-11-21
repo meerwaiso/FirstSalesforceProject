@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-468 Phase 6: the AC8 report. It references the ReportType of Phase 5, which has to be deployed first (house note in scr396-phase2a-reporttype.xml). Member form 'Folder/Name' (house release-scr428-combined.xml). -->
+    <types>
+        <members>Sales/SCRUM468_Overdue_Devices</members>
+        <name>Report</name>
+    </types>
+    <version>67.0</version>
+</Package>

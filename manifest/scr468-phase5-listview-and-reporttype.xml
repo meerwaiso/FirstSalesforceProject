@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-468 Phase 5: the AC11 list view on the device and the ReportType over Demo_Devic__c. Member forms copied from house manifests: ListView 'Object.ListName' (scr403-phase3-listview.xml), ReportType bare file name (scr396-phase2a-reporttype.xml). -->
+    <types>
+        <members>Demo_Devic__c.SCRUM468_Lent_Out_Devices</members>
+        <name>ListView</name>
+    </types>
+    <types>
+        <members>SCRUM468_Overdue_Devices</members>
+        <name>ReportType</name>
+    </types>
+    <version>67.0</version>
+</Package>
