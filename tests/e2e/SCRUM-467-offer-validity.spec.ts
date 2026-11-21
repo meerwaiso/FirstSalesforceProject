@@ -629,7 +629,20 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     }
     await frame.waitForLoadState('domcontentloaded').catch(() => {});
     // NO tbody in these report tables (measured) - wait for the table itself.
-    await frame.waitForSelector('table', { state: 'attached', timeout: 60000 });
+    // The report link once rendered no table at all in 60 s (run 12, AC10) while the
+    // same helper passed for the other report in the same run: one bounded reload.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        await frame.waitForSelector('table', { state: 'attached', timeout: attempt === 0 ? 45000 : 90000 });
+        break;
+      } catch (e) {
+        if (attempt === 1) throw new Error(`report table never rendered after 2 loads (${e})`);
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+        await page.waitForTimeout(3000);
+        frame = page.frames().find((fr) => fr.url().includes('lightningReportApp')) ?? frame;
+        await frame.waitForLoadState('domcontentloaded').catch(() => {});
+      }
+    }
     await page.waitForTimeout(1500);
     return frame;
   }

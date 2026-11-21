@@ -108,3 +108,20 @@ read by a later report test. Measured chain: AC6 renews C1 (no longer expired), 
   files, discarded with `git restore`, NOT committed.
 - Run 1 (proc_63b277f9b6c4): 3 pass / 9 fail (10.2 min). Run 2 (proc_3cb76710521d): log
   /home/fino/.hermes/profiles/tester-agent/cache/scratch/scr467-e2e-run2.log.
+
+## Report DOM (measured 2026-11-21, error-context of runs 11-12)
+
+- The grouped report renders ONE `table`; the header row's first cell is the GROUPING
+  column and reads `Offer expiry (last valid day) … Opportunity.Offer_Expires_On__c Column Actions`
+  — the label is NOT "Offer Expires On", so a locator on the label was wrong twice.
+- The group cell embeds the date, the drill-down controls and the group size:
+  `22.10.2026, unchecked, Select row for Drill Down.22.10.2026(1)` -> read DATE TOKENS,
+  not an exact date match (an exact match found 0 groups, which is what made AC9/AC10
+  fail with "report groups <empty>").
+- Detail row = 9 cells: group cell, `Opportunity Name`, Account, Owner, Amount, Stage,
+  `Offer sent on`, `Offer valid until`, `Offer status` (values rendered as dd.mm.yyyy and
+  the Status formula text, e.g. `offer expired`). No `<tbody>`; the drill-down summary
+  repeats the group dates after the detail rows, so distinct-in-DOM-order is stable.
+- AC10 flaked with `frame.waitForSelector('table')` timing out at 60 s in run 12 while
+  AC9 (same helper, other report) passed in the same run — the report link rendered no
+  table that time; not attributed to the product (no second symptom).
