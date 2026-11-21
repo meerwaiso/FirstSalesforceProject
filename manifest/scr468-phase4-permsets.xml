@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-468 Phase 4: the three Permission Sets. They reference the Phase 2 fields, so they come after them. -->
+    <types>
+        <members>SCRUM468_Loan</members>
+        <members>SCRUM468_Read</members>
+        <members>SCRUM468_Writeoff</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>

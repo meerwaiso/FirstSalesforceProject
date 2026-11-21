@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Loan_Duration_Days__c</fullName>
+    <label>Loan duration in days</label>
+    <description>SCRUM-468: how long this lending period lasted, blank while the loan is still open. System-computed, read-only; the device history shows it (AC7).</description>
+    <formula>IF(NOT(ISBLANK(Loan_Return_Datum__c)), Loan_Return_Datum__c - Loan_Start_Datum__c, null)</formula>
+    <precision>18</precision>
+    <scale>0</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

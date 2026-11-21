@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Status__c</fullName>
+    <label>Availability status</label>
+    <description>SCRUM-468: Available, Lent_Out or Written_Off. Restricted value set, default Available. Written_Off is only reachable through DemoDevicWriteoffGuard, which demands the SCRUM468_Writeoff marker PS (AC9, AC9n). A Written_Off device can never be lent again (LoanRecordGuard).</description>
+    <required>false</required>
+    <restricted>true</restricted>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Available</fullName>
+                <default>true</default>
+                <label>Available</label>
+            </value>
+            <value>
+                <fullName>Lent_Out</fullName>
+                <default>false</default>
+                <label>Lent_Out</label>
+            </value>
+            <value>
+                <fullName>Written_Off</fullName>
+                <default>false</default>
+                <label>Written_Off</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

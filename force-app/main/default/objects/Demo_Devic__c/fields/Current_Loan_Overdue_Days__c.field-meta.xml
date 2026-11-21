@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Current_Loan_Overdue_Days__c</fullName>
+    <label>Days overdue</label>
+    <description>SCRUM-468: how many days a Lent_Out device is past its due date, blank when it is not overdue. System-computed, read-only; the overdue report sorts on it descending (AC8).</description>
+    <formula>IF(AND(TEXT(Status__c) = "Lent_Out", NOT(ISBLANK(Current_Loan_Due_Date__c))), IF(Current_Loan_Due_Date__c &lt; TODAY(), TODAY() - Current_Loan_Due_Date__c, null), null)</formula>
+    <precision>18</precision>
+    <scale>0</scale>
+    <type>Number</type>
+    <unique>false</unique>
+</CustomField>

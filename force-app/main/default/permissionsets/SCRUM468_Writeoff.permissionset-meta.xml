@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-468 AC9/AC9n: the marker set for sales TEAM LEADS only. It carries no object and no field rights at all - a Permission Set can only grant, never revoke, so a second grant set could never make the negative test fail. DemoDevicWriteoffGuard queries PermissionSetAssignment for membership; without it a save that sets Status__c = Written_Off is refused. Assigned to team leads only, read back before handoff.</description>
+    <fullName>SCRUM468_Writeoff</fullName>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM468 Lend Devices - Writeoff marker</label>
+</PermissionSet>

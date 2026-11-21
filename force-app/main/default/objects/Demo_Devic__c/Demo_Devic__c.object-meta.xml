@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>SCRUM-468 Lend Devices: one record per physical demonstration device (measuring instruments, laptops with our software, handheld scanners). Says what the device is, its serial, and whether it is Available, Lent_Out or Written_Off. The lending periods themselves live in Loan_Record__c, so history survives returns and write-offs. Internal-only: no Experience Cloud, no customer-facing sharing.</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>false</enableHistory>
+    <enableLicensing>false</enableLicensing>
+    <enableReports>true</enableReports>
+    <enableSearch>true</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <externalSharingModel>Private</externalSharingModel>
+    <label>Demo Device</label>
+    <nameField>
+        <label>Demo Device Name</label>
+        <type>AutoNumber</type>
+        <displayFormat>DEV-{0000}</displayFormat>
+        <startingNumber>1</startingNumber>
+    </nameField>
+    <pluralLabel>Demo Devices</pluralLabel>
+    <searchLayouts></searchLayouts>
+    <sharingModel>Locked</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

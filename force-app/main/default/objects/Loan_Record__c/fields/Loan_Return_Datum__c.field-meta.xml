@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Loan_Return_Datum__c</fullName>
+    <label>Return date</label>
+    <description>SCRUM-468: when the device came back. Blank = the loan is still open. LoanReturnGuard reacts to null -> filled and makes the device Available again (AC6).</description>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <unique>false</unique>
+    <type>Date</type>
+</CustomField>

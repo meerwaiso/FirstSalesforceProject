@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-468 Phase 1: only the two custom objects. Their fields and everything referencing them come later (fields need the object, the PS and the guards need the fields). -->
+    <types>
+        <members>Demo_Devic__c</members>
+        <members>Loan_Record__c</members>
+        <name>CustomObject</name>
+    </types>
+    <version>67.0</version>
+</Package>
