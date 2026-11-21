@@ -100,6 +100,19 @@ function iso(off: number): string {
   const d = new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate() + off);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+function dateKeyOfDe(s: string): number {
+  const m = s.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  return m ? Number(m[3]) * 10000 + Number(m[2]) * 100 + Number(m[1]) : -1;
+}
+function isoToDe(v: any): string {
+  const m = String(v ?? '').match(/(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : '';
+}
+function distinctInOrder(arr: string[]): string[] {
+  const out: string[] = [];
+  for (const v of arr) if (v !== '' && !out.includes(v)) out.push(v);
+  return out;
+}
 function de(off: number): string {
   const d = new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate() + off);
   return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
@@ -465,7 +478,10 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
   });
 
   test('AC9: Report shows the open deals expiring within 14 days, soonest first', async ({ page }) => {
-    const dueCount = countWhere(`Offer_Expiring_14D__c = true AND ${REPORT_STAGE}`);
+    const dueRecs = soql(
+      `SELECT Id, Name, Offer_Expires_On__c FROM Opportunity WHERE Offer_Expiring_14D__c = true AND ${REPORT_STAGE} LIMIT 500`
+    );
+    const dueCount = dueRecs.length;
     expect(dueCount, 'AC9 ground truth: at least one offer must expire within 14 days, else the criterion is untested').toBeGreaterThan(0);
     const frame = await openReportFrame(page, 'SCRUM467_Offer_Renewals_Due_14D');
     const total = await reportTotalRecords(frame);
@@ -473,11 +489,13 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     const rows = await reportDataRows(frame);
     const data = dataRowsOf(rows);
     expect(data.length, `AC9 rendered record rows (${data.length}) must equal Total Records ${total}`).toBe(total);
-    const firstDate = data.length > 0 ? (data[0][0].match(/^\d{2}\.\d{2}\.\d{4}/) ?? [''])[0] : '';
-    expect(
-      firstDate,
-      `AC9 sort order: first group must be the earliest expiry ${de(0)}, got "${firstDate}"`
-    ).toBe(de(0));
+    const groups = distinctInOrder(data.map((r) => (r[0].match(/^\d{2}\.\d{2}\.\d{4}/) ?? [''])[0]));
+    const groupsSorted = groups.slice().sort((a, b) => dateKeyOfDe(a) - dateKeyOfDe(b));
+    expect(groups, `AC9 soonest-expiry-first: the report's group order ${groups} must already be ascending (${groupsSorted})`).toEqual(groupsSorted);
+    const soqlGroups = distinctInOrder(dueRecs.map((r: any) => isoToDe(r.Offer_Expires_On__c)))
+      .sort((a, b) => dateKeyOfDe(a) - dateKeyOfDe(b));
+    expect(groupsSorted, `AC9 completeness: the report shows expiry groups ${groups}, the org has ${soqlGroups} ("they see EVERY open Opportunity")`).toEqual(soqlGroups);
+    expect(groupsSorted[0], `AC9 earliest expiry group must be ${de(0)} (B3 = sent today-30, default rule -> sent+30)`).toBe(de(0));
     for (const name of ['B1', 'B2', 'B3']) {
       const hit = data.some((r) => r.some((c) => c.includes(fixtureName(name))));
       expect(hit, `AC9 fixture ${name} missing from the report`).toBe(true);
@@ -488,11 +506,14 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     ).toBe(false);
     test
       .info()
-      .annotations.push({ type: 'observed', description: `AC9: Report total=${total}, dataRows=${data.length}, SOQL=${dueCount}, first group ${firstDate}` });
+      .annotations.push({ type: 'observed', description: `AC9: Report total=${total}, dataRows=${data.length}, SOQL=${dueCount}, groups=${groups}` });
   });
 
   test('AC10: Report shows the expired offers, kept apart from the due-soon ones', async ({ page }) => {
-    const expiredCount = countWhere(`Offer_Expired__c = true AND ${REPORT_STAGE}`);
+    const expiredRecs = soql(
+      `SELECT Id, Name, Offer_Expires_On__c FROM Opportunity WHERE Offer_Expired__c = true AND ${REPORT_STAGE} LIMIT 500`
+    );
+    const expiredCount = expiredRecs.length;
     expect(expiredCount, 'AC10 ground truth: at least one expired offer must exist, else untested').toBeGreaterThan(0);
     const frame = await openReportFrame(page, 'SCRUM467_Offer_Expired_Renewals');
     const total = await reportTotalRecords(frame);
@@ -500,11 +521,13 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     const rows = await reportDataRows(frame);
     const data = dataRowsOf(rows);
     expect(data.length, `AC10 rendered record rows (${data.length}) vs Total Records ${total}`).toBe(total);
-    const firstExp = data.length > 0 ? (data[0][0].match(/^\d{2}\.\d{2}\.\d{4}/) ?? [''])[0] : '';
-    expect(
-      firstExp,
-      `AC10 sort order oldest-first: first group must be ${de(-15)} (C2 = today-45, no end date -> sent+30), got "${firstExp}"`
-    ).toBe(de(-15));
+    const groupsX = distinctInOrder(data.map((r) => (r[0].match(/^\d{2}\.\d{2}\.\d{4}/) ?? [''])[0]));
+    const groupsXSorted = groupsX.slice().sort((a, b) => dateKeyOfDe(a) - dateKeyOfDe(b));
+    expect(groupsX, `AC10 oldest-expiry-first: the report's group order ${groupsX} must already be ascending (${groupsXSorted})`).toEqual(groupsXSorted);
+    const soqlGroupsX = distinctInOrder(expiredRecs.map((r: any) => isoToDe(r.Offer_Expires_On__c)))
+      .sort((a, b) => dateKeyOfDe(a) - dateKeyOfDe(b));
+    expect(groupsXSorted, `AC10 completeness: report groups ${groupsX} must be exactly the org's ${soqlGroupsX}`).toEqual(soqlGroupsX);
+    expect(groupsXSorted[0], `AC10 oldest expiry group must be ${de(-15)} (C2 = sent today-45, no end date -> sent+30)`).toBe(de(-15));
     for (const name of ['C1', 'C2']) {
       const hit = data.some((r) => r.some((c) => c.includes(fixtureName(name))));
       expect(hit, `AC10 fixture ${name} missing from the expired report`).toBe(true);
@@ -515,7 +538,7 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     }
     test
       .info()
-      .annotations.push({ type: 'observed', description: `AC10: Report total=${total}, dataRows=${data.length}, SOQL=${expiredCount}, first group ${firstExp}` });
+      .annotations.push({ type: 'observed', description: `AC10: Report total=${total}, dataRows=${data.length}, SOQL=${expiredCount}, groups=${groupsX}` });
   });
 
   test('AC11: nothing happens on its own', async ({ page }) => {
