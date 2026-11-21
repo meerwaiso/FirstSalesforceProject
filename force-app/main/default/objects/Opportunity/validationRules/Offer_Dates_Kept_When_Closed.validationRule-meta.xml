@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Offer_Dates_Kept_When_Closed</fullName>
+    <active>true</active>
+    <description>SCRUM-467: on a deal that was already won or lost before this save the offer dates stay as they are; an edit may not change them. Renewal on an open deal is unaffected.</description>
+    <errorConditionFormula>AND(NOT(ISCHANGED(StageName)), OR(ISPICKVAL(StageName, &quot;Closed Won&quot;), ISPICKVAL(StageName, &quot;Closed Lost&quot;)), OR(ISCHANGED(Offer_Sent_On__c), ISCHANGED(Offer_Valid_Until__c)))</errorConditionFormula>
+    <errorMessage>The deal is already closed - the offer dates stay as they are and cannot be changed any more.</errorMessage>
+</ValidationRule>

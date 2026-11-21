@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Offer_Won_With_Expired_Offer</fullName>
+    <active>true</active>
+    <description>SCRUM-467: the deal may not be closed as Won while the offer already is expired. The change-guard ISCHANGED(StageName) keeps later, unrelated saves of an already-won deal possible. An offer renewed today is closable again.</description>
+    <errorConditionFormula>AND(ISCHANGED(StageName), ISPICKVAL(StageName, &quot;Closed Won&quot;), Offer_Expired__c)</errorConditionFormula>
+    <errorMessage>Der angebot already expired - die Chance cannot be closed as Won. Renew it first (record new offer dates).</errorMessage>
+</ValidationRule>
