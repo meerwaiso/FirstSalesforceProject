@@ -431,7 +431,7 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
   });
 
   test('AC8: after the deal is closed the offer dates are frozen', async ({ page }) => {
-    const id = fixtureId('C2'); // open, expired, offer dates filled by the seed
+    const id = fixtureId('B3'); // open, untouched by AC5/AC6/AC7, offer dates filled by the seed
     const before = soqlOffer(id);
     expect(before.IsClosed, 'AC8 fixture must start open (the freeze is about LATER saves)').toBe(false);
     expect(before.Offer_Sent_On__c != null, 'AC8 fixture must carry an offer history').toBe(true);
