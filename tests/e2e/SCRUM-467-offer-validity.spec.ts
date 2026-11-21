@@ -176,6 +176,9 @@ function seedFixtures() {
     // D1: only for AC8 (the close-then-freeze test). It is CLOSED by AC8, so the
     // report tests must never read it — the reports exclude closed records.
     ['D1', -30, null],
+    // E1: expired AND open when AC10 reads the reports (C1 gets renewed by AC6,
+    // C2 gets closed by AC7). Without it AC10's ground truth is 0 = untested.
+    ['E1', -60, null],
   ];
   for (const [name, sentOff, untilOff] of spec) {
     const acct = createRecord('Account', `Name='${TAG}-${name}'`);
@@ -534,13 +537,13 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     const soqlGroupsX = distinctInOrder(expiredRecs.map((r: any) => isoToDe(r.Offer_Expires_On__c)))
       .sort((a, b) => dateKeyOfDe(a) - dateKeyOfDe(b));
     expect(groupsXSorted, `AC10 completeness: report groups ${groupsX} must be exactly the org's ${soqlGroupsX}`).toEqual(soqlGroupsX);
-    expect(groupsXSorted[0], `AC10 oldest expiry group must be ${de(-15)} (C2 = sent today-45, no end date -> sent+30)`).toBe(de(-15));
+    expect(groupsXSorted[0], `AC10 oldest expiry group must be ${de(-30)} (E1 = sent today-60, no end date -> sent+30)`).toBe(de(-30));
     for (const g of groupsXSorted) {
       expect(dateKeyOfDe(g) <= dateKeyOfDe(de(-1)), `AC10 separation: expired group ${g} must be strictly in the past (latest ${de(-1)}), never a due-soon date`).toBe(true);
     }
-    for (const name of ['C1', 'C2']) {
+    for (const name of ['E1']) {
       const hit = data.some((r) => r.some((c) => c.includes(fixtureName(name))));
-      expect(hit, `AC10 fixture ${name} missing from the expired report`).toBe(true);
+      expect(hit, `AC10 fixture ${name} (open, expired) missing from the expired report`).toBe(true);
     }
     for (const name of ['B1', 'B2', 'B3']) {
       const hit = data.some((r) => r.some((c) => c.includes(fixtureName(name))));
