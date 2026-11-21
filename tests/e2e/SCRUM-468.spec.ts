@@ -132,16 +132,17 @@ function seedFixtures(): void {
     );
   loans.L1 = lend('1', 'A', u1, -60, -30); // open, overdue 30
   loans.L2 = lend('2', 'A', u2, -45, -15); // open, overdue 15
-  loans.L3 = lend('3', 'A', u1, -60, -46);
-  loans.L4 = lend('3', 'B', u2, -44, -30);
-  loans.L5 = lend('4', 'B', u1, -60, -35);
-  loans.L6 = lend('4', 'C', u2, -40, -12);
-  for (const id of [loans.L3, loans.L4, loans.L5, loans.L6]) {
-    const rec = soql(
-      `SELECT Loan_Start_Datum__c, Loan_Due_Datum__c FROM Loan_Record__c WHERE Id='${id}'`
-    )[0];
-    updateRecord('Loan_Record__c', id, `Loan_Return_Datum__c='${rec.Loan_Due_Datum__c}'`); // returned at due date: durations 14,14,25,28
-  }
+  // The one-customer guard refuses a SECOND open loan on a device (hard rule, AC4) -
+  // the four historical loans must therefore be returned BEFORE the next one is lent.
+  const lendReturned = (d: string, c: string, u: string, start: number, due: number) => {
+    const id = lend(d, c, u, start, due);
+    updateRecord('Loan_Record__c', id, `Loan_Return_Datum__c='${iso(due)}'`); // returned at due date
+    return id;
+  };
+  loans.L3 = lendReturned('3', 'A', u1, -60, -46);
+  loans.L4 = lendReturned('3', 'B', u2, -44, -30);
+  loans.L5 = lendReturned('4', 'B', u1, -60, -35);
+  loans.L6 = lendReturned('4', 'C', u2, -40, -12);
   updateRecord('Demo_Devic__c', devs['4'], `Status__c='Written_Off'`); // team-lead action (session user holds the marker set)
 }
 function colleagueIds(): string[] {
