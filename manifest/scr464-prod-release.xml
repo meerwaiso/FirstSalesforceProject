@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-464 Prod release: exactly the force-app delta of squash 7701009
+         (cd94465..7701009), member forms copied from the phase manifests
+         scr464-phase1/2/2b/2c/3. Deployed with --test-level NoTestRun
+         (house 3-phase release: deploy, then PS assignment, then the Prod
+         test run separately). SCRUM-466's fix (the two report XMLs) ships
+         here — the bug has no separate release. -->
+    <types>
+        <members>Fabrikant__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>Case.Drittparty_Fabrikant__c</members>
+        <members>Case.Drittparty_Fixkosten__c</members>
+        <members>Case.Drittparty_Fixkosten_Known__c</members>
+        <members>Case.Closed_Last_12M__c</members>
+        <members>Case.Ursache__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Case.Fabrikant_PflichtBeiDrittpartyClosed</members>
+        <members>Case.Fabrikant_NurBeiDrittparty</members>
+        <members>Case.Fixkosten_NurBeiDrittparty</members>
+        <name>ValidationRule</name>
+    </types>
+    <types>
+        <members>SCRUM464_Drittparty_Team</members>
+        <members>SCRUM464_Fabrikant_List_Read</members>
+        <members>SCRUM464_Fabrikant_List_Lead</members>
+        <members>SCRUM464_TestObjectAccess</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Case-Case Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>Service/Faelle_Drittparty_Fabrikante</members>
+        <members>Service/Faelle_Drittparty_Fabrikante_Meine</members>
+        <name>Report</name>
+    </types>
+    <types>
+        <members>FabrikantNameGuard</members>
+        <members>SCRUM464DrittpartyTest</members>
+        <members>SCRUM464DrittpartyFlsTest</members>
+        <members>SCRUM464TesterCoverageTest</members>
+        <members>SCRUM434UrsacheTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>FabrikantNameGuard</members>
+        <name>ApexTrigger</name>
+    </types>
+    <version>67.0</version>
+</Package>
