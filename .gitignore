@@ -82,3 +82,6 @@ scripts/_*
 
 # SCRUM-463: id of the live CI validation (scripts/ci-prod-validate.sh)
 .ci-validate-job-id
+
+# scripts/e2e-run.sh: remembered failures and full logs of local E2E runs
+.e2e-run/
