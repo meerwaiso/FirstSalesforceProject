@@ -1,8 +1,10 @@
 # SCRUM-467 — Opportunity: Offer sent on / valid until, expiry at a glance, expired offer cannot be won, team-lead overview of the next 14 days
 
-Autoritative Build-Spec for the Developer-Agent — **status: BLOCKED, see §1**.
-Do not start implementation before §1 is answered by the PO; everything else in this
-document is final and reusable.
+Autoritative Build-Spec for the Developer-Agent — **status: READY (2026-11-21)**.
+The PO answered the blocking point (§0 is marked RESOLVED): the permission boundary is
+the new Permission Set, not record ownership. Everything in **§11 "Verified shapes"**
+was check-only validated against Test-Org today; the exact files are committed under
+`docs/SCRUM-467-shapes/` (inert — the Developer copies them into `force-app/`).
 
 Repo-Ursprung surveyed: `origin/master` @ `31da29f70f808377b3ca1d2e2022660dc37f4d07`
 (2026-11-21 07:46, after `git fetch origin`).
@@ -18,23 +20,30 @@ within 14 days / already expired).
 
 ## ADR-1 — Apex vs. Flow vs. declarative
 
-**Decision: declarative (formula fields + ValidationRules + Report/ListView), no Flow,
-no production Apex class — except the guard that §1 forces (see §6).**
+**Decision: 100 % declarative — formula fields + ValidationRules + Reports/Layout; no
+Flow, no production Apex class at all** (the PO ruled the user-based guard out, §0 RESOLVED).
 
 | Option | Verdict | Rationale |
 |---|---|---|
 | **Formula fields + ValidationRules + Reports/ListViews** | **chosen** | Every demanded behaviour is either (a) a per-record derived value or (b) a filter/sort over one object. No cross-record aggregation, no bulk processing, no state machine. Formula fields are recomputed **at read**, so expiry follows today without a migration and without a nightly scheduler. This is the released house pattern of SCRUM-451 (contract start/end + remaining days + status + renewal overview) and SCRUM-449/461 (Opportunity VRs + `Opportunity.*` listViews). |
 | Flow | **rejected** | Adds an `apiVersion`/naming surface and a strict XML schema for zero benefit; Flows have repeatedly failed deploy/schema validation in this project. Nothing here needs process steps. |
-| Apex trigger/handler | **rejected for the behaviour**, **kept only if §1 → Resolution B** | A trigger would be needed only if a *stored* value had to change or if a save had to be refused based on who the user is. Formula fields must not be written; AC1/AC6 write the two dates by hand. If §1 resolves to a user-based guard, that guard is one bulkified handler, not a rewrite of the feature. |
+| Apex trigger/handler | **rejected** | A trigger would be needed only if a *stored* value had to change or if a save had to be refused based on who the user is. Formula fields must not be written; AC1/AC6 write the two dates by hand. The PO ruled a user-based guard out — the boundary is FLS, so no handler is introduced. |
 
-Consequence for the review gate: this ticket ships **no production Apex class under
-Resolution A**; under Resolution B exactly one `*OfferGuardHandler` + trigger. Test
-artefacts are required either way (§8).
+Consequence for the review gate: this ticket ships **no production Apex class at all**.
+Test artefacts are required (§8).
 
-## 0. Blocking point — AC12 vs. AC13 cannot both hold (needs the PO)
+## 0. Blocking point — AC12 vs. AC13 could not both hold — **RESOLVED by the PO (2026-11-21)**
 
-See the Jira comment; the ticket is returned to the PO with this finding. Two
-resolutions are spelled out here (§6) so the PO answer lands on a complete spec.
+**PO decision (written into the ticket):** the boundary is **who holds the ONE new
+Permission Set**, never who owns the record. AC12 ("the team leads can do it for
+everyone") is read as a *capability*, not as a restriction. Therefore: **no non-owner
+guard, no second marker Permission Set, no Apex class for that purpose.** AC13 stays the
+mandatory negative-access test — a user without the Permission Set cannot fill the two
+dates and the attempt is refused (house pattern: the SCRUM-451 negative test class).
+
+The proof below is kept as the reason the original wording was unimplementable — it is
+what forced the PO back to the board, and it is why no owner-based condition may be
+re-introduced later.
 
 Proof sketch (all three facts measured/stated, not assumed):
 
@@ -119,6 +128,10 @@ AC2 default rule lives in exactly one place (`Offer_Expires_On__c`); the recorde
 written automatically (AC11, AC1 "exactly as entered").
 
 ## Artefacts (exact XML — the repo files are authoritative, not this comment)
+
+**The verified files are in `docs/SCRUM-467-shapes/` (§11) — every one of them passed a
+check-only deploy validation against Test-Org today. The draft XML in the sections below
+is superseded where it differs.** Copy from `docs/SCRUM-467-shapes/` into `force-app/`.
 
 ### Two Date fields (house shape: `Account.Wartungsvertrag_Start__c`, SCRUM-451)
 
@@ -364,6 +377,45 @@ column reads 0 is not a PASS (house rule, SCRUM-398).
    (repo tracks the Classic `Opportunity-Opportunity Layout` only — house finding, the
    Lightning page lives in the Org). Read-back: screenshot of the record page showing
    `Offer_Status__c`.
+
+## 11. Verified shapes — check-only deploy validation against Test-Org (2026-11-21)
+
+The whole artefact set was submitted as `sf project deploy validate -o Test-Org
+--source-dir force-app --test-level RunRelevantTests --async --json` and polled with
+`sf project deploy report`. **Final op `0AfWU00000dIgjt0AC`: status Succeeded, 13/13
+components, 0 errors, `checkOnly: true`.** Read-back `sf sobject describe --sobject
+Opportunity --json --target-org Test-Org | grep -c 'Offer_'` → **0** — the org is
+unchanged, the Architect deployed nothing (check-only creates no components).
+
+Earlier ops in the same session and what each one taught (the fixes, not guesses):
+
+| op | verdict | finding |
+|---|---|---|
+| `0AfWU00000dIf330AC` | cancelled after the component phase (7 fields + PS: 8 OK / 0 failed) | Date formula field with `Offer_Sent_On__c + 30` is accepted; the op had to be cancelled because `--test-level RunLocalTests` queued 506 org tests and had already run 480 — the 24 h test budget of Test-Org |
+| `0AfWU00000dIfkb0AC` | Failed 9 OK / 3 failed | a leading XML comment on a `.validationRule-meta.xml` file breaks the CLI conversion ("Invalid XML tags or unable to find matching parent xml file") — house VR files carry no comment; reports do carry comments and are fine |
+| same op | "Incorrect number of parameters for function 'ISCHANGED()'. Expected 1, received 0" | `ISCHANGED()` takes a field in a validation rule — use `ISCHANGED(StageName)` |
+| same op | "You can't include groupings in the selected columns list: 00NWU00002GNBa6" | the grouping field must NOT be repeated in `<columns>` (house caution in `Kunde_ohne_Kontaktperson`) |
+| `0AfWU00000dIfsf0AC` | Failed 10 OK / 2 failed | VR `description` and Report `description` are limited to 255 characters |
+| `0AfWU00000dIfvt0AC` | Failed 11 OK / 1 failed | `PREVIOUS(StageName)` rejected: "Field StageName is a picklist field. Picklist fields are only supported in certain functions" → the already-closed change-guard cannot read the previous stage; it uses `NOT(ISCHANGED(StageName))` + `ISCHANGED(<date>)` instead |
+| `0AfWU00000dIfxV0AS` | **Succeeded 12/12** | final field/PS/VR/report set |
+| `0AfWU00000dIfJC0A0` | **Succeeded 12/12** | 4-branch expiry formula (only one date filled still yields an expiry) |
+| `0AfWU00000dIgNJ0A0` | Failed 12/13 | Layout: "Element layoutSections is duplicated at this location" — the new section had to be inserted *between* existing sections, not after the last one |
+| `0AfWU00000dIgjt0AC` | **Succeeded 13/13, 0 errors** | fields + PS + 2 VRs + 2 Reports + Layout all accepted together |
+
+Component names the deploy accepted (verbatim from the report):
+`Opportunity.Offer_Days_Left__c`, `Opportunity.Offer_Expired__c`,
+`Opportunity.Offer_Expires_On__c`, `Opportunity.Offer_Expiring_14D__c`,
+`Opportunity.Offer_Sent_On__c`, `Opportunity.Offer_Status__c`,
+`Opportunity.Offer_Valid_Until__c`, `Opportunity.Offer_Dates_Kept_When_Closed`,
+`Opportunity.Offer_Won_With_Expired_Offer`, `Sales/SCRUM467_Offer_Expired_Renewals`,
+`Sales/SCRUM467_Offer_Renewals_Due_14D`, `Opportunity-Opportunity Layout`,
+`SCRUM467_Offer_Dates`.
+
+`docs/SCRUM-467-shapes/` holds exactly these files (same relative layout as `force-app/`).
+The Developer copies them to `force-app/main/default/…` and deploy-validates again; the
+Layout file there is the master layout **plus** the new "Offer validity" section — it must
+be diffed against the org's current layout before deploy (house rule: org-owned metadata is
+retrieved, not rewritten).
 
 ## Verification log (Architect, Test-Org, 2026-11-21)
 

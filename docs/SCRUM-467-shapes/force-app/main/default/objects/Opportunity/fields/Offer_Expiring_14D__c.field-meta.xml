@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Offer_Expiring_14D__c</fullName>
+    <label>Offer expires within 14 days</label>
+    <description>SCRUM-467: window gate for the team-lead overview = expiry date recorded AND expiry date &gt;= today AND expiry date &lt;= today + 14 days. Already-expired and never-recorded offers are excluded. System-computed, read-only.</description>
+    <formula>AND(NOT(ISBLANK(Offer_Expires_On__c)), Offer_Expires_On__c &gt;= TODAY(), Offer_Expires_On__c - TODAY() &lt;= 14)</formula>
+    <formulaTreatBlanksAs>BlankAsZero</formulaTreatBlanksAs>
+    <type>Checkbox</type>
+</CustomField>
