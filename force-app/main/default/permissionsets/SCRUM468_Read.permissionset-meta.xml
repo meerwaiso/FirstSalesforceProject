@@ -1,9 +1,78 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
-    <description>SCRUM-468 AC11: everyone in Sales and Service sees the devices and where they are. Read-only on both objects and on every field, including the two formula fields. Grants nothing writable - lending lives in SCRUM468_Loan.</description>
-    <fullName>SCRUM468_Read</fullName>
+    <description>SCRUM-468 AC11: everyone in Sales and Service sees the devices and where they are. Read-only on both objects and on every field including the two formula fields. Grants nothing writable - lending lives in SCRUM468_Loan.</description>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Demo_Devic__c.Designation_Name__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Demo_Devic__c.Serial_Number__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Demo_Devic__c.Status__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Demo_Devic__c.Current_Customer__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Demo_Devic__c.Current_Loan_Colleague__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Demo_Devic__c.Current_Loan_Due_Date__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Demo_Devic__c.Current_Loan_Overdue_Days__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Loan_Record__c.Loan_Devic__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Loan_Record__c.Loan_Customer__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Loan_Record__c.Loan_Colleague__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Loan_Record__c.Loan_Start_Datum__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Loan_Record__c.Loan_Due_Datum__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Loan_Record__c.Loan_Return_Datum__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Loan_Record__c.Loan_Duration_Days__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
-    <label>SCRUM468 Lend Devices - Read</label>
+    <label>SCRUM468_Read</label>
     <objectPermissions>
         <allowCreate>false</allowCreate>
         <allowDelete>false</allowDelete>
@@ -13,41 +82,6 @@
         <object>Demo_Devic__c</object>
         <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <readable>true</readable>
-        <field>Demo_Devic__c.Designation_Name__c</field>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <readable>true</readable>
-        <field>Demo_Devic__c.Serial_Number__c</field>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <readable>true</readable>
-        <field>Demo_Devic__c.Status__c</field>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <readable>true</readable>
-        <field>Demo_Devic__c.Current_Customer__c</field>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <readable>true</readable>
-        <field>Demo_Devic__c.Current_Loan_Colleague__c</field>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <readable>true</readable>
-        <field>Demo_Devic__c.Current_Loan_Due_Date__c</field>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <readable>true</readable>
-        <field>Demo_Devic__c.Current_Loan_Overdue_Days__c</field>
-    </fieldPermissions>
     <objectPermissions>
         <allowCreate>false</allowCreate>
         <allowDelete>false</allowDelete>
@@ -57,39 +91,4 @@
         <object>Loan_Record__c</object>
         <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <readable>true</readable>
-        <field>Loan_Record__c.Loan_Devic__c</field>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <readable>true</readable>
-        <field>Loan_Record__c.Loan_Customer__c</field>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <readable>true</readable>
-        <field>Loan_Record__c.Loan_Colleague__c</field>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <readable>true</readable>
-        <field>Loan_Record__c.Loan_Start_Datum__c</field>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <readable>true</readable>
-        <field>Loan_Record__c.Loan_Due_Datum__c</field>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <readable>true</readable>
-        <field>Loan_Record__c.Loan_Return_Datum__c</field>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <readable>true</readable>
-        <field>Loan_Record__c.Loan_Duration_Days__c</field>
-    </fieldPermissions>
 </PermissionSet>
