@@ -42,3 +42,13 @@ ApexTestQueueItem rows in 24h: 255 vs ceiling 500 (max(500, 10×classes)) — ro
 - Live field reads through the session: ListView SCRUM468_Overdue rendered Current_Loan_Overdue_Days**c 30/15 and Loan_Colleague**c (fields readable via session holding SCRUM468_Loan/Read); Loan_Record**c Loan_Due_Datum**c + Loan_Status**c rendered in the same rows. fls-check.sh: Overdue_Today**c Formula granted read in Loan and Read, 2 users each.
 
 Loan_Record**c field census (deployed): Loan_Colleague**c Loan_Customer**c Loan_Devic**c Loan_Due_Datum**c Loan_Duration_Days**c Loan_Return_Datum**c Loan_Start_Datum**c — NO Loan_Status**c. "Returned" = Loan_Return_Datum**c != null. Seeding historical loans must interleave lend -> return (the one-customer guard refuses a 2nd OPEN loan on a device).
+
+## Measured 2026-11-21/22 (Tester)
+
+- PermissionSet census (SOQL, --use-tooling-api): SCRUM468_Loan 0PSWU00000Y7biS4AR, SCRUM468_Read 0PSWU00000Y7biT4AR, SCRUM468_Writeoff 0PSWU00000Y7biU4AR.
+- PermissionSetAssignment read-back: working predicate is `PermissionSet.Name = '<dev name>'` (NOT PermissionSetName -> 0 rows). Each of the three sets -> 2 rows: devops-agent@cline.test (CLI Test-Org user, = the Playwright session user) AND meerwais.osmani@resourceful-bear-6f1u4j.com.
+- Serial guard (live): refusal text `serial "GUARD-SERIAL-1" is already on device DEV-0059 - one serial number may belong to exactly one device.` Fixture record Names are DEV-xxxx (auto), Designation_Name\_\_c carries the [TEST-...] tag.
+- EmailMessage EXISTS in Test-Org (EntityDefinition totalSize 1); `SELECT Id, Subject FROM EmailMessage` = 0 records (MessageSubject does NOT exist).
+- Apex scoped run: 8 tests, Pass Rate 100%. Playwright spec: 9/9 green (2.1 min) at head 8bcdf9e.
+- CI smoke TypeError earlier = spec's `test.configure` -> house `test.describe.configure`.
+- afterAll cleanup verified: loans live 0, devices live 0 (baseline restored).
