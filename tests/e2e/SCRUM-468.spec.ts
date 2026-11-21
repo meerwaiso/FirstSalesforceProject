@@ -207,7 +207,7 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
   test('AC2 used serial refused and the refusal names the device', async () => {
     const dup = failingRun(
       `sf data create record -s Demo_Devic__c -v "Designation_Name__c='${TAG} dup' Serial_Number__c='SCRUM468-TEST-1'" --target-org Test-Org --json`
-    );
+    ).replace(/\\+/g, '');
     expect(dup.length, 'AC2 the duplicate serial WAS refused (message expected)').toBeGreaterThan(0);
     expect(/serial "SCRUM468-TEST-1" is already on device DEV-\d+/.test(dup), 'AC2 refusal names serial AND owning device').toBe(true);
     expect(/one serial number may belong to exactly one device/.test(dup), 'AC2 refusal wording (Lend Devices guard)').toBe(true);
@@ -347,9 +347,11 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
     expect(flagged.every((r: any) => r.Status__c === 'Lent_Out'), 'AC12 no automation changed the status').toBe(true);
     const tasks = soql(`SELECT Id, Subject FROM Task WHERE Subject LIKE '%SCRUM-468%'`);
     expect(tasks.length, 'AC12 no Task was created for the overdue devices').toBe(0);
-    // EmailMessage: NOT in this org (Sales Cloud-only, measured via Tooling-SOQL describe)
-    const em = soql(`SELECT QualifiedApiName FROM EntityDefinition WHERE QualifiedApiName = 'EmailMessage'`);
-    expect(em.length, 'AC12 no EmailMessage object exists in this org').toBe(0);
+    // EmailMessage EXISTS in this org (Sales Cloud, measured via EntityDefinition) —
+    // the negative test is therefore on the RECORDS: an overdue device must not have
+    // generated one.
+    const em = soql(`SELECT Id, Subject FROM EmailMessage`);
+    expect(em.length, 'AC12 no EmailMessage record exists in Test-Org').toBe(0);
     // ScheduledJob is NOT readable by the Tester (verified 2026-10-16 SCRUM-449:
     // INVALID_TYPE via plain AND --use-tooling-api SOQL, Apex List<ScheduledJob>
     // does not compile) -> "nothing scheduled" cannot be measured here; the
