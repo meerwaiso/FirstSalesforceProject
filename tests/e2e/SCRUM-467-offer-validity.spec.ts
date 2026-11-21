@@ -170,6 +170,9 @@ function seedFixtures() {
     ['A', null, null],
     ['B1', -6, 14],
     ['B2', -2, 5],
+    // B4 shares B2's expiry (today+5) -> the due report must render a group with TWO
+    // records, which is what a date-filtered row reader would undercount.
+    ['B4', -20, 5],
     ['B3', -30, null],
     ['C1', -30, -11],
     ['C2', -45, null],
@@ -495,7 +498,7 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     const rows = await reportDataRows(frame);
     const data = dataRowsOf(rows);
     expect(data.length, `AC9 rendered record rows (${data.length}) must equal Total Records ${total}`).toBe(total);
-    const groups = distinctInOrder(data.map((r) => (r[0].match(/^\d{2}\.\d{2}\.\d{4}/) ?? [''])[0]));
+    const groups = distinctInOrder(groupLeadersOf(rows));
     const groupsSorted = groups.slice().sort((a, b) => dateKeyOfDe(a) - dateKeyOfDe(b));
     expect(groups, `AC9 soonest-expiry-first: the report's group order ${groups} must already be ascending (${groupsSorted})`).toEqual(groupsSorted);
     const soqlGroups = distinctInOrder(dueRecs.map((r: any) => isoToDe(r.Offer_Expires_On__c)))
@@ -506,7 +509,7 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
       const k = dateKeyOfDe(g);
       expect(k >= dateKeyOfDe(de(0)) && k <= dateKeyOfDe(de(14)), `AC9 14-day window: group ${g} must lie between ${de(0)} and ${de(14)}`).toBe(true);
     }
-    for (const name of ['B1', 'B2', 'B3']) {
+    for (const name of ['B1', 'B2', 'B3', 'B4']) {
       const hit = data.some((r) => r.some((c) => c.includes(fixtureName(name))));
       expect(hit, `AC9 fixture ${name} missing from the report`).toBe(true);
     }
@@ -531,7 +534,7 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     const rows = await reportDataRows(frame);
     const data = dataRowsOf(rows);
     expect(data.length, `AC10 rendered record rows (${data.length}) vs Total Records ${total}`).toBe(total);
-    const groupsX = distinctInOrder(data.map((r) => (r[0].match(/^\d{2}\.\d{2}\.\d{4}/) ?? [''])[0]));
+    const groupsX = distinctInOrder(groupLeadersOf(rows));
     const groupsXSorted = groupsX.slice().sort((a, b) => dateKeyOfDe(a) - dateKeyOfDe(b));
     expect(groupsX, `AC10 oldest-expiry-first: the report's group order ${groupsX} must already be ascending (${groupsXSorted})`).toEqual(groupsXSorted);
     const soqlGroupsX = distinctInOrder(expiredRecs.map((r: any) => isoToDe(r.Offer_Expires_On__c)))
@@ -545,7 +548,7 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
       const hit = data.some((r) => r.some((c) => c.includes(fixtureName(name))));
       expect(hit, `AC10 fixture ${name} (open, expired) missing from the expired report`).toBe(true);
     }
-    for (const name of ['B1', 'B2', 'B3']) {
+    for (const name of ['B1', 'B2', 'B3', 'B4']) {
       const hit = data.some((r) => r.some((c) => c.includes(fixtureName(name))));
       expect(hit, `AC10 separation: ${name} (not expired) must not be in the expired report`).toBe(false);
     }
@@ -646,10 +649,18 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
     return rows;
   }
 
-  /** Rows of the GROUPED report that carry a record: first cell starts with the
-   *  group date, and the row has the full column set (the drill-down summary
-   *  table repeats only the date cells -> length 1, filtered out). */
+  /** Rows of the GROUPED report that carry a record: structural, NOT date-based.
+   *  A group with several records renders a leader row (first cell = the group date)
+   *  plus continuation rows, so a date filter would undercount. The drill-down summary
+   *  table repeats only the date cells (length 1) and the subtotal/Total rows name
+   *  themselves -> both filtered out. */
   function dataRowsOf(rows: string[][]): string[][] {
-    return rows.filter((r) => /^\d{2}\.\d{2}\.\d{4}/.test(r[0]) && r.length >= 8);
+    return rows.filter((r) => r.length >= 7 && !r.some((c) => /subtotal|total records|grouped in/i.test(c)));
+  }
+  /** The expiry groups, in DOM order: the row that STARTS with a date heads a group. */
+  function groupLeadersOf(rows: string[][]): string[] {
+    return rows
+      .filter((r) => /^\d{2}\.\d{2}\.\d{4}$/.test(r[0] ?? ''))
+      .map((r) => r[0]);
   }
 });
