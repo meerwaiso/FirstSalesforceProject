@@ -173,6 +173,9 @@ function seedFixtures() {
     ['B3', -30, null],
     ['C1', -30, -11],
     ['C2', -45, null],
+    // D1: only for AC8 (the close-then-freeze test). It is CLOSED by AC8, so the
+    // report tests must never read it — the reports exclude closed records.
+    ['D1', -30, null],
   ];
   for (const [name, sentOff, untilOff] of spec) {
     const acct = createRecord('Account', `Name='${TAG}-${name}'`);
@@ -444,7 +447,7 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
   });
 
   test('AC8: after the deal is closed the offer dates are frozen', async ({ page }) => {
-    const id = fixtureId('B3'); // open, untouched by AC5/AC6/AC7, offer dates filled by the seed
+    const id = fixtureId('D1'); // its own record (AC8 closes it) — never read by AC9/AC10
     const before = soqlOffer(id);
     expect(before.IsClosed, 'AC8 fixture must start open (the freeze is about LATER saves)').toBe(false);
     expect(before.Offer_Sent_On__c != null, 'AC8 fixture must carry an offer history').toBe(true);
@@ -496,6 +499,10 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
       .sort((a, b) => dateKeyOfDe(a) - dateKeyOfDe(b));
     expect(groupsSorted, `AC9 completeness: the report shows expiry groups ${groups}, the org has ${soqlGroups} ("they see EVERY open Opportunity")`).toEqual(soqlGroups);
     expect(groupsSorted[0], `AC9 earliest expiry group must be ${de(0)} (B3 = sent today-30, default rule -> sent+30)`).toBe(de(0));
+    for (const g of groupsSorted) {
+      const k = dateKeyOfDe(g);
+      expect(k >= dateKeyOfDe(de(0)) && k <= dateKeyOfDe(de(14)), `AC9 14-day window: group ${g} must lie between ${de(0)} and ${de(14)}`).toBe(true);
+    }
     for (const name of ['B1', 'B2', 'B3']) {
       const hit = data.some((r) => r.some((c) => c.includes(fixtureName(name))));
       expect(hit, `AC9 fixture ${name} missing from the report`).toBe(true);
@@ -528,6 +535,9 @@ test.describe('[SCRUM-467] Offer validity on Opportunities (UI)', () => {
       .sort((a, b) => dateKeyOfDe(a) - dateKeyOfDe(b));
     expect(groupsXSorted, `AC10 completeness: report groups ${groupsX} must be exactly the org's ${soqlGroupsX}`).toEqual(soqlGroupsX);
     expect(groupsXSorted[0], `AC10 oldest expiry group must be ${de(-15)} (C2 = sent today-45, no end date -> sent+30)`).toBe(de(-15));
+    for (const g of groupsXSorted) {
+      expect(dateKeyOfDe(g) <= dateKeyOfDe(de(-1)), `AC10 separation: expired group ${g} must be strictly in the past (latest ${de(-1)}), never a due-soon date`).toBe(true);
+    }
     for (const name of ['C1', 'C2']) {
       const hit = data.some((r) => r.some((c) => c.includes(fixtureName(name))));
       expect(hit, `AC10 fixture ${name} missing from the expired report`).toBe(true);
