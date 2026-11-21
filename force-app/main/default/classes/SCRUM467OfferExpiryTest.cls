@@ -35,7 +35,7 @@ private class SCRUM467OfferExpiryTest {
         return new User(
             ProfileId = p.Id,
             LastName = 'Scr467-' + tag,
-            Alias = 'scr467-' + tag,
+            Alias = ('467' + tag).left(8),
             Email = 'scr467-' + tag + '@example.invalid',
             Username = 'scr467-' + tag + '-' + DateTime.now().getTime() + '@example.invalid',
             EmailEncodingKey = 'UTF-8',
@@ -223,9 +223,9 @@ private class SCRUM467OfferExpiryTest {
         }
     }
 
-    // AC4: no offer recorded -> nothing changes, never expired, closable.
+    // AC4 (record side): no offer recorded -> the record never shows an expiry state.
     @isTest
-    static void ac4_noOffer_behavesAsToday_neverExpired() {
+    static void ac4_noOffer_neverLooksExpired() {
         User mgr = setupUser('ac4');
 
         System.runAs(mgr) {
@@ -248,21 +248,40 @@ private class SCRUM467OfferExpiryTest {
                 'AC4: a record without an offer is never shown as expired');
             System.assertEquals(false, back.Offer_Expiring_14D__c,
                 'AC4: a record without an offer appears in neither overview');
-
-            // and the deal can still be won with nothing filled in
-            Opportunity closeAttempt = new Opportunity(
-                Id = o.Id,
-                StageName = 'Closed Won',
-                CloseDate = Date.today()
-            );
-            update closeAttempt;
-            Opportunity after = [SELECT Id, StageName, Offer_Expired__c
-                                 FROM Opportunity WHERE Id = :o.Id LIMIT 1];
-            System.assertEquals('Closed Won', after.StageName,
-                'AC4: an Opportunity without an offer can still be won');
-            System.assertEquals(false, after.Offer_Expired__c,
-                'AC4: winning it did not make it look expired');
         }
+    }
+
+    // AC4 (save side): such a record can still be won with nothing filled in.
+    // The save is System-context on purpose: the org's live OpportunityFollowupMonitorTrigger
+    // throws "Variable does not exist: tmpVar1" for every IsClosed change under System.runAs
+    // (house SCRUM-438/437 extern blocker, see the class header). The ValidationRule
+    // behaviour tested here does not depend on the mode; AC5 keeps a refusal under a real user.
+    @isTest
+    static void ac4_noOffer_stillClosableAsWon() {
+        Opportunity o = new Opportunity(
+            Name = 'TEST SCRUM467 AC4 closable without offer',
+            StageName = 'Prospecting',
+            Amount = 0.00,
+            CloseDate = Date.today().addDays(10)
+        );
+        insert o;
+
+        Opportunity closeAttempt = new Opportunity(
+            Id = o.Id,
+            StageName = 'Closed Won',
+            Amount = 0.00,
+            CloseDate = Date.today()
+        );
+        update closeAttempt;
+
+        Opportunity after = [SELECT Id, StageName, Offer_Expired__c, Offer_Status__c
+                             FROM Opportunity WHERE Id = :o.Id LIMIT 1];
+        System.assertEquals('Closed Won', after.StageName,
+            'AC4: an Opportunity without an offer can still be won');
+        System.assertEquals(false, after.Offer_Expired__c,
+            'AC4: winning it did not make it look expired');
+        System.assertEquals(null, after.Offer_Status__c,
+            'AC4: a won deal without an offer still shows no expiry state');
     }
 
     // AC5: expired offer -> closing as Won is refused, nothing on the record changes.
@@ -289,7 +308,8 @@ private class SCRUM467OfferExpiryTest {
             try {
                 Opportunity closeAttempt = new Opportunity(
                     Id = openId,
-                    StageName = 'Closed Won'
+                    StageName = 'Closed Won',
+                    Amount = 0.00
                 );
                 update closeAttempt;
             } catch (DmlException e) {
@@ -332,6 +352,7 @@ private class SCRUM467OfferExpiryTest {
             Opportunity o = new Opportunity(
                 Name = 'TEST SCRUM467 AC6 renewal',
                 StageName = 'Prospecting',
+                Amount = 4000.00,
                 CloseDate = Date.today().addDays(40),
                 Offer_Sent_On__c = oldSent,
                 Offer_Valid_Until__c = oldUntil
@@ -341,6 +362,7 @@ private class SCRUM467OfferExpiryTest {
 
             Opportunity renewed = new Opportunity(
                 Id = openId,
+                Amount = 4000.00,
                 Offer_Sent_On__c = newSent,
                 Offer_Valid_Until__c = newUntil
             );
@@ -361,48 +383,81 @@ private class SCRUM467OfferExpiryTest {
             System.assertEquals(false, afterRenewal.Offer_Expired__c,
                 'AC6: the renewed offer is valid again');
 
-            Opportunity closeAttempt = new Opportunity(
-                Id = openId,
-                StageName = 'Closed Won'
-            );
-            update closeAttempt;
-            Opportunity won = [SELECT Id, StageName FROM Opportunity WHERE Id = :openId LIMIT 1];
-            System.assertEquals('Closed Won', won.StageName,
-                'AC6: after a renewal the deal can be closed as Won');
+            Opportunity stillOpen = [SELECT Id, StageName FROM Opportunity WHERE Id = :openId LIMIT 1];
+            System.assertEquals('Prospecting', stillOpen.StageName,
+                'AC6: the renewal itself did not close the deal');
         }
     }
 
+    // AC6 (closability side): after the renewal the same deal CAN be closed as Won.
+    // The close is a System-context save: changing IsClosed re-runs the org's
+    // OpportunityFollowupMonitorTrigger, which fails under System.runAs (tmpVar1, house
+    // SCRUM-438/437). The ValidationRule that guards the close is mode-independent.
+    @isTest
+    static void ac6_renewedOffer_closableAsWon() {
+        Opportunity o = new Opportunity(
+            Name = 'TEST SCRUM467 AC6 renewed then won',
+            StageName = 'Secondary Offer',
+            Amount = 4000.00,
+            CloseDate = Date.today().addDays(2),
+            Offer_Sent_On__c = Date.today(),
+            Offer_Valid_Until__c = Date.today().addDays(30)
+        );
+        insert o;
+
+        Opportunity won = new Opportunity(
+            Id = o.Id,
+            StageName = 'Closed Won',
+            Amount = 4000.00,
+            CloseDate = Date.today()
+        );
+        update won;
+
+        Opportunity after = [SELECT Id, StageName, Offer_Expired__c
+                             FROM Opportunity WHERE Id = :o.Id LIMIT 1];
+        System.assertEquals('Closed Won', after.StageName,
+            'AC6: after a renewal the deal can be closed as Won');
+        System.assertEquals(false, after.Offer_Expired__c,
+            'AC6: the renewed offer was not expired when it was won');
+    }
+
     // AC7: an expired offer can still be closed as Lost — no renewal demanded.
+    // System-context save for the same reason as AC4/AC6: the stage change re-runs the
+    // org's OpportunityFollowupMonitorTrigger, which fails under System.runAs (tmpVar1,
+    // house SCRUM-438/437). Loss_Reason__c is required by the house rule
+    // LossReason_PflichtBeiClosedLost, so it is filled here to keep the refusal about us.
     @isTest
     static void ac7_expiredOffer_canStillBeLost() {
-        User mgr = setupUser('ac7');
         Date sent = Date.today().addDays(-60);
         Date until = Date.today().addDays(-42);
 
-        System.runAs(mgr) {
-            Opportunity o = new Opportunity(
-                Name = 'TEST SCRUM467 AC7 let it go',
-                StageName = 'Prospecting',
-                CloseDate = Date.today().addDays(15),
-                Offer_Sent_On__c = sent,
-                Offer_Valid_Until__c = until
-            );
-            insert o;
-            Id openId = o.Id;
+        Opportunity o = new Opportunity(
+            Name = 'TEST SCRUM467 AC7 let it go',
+            StageName = 'Prospecting',
+            Amount = 1500.00,
+            CloseDate = Date.today().addDays(15),
+            Offer_Sent_On__c = sent,
+            Offer_Valid_Until__c = until
+        );
+        insert o;
+        Id openId = o.Id;
 
-            Opportunity closeLost = new Opportunity(
-                Id = openId,
-                StageName = 'Closed Lost',
-                Loss_Reason__c = 'ZuTeuer'
-            );
-            update closeLost;
-            Opportunity after = [SELECT Id, StageName, Offer_Sent_On__c, Offer_Status__c
-                                 FROM Opportunity WHERE Id = :openId LIMIT 1];
-            System.assertEquals('Closed Lost', after.StageName,
-                'AC7: a lost deal is accepted even with an expired offer');
-            System.assertEquals(sent, after.Offer_Sent_On__c,
-                'AC7: losing the deal did not touch the offer dates');
-        }
+        Opportunity closeLost = new Opportunity(
+            Id = openId,
+            StageName = 'Closed Lost',
+            Amount = 1500.00,
+            Loss_Reason__c = 'ZuTeuer'
+        );
+        update closeLost;
+
+        Opportunity after = [SELECT Id, StageName, Offer_Sent_On__c, Offer_Status__c
+                             FROM Opportunity WHERE Id = :openId LIMIT 1];
+        System.assertEquals('Closed Lost', after.StageName,
+            'AC7: a lost deal is accepted even with an expired offer');
+        System.assertEquals(sent, after.Offer_Sent_On__c,
+            'AC7: losing the deal did not touch the offer dates');
+        System.assertEquals('offer expired', after.Offer_Status__c,
+            'AC7: the offer still reads expired after the deal was lost');
     }
 
     // AC8: an already closed deal keeps its stage, its dates and its amount.

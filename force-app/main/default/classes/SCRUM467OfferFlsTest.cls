@@ -28,7 +28,7 @@ private class SCRUM467OfferFlsTest {
         User u = new User(
             ProfileId = p.Id,
             LastName = 'Scr467Fls-' + tag,
-            Alias = 'scr467f' + tag,
+            Alias = ('f467' + tag).left(8),
             Email = 'scr467fls-' + tag + '@example.invalid',
             Username = 'scr467fls-' + tag + '-' + DateTime.now().getTime() + '@example.invalid',
             EmailEncodingKey = 'UTF-8',
@@ -77,8 +77,10 @@ private class SCRUM467OfferFlsTest {
                                   FROM Opportunity WHERE Id = :foreignId];
             System.assertEquals(1, mine.size(),
                 'AC12 precondition: the foreign record is reachable (OWD Public Read/Write, no sharing change)');
-            System.assertNotEquals(ownManager.Id, mine[0].OwnerId,
-                'AC12: the record really belongs to another user');
+            System.assertEquals(ownManager.Id, mine[0].OwnerId,
+                'AC12 precondition: the record belongs to the OWNING account manager');
+            System.assertNotEquals(otherManager.Id, mine[0].OwnerId,
+                'AC12: the acting user is not the owner — the renewal crosses the owner boundary');
             System.assertEquals(null, mine[0].Offer_Sent_On__c,
                 'AC12 precondition: no offer recorded yet');
 
@@ -105,17 +107,22 @@ private class SCRUM467OfferFlsTest {
         }
     }
 
-    // AC13: a user WITHOUT the set cannot fill or change the two offer dates.
+    // AC13: the negative boundary for a user WITHOUT SCRUM467_Offer_Dates.
+    // House pattern (SCRUM-464/465, measured 2026-11-20/21): the negative is asserted with
+    // getDescribe().isAccessible()/isUpdateable(), NOT with a thrown exception — Apex runs
+    // "on the inside", so an Apex update by such a user is not refused (measured 2026-11-21:
+    // a blind Apex write went through and moved the stored dates, op 0AfWU00000dIkcD0AS),
+    // while the FLS boundary IS enforced for the UI and the API: scripts/fls-check.sh shows
+    // zero FieldPermissions rows for the two dates, which is what the record page and the
+    // Tester's browser/API checks exercise.
     @isTest
-    static void ac13_userWithoutTheSet_refused_storedValueUnchanged() {
+    static void ac13_userWithoutTheSet_offerFieldsNotReadableNotUpdatable() {
         User psHolder = mkUser('holder', new String[] { 'SCRUM467_Offer_Dates',
                                                         'SCRUM467_TestObjectAccess' });
-        // object-level CRUD only: a refusal below is about the FIELD, not the object
         User outsider = mkUser('outsider', new String[] { 'SCRUM467_TestObjectAccess' });
 
         Date sent = Date.today().addDays(-8);
         Date until = Date.today().addDays(22);
-        Date attemptedSent = Date.today().addDays(60);
         Id openId = null;
 
         System.runAs(psHolder) {
@@ -129,77 +136,71 @@ private class SCRUM467OfferFlsTest {
             );
             insert o;
             openId = o.Id;
+
+            // the set holder sees all seven (the capability half of AC12/AC13)
+            System.assertEquals(true, Opportunity.Offer_Sent_On__c.getDescribe().isAccessible(),
+                'AC12: the holder reads the recorded sent date');
+            System.assertEquals(true, Opportunity.Offer_Valid_Until__c.getDescribe().isAccessible(),
+                'AC12: the holder reads the recorded end date');
+            System.assertEquals(true, Opportunity.Offer_Sent_On__c.getDescribe().isUpdateable(),
+                'AC12: the holder can record the sent date');
+            System.assertEquals(true, Opportunity.Offer_Valid_Until__c.getDescribe().isUpdateable(),
+                'AC12: the holder can record the end date');
         }
         System.assertNotEquals(null, openId, 'setup: the offer was recorded by a set holder');
 
-        Boolean fillRefused = false;
-        Boolean changeRefused = false;
-        String fillMsg = '';
         System.runAs(outsider) {
+            // precondition: the record page is reachable, so a false below is about the fields
             System.assertEquals(
                 true,
                 Opportunity.SObjectType.getDescribe().isAccessible(),
-                'AC13 precondition: the Opportunity itself is reachable, so a false below is about the field'
+                'AC13 precondition: Opportunity is reachable — a false below is about the FIELDS'
             );
             System.assertEquals(
                 false,
                 Opportunity.Offer_Sent_On__c.getDescribe().isAccessible(),
-                'AC13: without the Permission Set the offer dates are not even readable'
+                'AC13: without the Permission Set the recorded sent date is not visible'
             );
             System.assertEquals(
                 false,
                 Opportunity.Offer_Valid_Until__c.getDescribe().isAccessible(),
-                'AC13: the recorded end date is not readable either'
+                'AC13: without the Permission Set the recorded end date is not visible'
+            );
+            System.assertEquals(
+                false,
+                Opportunity.Offer_Sent_On__c.getDescribe().isUpdateable(),
+                'AC13: the user without the set cannot record the sent date on the record page'
+            );
+            System.assertEquals(
+                false,
+                Opportunity.Offer_Valid_Until__c.getDescribe().isUpdateable(),
+                'AC13: and not the end date'
+            );
+            System.assertEquals(
+                false,
+                Opportunity.Offer_Expires_On__c.getDescribe().isAccessible(),
+                'AC13: none of the five derived fields is visible either'
+            );
+            System.assertEquals(
+                false,
+                Opportunity.Offer_Days_Left__c.getDescribe().isAccessible(),
+                'AC13: none of the five derived fields is visible either'
             );
             System.assertEquals(
                 false,
                 Opportunity.Offer_Status__c.getDescribe().isAccessible(),
-                'AC13: the derived glance value is not readable either'
+                'AC13: the glance value is invisible without the Permission Set'
             );
-
-            // attempt 1: fill the two dates on an open record that has an offer already
-            try {
-                Opportunity fillAttempt = new Opportunity(
-                    Id = openId,
-                    Offer_Sent_On__c = attemptedSent,
-                    Offer_Valid_Until__c = attemptedSent.addDays(30)
-                );
-                update fillAttempt;
-            } catch (DmlException e) {
-                fillRefused = true;
-                fillMsg = e.getMessage();
-            }
-
-            // attempt 2: change ONE of the two dates only
-            try {
-                Opportunity changeAttempt = new Opportunity(
-                    Id = openId,
-                    Offer_Valid_Until__c = Date.today().addDays(90)
-                );
-                update changeAttempt;
-            } catch (DmlException e) {
-                changeRefused = true;
-            }
+            System.assertEquals(
+                false,
+                Opportunity.Offer_Expired__c.getDescribe().isAccessible(),
+                'AC13: the expiry marker is invisible without the Permission Set'
+            );
+            System.assertEquals(
+                false,
+                Opportunity.Offer_Expiring_14D__c.getDescribe().isAccessible(),
+                'AC13: the 14-day marker is invisible without the Permission Set'
+            );
         }
-
-        System.assert(fillRefused,
-            'AC13: a user without SCRUM467_Offer_Dates MUST NOT be able to fill the offer dates. '
-            + 'The save went through — the FLS entry is missing or the set is unassigned.');
-        System.assert(fillMsg.length() > 0, 'AC13: the refusal names a reason: ' + fillMsg);
-        System.assert(changeRefused,
-            'AC13: the same user MUST NOT be able to change one of the two dates either');
-
-        // the stored offer must be untouched
-        Opportunity after = [SELECT Id, Offer_Sent_On__c, Offer_Valid_Until__c,
-                             Offer_Expires_On__c, Offer_Status__c, Offer_Expired__c
-                             FROM Opportunity WHERE Id = :openId LIMIT 1];
-        System.assertEquals(sent, after.Offer_Sent_On__c,
-            'AC13: the stored sent date is unchanged after the refused saves');
-        System.assertEquals(until, after.Offer_Valid_Until__c,
-            'AC13: the stored end date is unchanged after the refused saves');
-        System.assertEquals('offer valid for 22 more days', after.Offer_Status__c,
-            'AC13: the glance value still follows the STORED dates, not the refused attempt');
-        System.assertEquals(false, after.Offer_Expired__c,
-            'AC13: the refused attempt did not expire the offer');
     }
 }

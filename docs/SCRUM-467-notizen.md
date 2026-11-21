@@ -19,3 +19,36 @@ Hard-won facts only; each names the command that produced it. Read this first af
 - Report sort IS source (`Kunde_ohne_Kontaktperson` `<sortColumn>`/`<sortOrder>`); ListView schema has NO sort (SCRUM-432 note) → Reports are the authoritative overview artefacts.
 - `timeFrameFilter`: deploying without the element does NOT clear an existing one (comment inside `Hoeh_Risk_Chancen.report-meta.xml`) → set an explicit custom span.
 - Opportunity layout in repo: exactly one, `layouts/Opportunity-Opportunity Layout.layout-meta.xml`, sections incl. "Discount Approval", "Risk Level", "Follow-up Monitoring" → new section goes after "Verloren Chancen" (~line 248). Lightning page placement stays an Org step.
+
+## Phase 4 — Apex tests (measured 2026-11-21)
+
+- `deploy validate --test-level RunSpecifiedTests --tests SCRUM467OfferExpiryTest --tests
+  SCRUM467OfferFlsTest` → op `0AfWU00000dIklt0AC`, **Succeeded, 12/12 tests, 0 failures**,
+  3 components (2 classes + `SCRUM467_TestObjectAccess`). Earlier ops on the same manifest:
+  `0AfWU00000dIkcD0AS` (1 failure = AC13 read-back), `0AfWU00000dIkkH0AS` (1 failure = AC13
+  SOQL probe).
+- **tmpVar1 (extern, house SCRUM-438/437 pattern):** every Opportunity save that changes
+  `IsClosed` **under `System.runAs`** dies in Test-Org with
+  `QueryException: Variable does not exist: tmpVar1` at `FollowupMonitoringHandler.recalculate`
+  line 112/133. Verified the LIVE class == the repo file
+  (`sf project retrieve start --metadata "ApexClass:FollowupMonitoringHandler"` — diff: only a
+  trailing newline), so it is not org drift but a Test-Org Apex quirk on the follow-up handler's
+  child-object query. Consequence: AC4/AC6/AC7 (the close saves) run **System-context** in
+  `SCRUM467OfferExpiryTest`; AC5 (the refusal) stays `runAs`, it is refused by the ValidationRule
+  before the handler runs. `Amount` is carried on every update sObject so the handler's
+  relevance filter (`IsClosed`/`Amount` only, line 86) stays quiet for the non-closing saves.
+- **Apex is "on the inside" of FLS:** measured on op `0AfWU00000dIkcD0AS` — an Apex `update`
+  by a user without `SCRUM467_Offer_Dates` was NOT refused and DID move the stored dates
+  (Expected 2026-11-13, Actual 2027-01-20); a later Apex SOQL read also returned the values.
+  The enforceable negative is `getDescribe().isAccessible()/isUpdateable() == false` (house
+  pattern, `SCRUM464DrittpartyFlsTest`) plus the UI/API surface, where `scripts/fls-check.sh`
+  shows zero `FieldPermissions` rows. AC13 asserts exactly that; the record-page / API negative
+  is the Tester's check.
+- `SCRUM467_TestObjectAccess` = TEST-LOCAL (house pattern SCRUM442/451/464): object CRUD on
+  `Opportunity` + `Followup_Obligation__c`, Read of all 33 OTHER Opportunity custom fields,
+  `editable=false` for the 8 formula fields. It names none of the seven Offer fields. Never
+  assigned to a real user; only the fixture users inside the test classes get it.
+  Why it is needed at all: measured — an Opportunity save by a non-admin runs
+  `OpportunityFollowupMonitorTrigger → FollowupMonitoringHandler.recalculate`, whose SOQL reads
+  `Followup_Required__c` etc.; without those grants the save dies with
+  `No such column 'Followup_Required__c' on entity Opportunity`.
