@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-467 phase 3: the Opportunity record-page section "Offer validity".
+     The file is the origin/master layout with the new <layoutSections> inserted BETWEEN
+     existing sections (after the LAST section is rejected: "Element layoutSections is
+     duplicated at this location"). Diffed against the org layout before deploy. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Opportunity-Opportunity Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>
