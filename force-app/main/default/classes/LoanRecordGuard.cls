@@ -69,16 +69,18 @@ public class LoanRecordGuard {
 
     public static void handleAfterInsert(List<Loan_Record__c> newRecords) {
         Map<Id, Loan_Record__c> loanByDevice = new Map<Id, Loan_Record__c>();
+        List<Id> deviceIds = new List<Id>();
         for (Loan_Record__c loan : newRecords) {
             if (loan.Loan_Devic__c != null) {
                 loanByDevice.put(loan.Loan_Devic__c, loan);
+                deviceIds.add(loan.Loan_Devic__c);
             }
         }
         if (loanByDevice.isEmpty()) {
             return;
         }
         List<Demo_Devic__c> updateList = new List<Demo_Devic__c>();
-        for (Demo_Devic__c device : [SELECT Id FROM Demo_Devic__c WHERE Id IN :loanByDevice.keys()]) {
+        for (Demo_Devic__c device : [SELECT Id, Name, Current_Customer__c FROM Demo_Devic__c WHERE Id IN :deviceIds]) {
             Loan_Record__c loan = loanByDevice.get(device.Id);
             Demo_Devic__c fresh = new Demo_Devic__c(Id = device.Id, Status__c = 'Lent_Out');
             fresh.Current_Customer__c = loan.Loan_Customer__c;

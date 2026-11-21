@@ -99,7 +99,7 @@ public class SCRUM468LendDevicesTest {
 
         Boolean refused = false;
         try {
-            Demo_Devic__c dupe = new Demo_Devic__(
+            Demo_Devic__c dupe = new Demo_Devic__c(
                 Designation_Name__c = '468 duplicate scanner', Serial_Number__c = 'SN-468-002');
             insert dupe;
         } catch (Exception e) {
@@ -174,7 +174,7 @@ public class SCRUM468LendDevicesTest {
         // no auto-return, no status flip. The loan stays open and overdue.
         Id overdueId = overdue[1].Id;
         Demo_Devic__c touched = [SELECT Id, Status__c, Current_Loan_Due_Date__c FROM Demo_Devic__c WHERE Id = :overdueId];
-        update new Demo_Devic__(Id = touched.Id, Status__c = 'Lent_Out');
+        update new Demo_Devic__c(Id = touched.Id, Status__c = 'Lent_Out');
 
         Demo_Devic__c after = [SELECT Id, Status__c, Current_Loan_Due_Date__c, Current_Loan_Overdue_Days__c FROM Demo_Devic__c WHERE Id = :overdueId];
         System.assertEquals('Lent_Out', after.Status__c, 'AC12: the save did not write the device off or return it');
@@ -238,7 +238,7 @@ public class SCRUM468LendDevicesTest {
 
         System.runAs(lead) {
             Demo_Devic__c device = [SELECT Id, Status__c FROM Demo_Devic__c WHERE Id = :deviceId];
-            update new Demo_Devic__(Id = device.Id, Status__c = 'Written_Off');
+            update new Demo_Devic__c(Id = device.Id, Status__c = 'Written_Off');
         }
 
         Demo_Devic__c written = [SELECT Id, Status__c FROM Demo_Devic__c WHERE Id = :deviceId];
