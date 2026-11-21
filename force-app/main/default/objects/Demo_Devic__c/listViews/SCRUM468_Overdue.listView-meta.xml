@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SCRUM468_Overdue</fullName>
+    <columns>Designation_Name__c</columns>
+    <columns>Serial_Number__c</columns>
+    <columns>Current_Customer__c</columns>
+    <columns>Current_Loan_Colleague__c</columns>
+    <columns>Current_Loan_Due_Date__c</columns>
+    <columns>Current_Loan_Overdue_Days__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Overdue_Today__c</field>
+        <operation>equals</operation>
+        <value>1</value>
+    </filters>
+    <label>Devices overdue</label>
+</ListView>

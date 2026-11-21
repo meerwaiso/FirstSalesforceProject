@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
-    <description>SCRUM-468 AC3/AC4/AC6: the sales employees who lend and return devices. Object CRUD (no delete) plus field-level security on every writable field of both objects; the two formula fields are readable only. Assigned to sales staff and sales team leads.</description>
+    <description>SCRUM-468 AC3/AC4/AC6: the sales employees who lend and return devices. Object CRUD (no delete) plus field-level security on every writable field of both objects; the three formula fields are readable only. Assigned to sales staff and sales team leads.</description>
     <fieldPermissions>
         <editable>true</editable>
         <field>Demo_Devic__c.Designation_Name__c</field>
@@ -34,6 +34,11 @@
     <fieldPermissions>
         <editable>false</editable>
         <field>Demo_Devic__c.Current_Loan_Overdue_Days__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Demo_Devic__c.Overdue_Today__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

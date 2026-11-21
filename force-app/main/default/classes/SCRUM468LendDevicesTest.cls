@@ -173,6 +173,17 @@ public class SCRUM468LendDevicesTest {
         System.assert(days.contains(30) && days.contains(15),
             'AC8: the overdue devices are 30 and 15 days past due, so a longest-first sort is well defined');
 
+        // AC8 carrier: the ListView SCRUM468_Overdue filters on Overdue_Today__c, so the
+        // formula must be true for exactly the two past-due devices and false for the rest.
+        Integer flagged = 0;
+        for (Demo_Devic__c d : [SELECT Id, Status__c, Overdue_Today__c FROM Demo_Devic__c]) {
+            if (d.Overdue_Today__c) {
+                flagged++;
+            }
+        }
+        System.assertEquals(2, flagged,
+            'AC8: Overdue_Today__c is true for exactly the two past-due devices, so the list view shows the right set');
+
         // AC12: saving an overdue device changes nothing by itself - no reminder,
         // no auto-return, no status flip. The loan stays open and overdue.
         Id overdueId = overdue[1].Id;

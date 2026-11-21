@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-468 Phase 5a (AC8 carrier, Architect review §1): the formula Checkbox first, then the ListView that filters on it. A custom field must exist before anything references it (house rule: CustomField before Layout/ListView). -->
+    <types>
+        <members>Demo_Devic__c.Overdue_Today__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Demo_Devic__c.SCRUM468_Overdue</members>
+        <name>ListView</name>
+    </types>
+    <version>67.0</version>
+</Package>

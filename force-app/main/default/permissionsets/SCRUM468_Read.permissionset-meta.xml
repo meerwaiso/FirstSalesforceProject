@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
-    <description>SCRUM-468 AC11: everyone in Sales and Service sees the devices and where they are. Read-only on both objects and on every field including the two formula fields. Grants nothing writable - lending lives in SCRUM468_Loan.</description>
+    <description>SCRUM-468 AC11: everyone in Sales and Service sees the devices and where they are. Read-only on both objects and on every field including the three formula fields. Grants nothing writable - lending lives in SCRUM468_Loan.</description>
     <fieldPermissions>
         <editable>false</editable>
         <field>Demo_Devic__c.Designation_Name__c</field>
@@ -34,6 +34,11 @@
     <fieldPermissions>
         <editable>false</editable>
         <field>Demo_Devic__c.Current_Loan_Overdue_Days__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Demo_Devic__c.Overdue_Today__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
