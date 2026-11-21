@@ -65,6 +65,12 @@ jira_get_issue fields=status,assignee before the first tool call).
   (field row + inline-edit area) -> label locators need .last(), never a count-1 guard.
 - Picklists: `combobox "<Label>"`, options exist only after the combobox click; `listbox "Path Options"`
   (the Stage path) already contains options -> the open-state check is a DELTA on the option count.
+- DECISIVE (probe-467k, 2026-11-21): the `Edit <Label>` buttons exist only while the page is READ-ONLY.
+  Once one field is edited, ALL "Edit <Label>" buttons leave the accessibility tree
+  (`button list -> []`), and the fields appear as `textbox "<label>"` (dates, with the value) and
+  `combobox "<label>"` (picklists). A `button "Save"` is present in that state. Therefore: click the
+  Edit button only `if count > 0`, then work on the textbox/combobox directly. That is why run 2's
+  AC6 (second date) and AC7/AC8 (Stage after another field) timed out on a missing Edit button.
 - Loss_Reason\_\_c picklist values (`sf sobject describe --sobject Opportunity`): Zu teuer, An einen Wettbewerber
   verloren, Kein Budget, Zeitpunkt passte nicht, Kein Bedarf mehr, Kontakt abgebrochen, Sonstiges.
 - EntityDefinition has QualifiedApiName/DeveloperName/Label (NO Name, NO Queryable) -> AC11 uses

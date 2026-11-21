@@ -227,22 +227,24 @@ async function dismissGuidance(page: Page) {
 }
 
 /**
- * Set a picklist on a RECORD page (house pattern, SCRUM-381 lines 60-85).
+ * Set a picklist on a RECORD page.
  *
- * `startInlineEdit` + `getByLabel` cannot be used here: on an Opportunity the
- * Details section carries the label "Stage" twice (field row + the Path-Chevron
- * area), so the label locator resolves to 2 elements and the helper's toHaveCount(1)
- * guard fires. The picklist itself is a `combobox "<Label>"` whose options only
- * exist once the combo is clicked — and the Path-Chevron `listbox "Path Options"`
- * already contributes options, so the open-state check is a DELTA on the option
- * count, never an absolute count.
+ * Measured 2026-11-21 (probe-467k): the "Edit <Label>" buttons exist only BEFORE inline
+ * edit mode is entered. As soon as one field is being edited, EVERY "Edit <Label>" button
+ * is gone from the accessibility tree (button list -> empty) and the fields are exposed as
+ * `textbox "<label>"` / `combobox "<label>"`. So the button click is conditional, and the
+ * picklist itself is the combobox, whose options only exist after the combobox is clicked.
+ * The Path-Chevron `listbox "Path Options"` already holds Stage options, so the open-state
+ * check is a DELTA on the option count, never an absolute count.
  */
 async function setPicklist(page: Page, fieldLabel: string, optionName: string) {
   const btn = page.getByRole('button', { name: `Edit ${fieldLabel}`, exact: true }).first();
-  await btn.waitFor({ state: 'visible', timeout: 30000 });
-  await btn.click();
-  const combo = page.getByRole('combobox', { name: fieldLabel, exact: false }).first();
-  await combo.waitFor({ state: 'visible', timeout: 20000 });
+  if ((await btn.count()) > 0) {
+    await btn.click();
+    await page.waitForTimeout(1200);
+  }
+  const combo = page.getByRole('combobox', { name: fieldLabel, exact: true }).first();
+  await combo.waitFor({ state: 'visible', timeout: 30000 });
   const all = page.getByRole('option', { name: optionName, exact: true });
   const base = await all.count(); // Path-Chevron options present before the combo opens
   let opened = false;
@@ -257,13 +259,14 @@ async function setPicklist(page: Page, fieldLabel: string, optionName: string) {
   await page.waitForTimeout(600);
 }
 
-/** Type a date into its inline-edit input. Date inputs are unique per label. */
+/** Type a date into its editor. In edit mode the field is a `textbox "<label>"`;
+ * the "Edit <label>" button only exists while the page is still read-only. */
 async function setDateField(page: Page, fieldLabel: string, value: string) {
   const btn = page.getByRole('button', { name: `Edit ${fieldLabel}`, exact: true }).first();
-  await btn.waitFor({ state: 'visible', timeout: 30000 });
-  await btn.click();
-  // The controls paint several seconds after the shell (house finding SCRUM-451):
-  // wait for THIS field's own label, not a generic form element.
+  if ((await btn.count()) > 0) {
+    await btn.click();
+    await page.waitForTimeout(1200);
+  }
   const input = page.getByLabel(fieldLabel, { exact: true }).last();
   await input.waitFor({ state: 'visible', timeout: 30000 });
   await input.fill(value);
