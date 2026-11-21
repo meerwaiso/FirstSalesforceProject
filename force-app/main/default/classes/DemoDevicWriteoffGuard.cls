@@ -29,10 +29,16 @@ public class DemoDevicWriteoffGuard {
         if (!wroteOff) {
             return;
         }
-        if (!mayWriteOff()) {
-            System.AssertEquals(false, true,
-                'Lend Devices: only sales team leads may write off a device - this user does not hold '
-                + WRITEOFF_PS + '.');
+        if (mayWriteOff()) {
+            return;
+        }
+        for (Demo_Devic__c record : newRecords) {
+            Demo_Devic__c before = oldMap.get(record.Id);
+            String oldStatus = (before == null) ? null : before.Status__c;
+            if (record.Status__c == 'Written_Off' && oldStatus != 'Written_Off') {
+                record.addError('Lend Devices: only sales team leads may write off a device - this user does not hold '
+                    + WRITEOFF_PS + '.');
+            }
         }
     }
 

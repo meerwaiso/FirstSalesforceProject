@@ -25,8 +25,6 @@ public class LoanRecordGuard {
             }
         }
         if (deviceIds.isEmpty()) {
-            System.AssertEquals(false, true,
-                'Lend Devices: a loan record must name the device it is for (Loan_Devic__c is blank).');
             return;
         }
         Map<Id, Demo_Devic__c> devices = new Map<Id, Demo_Devic__c>();
@@ -40,26 +38,34 @@ public class LoanRecordGuard {
             }
         }
         Id currentUserId = UserInfo.getUserId();
-        Set<Id> claimedInBatch = new Set<Id>();
+        // Only an OPEN loan claims a device: a device that was returned in this same
+        // save may be lent on again, and the fixture batch writes the whole history of
+        // one device in one bulk insert (closed loans first, the open one last).
+        Set<Id> openInBatch = new Set<Id>();
         for (Loan_Record__c loan : newRecords) {
+            if (loan.Loan_Devic__c == null) {
+                loan.addError('Lend Devices: a loan record must name the device it is for (Loan_Devic__c is blank).');
+                continue;
+            }
             Demo_Devic__c device = devices.get(loan.Loan_Devic__c);
             if (device == null) {
-                System.AssertEquals(false, true,
-                    'Lend Devices: the loan names a device that does not exist - a loan needs a real device.');
+                loan.addError('Lend Devices: the loan names a device that does not exist - a loan needs a real device.');
+                continue;
             }
             if (device.Status__c == 'Written_Off') {
-                System.AssertEquals(false, true,
-                    'Lend Devices: device ' + device.Name + ' is written off and can never be lent out again.');
+                loan.addError('Lend Devices: device ' + device.Name + ' is written off and can never be lent out again.');
+                continue;
             }
-            if (device.Status__c == 'Lent_Out' || claimedInBatch.contains(device.Id)) {
+            if (device.Status__c == 'Lent_Out' || openInBatch.contains(device.Id)) {
                 String withWhom = customerNames.containsKey(device.Current_Customer__c)
                     ? customerNames.get(device.Current_Customer__c)
                     : 'a customer not in this save';
-                System.AssertEquals(false, true,
-                    'Lend Devices: device ' + device.Name + ' is already on loan to ' + withWhom
+                loan.addError('Lend Devices: device ' + device.Name + ' is already on loan to ' + withWhom
                     + ' - a device may be with exactly one customer at a time.');
             }
-            claimedInBatch.add(device.Id);
+            if (loan.Loan_Return_Datum__c == null) {
+                openInBatch.add(device.Id);
+            }
             // The colleague is the saving user unless the caller named one explicitly.
             if (loan.Loan_Colleague__c == null) {
                 loan.Loan_Colleague__c = currentUserId;

@@ -63,8 +63,7 @@ public class DemoDevicGuard {
             }
             if (taken.contains(serial) || seenInBatch.contains(serial)) {
                 String ownerName = owner.containsKey(serial) ? owner.get(serial) : 'another device in this save';
-                System.AssertEquals(false, true,
-                    'Lend Devices: serial "' + serial + '" is already on device ' + ownerName
+                record.addError('Lend Devices: serial "' + serial + '" is already on device ' + ownerName
                     + ' - one serial number may belong to exactly one device.');
             }
             seenInBatch.add(serial);

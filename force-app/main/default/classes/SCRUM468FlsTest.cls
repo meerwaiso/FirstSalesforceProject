@@ -58,7 +58,7 @@ public class SCRUM468FlsTest {
     // ---- AC11 / TAC11: a Service employee reads, but may not lend or write off --
     @isTest
     static void serviceEmployee_reads_but_hasNoWriteRights() {
-        User service = mkUser('fls468svc');
+        User service = mkUser('s468svc');
         insert service;
         givePs(service, new List<String>{ 'SCRUM468_Read' });
 
@@ -94,7 +94,7 @@ public class SCRUM468FlsTest {
     // ---- TAC-cust: a user without any of the three sets sees nothing -----------
     @isTest
     static void customerFacingUser_seesNeitherObject() {
-        User outsider = mkUser('fls468out');
+        User outsider = mkUser('s468out');
         insert outsider;
 
         Boolean deviceReadable = false;
@@ -111,7 +111,7 @@ public class SCRUM468FlsTest {
     // Last method: the refused save is the only user-mode DML in this class.
     @isTest
     static void salesEmployee_withoutMarkerSet_cannotWriteOff() {
-        User salesStaff = mkUser('fls468sales');
+        User salesStaff = mkUser('s468sls');
         insert salesStaff;
         givePs(salesStaff, new List<String>{ 'SCRUM468_Loan', 'SCRUM468_Read' });
 

@@ -11,9 +11,9 @@
  * AC9  a sales team lead (holder of SCRUM468_Writeoff) may write a device off (TAC9)
  * AC12 nothing happens by itself: an overdue device is still Lent_Out with an open loan
  *
- * Test data (the counts the Tester is given): 4 devices, 6 loans, 3 customers,
- * 2 lending colleagues, 2 loans open past their due date, 2 loans returned,
- * 1 device written off.
+ * Test data (the counts the Tester is given, measured from the fixtures below):
+ * 4 devices, 6 loans (2 still open, both past their due date: 30 and 15 days;
+ * 4 loans returned, one of them 14 days long), 3 customers, 1 written-off device.
  *
  * MIXED_DML house rule (SCRUM-442): every System-mode DML (fixtures, users,
  * PermissionSetAssignment) comes first; the only user-mode DML is the write-off
@@ -50,6 +50,9 @@ public class SCRUM468LendDevicesTest {
         System.assertEquals(4, bySerial.size(), 'AC1: all four devices are readable by serial');
 
         // Batch A: one open loan per device. LoanRecordGuard writes each device to Lent_Out.
+        Loan_Record__c l6 = new Loan_Record__c(
+            Loan_Devic__c = bySerial.get('SN-468-002'), Loan_Customer__c = alpha.Id,
+            Loan_Start_Datum__c = TODAY - 80, Loan_Due_Datum__c = TODAY - 70, Loan_Return_Datum__c = TODAY - 70);
         Loan_Record__c l1 = new Loan_Record__c(
             Loan_Devic__c = bySerial.get('SN-468-001'), Loan_Customer__c = alpha.Id,
             Loan_Start_Datum__c = TODAY - 120, Loan_Due_Datum__c = TODAY - 100);
@@ -62,7 +65,7 @@ public class SCRUM468LendDevicesTest {
         Loan_Record__c l5 = new Loan_Record__c(
             Loan_Devic__c = bySerial.get('SN-468-004'), Loan_Customer__c = beta.Id,
             Loan_Start_Datum__c = TODAY - 90, Loan_Due_Datum__c = TODAY - 30);
-        insert new List<Loan_Record__c>{ l1, l3, l4, l5 };
+        insert new List<Loan_Record__c>{ l6, l1, l3, l4, l5 };
 
         // Batch B: two of those loans come back -> LoanReturnGuard clears both devices.
         List<Loan_Record__c> returned = new List<Loan_Record__c>{
@@ -74,7 +77,7 @@ public class SCRUM468LendDevicesTest {
         // Batch C: the measuring instrument is lent again (it is Available now).
         Loan_Record__c l2 = new Loan_Record__c(
             Loan_Devic__c = bySerial.get('SN-468-001'), Loan_Customer__c = beta.Id,
-            Loan_Start_Datum__c = TODAY - 60, Loan_Due_Datum__c = TODAY - 40);
+            Loan_Start_Datum__c = TODAY - 54, Loan_Due_Datum__c = TODAY - 40);
         insert l2;
 
         // Batch D: and that second loan came back as well -> d1 ends Available with two loans.
@@ -90,7 +93,7 @@ public class SCRUM468LendDevicesTest {
     // ---- AC1 + AC2 / TAC2n ----------------------------------------------------
     @isTest
     static void serialNumber_mustBeUnique() {
-        List<Demo_Devic__c> all = [SELECT Id, Name, Serial_Number__c FROM Demo_Devic__c WHERE Serial_Number__c LIKE 'SN-468%'];
+        List<Demo_Devic__c> all = [SELECT Id, Name, Designation_Name__c, Serial_Number__c FROM Demo_Devic__c WHERE Serial_Number__c LIKE 'SN-468%'];
         System.assertEquals(4, all.size(), 'AC1: exactly four devices exist');
         for (Demo_Devic__c d : all) {
             System.assert(d.Designation_Name__c != null && d.Designation_Name__c != '', 'AC1: every device carries a designation');
@@ -173,22 +176,22 @@ public class SCRUM468LendDevicesTest {
         // AC12: saving an overdue device changes nothing by itself - no reminder,
         // no auto-return, no status flip. The loan stays open and overdue.
         Id overdueId = overdue[1].Id;
-        Demo_Devic__c touched = [SELECT Id, Status__c, Current_Loan_Due_Date__c FROM Demo_Devic__c WHERE Id = :overdueId];
+        Demo_Devic__c touched = [SELECT Id, Status__c, Current_Loan_Due_Date__c, Current_Loan_Overdue_Days__c FROM Demo_Devic__c WHERE Id = :overdueId];
         update new Demo_Devic__c(Id = touched.Id, Status__c = 'Lent_Out');
 
         Demo_Devic__c after = [SELECT Id, Status__c, Current_Loan_Due_Date__c, Current_Loan_Overdue_Days__c FROM Demo_Devic__c WHERE Id = :overdueId];
         System.assertEquals('Lent_Out', after.Status__c, 'AC12: the save did not write the device off or return it');
         System.assert(after.Current_Loan_Due_Date__c == touched.Current_Loan_Due_Date__c, 'AC12: the due date was not moved');
-        System.assert(after.Current_Loan_Overdue_Days__c == 15,
+        System.assert(after.Current_Loan_Overdue_Days__c == touched.Current_Loan_Overdue_Days__c,
             'AC12: the overdue count is still the formula value, not zeroed');
         List<Loan_Record__c> openLoans = [SELECT Id, Loan_Return_Datum__c FROM Loan_Record__c WHERE Loan_Return_Datum__c = null];
-        System.assertEquals(3, openLoans.size(), 'AC12: no automation closed or opened a loan');
+        System.assertEquals(2, openLoans.size(), 'AC12: no automation closed or opened a loan');
     }
 
     // ---- AC6 + AC7 (history survives) ------------------------------------------
     @isTest
     static void return_clears_the_device_and_history_survives() {
-        Id deviceId = deviceIdOf('SN-468-003');
+        Id deviceId = deviceIdOf('SN-468-002');
         Loan_Record__c open = [SELECT Id, Loan_Devic__c, Loan_Customer__c, Loan_Start_Datum__c, Loan_Due_Datum__c, Loan_Return_Datum__c
                                FROM Loan_Record__c WHERE Loan_Devic__c = :deviceId AND Loan_Return_Datum__c = null LIMIT 1];
         System.assert(open != null, 'AC6: an open loan exists on that device');
@@ -201,8 +204,11 @@ public class SCRUM468LendDevicesTest {
         System.assertEquals(null, device.Current_Loan_Colleague__c, 'AC6: no current colleague left');
         System.assertEquals(null, device.Current_Loan_Due_Date__c, 'AC6: no due date left');
 
+        // AC7 reads the whole history of the device that was lent twice (SN-468-001);
+        // the return above belongs to SN-468-002.
+        Id historyDeviceId = deviceIdOf('SN-468-001');
         List<Loan_Record__c> history = [
-            SELECT Id, Loan_Customer__c, Loan_Duration_Days__c FROM Loan_Record__c WHERE Loan_Devic__c = :deviceId
+            SELECT Id, Loan_Customer__c, Loan_Duration_Days__c FROM Loan_Record__c WHERE Loan_Devic__c = :historyDeviceId
         ];
         System.assertEquals(2, history.size(), 'AC7: both lending periods of that device are still there');
         Boolean periodOf14Days = false;

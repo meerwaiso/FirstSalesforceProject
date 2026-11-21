@@ -21,6 +21,6 @@
     </nameField>
     <pluralLabel>Demo Devices</pluralLabel>
     <searchLayouts></searchLayouts>
-    <sharingModel>Locked</sharingModel>
+    <sharingModel>ReadWrite</sharingModel>
     <visibility>Public</visibility>
 </CustomObject>

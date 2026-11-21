@@ -10,5 +10,12 @@
         <members>SCRUM468FlsTest</members>
         <name>ApexClass</name>
     </types>
+    <types>
+        <members>DemoDevicGuard</members>
+        <members>LoanRecordGuard</members>
+        <members>LoanReturnGuard</members>
+        <members>DemoDevicWriteoffGuard</members>
+        <name>ApexTrigger</name>
+    </types>
     <version>67.0</version>
 </Package>
