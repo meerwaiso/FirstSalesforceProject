@@ -184,7 +184,7 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
       .filter((r: any) => Number(r.Current_Loan_Overdue_Days__c || 0) > 0);
     expect(overdue.length, 'fixtures: exactly 2 overdue devices').toBe(2);
     expect(overdue.map((r: any) => r.Current_Loan_Overdue_Days__c).sort(), 'fixtures: overdue-days 15 and 30').toEqual([15, 30]);
-    expect(soql(`SELECT Id, Loan_Status__c FROM Loan_Record__c`).filter((r: any) => r.Loan_Status__c == 'Returned').length, 'fixtures: 4 loans returned').toBe(4);
+    expect(soql(`SELECT Id, Loan_Return_Datum__c FROM Loan_Record__c`).filter((r: any) => r.Loan_Return_Datum__c != null).length, 'fixtures: 4 loans returned').toBe(4);
     expect(soql(`SELECT Id, Loan_Duration_Days__c FROM Loan_Record__c WHERE Loan_Devic__c='${devs['3']}' AND Loan_Return_Datum__c != null`).map((r: any) => r.Loan_Duration_Days__c), 'fixtures: one returned loan of 14 days (D3)').toContain(14);
   });
 
