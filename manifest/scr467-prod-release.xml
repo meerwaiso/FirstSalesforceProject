@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-467 Prod release: exactly the force-app delta of squash d5f07149
+         (dc0e411..d5f0714), member forms copied from the phase manifests
+         scr467-phase1-fields / phase2-referencing / phase3-layout / phase4-apextests.
+         Deployed with --test-level NoTestRun (house 3-phase release: deploy, then
+         PS assignment, then the Prod test run separately). 16 components. -->
+    <types>
+        <members>Opportunity.Offer_Sent_On__c</members>
+        <members>Opportunity.Offer_Valid_Until__c</members>
+        <members>Opportunity.Offer_Expires_On__c</members>
+        <members>Opportunity.Offer_Days_Left__c</members>
+        <members>Opportunity.Offer_Status__c</members>
+        <members>Opportunity.Offer_Expired__c</members>
+        <members>Opportunity.Offer_Expiring_14D__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>Opportunity.Offer_Won_With_Expired_Offer</members>
+        <members>Opportunity.Offer_Dates_Kept_When_Closed</members>
+        <name>ValidationRule</name>
+    </types>
+    <types>
+        <members>SCRUM467_Offer_Dates</members>
+        <members>SCRUM467_TestObjectAccess</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Opportunity-Opportunity Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>Sales/SCRUM467_Offer_Renewals_Due_14D</members>
+        <members>Sales/SCRUM467_Offer_Expired_Renewals</members>
+        <name>Report</name>
+    </types>
+    <types>
+        <members>SCRUM467OfferExpiryTest</members>
+        <members>SCRUM467OfferFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>
