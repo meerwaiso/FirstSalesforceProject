@@ -37,3 +37,6 @@ ApexTestQueueItem rows in 24h: 255 vs ceiling 500 (max(500, 10×classes)) — ro
   in the Details sections -> a rendered row assertion on the record page is NOT reachable headless in this org.
   AC5/AC7 therefore covered at org level: relationshipLabel/Name read back from DEPLOYED metadata + live SOQL + the
   deployed ListView columns. Coverage table says so explicitly - not claimed as a browser assertion.
+
+- PS read-back (Apex session, today): PermissionSet WHERE Name LIKE 'SCRUM468%' -> 3 sets SCRUM468_Loan/Read/Writeoff; PermissionSetAssignment per set: 2 rows each (devops-agent@cline.test = CLI target-org user, and the human test account) = 6 rows total. Marker set = membership only (no CRUD): proven by the green negative Apex test - a colleague holding SCRUM468_Loan/Read WITHOUT SCRUM468_Writeoff is refused the write-off, and the positive test passes with it.
+- Live field reads through the session: ListView SCRUM468_Overdue rendered Current_Loan_Overdue_Days**c 30/15 and Loan_Colleague**c (fields readable via session holding SCRUM468_Loan/Read); Loan_Record**c Loan_Due_Datum**c + Loan_Status**c rendered in the same rows. fls-check.sh: Overdue_Today**c Formula granted read in Loan and Read, 2 users each.
