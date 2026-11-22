@@ -90,17 +90,10 @@ public class SCRUM468LendDevicesTest {
         return rows[0].Id;
     }
 
-    // dd.mm.yyyy, same shape the guards write into the facts column.
+    // dd.mm.yyyy, same shape as the guards (measured: Date.toString() is ISO yyyy-MM-dd).
     private static String ddmmyyyy(Date d) {
-        String day = String.valueOf(d.getDay());
-        String month = String.valueOf(d.getMonth());
-        if (d.getDay() < 10) {
-            day = '0' + day;
-        }
-        if (d.getMonth() < 10) {
-            month = '0' + month;
-        }
-        return day + '.' + month + '.' + String.valueOf(d.getYear());
+        String iso = String.valueOf(d);
+        return iso.substring(8, 10) + '.' + iso.substring(5, 7) + '.' + iso.substring(0, 4);
     }
 
     // ---- AC1 + AC2 / TAC2n ----------------------------------------------------
