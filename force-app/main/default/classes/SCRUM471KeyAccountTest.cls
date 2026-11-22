@@ -206,16 +206,25 @@ private class SCRUM471KeyAccountTest {
     static void existing_customers_still_read_no() {
         User u = mkTestUser('ac9');
         assignPs(u);
-        List<Account> existing;
+        Integer total;
+        Integer own;
         List<Account> marked;
         System.runAs(u) {
-            existing = [SELECT Is_Key_Account__c FROM Account WHERE Name NOT LIKE 'TEST-SCRUM-471%'];
-            marked = [SELECT Is_Key_Account__c FROM Account WHERE Is_Key_Account__c = true AND Name NOT LIKE 'TEST-SCRUM-471%'];
+            total = [SELECT Id FROM Account].size();
+            own = [SELECT Id FROM Account WHERE Name LIKE 'TEST-SCRUM-471%'].size();
+            marked = [SELECT Name FROM Account WHERE Is_Key_Account__c = true];
         }
         // Guard first: a criterion that matches zero records is untested, not PASS.
-        System.assert(existing.size() > 0,
-            'AC9 guard: the pre-existing customers must be visible to this probe, otherwise the row below is vacuous (measured 251 in Test-Org via CLI).');
-        System.assertEquals(0, marked.size(),
+        // The pre-existing customers (measured 251 via CLI) must be reachable here.
+        System.assert(total > own,
+            'AC9 guard: no pre-existing customer is visible to this probe, so the row below would be vacuous.');
+        Integer foreignMarked = 0;
+        for (Account a : marked) {
+            if (a.Name == null || !a.Name.startsWith('TEST-SCRUM-471')) {
+                foreignMarked++;
+            }
+        }
+        System.assertEquals(0, foreignMarked,
             'AC9: none of the pre-existing customers reads "Yes" until management marks it.');
     }
 }
