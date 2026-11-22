@@ -7,9 +7,8 @@
     <columns>Loan_History_Facts__c</columns>
     <filterScope>Everything</filterScope>
     <filters>
-        <field>Loan_Status_Text__c</field>
-        <operation>equals</operation>
-        <value>open</value>
+        <field>Loan_Return_Datum__c</field>
+        <operation>blank</operation>
     </filters>
     <label>Open loans (customers with devices)</label>
 </ListView>

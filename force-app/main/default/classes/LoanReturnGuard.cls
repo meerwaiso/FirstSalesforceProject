@@ -23,9 +23,12 @@ public class LoanReturnGuard {
             // transition so a plain edit of a returned loan rewrites nothing.
             if (loan.Loan_Return_Datum__c != null && oldReturn == null) {
                 String facts = 'returned ' + historyDate(loan.Loan_Return_Datum__c);
-                if (loan.Loan_Start_Datum__c != null) {
-                    Integer days = loan.Loan_Return_Datum__c - loan.Loan_Start_Datum__c;
-                    facts = facts + ' / ' + days + ' Tage';
+                if (loan.Loan_Duration_Days__c != null) {
+                    // The duration comes from the existing formula field, read only: the
+                    // Apex Date-minus-Date expression is rejected by this org's compiler
+                    // ("Date expressions must use Integer or Long", validate 2026-11-22),
+                    // while the formula field already carries the value as a Number.
+                    facts = facts + ' / ' + loan.Loan_Duration_Days__c + ' Tage';
                 }
                 loan.Loan_History_Facts__c = facts;
             }

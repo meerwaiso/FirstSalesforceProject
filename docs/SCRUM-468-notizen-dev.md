@@ -107,5 +107,11 @@ Branch feature/SCRUM-468-lend-devices-rework4 (from origin head 55f67df), worktr
 ## House shapes (copy, do not invent)
 - ListView: force-app/main/default/objects/Demo_Devic__c/listViews/SCRUM468_Overdue.listView-meta.xml -> <columns>bare custom apiName</columns>, <filterScope>Everything, <filters><field/><operation>equals</operation><value>1</value>. AC8 E2E url: /lightning/o/Demo_Devic__c/list?filterName=SCRUM468_Overdue.
 - Text field shape: copy from the org (Loan_Status_Text__c exists in Test-Org; grep repo too). Do not handcraft the Field XML.
-- Open TODOs for this round: (1) List Button metadata: grep the CLI's metadataRegistry.json for listButton BEFORE guessing the path; (2) list filter for open loans: use Loan_Status_Text__c equals open (values measured round 2) - house filter shape.
+## Open TODOs for this round: (1) List Button metadata: grep the CLI's metadataRegistry.json for listButton BEFORE guessing the path; (2) list filter for open loans: use Loan_Status_Text__c equals open (values measured round 2) - house filter shape.
 - Deploy: validate -l RunRelevantTests (timeout 560) then deploy start, same manifest; commit BEFORE each deploy; one manifest per unit.
+
+## Round 4 measurements (landed while deploying)
+- metadataRegistry.json (CLI SDR registry, grep "list"/"button"): kinds include listView/listViews but NO listButton kind at all (only liveChatButton/liveChatButtons). So a record-page List Button is NOT deployable through this toolchain; the AC5 surface ships as the ListView + the Setup picker route (as in AC8, reached by URL /lightning/o/<Obj>/list?filterName=<Name>).
+- Loan_Status_Text__c does NOT exist on Loan_Record__c in Test-Org (validate rejected the ListView filter: "In field: filter.field - no CustomField named Loan_Record__c.Loan_Status_Text__c found"). My round-2 note claiming it existed was wrong; the org field list has Loan_Devic__c, Loan_Start_Datum__c, Loan_Due_Datum__c, Loan_Customer__c, Loan_Return_Datum__c, Loan_Duration_Days__c, Loan_Colleague__c, Loan_Available__c, Loan_Account_Md__c.
+- Apex Date-minus-Date on this org's compiler: `Integer days = loan.Loan_Return_Datum__c - loan.Loan_Start_Datum__c;` -> "Date expressions must use Integer or Long (27:36)". Fix used: read the existing formula field Loan_Duration_Days__c (Number) instead of computing in Apex.
+- ListView filter used: <field>Loan_Return_Datum__c</field><operation>blank</operation> (open = no return date).
