@@ -85,6 +85,8 @@ public class SCRUM468FlsTest {
                 'AC11: a Service employee cannot change the device status');
             System.assertEquals(false, Loan_Record__c.Loan_Devic__c.getDescribe().isUpdateable(),
                 'AC11: a Service employee cannot lend (loan lookups are not writable)');
+            System.assertEquals(false, Loan_Record__c.Loan_History_Facts__c.getDescribe().isUpdateable(),
+                'AC11 round 4: a Service employee cannot write the history facts column');
         }
         // Measured in Test-Org (house SCRUM-461): an Apex insert of a typed object is
         // NOT blocked by the object-level create flag, so the FLS assertions above are
@@ -118,6 +120,8 @@ public class SCRUM468FlsTest {
         Boolean refused = false;
         System.runAs(salesStaff) {
             Demo_Devic__c device = [SELECT Id, Status__c FROM Demo_Devic__c WHERE Serial_Number__c = 'SN-468-102' WITH USER_MODE LIMIT 1];
+            System.assertEquals(true, Loan_Record__c.Loan_History_Facts__c.getDescribe().isUpdateable(),
+                'AC11 round 4: a sales employee may write the history facts column');
             try {
                 update new Demo_Devic__c(Id = device.Id, Status__c = 'Written_Off');
             } catch (Exception e) {

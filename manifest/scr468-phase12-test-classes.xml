@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-468 round 4, phase 12: the test classes, deployed after the production shape (field 10a, guards + Permission Sets + layouts + ListView 10b) so their new assertions compile against the live Loan_History_Facts__c. -->
+    <types>
+        <members>SCRUM468LendDevicesTest</members>
+        <members>SCRUM468FlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

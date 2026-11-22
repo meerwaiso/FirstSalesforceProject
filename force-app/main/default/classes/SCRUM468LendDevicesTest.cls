@@ -90,6 +90,19 @@ public class SCRUM468LendDevicesTest {
         return rows[0].Id;
     }
 
+    // dd.mm.yyyy, same shape the guards write into the facts column.
+    private static String ddmmyyyy(Date d) {
+        String day = String.valueOf(d.getDay());
+        String month = String.valueOf(d.getMonth());
+        if (d.getDay() < 10) {
+            day = '0' + day;
+        }
+        if (d.getMonth() < 10) {
+            month = '0' + month;
+        }
+        return day + '.' + month + '.' + String.valueOf(d.getYear());
+    }
+
     // ---- AC1 + AC2 / TAC2n ----------------------------------------------------
     @isTest
     static void serialNumber_mustBeUnique() {
@@ -134,6 +147,9 @@ public class SCRUM468LendDevicesTest {
         System.assertEquals('Lent_Out', after.Status__c, 'AC3: the device reads lent out');
         System.assertEquals(gamma.Id, after.Current_Customer__c, 'AC3: the device names the customer');
         System.assert(after.Current_Loan_Due_Date__c == TODAY + 3, 'AC3: the device carries the due date');
+        Loan_Record__c savedLoan = [SELECT Id, Loan_History_Facts__c FROM Loan_Record__c WHERE Id = :loan.Id LIMIT 1];
+        System.assertEquals('open / due ' + ddmmyyyy(TODAY + 3), savedLoan.Loan_History_Facts__c,
+            'AC7 round 4: the guard-written facts column names the due date at lend time');
         System.assert(after.Current_Loan_Colleague__c != null, 'AC3: the lending colleague is recorded (defaults to the saving user)');
         System.assert(loan.Loan_Due_Datum__c == TODAY + 3, 'AC3: the loan record keeps the due date');
         System.assertEquals(null, loan.Loan_Return_Datum__c, 'AC3: the new loan is still open');
@@ -215,16 +231,26 @@ public class SCRUM468LendDevicesTest {
         System.assertEquals(null, device.Current_Loan_Colleague__c, 'AC6: no current colleague left');
         System.assertEquals(null, device.Current_Loan_Due_Date__c, 'AC6: no due date left');
 
+        // AC7 round 4: a REAL return (an update, not a fixture insert) fires the
+        // LoanReturnGuard rewrite - the facts column names the return date and the duration.
+        Loan_Record__c returnedLoan = [SELECT Id, Loan_History_Facts__c FROM Loan_Record__c WHERE Id = :open.Id LIMIT 1];
+        String returnedFacts = String.valueOf(returnedLoan.Loan_History_Facts__c);
+        System.assert(returnedFacts.startsWith('returned '),
+            'AC7 round 4: the facts column names the actual return date');
+        System.assert(returnedFacts.contains(' Tage'),
+            'AC7 round 4: the facts column names the duration in days');
+
         // AC7 reads the whole history of the device that was lent twice (SN-468-001);
         // the return above belongs to SN-468-002.
         Id historyDeviceId = deviceIdOf('SN-468-001');
         List<Loan_Record__c> history = [
-            SELECT Id, Loan_Customer__c, Loan_Duration_Days__c FROM Loan_Record__c WHERE Loan_Devic__c = :historyDeviceId
+            SELECT Id, Loan_Customer__c, Loan_Duration_Days__c, Loan_History_Facts__c FROM Loan_Record__c WHERE Loan_Devic__c = :historyDeviceId
         ];
         System.assertEquals(2, history.size(), 'AC7: both lending periods of that device are still there');
         Boolean periodOf14Days = false;
         for (Loan_Record__c h : history) {
             System.assert(h.Loan_Duration_Days__c != null, 'AC7: every returned period reports its duration');
+            System.assert(String.isNotBlank(h.Loan_History_Facts__c), 'AC7 round 4: every period carries its facts column');
             if (h.Loan_Duration_Days__c == 14) {
                 periodOf14Days = true;
             }
