@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Account.Is_Key_Account__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM471_KeyAccount_Set</label>
+    <description>SCRUM-471 Set-FLS: only colleagues who may edit customer records today may set or clear the Key Account mark. Assigned to a subset of the Read-PS holders. No object CRUD.</description>
+</PermissionSet>
