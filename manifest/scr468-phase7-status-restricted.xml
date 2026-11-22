@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-468 phase 7 (Architect re-review on head c40f6e9, required change 1):
+     Status__c must ship a RESTRICTED value set. The field file had a valueSet without
+     <restricted>true</restricted>, so free text like "lent out" could be typed today - and every
+     guard plus both overdue formulas compare the value as a string, such a device would sit
+     outside the overdue filter and outside the one-customer rule with no error at all.
+     Element position copied from the house form (required, then restricted, then tracking).
+     The two grants already carry Status__c, so no Permission Set change is needed here.
+     Scoped tests: the same two classes the re-review asks to re-run. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Demo_Devic__c.Status__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>
