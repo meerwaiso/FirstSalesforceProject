@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { type Page } from '@playwright/test';
 import { execSync } from 'node:child_process';
+import { requireData } from './preflight';
+import { openRecordPage } from './record-page';
 
 /**
  * [SCRUM-468] Lend Devices — Tester E2E über Test-Org (branch 9f91b7b / PR #190).
@@ -25,12 +28,18 @@ import { execSync } from 'node:child_process';
  *   columnheader buttons offer "Sort by: Days overdue" but "Sorted: None" —
  *   the rendered order (30 before 15) is the UI fact asserted here.
  *
- * Record-page gap (measured 2026-11-21, see docs/SCRUM-468-notizen-tester.md):
- *   the record pages of Account and Demo_Devic__c render NO Loan_Record
- *   related list (the Lookup-relationship renders no list; the deployed
- *   Account layout has zero <relatedList>; the custom-object record page
- *   renders only its own Details fields). AC5 and AC7 stay RED below —
- *   that is the defect this run reports, not a locator problem.
+ * Record-page related lists (re-measured 2026-11-22 with ariaSnapshot on the
+ * RELATED tab — the earlier innerText read was blind to the closed Shadow-Root
+ * and reported both lists as absent, which was wrong):
+ *   Demo_Devic__c page: section "Loan records (2)" renders a grid whose rows
+ *   carry the customer link plus the three dates. Rendered columnheaders:
+ *   "Lent to customer | Loan start date | Loan due date | Return date |
+ *   Action" — the layout's fifth <fields> Loan_Duration_Days__c (label
+ *   "Loan duration in days") is NOT among them -> AC7 duration half is a gap.
+ *   Account page: the section "Devices on loan" (layout
+ *   <relatedList>Demo_Devic__c.Current_Customer__c) renders its HEADING only —
+ *   no count, no /related/ link, no row — while the standard sections render
+ *   "Contacts (0)" with a link. AC5 rows are missing.
  */
 
 const TAG = '[TEST-SCRUM-468]';
@@ -169,12 +178,67 @@ async function listRows(page: any): Promise<string[]> {
   return snap.split('\n').filter((l: string) => /^\s*- row "/.test(l) && !/Row Number/.test(l) && !/[0-9A-Z]{15}/.test(l));
 }
 
+/** Open a record page and land on its RELATED tab (house note 2026-08-23:
+ * the record page does not open on Details; the related lists live under the
+ * Related tab). Verified 2026-11-22 on Account 001WU00002LnLdHYAV (tablist
+ * "Tabs": tab "Related" | tab "Details"). */
+async function openRelatedTab(page: Page, path: string) {
+  await openRecordPage(page, path);
+  const tab = page.getByRole('tab', { name: 'Related' });
+  await tab.waitFor({ state: 'visible', timeout: 30000 });
+  await tab.click();
+  await page.waitForTimeout(2500);
+}
+
+/** Aria lines of one related-list section, from its heading to the next
+ * level-2 heading. ariaSnapshot pierces the closed Shadow-Root the record
+ * body lives in (measured 2026-11-22: document.body.innerText 1.3 kB WITHOUT
+ * any related-list content; the snapshot carries the whole section incl. the
+ * grid rows). Section shape on this org:
+ *   article "Loan records": / heading "Loan records (2)" / link + /url
+ *   grid > rowgroup > row "<cells in order>" (rowheader + gridcell lines). */
+function sectionRows(snap: string, heading: string): string[] {
+  const lines = snap.split('\n');
+  let start = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (new RegExp(`heading "${heading}"`).test(lines[i].trim())) { start = i; break; }
+  }
+  if (start < 0) return [];
+  const rows: string[] = [];
+  for (let i = start + 1; i < lines.length; i++) {
+    const l = lines[i].trim();
+    if (/\[level=2\]$/.test(l) && /^- heading /.test(l)) break;
+    if (/^- row "/.test(l)) rows.push(l);
+  }
+  return rows;
+}
+
+async function ariaOf(page: Page): Promise<string> {
+  return await page.locator('body').ariaSnapshot();
+}
+
 /* -------------------------------- the suite ------------------------------ */
 test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
   test.describe.configure({ timeout: 240000 });
 
   test.beforeAll(async () => {
     seedFixtures();
+    // PO (22.11.): "Put the PO's counts into requireData([...]) first" — a
+    // gelatinent leerer Data Group turnt jede Count-Assertion green. Fail
+    // before the first Assertion if die Testlage does not exist in Test-Org.
+    await requireData(
+        [
+            { ac: 'AC5', what: 'current loans (open, with customer and device)',
+              soql: `SELECT Id FROM Loan_Record__c WHERE Loan_Customer__c != null AND Loan_Devic__c != null AND Loan_Return_Datum__c = null`, min: 1 },
+            { ac: 'AC7', what: 'returned loans (history for the device page)',
+              soql: `SELECT Id FROM Loan_Record__c WHERE Loan_Devic__c != null AND Loan_Return_Datum__c != null`, min: 1 },
+            { ac: 'AC9', what: 'a written-off device',
+              soql: `SELECT Id FROM Demo_Devic__c WHERE Status__c = 'Written_Off'`, min: 1 },
+            { ac: 'AC8', what: 'an overdue device (Overdue today)',
+              soql: `SELECT Id FROM Demo_Devic__c WHERE Overdue_today__c = true`, min: 1 },
+        ],
+        'Test-Org',
+    );
     expect(soql(`SELECT Id FROM Demo_Devic__c WHERE Designation_Name__c LIKE '${TAG}%'`).length, 'fixtures: 4 live devices').toBe(4);
     expect(soql(`SELECT Id FROM Loan_Record__c WHERE Name LIKE 'LOAN%'`).length, 'fixtures: 6 live loans').toBe(6);
     const overdue = soql(`SELECT Id, Current_Loan_Overdue_Days__c FROM Demo_Devic__c WHERE Status__c = 'Lent_Out'`)
@@ -245,24 +309,26 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
   });
 
   test('AC5 customer page lists the two current loans with due dates', async ({ page }) => {
-    const open = soql(`SELECT Id, Loan_Due_Datum__c FROM Loan_Record__c WHERE Loan_Customer__c='${accts.A}' AND Loan_Return_Datum__c=null`);
+    const open = soql(`SELECT Id, Loan_Devic__c, Loan_Due_Datum__c FROM Loan_Record__c WHERE Loan_Customer__c='${accts['A']}' AND Loan_Return_Datum__c=null`);
     expect(open.length, 'fixture: two open loans for Kunde A').toBe(2);
-    const returned = soql(`SELECT Id FROM Loan_Record__c WHERE Loan_Customer__c='${accts.A}' AND Loan_Return_Datum__c!=null`);
-    expect(returned.length, 'fixture: one returned loan for Kunde A').toBe(1);
-    // The CURRENT loans are the devices D1/D2 — those two devices are overdue,
-    // so the current loans are rendered on the OVERDUE report (verified live):
-    await listStatus(page, 2);
-    const rows = await listRows(page);
-    const rA = rows.filter((t: string) => t.includes(cust('A')));
-    expect(rA.length, 'AC5 both current loans of Kunde A appear (customer column)').toBe(2);
-    const dues = open.map((l: any) => String(l.Loan_Due_Datum__c).slice(0, 10).replace(/(\d{4})-(\d{2})-(\d{2})/, '$3.$2.$1'));
-    const joined = rows.join('\n');
-    for (const d of dues) {
-      expect(joined.includes(d), `AC5 due date ${d} of a current loan renders`).toBe(true);
+    const returned = soql(`SELECT Id, Loan_Devic__c FROM Loan_Record__c WHERE Loan_Customer__c='${accts['A']}' AND Loan_Return_Datum__c!=null`);
+    expect(returned.length, 'fixture: one returned loan for Kunde A (must NOT be listed as current)').toBe(1);
+    // The criterion is about the CUSTOMER'S RECORD PAGE: the layout's related
+    // list "Devices on loan" (measured live 2026-11-22: heading present, rows
+    // see below). The related list is read from the ariaSnapshot (closed
+    // Shadow-Root, see sectionRows).
+    await openRelatedTab(page, `/lightning/r/Account/${accts['A']}/view`);
+    const snap = await ariaOf(page);
+    expect(/heading "Devices on loan"/.test(snap), 'AC5 the customer page offers the Devices-on-loan related list').toBe(true);
+    const rows = sectionRows(snap, 'Devices on loan');
+    expect(rows.length, 'AC5 one row per CURRENT loan on the customer page (2 expected)').toBe(2);
+    for (const [n, dueOff] of ([['1', -30], ['2', -15]] as Array<[string, number]>)) {
+      const r = rows.find((t: string) => t.includes(dev(n)));
+      expect(r != null, `AC5 device ${n} appears as a row on the customer page`).toBe(true);
+      expect(String(r).includes(de(dueOff)), `AC5 the row for device ${n} carries its due date ${de(dueOff)}`).toBe(true);
+      expect(String(r).includes(`SCRUM468-TEST-${n}`), `AC5 the row for device ${n} carries its serial`).toBe(true);
     }
-    for (const c of ['Meerwais Osmani', 'Integration User']) {
-      expect(joined.includes(c), `AC5 the colleague ${c} of a current loan renders`).toBe(true);
-    }
+    expect(rows.every((t: string) => !t.includes(dev('3'))), 'AC5 the returned loan of D3 is NOT listed as a current loan').toBe(true);
   });
 
   test('AC6 return clears the device side, loan keeps its three dates', async () => {
@@ -281,9 +347,9 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
     expect(stillCurrent.map((r: any) => r.Id).sort(), 'AC6 only D1/D2 loans stay current for A').toEqual([loans.L1, loans.L2].sort());
   });
 
-  test('AC7 device page shows the whole loan history', async () => {
+  test('AC7 device page shows the whole loan history', async ({ page }) => {
     const hist = soql(
-      `SELECT Id, Loan_Devic__c, Loan_Customer__c, Loan_Start_Datum__c, Loan_Due_Datum__c, Loan_Return_Datum__c, Loan_Duration_Days__c FROM Loan_Record__c WHERE Loan_Devic__c='${devs['3']}'`
+      `SELECT Id, Loan_Customer__c, Loan_Start_Datum__c, Loan_Due_Datum__c, Loan_Return_Datum__c, Loan_Duration_Days__c FROM Loan_Record__c WHERE Loan_Devic__c='${devs['3']}'`
     );
     expect(hist.length, 'fixture: D3 has 2 loans in its history').toBe(2);
     expect(hist.every((r: any) => r.Loan_Return_Datum__c != null), 'AC7 both loans of the Available D3 were returned').toBe(true);
@@ -291,8 +357,33 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
       hist.map((r: any) => r.Loan_Duration_Days__c).sort(),
       'AC7 history durations of D3 (14 and 14)',
     ).toEqual([14, 14]);
-    const started = new Date();
-    expect(Number((started.getTime() - TODAY.getTime()) / 1000), 'sanity: seed ran after module load').toBeGreaterThanOrEqual(0);
+    // The criterion is the DEVICE RECORD PAGE: every loan the device ever had
+    // must be listed there with its dates and the duration. Read from the
+    // ariaSnapshot (the record body is a closed Shadow-Root).
+    await openRelatedTab(page, `/lightning/r/Demo_Devic__c/${devs['3']}/view`);
+    const snap = await ariaOf(page);
+    const rows = sectionRows(snap, 'Loan records');
+    expect(rows.length, 'AC7 the device page lists one row per loan in its history (2 expected)').toBe(2);
+    const isoToDe = (v: any) => String(v).slice(0, 10).replace(/(\d{4})-(\d{2})-(\d{2})/, '$3.$2.$1');
+    for (const r of hist) {
+      const who = Object.entries(accts).find(([, id]) => id === r.Loan_Customer__c)?.[0];
+      expect(who != null, `AC7 fixture sanity: the loan's customer is one of ours`).toBe(true);
+      const row = rows.find((t: string) => t.includes(cust(String(who))));
+      expect(row != null, `AC7 the loan of customer ${who} appears in the device's history`).toBe(true);
+      for (const label of ['start', 'due', 'return']) {
+        const val = isoToDe(r[label === 'start' ? 'Loan_Start_Datum__c' : label === 'due' ? 'Loan_Due_Datum__c' : 'Loan_Return_Datum__c']);
+        expect(String(row).includes(val), `AC7 the row of ${who} shows the ${label} date ${val}`).toBe(true);
+      }
+    }
+    // AC7 also demands the DURATION of the loan (label measured via
+    // FieldDefinition: "Loan duration in days").
+    const cols = snap.split('\n').map((l: string) => l.trim()).filter((l: string) => /columnheader/.test(l));
+    expect(
+      cols.some((c: string) => /duration/i.test(c)),
+      `AC7 the loan history offers the duration column (columns rendered: ${JSON.stringify(cols).slice(0, 400)})`,
+    ).toBe(true);
+    // AC9 positive half stays here as the SOQL cross-check: the history of a
+    // WRITTEN-OFF device survives its status change.
     const named = soql(`SELECT Id, Loan_Duration_Days__c, Loan_Return_Datum__c FROM Loan_Record__c WHERE Loan_Devic__c='${devs['4']}'`);
     expect(named.length, 'AC7 the written-off device still has its full history').toBe(2);
     expect(named.every((r: any) => r.Loan_Return_Datum__c != null), 'AC7 both written-off loans stay returned, not erased').toBe(true);
