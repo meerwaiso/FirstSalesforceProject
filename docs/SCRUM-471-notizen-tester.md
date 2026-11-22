@@ -53,9 +53,38 @@ Verifierte Befund per Line; je Line steht der Command/Probe, der's geholt hat.
 → status Succeeded, numberTestsTotal 8, numberTestsCompleted 8, numberTestErrors 0,
 runTestsEnabled true. Report JSON: `scratch/apex471.json` (session scratch dir).
 
+## sf-CLI / SOQL facts (measured 2026-11-22)
+
+- `sf data query --json` puts the **queried fields at the TOP level** of each record;
+  `.attributes` only holds `{type, url}`. Reading `records[0].attributes[field]` yields
+  `undefined` and reddens a correct feature.
+- Negating a LIKE term is **rejected**: `AND Name NOT LIKE 'x%'` and
+  `AND NOT (Name LIKE 'x%')` both → `MALFORMED_QUERY / unexpected token`.
+  Workaround used in the spec: count marked overall, count marked `Name LIKE 'TEST-SCRUM471%'`,
+  subtract.
+- A test that runs two record-page toggle cycles plus ~12 SOQL read-backs needs its own
+  `test.setTimeout(180000)` — the default 30 s budget dies inside the second `Save`.
+
+
 ## Playwright-in-a-worktree gotcha
 
 `npm run test:e2e:smoke` in a fresh worktree fails `error: unknown command 'test'` —
 the worktree has no node_modules. Fix: `ln -s ../FirstSalesforceProject/node_modules node_modules`
 (.gitignore already covers `node_modules/`). Probe scripts read `auth/storage-state.json`
 relative to the CWD (worktree root), not relative to `scratch/`.
+
+## Result (2026-11-22) - whole-spec run, green
+
+- E2E: 6/6 passed in 2.4 min, `scripts/e2e-run.sh <spec> --all` and the same spec through
+  `npx playwright test -c playwright.config.ts <spec>` -> HTML report `test-report/index.html` (23:25).
+- Apex: 8/8, 0 errors, deploy job 0AfWU00000dKU1t0AG.
+- Observed (printed per test by the spec's console.log):
+  AC1 record 001WU00002LrDJlYAN saved with false, renders False.
+  AC2 SOQL true, reload renders True. AC3 SOQL false, reload renders False.
+  AC4 aria lines Name 120 / Key Account 128 / next heading 180; label tops 452 vs 500 px, viewport 720 px.
+  AC8 accounts 266 to 266, cases 681 to 681, opportunities 157 to 157, feeds 885 to 885, email 0 to 0, tasks 0 to 0.
+  AC9 265 accounts, 14 fixtures, 4 marked (all fixtures), 0 pre-existing marked.
+- Handoff: Jira 23766 (coverage table) and 23767 (limits); assignee devops-agent, status Deployment
+  (transition id 4 on this story, read back from jira_get_issue).
+- CI on head 42f0073 at handover: Lint pass, README pass, Metadata/Apex/Session Smoke pass 3m52s,
+  Prod-Org Drift Gate pending.
