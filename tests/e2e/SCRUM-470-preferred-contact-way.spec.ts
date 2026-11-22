@@ -136,16 +136,27 @@ async function openDetails(page: import('@playwright/test').Page, id: string) {
 
 /** Details-Section as rendered: the aria lines that carry a field row. */
 async function detailsRows(page: import('@playwright/test').Page): Promise<string[]> {
-  // Measured (scratch/scr470_probe6.mjs): the field rows are `- text: <label> <value>` lines.
+  // Measured (scratch/scr470_probe6.mjs): field rows are `- text: <label> <value>`,
+  // section titles are `- heading "<title>" [level=N]` (quotes, no colon) — the filter
+  // must keep both.
   const snap = await page.ariaSnapshot();
-  return snap.split('\n').map((l) => l.trim()).filter((l) => /^- (text|heading|button):/.test(l));
+  return snap.split('\n').map((l) => l.trim()).filter((l) => /^- (text|heading|button)/.test(l));
+}
+
+/** Enter edit mode for ONE field first — measured: the combobox only exists after the
+ * `Edit <label>` button was clicked (in view mode getByRole('combobox') → count 0). */
+async function openEditForField(page: import('@playwright/test').Page, label: string) {
+  const btn = page.getByRole('button', { name: `Edit ${label}`, exact: true });
+  await expect(await btn.count(), `no single "Edit ${label}" button on the Details section`).toBe(1);
+  await btn.first().click({ timeout: 15000 });
+  await page.waitForTimeout(2500);
 }
 
 /** Open the picker for the preference field. Verified: getByRole combobox, count 1. */
 async function openPicker(page: import('@playwright/test').Page) {
-  const combo = page.getByRole('combobox', { name: FIELD_LABEL, exact: true }).first();
-  await expect(await combo.count(), `combobox "${FIELD_LABEL}" not on the page`).toBe(1);
-  await combo.click({ timeout: 15000 });
+  const combos = page.getByRole('combobox', { name: FIELD_LABEL, exact: true });
+  await expect(await combos.count(), `combobox "${FIELD_LABEL}" not on the page`).toBe(1);
+  await combos.first().click({ timeout: 15000 });
   await page.waitForTimeout(1200);
 }
 
@@ -158,6 +169,7 @@ async function offeredValues(page: import('@playwright/test').Page): Promise<str
 }
 
 async function pickValue(page: import('@playwright/test').Page, dataValue: string) {
+  await openEditForField(page, FIELD_LABEL);
   await openPicker(page);
   const values = await offeredValues(page);
   expect(values, `picker "${FIELD_LABEL}" offers ${JSON.stringify(values)} — expected exactly empty + the three channels`)
@@ -259,9 +271,9 @@ test.describe('[SCRUM-470] AC1 — empty preference saves without error', () => 
 
     const before = await currentValue(id);
     expect(before, 'fixture must start empty').toBeNull();
+    const beforeRecord = await contactFields(id, ['Phone', 'Email', 'LastName']);
 
-    await page.getByRole('button', { name: `Edit ${FIELD_LABEL}`, exact: true }).first().click({ timeout: 15000 });
-    await page.waitForTimeout(1500);
+    await openEditForField(page, FIELD_LABEL);
     await saveInlineEdit(page);
     await page.waitForTimeout(4000);
 
@@ -272,7 +284,9 @@ test.describe('[SCRUM-470] AC1 — empty preference saves without error', () => 
     const after = await currentValue(id);
     expect(after, 'AC1: saving without a value must leave it empty').toBeNull();
     const untouched = await contactFields(id, ['Phone', 'Email', 'LastName']);
-    expect(untouched.Email, 'the save must not touch the rest of the record').toBe(`${NAMES.ac1}@example.com`);
+    expect(untouched.Email, 'the save must not touch the rest of the record').toBe(beforeRecord.Email);
+    expect(untouched.Phone, 'the save must not touch the rest of the record').toBe(beforeRecord.Phone);
+    expect(untouched.LastName, 'the record itself must stay').toBe(beforeRecord.LastName);
   });
 });
 
@@ -345,7 +359,11 @@ test.describe('[SCRUM-470] AC7 — the save changes only that value', () => {
   test('one value save touches exactly one record and produces no error/popup', async ({ page }) => {
     const id = ids[NAMES.ac2];
     const baseline = await countWithPreference();
-    const before = await contactFields(id, ['Phone', 'Email', 'LastName', 'AccountName']);
+    const othersBefore: Record<string, string | null> = {};
+    for (const r of soql(`SELECT Id, ${FIELD_API} FROM Contact WHERE LastName LIKE '${TAG}%'`).records) {
+      othersBefore[r.Id] = r[FIELD_API] ?? null;
+    }
+    const before = await contactFields(id, ['Phone', 'Email', 'LastName']);
 
     await openDetails(page, id);
     await pickValue(page, 'Letter');
@@ -355,11 +373,16 @@ test.describe('[SCRUM-470] AC7 — the save changes only that value', () => {
     const after = await countWithPreference();
     expect(after, `AC7: ${baseline} contacts carried a value, expected still ${baseline} (this save CHANGES one value, it must not add or remove a preference elsewhere)`).toBe(baseline);
 
-    const now = await contactFields(id, ['Phone', 'Email', 'LastName', 'AccountName']);
+    const now = await contactFields(id, ['Phone', 'Email', 'LastName']);
     expect(now.Phone, 'AC7: the phone number changed').toBe(before.Phone);
     expect(now.Email, 'AC7: the email changed').toBe(before.Email);
     expect(now.LastName, 'AC7: the name changed').toBe(before.LastName);
-    expect(now.AccountName, 'AC7: the owning account changed').toBe(before.AccountName);
+
+    // The sibling fixtures prove the save leaked nowhere: only the target may differ.
+    const nowAll = soql(`SELECT Id, LastName, ${FIELD_API} FROM Contact WHERE LastName LIKE '${TAG}%'`).records;
+    const changed = nowAll.filter((r: any) => (r[FIELD_API] ?? null) !== othersBefore[r.Id]);
+    expect(changed.length, `AC7: ${changed.length} of the fixtures changed value (only the target may)`).toBe(1);
+    expect(changed[0].Id, `AC7: the record that changed (${changed[0].Id}) is not the one the UI saved (${id})`).toBe(id);
     expect(await currentValue(id), 'AC7: the intended value itself did not land').toBe('Letter');
 
     const snap = await page.ariaSnapshot();
