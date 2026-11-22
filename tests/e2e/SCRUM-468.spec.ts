@@ -201,18 +201,37 @@ function sectionRows(snap: string, heading: string): string[] {
   const lines = snap.split('\n');
   let start = -1;
   for (let i = 0; i < lines.length; i++) {
-    // The heading line carries the related-list COUNT ("Loan records (2)"), so
-    // the name is matched as a PREFIX — an exact match would never fire.
     if (new RegExp(`heading "${heading}`).test(lines[i].trim())) { start = i; break; }
   }
   if (start < 0) return [];
-  const rows: string[] = [];
+  const raw: string[] = [];
   for (let i = start + 1; i < lines.length; i++) {
     const l = lines[i].trim();
     if (/\[level=2\]$/.test(l) && /^- heading /.test(l)) break;
-    if (/^- row "/.test(l)) rows.push(l);
+    if (/^- row "/.test(l)) raw.push(l);
   }
-  return rows;
+  // The related-list grid paints its COLUMNHEADER cells as the FIRST row
+  // ("Lent to customer Loan start date Loan due date Return date Action");
+  // that row is not a record.
+  return raw.length > 0 ? raw.slice(1) : raw;
+}
+
+// The COLUMN LABELS of a related-list grid live in the first row of the
+// section (measured 2026-11-22 on device DEV-0089:
+// row "Lent to customer Loan start date Loan due date Return date Action").
+function sectionHeaderCells(snap: string, heading: string): string {
+  const lines = snap.split('\n');
+  let start = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (new RegExp(`heading "${heading}`).test(lines[i].trim())) { start = i; break; }
+  }
+  if (start < 0) return '';
+  for (let i = start + 1; i < lines.length; i++) {
+    const l = lines[i].trim();
+    if (/\[level=2\]$/.test(l) && /^- heading /.test(l)) break;
+    if (/^- row "/.test(l)) return l.replace(/^- row "/, '').replace(/"$/, '');
+  }
+  return '';
 }
 
 async function ariaOf(page: Page): Promise<string> {
@@ -394,12 +413,16 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
         expect(String(row).includes(val), `AC7 the row of ${who} shows the ${label} date ${val}`).toBe(true);
       }
     }
-    // AC7 also demands the DURATION of the loan (label measured via
-    // FieldDefinition: "Loan duration in days").
-    const cols = snap2.split('\n').map((l: string) => l.trim()).filter((l: string) => /columnheader/.test(l));
+    // AC7 also demands the DURATION of the loan. The column labels of the grid
+    // live in its first row (sectionHeaderCells). Loan_Duration_Days__c (label
+    // "Loan duration in days") is granted READ to the session user by
+    // SCRUM468_Loan and SCRUM468_Read (fls-check.sh 2026-11-22) and the
+    // layout lists it as the 5th <fields> of this relatedList — so a missing
+    // column here is a rendering/config gap, not FLS.
+    const header = sectionHeaderCells(snap2, 'Loan records');
     expect(
-      cols.some((c: string) => /duration/i.test(c)),
-      `AC7 the loan history offers the duration column (columns rendered: ${JSON.stringify(cols).slice(0, 400)})`,
+      /duration/i.test(header),
+      `AC7 the loan history offers the duration column (columns rendered: ${header})`,
     ).toBe(true);
     // AC9 positive half stays here as the SOQL cross-check: the history of a
     // WRITTEN-OFF device survives its status change.
