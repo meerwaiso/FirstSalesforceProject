@@ -201,7 +201,9 @@ function sectionRows(snap: string, heading: string): string[] {
   const lines = snap.split('\n');
   let start = -1;
   for (let i = 0; i < lines.length; i++) {
-    if (new RegExp(`heading "${heading}"`).test(lines[i].trim())) { start = i; break; }
+    // The heading line carries the related-list COUNT ("Loan records (2)"), so
+    // the name is matched as a PREFIX — an exact match would never fire.
+    if (new RegExp(`heading "${heading}`).test(lines[i].trim())) { start = i; break; }
   }
   if (start < 0) return [];
   const rows: string[] = [];
@@ -214,7 +216,21 @@ function sectionRows(snap: string, heading: string): string[] {
 }
 
 async function ariaOf(page: Page): Promise<string> {
-  return await page.locator('body').ariaSnapshot();
+  return await page.ariaSnapshot();
+}
+
+// Related-list rows paint AFTER the section heading (measured: the heading and
+// the columnheader grid arrive before the row cells). Poll the ariaSnapshot
+// until the section has rows; a section that is still empty after the budget
+// is empty in the deployment, not unrendered.
+async function sectionRowsPoll(page: Page, heading: string, budgetMs = 25000) {
+  const started = Date.now();
+  for (;;) {
+    const rows = sectionRows(await ariaOf(page), heading);
+    if (rows.length > 0) return rows;
+    if (Date.now() - started > budgetMs) return rows;
+    await page.waitForTimeout(1500);
+  }
 }
 
 /* -------------------------------- the suite ------------------------------ */
@@ -319,8 +335,9 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
     // Shadow-Root, see sectionRows).
     await openRelatedTab(page, `/lightning/r/Account/${accts['A']}/view`);
     const snap = await ariaOf(page);
+    console.log('DIAG acctpage aria len=' + snap.length + ' sections=' + JSON.stringify(snap.split('\n').map((l: string) => l.trim()).filter((l: string) => /heading|tab |row "/.test(l)).slice(0, 40)));
     expect(/heading "Devices on loan"/.test(snap), 'AC5 the customer page offers the Devices-on-loan related list').toBe(true);
-    const rows = sectionRows(snap, 'Devices on loan');
+    const rows = await sectionRowsPoll(page, 'Devices on loan');
     expect(rows.length, 'AC5 one row per CURRENT loan on the customer page (2 expected)').toBe(2);
     for (const [n, dueOff] of ([['1', -30], ['2', -15]] as Array<[string, number]>)) {
       const r = rows.find((t: string) => t.includes(dev(n)));
@@ -362,7 +379,9 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
     // ariaSnapshot (the record body is a closed Shadow-Root).
     await openRelatedTab(page, `/lightning/r/Demo_Devic__c/${devs['3']}/view`);
     const snap = await ariaOf(page);
-    const rows = sectionRows(snap, 'Loan records');
+    console.log('DIAG devpage aria len=' + snap.length + ' lines=' + snap.split('\n').length + ' sections=' + JSON.stringify(snap.split('\n').map((l: string) => l.trim()).filter((l: string) => /heading|tab |row "/.test(l)).slice(0, 40)));
+    const rows = await sectionRowsPoll(page, 'Loan records');
+    const snap2 = await ariaOf(page);
     expect(rows.length, 'AC7 the device page lists one row per loan in its history (2 expected)').toBe(2);
     const isoToDe = (v: any) => String(v).slice(0, 10).replace(/(\d{4})-(\d{2})-(\d{2})/, '$3.$2.$1');
     for (const r of hist) {
@@ -377,7 +396,7 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
     }
     // AC7 also demands the DURATION of the loan (label measured via
     // FieldDefinition: "Loan duration in days").
-    const cols = snap.split('\n').map((l: string) => l.trim()).filter((l: string) => /columnheader/.test(l));
+    const cols = snap2.split('\n').map((l: string) => l.trim()).filter((l: string) => /columnheader/.test(l));
     expect(
       cols.some((c: string) => /duration/i.test(c)),
       `AC7 the loan history offers the duration column (columns rendered: ${JSON.stringify(cols).slice(0, 400)})`,
