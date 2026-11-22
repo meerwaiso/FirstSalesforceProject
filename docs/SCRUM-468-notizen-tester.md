@@ -53,7 +53,27 @@ ApexTestQueueItem rows in 24h: 255 vs ceiling 500 (max(500, 10×classes)) — ro
 
 Loan_Record**c field census (deployed): Loan_Colleague**c Loan_Customer**c Loan_Devic**c Loan_Due_Datum**c Loan_Duration_Days**c Loan_Return_Datum**c Loan_Start_Datum**c — NO Loan_Status**c. "Returned" = Loan_Return_Datum**c != null. Seeding historical loans must interleave lend -> return (the one-customer guard refuses a 2nd OPEN loan on a device).
 
-## Measured 2026-11-21/22 (Tester)
+## Measured 2026-11-22 (Tester, second pass — the 2026-11-21 record-page note was wrong)
+
+- **Bug SCRUM-469 ("AC5/AC7: record pages lack the lending related lists") is
+  stale in its "Actual" half.** On the branch (head 9a927f2) the layouts DO carry
+  the entries: Account layout `<relatedList>Demo_Devic__c.Current_Customer__c
+  /Current_Loan_Colleague__c/Current_Loan_Due_Date__c</relatedList>`; device
+  layout `<relatedList>Loan_Record__c.Loan_Devic__c</relatedList>` with 5 fields.
+  Live, the DEVICE page renders `Loan records (2)` as a grid with one row per
+  loan; the ACCOUNT page renders the section heading `Devices on loan` but no
+  count, no /related/ link and NO row. So AC7 rows now exist, AC5 rows do not.
+- ariaSnapshot must be taken at PAGE level (`page.ariaSnapshot()`, returns 20 kB
+  incl. the closed Shadow-Root). `page.locator('body').ariaSnapshot()` is a
+  different call and missed the grid rows.
+- The aria heading line carries the related-list COUNT (`heading "Loan records
+  (2)" level=2`) — match the section name as a PREFIX, an exact `"Name"` match
+  never fires. That was the reason AC7 read 0 rows on the first run.
+- Run 1 (2026-11-22 09:30, head 4002f29): 7 passed / 2 failed — AC5 rows 0
+  (expected 2), AC7 rows 0 (heading-name bug). Run 2 (head 9a927f2) pending.
+- PR #190 = branch feature/SCRUM-468-lend-devices, titled "closes Bug SCRUM-469".
+
+### Measured 2026-11-21 (Tester, first pass)
 
 - PermissionSet census (SOQL, --use-tooling-api): SCRUM468_Loan 0PSWU00000Y7biS4AR, SCRUM468_Read 0PSWU00000Y7biT4AR, SCRUM468_Writeoff 0PSWU00000Y7biU4AR.
 - PermissionSetAssignment read-back: working predicate is `PermissionSet.Name = '<dev name>'` (NOT PermissionSetName -> 0 rows). Each of the three sets -> 2 rows: devops-agent@cline.test (CLI Test-Org user, = the Playwright session user) AND meerwais.osmani@resourceful-bear-6f1u4j.com.
