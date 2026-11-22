@@ -89,3 +89,23 @@ objects -> fields -> guards+tests -> permission sets -> report.
 - **Lookup vs master-detail for a related list on a STANDARD object page.** Org Account layout holds exactly two custom related lists: `OpenOpportunityHistory__c.AccountId__c` (field type MasterDetail, verified 9 rows live by SCRUM-417) and `Demo_Devic__c.Current_Customer__c` (field type Lookup, Tester measured heading with no count, no /related/ link, no row). Second data point for the same rule: SCRUM-459 GAP A, `Followup_Obligation__c` Lookup to Opportunity, "Opportunity page has no related list". The symmetric Lookup DOES render on a CUSTOM object page (device page, Loan_Record__c.Loan_Devic__c, 2 rows). Working hypothesis: a custom Lookup relationship yields no related list on a standard object's record page; master-detail does.
   **Master-detail is not available for Current_Customer__c**: a detail record always has a master (the field can never be blank) and reparenting at every new lend conflicts with reparentableMasterDetail, while LoanReturnGuard must blank Current_Customer__c when a device is Available (AC6, asserted by SCRUM468LendDevicesTest). So AC5's "related list on the customer record page" has no implementable metadata shape here; the house-precedented surface for "this customer's list" is a List View reached from the record page (AC8 pattern: ListView + Setup picker button).
 - Layout member names need the DASH form (`Layout:Demo_Devic__c-Demo Device Layout`), retrieve after deploy and commit the ORG version (drift gate): the org file differs from mine only in comments and `<layoutColumns/>` spacing.
+
+# Round 4 (2026-11-22, rework per Architect round-3 + PO decision; ticket read back "In Bearbeitung", assignee developer-agent)
+
+Branch feature/SCRUM-468-lend-devices-rework4 (from origin head 55f67df), worktree .../FirstSalesforceProject/scr468d-wt, PR #190.
+
+## What to build (the two decisions, verbatim intent)
+- AC7 (Architect): device history related list = EXACTLY 4 declared columns: Loan_Customer__c, Loan_Start_Datum__c, Loan_Due_Datum__c, Loan_History_Facts__c. Loan_History_Facts__c = real Text field (not formula) on Loan_Record__c: LoanRecordGuard writes "open / due dd.mm.yyyy" at lend, LoanReturnGuard rewrites "returned dd.mm.yyyy / n Tage" at return. FLS: explicit entries in SCRUM468_Loan (editable true) and SCRUM468_Read (editable false); SCRUM468_Writeoff stays marker-only.
+- AC5 (PO chose (b), comment 23743): ListView on Loan_Record__c filtered to open loans + picker button; the Account-page related list is off the table -> remove my Demo_Devic__c.Current_Customer__c relatedList block from the Account layout.
+
+## Answers already paid for (do not re-derive)
+- Column census device list: 5 declared -> first 4 rendered + Action column; formula last = missing.
+- Blocked paths for the duration value: Formula->Number validate reject 0AfWU00000dJibZ0AS ("Cannot update a field from a Formula to something else"); delete blocked by SCRUM468LendDevicesTest reference (0AfWU00000dJidB0AS); Apex write to formula = compile "Field is not writeable".
+- Lookup related list: renders on CUSTOM object pages (2 rows), yields heading-with-0-rows on STANDARD (Account); SCRUM-459 GAP A second data point.
+- PS assignment read-back (round 3): all three SCRUM468 sets assigned to devops-agent@cline.test AND meerwais.osmani@resourceful-bear-6f1u4j.com.
+
+## House shapes (copy, do not invent)
+- ListView: force-app/main/default/objects/Demo_Devic__c/listViews/SCRUM468_Overdue.listView-meta.xml -> <columns>bare custom apiName</columns>, <filterScope>Everything, <filters><field/><operation>equals</operation><value>1</value>. AC8 E2E url: /lightning/o/Demo_Devic__c/list?filterName=SCRUM468_Overdue.
+- Text field shape: copy from the org (Loan_Status_Text__c exists in Test-Org; grep repo too). Do not handcraft the Field XML.
+- Open TODOs for this round: (1) List Button metadata: grep the CLI's metadataRegistry.json for listButton BEFORE guessing the path; (2) list filter for open loans: use Loan_Status_Text__c equals open (values measured round 2) - house filter shape.
+- Deploy: validate -l RunRelevantTests (timeout 560) then deploy start, same manifest; commit BEFORE each deploy; one manifest per unit.
