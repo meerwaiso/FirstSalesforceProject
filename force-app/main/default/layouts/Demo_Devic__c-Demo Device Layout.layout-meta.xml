@@ -1,14 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!-- SCRUM-468 / SCRUM-469 AC7: the device record page must show its whole lending history.
-     The object had NO layout in Test-Org (retrieve "Demo_Devic__c.Demo Device Layout" cannot be found),
-     so the platform default page carried no related list. Named after the object label ("Demo Device",
-     read from the org CustomObject) so the deploy makes it the object's DEFAULT layout — a file named
-     differently would create a second, inactive layout (skill salesforce-platform-quirks).
-     Shape cloned from the house custom-object layout Followup_Obligation__c-Follow-up Obligation Layout.
-     All eight fields of the object are listed, so the new layout hides nothing that the default page showed.
-     The related list is the lookup relationship Loan_Record__c.Loan_Devic__c (relationshipName
-     Loan_Records_History, read from the org field metadata) — house token form <childObject>.<lookupField>
-     as in Account-Account Layout's OpenOpportunityHistory__c.AccountId__c. -->
+<?xml version="1.0" encoding="UTF-8"?>
 <Layout xmlns="http://soap.sforce.com/2006/04/metadata">
     <layoutSections>
         <customLabel>false</customLabel>
@@ -76,15 +66,17 @@
         <customLabel>false</customLabel>
         <detailHeading>false</detailHeading>
         <editHeading>false</editHeading>
-        <layoutColumns />
+        <layoutColumns/>
+        <layoutColumns/>
+        <layoutColumns/>
         <style>CustomLinks</style>
     </layoutSections>
     <relatedLists>
         <fields>Loan_Customer__c</fields>
+        <fields>Loan_Duration_Days__c</fields>
         <fields>Loan_Start_Datum__c</fields>
         <fields>Loan_Due_Datum__c</fields>
         <fields>Loan_Return_Datum__c</fields>
-        <fields>Loan_Duration_Days__c</fields>
         <relatedList>Loan_Record__c.Loan_Devic__c</relatedList>
     </relatedLists>
     <showEmailCheckbox>false</showEmailCheckbox>

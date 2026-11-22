@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-468 phase 9 — column-ORDER experiment for the AC7 duration column.
+
+     The Tester measured on the deployed device page: four data columns render
+     ("Lent to customer | Loan start date | Loan due date | Return date") plus an
+     "Action" column, and the layout's FIFTH <fields> (Loan_Duration_Days__c, declared
+     last) is missing. Two other related lists in this very org agree with a four-column
+     render cap: the house OpenOpportunityHistory list on the Account layout declares 3
+     fields and SCRUM-417 verified 3 rendered columns; my Account block declares 4 and
+     renders a heading (different problem).
+
+     Falsifiable experiment: move Loan_Duration_Days__c from last to second.
+       - if the duration column now renders and the LAST field (Loan_Return_Datum__c)
+         drops instead, the cause is a four-column cap, not the formula type - the fix is
+         column COUNT, and AC7's five columns do not fit on a related list;
+       - if the duration column is still missing and all four others render, the cause is
+         the formula field type, and the derived value has to become a written field
+         (which this org currently blocks: "Cannot update a field from a Formula to
+         something else", and the field cannot be deleted while a class references it).
+
+     Member name is the file base name with a DASH (skill salesforce-platform-quirks). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Demo_Devic__c-Demo Device Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>
