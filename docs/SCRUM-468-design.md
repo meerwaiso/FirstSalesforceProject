@@ -281,3 +281,55 @@ CI's `scripts/fls-gate.py` will redden if a changed field names no PS or a PS as
 - [ ] ReportType and scope value for `Demo_Devic__c`: developer queries `sf api request rest '/services/data/v62.0/analytics/reportTypes' --target-org Test-Org` before writing the report XML.
 - [ ] `Loan_Colleague__c` as Lookup-to-User: if deploy rejects (INVALID_DATA_TYPE), fallback to `Loan_Colleague_Name__c` (Text, 80) set by handler; PO AC3/AC8 satisfied by the name.
 - [ ] Lightning related-list placement on record pages: DevOps at deploy time in Test-Org and Prod-Org (org step, not CI-gated).
+
+---
+
+## Round-3 decision (Architect, 22.11.2026, head 4044534)
+
+### Measured platform facts (every link read back, job ids re-readable)
+
+- A related list on a STANDARD object's record page renders only from a MasterDetail relationship.
+  House precedent: Account-Account Layout relatedList OpenOpportunityHistory__c.AccountId__c, that field's
+  type element is MasterDetail, 9 rows rendered live (SCRUM-417). SCRUM-468 shipped Loan_Customer__c as a
+  Lookup, so the section heading renders and 0 rows come with it (Tester run 22.11.2026, head 7094fee).
+- A related list on a CUSTOM object's record page renders from a Lookup (device page Loan_Record__c.Loan_Devic__c,
+  2 rows live in the same run).
+- A Lookup cannot be converted to MasterDetail: check-only validate job 0AfWU00000dJnPx0AK, component error
+  "Test only deployment cannot update a field from a Lookup to MasterDetail".
+- A NEW MasterDetail field on Loan_Record__c to Account is accepted and coexists with the Lookup: check-only
+  validate job 0AfWU00000dJnGH0A0, 1/1 components, failures only from the new field being required
+  (REQUIRED_FIELD_MISSING: [Loan_Account_Md__c] in the FLS test setup).
+- The device history list declared 5 columns and rendered 4 data columns plus an Action column; the missing
+  one was the formula field declared last. The cause (column cap vs formula type) is still open; the
+  discriminator experiment (duration declared second) is deployed at head 4044534, not yet measured.
+
+### AC7 — decided here (presentation is the Architect's)
+
+History related list ships exactly four declared columns:
+Loan_Customer__c, Loan_Start_Datum__c, Loan_Due_Datum__c, Loan_History_Facts__c.
+
+Loan_History_Facts__c is a real Text field, not a formula, on Loan_Record__c:
+LoanRecordGuard writes it at lend time ("open / due 07.10.2026"), LoanReturnGuard rewrites it at return time
+("returned 23.10.2026 / 16 Tage"). FLS: explicit entries in SCRUM468_Loan and SCRUM468_Read; SCRUM468_Writeoff
+stays a marker set that grants nothing.
+
+Why this shape: it renders under BOTH open causes (a four-column cap and a formula-column rule) and it keeps
+all five values the PO names in AC7 — customer, start, due, actual return, duration — inside four columns.
+Rows still equal loans created for that device, so the counting half of AC7 is unchanged.
+If the PO insists on five separate columns, AC7 is undeliverable under the cap and becomes a PO decision.
+
+### AC5 — routed to the PO, not decided here
+
+The criterion names the surface (the internal record page of the customer shows the devices that customer
+currently has), and the platform answer says that surface carries a Lookup related list with no rows.
+Three shapes, two deliverable, the choice changes the requirement, so the PO owns it:
+
+- (a) new MasterDetail field on Loan_Record__c to Account — deployable (job 0AfWU00000dJnGH0A0), required,
+  duplicates the customer reference already held in Loan_Customer__c, and the page lists EVERY loan of that
+  customer including returned ones, so the AC5 half "the returned device is not listed as current" has to be
+  re-worded.
+- (b) ListView on Loan_Record__c filtered to open loans, reached by a Setup picker button from the record page
+  (the AC8 house pattern, measured live in this org).
+- (c) drop the customer-page list from this story: the content stays provable at org level and on the device page.
+
+Neither the Architect nor the Developer picks one of the three before the PO answers.
