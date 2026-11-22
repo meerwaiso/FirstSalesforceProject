@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-470 Phase 1: the Picklist field on Contact.
+     Deployed ALONE first: the Permission Set and the Layout reference the field,
+     so they would fail against a not-yet-existing field (house order SCRUM-430/382). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Contact.Preferred_Contact_Method__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>

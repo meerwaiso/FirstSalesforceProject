@@ -1,0 +1,35 @@
+# SCRUM-470 notizen (architect-agent, 2026-11-22)
+
+Hard-won findings — every line measured this session; cite the doc for detail.
+
+- Repo surveyed: `origin/master` @ `48ee748ca9310642228c1409f54eb9800dbc0d9a`. The shared checkout sits on `feature/SCRUM-424-first-response` with other tickets' uncommitted files — worktree `scr470-wt`, branch `feature/SCRUM-470-preferred-contact`.
+- Test-Org: **676** `Contact` records (656 owned `devops-agent`, 20 `Meerwais Osmani`). Prod-Org: **20**, all owned `OrgFarm EPIC`. Contacts already carrying a channel preference: **0** (field does not exist yet).
+- `Contact` layouts in Test-Org: **4** (`Contact Layout`, `(Sales)`, `(Marketing)`, `(Support)`) — repo tracks **1**. Query that worked: `SELECT Id, Name FROM Layout` (`Type`/`EntityName` are NOT columns of `Layout` — measured errors).
+- FlexiPages in Test-Org: **9** components (`SELECT Id FROM FlexiPage`; `Name`/`DisplayName` are not columns — measured error). Types NOT re-measured: SCRUM-405 saw 8/8 UtilityBars on 2026-09-10.
+- `SELECT … FROM Field WHERE Domain='Contact'` → `sObject type 'Field' is not supported` (measured). `sf api request rest "/services/data/v64.0/sobjects/Contact/describe"` returned 0 custom-field entries.
+- `SalesCloudSharingModel:Contact` retrieve → `Missing metadata type definition in registry` → sharing has no source artefact; Setup-only, so no Apex oracle for sharing ACs.
+- Profiles (8) incl. `Standard User`, `Read Only`, `Custom: Sales/Marketing/Support`. Users (8): `Meerwais Osmani`, `devops-agent`, `Integration User`, `Automated Process`, `Data.com Clean`, `Security User`, `Chatter Expert`, `Platform Integration User`.
+- House PS targets: `SCRUM405_FirmenTelefonnummer`, `SCRUM453_ContactLeft_Set/_Read`, `SCRUM428_ServiceTeam/_Teamleitung` are all assigned to exactly `devops-agent` + `Meerwais Osmani`.
+- House shapes copied (do not re-invent): picklist on a standard object = `Rueckruf_Zeitfenster__c.field-meta.xml` (no `<restricted>`, no `<length>`); Read+Edit PS = `SCRUM453_ContactLeft_Set.permissionset-meta.xml`; FLS test = `SCRUM382CustomerSinceDaysFlsTest.cls` (temp `User` on `Standard User`, `de_DE` rejected, `UTC` rejected → `en_US`/`America/Los_Angeles`); run configs = `manifest/scr467-phase4-apextests.xml` @ `version 67.0`.
+- Test-Org licences 2/2 System Administrators (house, quoted in SCRUM-405 E2E) → no second low-privilege browser session; AC6 negative belongs to the Apex FLS class.
+
+## Developer notizen (2026-11-22, every line read back in the org)
+
+- Deploy order worked as designed, each check-only (`deploy start --dry-run -x … --test-level NoTestRun`) before the real deploy:
+  - Phase 1 `manifest/scr470-phase1-fields.xml` → Succeeded, `Contact.Preferred_Contact_Method__c` Created (17:15:50Z).
+  - Phase 2 `manifest/scr470-phase2-referencing.xml` → Succeeded, Layout `Contact-Contact Layout` **Changed** + `SCRUM470_ContactContactWay` Created (17:16:13Z).
+  - Phase 3 `manifest/scr470-phase3-apextests.xml` with `--test-level RunSpecifiedTests --tests <each class>` → Succeeded, **11/11 tests, 0 test errors** (17:17:38Z). `deploy validate` has no `NoTestRun`; `deploy start --test-level NoTestRun` does (measured `--help` of both).
+- Field read-back: `sf data query --use-tooling-api -q "SELECT QualifiedApiName, DataType FROM FieldDefinition WHERE EntityDefinition.QualifiedApiName='Contact' AND QualifiedApiName='Preferred_Contact_Method__c'"` → 1 row, Picklist. Collision check: 0 rows before the deploy.
+- FLS chain (`scripts/fls-check.sh Contact Preferred_Contact_Method__c Test-Org`): granted by `SCRUM470_ContactContactWay` (read+edit) and by `AncCrmIntegrationUser` (read=true edit=false, **assigned to nobody**). **No Profile row** (`IsOwnedByProfile=false` on both rows) → the negative FLS probe under a fresh `Standard User` is a real oracle, not an unsatisfiable test (this is the SCRUM-430 branch, re-measured for THIS field — not inherited).
+- PS assignment read-back (`PermissionSetAssignment WHERE PermissionSet.Name='SCRUM470_ContactContactWay'`) → 2 rows: `devops-agent@cline.test`, `meerwais.osmani@resourceful-bear-6f1u4j.com`. Assigning was a separate step (`sf org assign permset -o Test-Org -n … -b <user>` ×2); the deploy alone granted nothing.
+- Real-session read: `SELECT Id, LastName, Phone, Email, Preferred_Contact_Method__c FROM Contact LIMIT 3` returns rows through the CLI session → the field is visible, not just deployed. Counts: **676** Contact records, **0** carrying a preference (`SELECT COUNT() FROM Contact WHERE Preferred_Contact_Method__c != null` → 0).
+- `scripts/fls-gate.py --base origin/master --org Test-Org` → green (1 changed field, named PS, 2 assignees).
+- NOT done by me, and why: the Playwright E2E spec is Tester scope (AGENTS: Playwright out of Developer scope, the Tester owns the probed locators) and the S3/S4 Setup read-backs (active `Contact` layout per profile, sharing model) belong to Tester/DevOps — ⚠️-2 still stands: nobody has re-measured whether a `Contact` RecordPage shadows the tracked layout.
+- The `Contact` layout file is master's file + exactly one `layoutItems` block inserted directly after `<field>Email</field>` — never retrieved from Test-Org (Prod-Org drift gate, house SCRUM-468/469).
+
+## Rework round 2 — Architect review (PR #191 review id 6013506675 on head 778e766, ticket comment #23755)
+- Both required changes are test artefacts only; no production artefact touched.
+- Fix 1, `withoutPS_field_not_readable` was NOT falsifiable: an always-false assertion sat INSIDE the `try` and the `catch` set the flag, so the readable-without-PS hypothesis (the very thing to refute) also ended green. New shape: `getDescribe().isAccessible()` read under the unprivileged `System.runAs`, asserted `assertEquals(false, readable)` OUTSIDE any try; the SOQL probe keeps ONLY the `SELECT` in the `try`, so a resolving query leaves `threw=false` and reddens `System.assert(threw, …)`. Measured after the redeploy: green, i.e. the SELECT really hit the FLS wall.
+- Do NOT copy `SCRUM430RueckrufZeitfensterFlsTest` — it carries the same unfalsifiable try/catch pattern; the house pattern is the bug (Architect finding).
+- Fix 2, `nothing_automated_side_effect` asserted absolute Contact-table counts (1 / 0), which survive only while 0 of 676 contacts carry a value — the Tester's AC2/AC4/AC5 fixtures persist and would redden the next CI Apex run. New shape: baseline count of contacts WITH a value captured BEFORE the save (separate `System.runAs` block), then `assertEquals(baselineCount + 1, afterCount)`; the second-record assertion is scoped to the `TEST-SCRUM-470` fixtures (`LastName LIKE 'TEST-SCRUM-470%'`).
+- Redeploy of the two classes (real deploy with `--test-level NoTestRun` first, then `RunSpecifiedTests --tests <each class>` ×2): `numTestsRun=11 numFailures=0 numberTestErrors=0 numberComponentsDeployed=2 success=true`, components `changed=true` (17:40:15Z). The negative half is now a real oracle: a readable field reddens the `assertEquals`, a resolving SELECT reddens the `assert`.

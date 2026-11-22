@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-470 Read+Edit FLS for the hand-set preference Contact.Preferred_Contact_Method__c. Sales and Service users get it; users without it neither see nor set the value (AC6). Field rights only, no object CRUD (house convention SCRUM-421/430).</description>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Contact.Preferred_Contact_Method__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM470_ContactContactWay</label>
+</PermissionSet>

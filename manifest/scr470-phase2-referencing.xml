@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-470 Phase 2: the components that REFERENCE the field — the Read+Edit
+     Permission Set and the Layout delta in the "Contact Information" section.
+     Gelangen only after Phase 1 (the field) is live in the org. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM470_ContactContactWay</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Contact-Contact Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>
