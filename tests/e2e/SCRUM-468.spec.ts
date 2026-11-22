@@ -378,12 +378,24 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
       expect(/open \/ due/.test(String(row)), `AC5 the facts cell marks the loan as open with its due date`).toBe(true);
     }
     expect(rows.every((t: string) => !/returned/.test(t)), 'AC5 no returned loan is listed as current').toBe(true);
+    test
+      .info()
+      .annotations.push({
+        type: 'observed',
+        description: `AC5 list view SCRUM468_Open_Loans rendered ${rows.length} rows: ${JSON.stringify(rows.map((t: string) => t.replace(/^\s*- row "/, '').replace(/"$/, '')))}; device 3 history still carries the returned loan of Kunde A`,
+      });
     // AC5 second half: the returned loan is still in the history of that device.
     await openRelatedTab(page, `/lightning/r/Demo_Devic__c/${devs['3']}/view`);
     const histRows = await sectionRowsPoll(page, 'Loan records');
     const returnedRow = histRows.find((t: string) => t.includes(cust('A')));
     expect(returnedRow != null, 'AC5 the returned loan of Kunde A is still in the history of device 3').toBe(true);
     expect(/returned/.test(String(returnedRow)), 'AC5 the history row marks that loan as returned').toBe(true);
+    test
+      .info()
+      .annotations.push({
+        type: 'observed',
+        description: `AC5 device-3 history section rendered ${histRows.length} rows incl. ${String(returnedRow).replace(/^\s*- row "/, '').replace(/"$/, '')}`,
+      });
   });
 
   test('AC6 return clears the device side, loan keeps its three dates', async () => {
