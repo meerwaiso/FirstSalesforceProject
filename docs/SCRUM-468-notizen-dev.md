@@ -68,3 +68,12 @@ objects -> fields -> guards+tests -> permission sets -> report.
 - FOREIGN uncommitted file in my worktree: layouts/Account-Account Layout.layout-meta.xml (someone else's
   org-retrieve in progress) -> saved to probe/FOREIGN-Account-layout.xml, restored, then replaced by my
   org-derived version. diff foreign vs committed = my SCRUM-comments + my relatedList only: nothing lost.
+
+## Re-review round on head c40f6e9 (2026-11-22)
+
+- **restricted goes INSIDE valueSet.** As a child of CustomField the org parser rejects it:
+  `Error Unable to parse XML for CustomObject Demo_Devic__c in force-app/main/default/objects/Demo_Devic__c/fields/Status__c.field-meta.xml: Error parsing xml: Parse error: Element 'restricted' is invalid at this location` (validate ops 0AfWU00000dJISX0AG and 0AfWU00000dJc370AC, two positions, identical message). Accepted shape `<valueSet><restricted>true</restricted><valueSetDefinition>`: validate 0AfWU00000dJc370AC Succeeded, deploy 0AfWU00000dJc4j0AC State Changed, retrieve probe/rsp3 shows the element back.
+  No house precedent: origin/master has zero `<restricted>` in any fields/*.field-meta.xml - first restricted picklist in the repo.
+- **Grant census:** SCRUM468_Loan 15 fieldPermissions, SCRUM468_Read 15, SCRUM468_Writeoff 0 (marker only; a Permission Set can only grant, never revoke). Org retrieve probe/psr returns 15/15/0, identical to the branch files.
+- **Assignment read-back** scripts/apex-probe.sh -f probe/psa-probe.apex (same query shape as DemoDevicWriteoffGuard): all three sets assigned to devops-agent@cline.test AND to meerwais.osmani@resourceful-bear-6f1u4j.com.
+- **Account layout base = master, not the org.** Org file carries section Fehlzeit with layoutItem Absence_Anzeige__c; field in origin/master and in Prod-Org, in no manifest; the Prod-Org Drift Gate reddened with exactly that one unresolved component. Branch file = master + only my relatedLists block (diff 8 lines). Deployed (validate 0AfWU00000dJcCn0AK, deploy 0AfWU00000dJcEP0A0); org read-back: 0 occurrences of Absence_Anzeige__c, relatedList present. Consequence stated: the Test-Org page loses that section, the field untouched; restoring it is a PO decision on SCRUM-457.
