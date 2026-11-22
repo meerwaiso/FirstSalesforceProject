@@ -241,6 +241,8 @@ test.describe('[SCRUM-471] Key Account mark on the customer record', () => {
   });
 
   test('AC8: setting and clearing the mark triggers nothing', async ({ page }) => {
+    // Two full set/clear cycles plus 12 SOQL read-backs exceed the default 30 s.
+    test.setTimeout(180000);
     const before = {
       accounts: soqlCount('SELECT COUNT() FROM Account'),
       cases: soqlCount('SELECT COUNT() FROM Case'),
