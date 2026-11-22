@@ -5,7 +5,8 @@ import { requireData } from './preflight';
 import { openRecordPage } from './record-page';
 
 /**
- * [SCRUM-468] Lend Devices — Tester E2E über Test-Org (branch 9f91b7b / PR #190).
+ * [SCRUM-468] Lend Devices — Tester E2E über Test-Org (branch feature/SCRUM-468-lend-devices
+ * round 4 / PR #190; spec re-based on head bf8abe6, review head 110696d).
  *
  * Playwright-BDD: beforeAll löscht älter Fixture-Sets und SEENDETT die
  * Measured-Fixture-Set (PO-specified: 4 devices, 6 loans — 2 open and both
@@ -28,18 +29,21 @@ import { openRecordPage } from './record-page';
  *   columnheader buttons offer "Sort by: Days overdue" but "Sorted: None" —
  *   the rendered order (30 before 15) is the UI fact asserted here.
  *
- * Record-page related lists (re-measured 2026-11-22 with ariaSnapshot on the
- * RELATED tab — the earlier innerText read was blind to the closed Shadow-Root
- * and reported both lists as absent, which was wrong):
+ * Record-page / list-view surfaces (re-measured 2026-11-22 on head bf8abe6 after
+ * the round-4 redesign; the round-3 shapes below were DELETED by the branch):
  *   Demo_Devic__c page: section "Loan records (2)" renders a grid whose rows
- *   carry the customer link plus the three dates. Rendered columnheaders:
- *   "Lent to customer | Loan start date | Loan due date | Return date |
- *   Action" — the layout's fifth <fields> Loan_Duration_Days__c (label
- *   "Loan duration in days") is NOT among them -> AC7 duration half is a gap.
- *   Account page: the section "Devices on loan" (layout
- *   <relatedList>Demo_Devic__c.Current_Customer__c) renders its HEADING only —
- *   no count, no /related/ link, no row — while the standard sections render
- *   "Contacts (0)" with a link. AC5 rows are missing.
+ *   carry the customer link, the start and due dates and the guard-written
+ *   facts text ("returned 07.10.2026 / 14 Tage", "open / due 23.10.2026").
+ *   Layout related list = 4 <fields> (customer, start, due, facts);
+ *   Loan_Duration_Days__c is NOT a column any more - the duration lives inside
+ *   the facts text (Architect round-4 shape, approved at 110696d).
+ *   Account page: the "Devices on loan" related list was REMOVED (layout
+ *   byte-identical to master; a standard-page Lookup related list renders a
+ *   heading without rows, and Lookup-to-MasterDetail conversion is rejected -
+ *   validate 0AfWU00000dJnPx0AK). AC5's surface is now the List View:
+ *   /lightning/o/Loan_Record__c/list?filterName=SCRUM468_Open_Loans
+ *   (columns: customer, start, due, facts; filter Loan_Is_Open__c equals 1,
+ *   scope Everything -> the list is ORG-WIDE, the customer column discriminates).
  */
 
 const TAG = '[TEST-SCRUM-468]';
@@ -265,6 +269,8 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
         [
             { ac: 'AC5', what: 'current loans (open, with customer and device)',
               soql: `SELECT Id FROM Loan_Record__c WHERE Loan_Customer__c != null AND Loan_Devic__c != null AND Loan_Return_Datum__c = null`, min: 1 },
+            { ac: 'AC5 surface', what: 'the derived open-loan marker the List View filters on',
+              soql: `SELECT Id FROM Loan_Record__c WHERE Loan_Is_Open__c = true`, min: 1 },
             { ac: 'AC7', what: 'returned loans (history for the device page)',
               soql: `SELECT Id FROM Loan_Record__c WHERE Loan_Devic__c != null AND Loan_Return_Datum__c != null`, min: 1 },
             { ac: 'AC9', what: 'a written-off device',
@@ -343,28 +349,41 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
     expect(open.length, 'AC4 open lending records for D1 still exactly one').toBe(1);
   });
 
-  test('AC5 customer page lists the two current loans with due dates', async ({ page }) => {
-    const open = soql(`SELECT Id, Loan_Devic__c, Loan_Due_Datum__c FROM Loan_Record__c WHERE Loan_Customer__c='${accts['A']}' AND Loan_Return_Datum__c=null`);
+  test('AC5 open-loans list view lists the two current loans with due dates, the returned one absent but still in the device history', async ({ page }) => {
+    const open = soql(`SELECT Id, Loan_Devic__c, Loan_Start_Datum__c, Loan_Due_Datum__c FROM Loan_Record__c WHERE Loan_Customer__c='${accts['A']}' AND Loan_Return_Datum__c=null`);
     expect(open.length, 'fixture: two open loans for Kunde A').toBe(2);
+    const openOrgWide = soql(`SELECT Id FROM Loan_Record__c WHERE Loan_Is_Open__c=true`);
+    // The PO-picked surface (round 4) is an ORG-WIDE List View on Loan_Record__c
+    // filtered by the derived marker Loan_Is_Open__c — the customer column is the
+    // discriminator, the row set is not narrowed per customer (Architect finding).
+    expect(openOrgWide.length, 'fixture: exactly 2 open loans org-wide (the list is org-wide)').toBe(2);
     const returned = soql(`SELECT Id, Loan_Devic__c FROM Loan_Record__c WHERE Loan_Customer__c='${accts['A']}' AND Loan_Return_Datum__c!=null`);
     expect(returned.length, 'fixture: one returned loan for Kunde A (must NOT be listed as current)').toBe(1);
-    // The criterion is about the CUSTOMER'S RECORD PAGE: the layout's related
-    // list "Devices on loan" (measured live 2026-11-22: heading present, rows
-    // see below). The related list is read from the ariaSnapshot (closed
-    // Shadow-Root, see sectionRows).
-    await openRelatedTab(page, `/lightning/r/Account/${accts['A']}/view`);
-    const snap = await ariaOf(page);
-    console.log('DIAG acctpage aria len=' + snap.length + ' sections=' + JSON.stringify(snap.split('\n').map((l: string) => l.trim()).filter((l: string) => /heading|tab |row "/.test(l)).slice(0, 40)));
-    expect(/heading "Devices on loan"/.test(snap), 'AC5 the customer page offers the Devices-on-loan related list').toBe(true);
-    const rows = await sectionRowsPoll(page, 'Devices on loan');
-    expect(rows.length, 'AC5 one row per CURRENT loan on the customer page (2 expected)').toBe(2);
-    for (const [n, dueOff] of ([['1', -30], ['2', -15]] as Array<[string, number]>)) {
-      const r = rows.find((t: string) => t.includes(dev(n)));
-      expect(r != null, `AC5 device ${n} appears as a row on the customer page`).toBe(true);
-      expect(String(r).includes(de(dueOff)), `AC5 the row for device ${n} carries its due date ${de(dueOff)}`).toBe(true);
-      expect(String(r).includes(`SCRUM468-TEST-${n}`), `AC5 the row for device ${n} carries its serial`).toBe(true);
+    // Surface verified live 2026-11-22 before this test existed:
+    //   `npm run probe -- "/lightning/o/Loan_Record__c/list?filterName=SCRUM468_Open_Loans"`
+    //   renders the list-view controls ("List View Controls" | "Select list display" |
+    //   "Refresh") and states "Column sort is disabled ... needs at least one row"
+    //   -> the ListView SCRUM468_Open_Loans is live in the org (rows: 0 at that moment).
+    //   Org read-back `sf project retrieve start --metadata "ListView:Loan_Record__c.SCRUM468_Open_Loans"`
+    //   is byte-identical to the branch file (columns: customer, start, due, facts).
+    await page.goto('/lightning/o/Loan_Record__c/list?filterName=SCRUM468_Open_Loans', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForSelector('table', { state: 'visible', timeout: 30000 });
+    const rows = await listRows(page);
+    expect(rows.length, 'AC5 one row per loan that is still open (2 expected)').toBe(2);
+    // Loan_History_Facts__c of an OPEN loan is guard-written as "open / due <date>".
+    for (const [, dueOff, startOff] of ([['L1', -30, -60], ['L2', -15, -45]] as Array<[string, number, number]>)) {
+      const row = rows.find((t: string) => t.includes(de(dueOff)) && t.includes(de(startOff)));
+      expect(row != null, `AC5 the open loan due ${de(dueOff)} appears as a row (customer ${cust('A')}, start ${de(startOff)}, due ${de(dueOff)})`).toBe(true);
+      expect(String(row).includes(cust('A')), `AC5 the row names the customer it is on loan to`).toBe(true);
+      expect(/open \/ due/.test(String(row)), `AC5 the facts cell marks the loan as open with its due date`).toBe(true);
     }
-    expect(rows.every((t: string) => !t.includes(dev('3'))), 'AC5 the returned loan of D3 is NOT listed as a current loan').toBe(true);
+    expect(rows.every((t: string) => !/returned/.test(t)), 'AC5 no returned loan is listed as current').toBe(true);
+    // AC5 second half: the returned loan is still in the history of that device.
+    await openRelatedTab(page, `/lightning/r/Demo_Devic__c/${devs['3']}/view`);
+    const histRows = await sectionRowsPoll(page, 'Loan records');
+    const returnedRow = histRows.find((t: string) => t.includes(cust('A')));
+    expect(returnedRow != null, 'AC5 the returned loan of Kunde A is still in the history of device 3').toBe(true);
+    expect(/returned/.test(String(returnedRow)), 'AC5 the history row marks that loan as returned').toBe(true);
   });
 
   test('AC6 return clears the device side, loan keeps its three dates', async () => {
@@ -413,17 +432,19 @@ test.describe('SCRUM-468 Lend Devices (Test-Org)', () => {
         expect(String(row).includes(val), `AC7 the row of ${who} shows the ${label} date ${val}`).toBe(true);
       }
     }
-    // AC7 also demands the DURATION of the loan. The column labels of the grid
-    // live in its first row (sectionHeaderCells). Loan_Duration_Days__c (label
-    // "Loan duration in days") is granted READ to the session user by
-    // SCRUM468_Loan and SCRUM468_Read (fls-check.sh 2026-11-22) and the
-    // layout lists it as the 5th <fields> of this relatedList — so a missing
-    // column here is a rendering/config gap, not FLS.
+    // AC7 also demands HOW LONG each loan lasted. Round-4 shape (Architect,
+    // approved 110696d): the history grid offers four columns — the fourth is
+    // the guard-written facts Text (label "Loan history facts"), and the
+    // duration lives INSIDE that text: "returned <date> / <n> Tage"
+    // (LoanReturnGuard.cls:25/31), read from Loan_Duration_Days__c.
     const header = sectionHeaderCells(snap2, 'Loan records');
-    expect(
-      /duration/i.test(header),
-      `AC7 the loan history offers the duration column (columns rendered: ${header})`,
-    ).toBe(true);
+    expect(/history facts/i.test(header), `AC7 the loan history offers the facts column (columns rendered: ${header})`).toBe(true);
+    for (const r of hist) {
+      const row = rows.find((t: string) => t.includes(cust(Object.entries(accts).find(([, id]) => id === r.Loan_Customer__c)?.[0] ?? '')));
+      expect(row != null, `AC7 row of the loan of duration ${r.Loan_Duration_Days__c} exists`).toBe(true);
+      expect(String(row).includes(`${r.Loan_Duration_Days__c} Tage`), `AC7 that row carries how long the loan lasted (${r.Loan_Duration_Days__c} Tage inside the facts column)`).toBe(true);
+      expect(/returned/.test(String(row)), 'AC7 the row marks the loan as returned').toBe(true);
+    }
     // AC9 positive half stays here as the SOQL cross-check: the history of a
     // WRITTEN-OFF device survives its status change.
     const named = soql(`SELECT Id, Loan_Duration_Days__c, Loan_Return_Datum__c FROM Loan_Record__c WHERE Loan_Devic__c='${devs['4']}'`);
