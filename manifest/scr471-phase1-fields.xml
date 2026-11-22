@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-471 Phase 1: the Checkbox on the standard Account.
+     Deployed ALONE first: the Permission Sets and the four Layouts REFERENCE the
+     field, so they would fail against a not-yet-existing field (house order
+     SCRUM-430/382/470). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Account.Is_Key_Account__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>

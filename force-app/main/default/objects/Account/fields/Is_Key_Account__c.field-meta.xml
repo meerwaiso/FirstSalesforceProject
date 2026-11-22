@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Is_Key_Account__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>SCRUM-471: Manual mark "Key Account" - set by hand when management decides a customer is a key account, cleared by hand when that changes. No scoring, no revenue rule, no automatic assignment.</description>
+    <label>Key Account</label>
+    <type>Checkbox</type>
+</CustomField>
