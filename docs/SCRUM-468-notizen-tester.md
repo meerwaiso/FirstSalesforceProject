@@ -31,12 +31,22 @@ ApexTestQueueItem rows in 24h: 255 vs ceiling 500 (max(500, 10×classes)) — ro
 
 - `sf data update record` exists (subcommands: bulk/record). Used -s/-i/-v.
 
-- RECORD PAGE headless (probe468y measured): the record body renders ONLY the Related tabpanel (duplicate checker +
-  standard related lists, all with (0) counts); the Details tabpanel never activates headless after the tab click
-  (aria stays 5.2k, tabs render as 'tab Related [selected]' + 'tab Details' without panel). The loan Related-List sits
-  in the Details sections -> a rendered row assertion on the record page is NOT reachable headless in this org.
-  AC5/AC7 therefore covered at org level: relationshipLabel/Name read back from DEPLOYED metadata + live SOQL + the
-  deployed ListView columns. Coverage table says so explicitly - not claimed as a browser assertion.
+- RECORD PAGE headless — CORRECTED 2026-11-22 (the 2026-11-21 read was blind):
+  `document.body.innerText` really is blind to the record body (1.3 kB, no
+  related-list text), but **ariaSnapshot pierces the closed Shadow-Root** and
+  carries the whole Related tabpanel. Open the Related tab
+  (`getByRole('tab',{name:'Related'})`) — the page opens on Details.
+  Demo_Devic__c page: section `Loan records (2)` renders a GRID
+  (`row "…"` = rowheader customer-link + gridcells start/due/return, /url
+  /related/Loan_Records_History__r/view). Columnheaders rendered:
+  "Lent to customer | Loan start date | Loan due date | Return date | Action" —
+  the layout's 5th <fields> Loan_Duration_Days__c (label "Loan duration in days")
+  is NOT rendered -> AC7 duration half = gap, not a locator problem.
+  Account page: section heading `Devices on loan` present but with NO count,
+  NO /related/ link and NO row, while the standard sections render
+  "Contacts (0)" + link -> AC5 rows missing = real defect.
+  Never click `Toggle Panel` in a test: it opens a "DX Inspector Terms &
+  Conditions" dialog that replaces the whole page (measured 2026-11-22).
 
 - PS read-back (SOQL, --use-tooling-api): 3 sets SCRUM468_Loan/Read/Writeoff; PermissionSetAssignment per set: 2 rows each (devops-agent@cline.test = CLI target-org user, and the human test account) = 6 rows total. Marker set = membership only (no CRUD): proven by the green negative Apex test - a colleague holding SCRUM468_Loan/Read WITHOUT SCRUM468_Writeoff is refused the write-off, and the positive test passes with it.
 - Live field reads through the session: ListView SCRUM468_Overdue rendered Current_Loan_Overdue_Days**c 30/15 and Loan_Colleague**c (fields readable via session holding SCRUM468_Loan/Read); Loan_Record**c Loan_Due_Datum**c + Loan_Status**c rendered in the same rows. fls-check.sh: Overdue_Today**c Formula granted read in Loan and Read, 2 users each.
