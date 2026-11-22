@@ -24,6 +24,16 @@
  * update uses a FRESH sObject (Id + the written field only) — `update` on a
  * fully-populated record cache writes every field and reddens on one that is not
  * writeable (house SCRUM-459).
+ *
+ * AC9 has NO Apex method, deliberately. Measured 2026-11-22: `[SELECT Id FROM
+ * Account].size()` inside a test method that creates no record returned 0 — org-wide
+ * SOQL inside a test sees only the test's own records, so an assert about the 251
+ * pre-existing customers would be vacuous. AC9 is proven at org level instead
+ * (read-backs in the handoff comment):
+ *   sf data query -o Test-Org -q "SELECT Id, Name, Is_Key_Account__c FROM Account"
+ *     -> totalSize 251, 0 with Is_Key_Account__c = true, 251 with false
+ *   sf data query -o Test-Org -q "SELECT COUNT() FROM Account WHERE Is_Key_Account__c = true"
+ *     -> totalSize 0
  */
 @isTest
 private class SCRUM471KeyAccountTest {
@@ -202,29 +212,7 @@ private class SCRUM471KeyAccountTest {
     }
 
     // ---- AC9: the 251 customers that exist today still read "No" -----------
-    @isTest
-    static void existing_customers_still_read_no() {
-        User u = mkTestUser('ac9');
-        assignPs(u);
-        Integer total;
-        Integer own;
-        List<Account> marked;
-        System.runAs(u) {
-            total = [SELECT Id FROM Account].size();
-            own = [SELECT Id FROM Account WHERE Name LIKE 'TEST-SCRUM-471%'].size();
-            marked = [SELECT Name FROM Account WHERE Is_Key_Account__c = true];
-        }
-        // Guard first: a criterion that matches zero records is untested, not PASS.
-        // The pre-existing customers (measured 251 via CLI) must be reachable here.
-        System.assert(total > own,
-            'AC9 guard: no pre-existing customer is visible to this probe, so the row below would be vacuous.');
-        Integer foreignMarked = 0;
-        for (Account a : marked) {
-            if (a.Name == null || !a.Name.startsWith('TEST-SCRUM-471')) {
-                foreignMarked++;
-            }
-        }
-        System.assertEquals(0, foreignMarked,
-            'AC9: none of the pre-existing customers reads "Yes" until management marks it.');
-    }
+    // AC9 has no Apex method: see the note in the class header — the day-one state
+    // of the 251 existing customers is an ORG-level fact (CLI read-back), an Apex
+    // assert about them would be vacuous because a test cannot see them.
 }
