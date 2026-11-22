@@ -16,6 +16,52 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 23.11.2026 — The customer record shows a „Key Account" mark (SCRUM-471)
+
+**What changes**
+
+- A customer can now be marked as a key account with a simple yes/no box on the customer
+  record. New customers start as „No", and customers that already existed were „No" as well:
+  on 23.11.2026 the production org holds **13 customers, 0 of them marked**.
+- Setting or clearing the mark triggers nothing else — no email, no task, no change on any
+  other record. This delivery contains no code at all; that is why nothing else can happen.
+- One side effect of putting the mark onto the page layouts: on the Marketing customer layout
+  the „Submit" button is available again (it had been hidden there in production, and the
+  layout that carries the mark no longer hides it).
+
+**Where you see it**
+
+- In the first block of the customer page, directly under the customer's name — above the
+  fold on all four customer layouts (default, Sales, Support, Marketing).
+- Anyone who may open a customer sees the mark. Changing it is granted by two permission
+  sets, `SCRUM471_KeyAccount_Read` and `SCRUM471_KeyAccount_Set`; both are assigned in the
+  production org, 4 assignments read back.
+
+**What is deliberately missing**
+
+- Nobody has marked a customer yet. Marking stays a human decision; the mark being there
+  marks nothing by itself.
+- The half that says „only people who may edit customers may change the mark" is deployed but
+  **not yet provable**: the production org has no customer colleague with a restricted licence
+  — 9 users, of whom only 2 are people, both System Administrators, and the org has no Sales
+  or Service members at all (`UserRoles` returned 0 rows). So both permission sets went to the
+  same two people. As soon as a restricted sales colleague is added to the org and gets the
+  Read set without the Set set, that promise becomes testable.
+
+**Evidence**
+
+- Deploy jobs: field `0Afg500000H3dXhCAJ` (1/1), both permission sets + the 4 customer
+  layouts `0Afg500000H3duHCAR` (6/6, 0 errors), the two test classes `0Afg500000H3dz7CAB`.
+- Field read back in production: `Account.Is_Key_Account__c` exists as yes/no, default „No".
+- Field read through a real session: `SELECT Name, Is_Key_Account__c FROM Account` returns
+  **13 rows** without „No such column"; `Is_Key_Account__c = true` returns **0 rows**.
+- Permission set assignments read back: 4 rows — `SCRUM471_KeyAccount_Read` /
+  `SCRUM471_KeyAccount_Set` → `devops-agent@cline.de` and
+  `meerwais.osmani.3ecaf61ebe28@agentforce.com`.
+- Apex in the production org (one class per run, orgId `00Dg500000DkTtzEAF`):
+  `SCRUM471KeyAccountTest` 4/4 and `SCRUM471KeyAccountFlsTest` 4/4, 0 failures.
+- Release tag: `release/2026-11-23-SCRUM-471`.
+
 ## 01.11.2026 — Every open Opportunity shows its outstanding follow-ups by itself (SCRUM-459, Fix SCRUM-460)
 
 **What changes**

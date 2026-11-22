@@ -104,12 +104,70 @@ fixing that belongs to the Developer, not to me (force-app/ is not mine).
 - Re-validate after the field landed: job pending, `/tmp/v471p2.json`.
 - Then `deploy start … --test-level NoTestRun`.
 
-## To finish (in this order)
+## Phase 2 — Permission Sets + 4 layouts (deployed)
 
-1. PS assignment in Prod + `PermissionSetAssignment` read-back (`PermissionSet.Name LIKE 'SCRUM471%'`).
-2. Phase 3: deploy the two test classes, then `sf apex run test -o Prod-Org --tests <one class> --synchronous --json`
-   (one class per call, read `result.summary.outcome` from `--json`).
-3. Prod read-backs: field, layouts live, Account count + marked count for AC9.
-4. `docs/RELEASE-NOTES.md` entry (only after the deploy is green) and the release tag
-   `release/YYYY-MM-DD-SCRUM-471` on the release-metadata commit — created with an explicit
-   sha before the first push, a pushed tag can never be re-pointed.
+- Validate with tests (`deploy validate … phase2 … --test-level RunLocalTests`, job
+  `0Afg500000H3dZJCAZ`): **0 component errors** — `grep -c "Error in "` in the payload = 0,
+  where the pre-state validate had 2 (`no CustomField named Account.Is_Key_Account__c found`
+  in both PSs). All remaining failures are *test* failures of foreign classes
+  (SCRUM410/424/445/449), and the isolation proof is again that the manifest names only
+  this ticket's components.
+- Deploy: `deploy start --manifest manifest/scr471-phase2-permsets-layouts.xml -o Prod-Org
+  --test-level NoTestRun` → job `0Afg500000H3duHCAR`, `6/6 components`,
+  `numberComponentErrors 0`, `status Succeeded`.
+
+## Permission Set assignment (Prod-Org, explicit `-o Prod-Org` both calls)
+
+`sf org assign permset -n SCRUM471_KeyAccount_Read -n SCRUM471_KeyAccount_Set --on-behalf-of <user>`
+for `devops-agent@cline.de` and `meerwais.osmani.3ecaf61ebe28@agentforce.com`.
+
+Read-back `SELECT Id, Assignee.Username, PermissionSet.Name FROM PermissionSetAssignment
+WHERE PermissionSet.Name LIKE 'SCRUM471%'` → **4 rows**:
+`0Pag500000OqsWPCAZ` Set→meerwais…, `0Pag500000OqvimCAB` Read→meerwais…,
+`0Pag500000Or7vDCAR` Set→devops…, `0Pag500000Or8eMCAR` Read→devops…
+
+Both sets therefore go to the **same** two people — the PO's "Read-PS and Set-PS must not go
+to the same people" cannot be satisfied: Prod-Org has 2 real users (both System
+Administrators) and 0 `UserRoles` rows, so there is no Sales/Service colleague to put on Read
+only. Doing it to only one of the two would be worse than doing it to both, so both got both,
+and the split is reported as a gap, not staged as a fact.
+
+## Phase 3 — Apex test classes + Prod runs
+
+- Deploy: `deploy start --manifest manifest/scr471-phase3-apextests.xml -o Prod-Org --test-level NoTestRun`
+  → job `0Afg500000H3dz7CAB`, `2/2`, 0 component errors.
+- `sf apex run test -o Prod-Org --tests SCRUM471KeyAccountTest --synchronous --json` →
+  `outcome Passed`, `passing 4`, `failing 0`, orgId `00Dg500000DkTtzEAF`, username
+  `devops-agent@cline.de`.
+- Same for `SCRUM471KeyAccountFlsTest` → `outcome Passed`, `passing 4`, `failing 0`.
+  Two runs, one class each — one class per `--synchronous` call is the house rule.
+
+## Read-backs in Prod after the deploy
+
+- Field: `FieldDefinition … QualifiedApiName = 'Is_Key_Account__c'` → 1 row, `Checkbox`,
+  `defaultValue=false`.
+- Layouts: re-retrieved all four from Prod, state `Changed` each, and **every** org blob
+  contains `Is_Key_Account__c` once. `git diff` of the org blob against master's blob leaves
+  only XML comments master carries (org strips them) and platform-computed additions
+  (`actionListContext` etc.) — no layout item lost, none left behind.
+- Session read-through: `SELECT Name, Is_Key_Account__c FROM Account` → **13 rows, no
+  "No such column"** (so a real Prod session that holds Read sees the field);
+  `WHERE Is_Key_Account__c = true` → **0 rows** → Prod AC9 = 13 customers, 0 marked.
+- Prod test-run budget: both runs completed in seconds, no `UNKNOWN_EXCEPTION` → budget fine.
+
+## Foreign failures the validate exposed in Prod (not mine, not fixed)
+
+The same `System.runAs` pattern the ticket's own tests use appears in foreign classes, and
+inside Prod it hits fields the executing user cannot see:
+
+| Failing class | Error | Field exists in Prod? |
+|---|---|---|
+| `SCRUM410CustomerTransferTest.*` | `No such column 'Contacts_Without_Mark__c' on entity 'Account'` | **yes** (`FieldDefinition` read-back) |
+| `SCRUM449ContactFollowupHandler` (fired from `SCRUM445DiscountApprovalTest` insert) | `No such column 'Contacts_Without_Mark__c'` | same field |
+| `SCRUM445DiscountApprovalTest.*` | `Invalid field 'Followup_Required__c' on Opportunity` + `List has no rows for assignment to SObject` | field **exists** |
+| `SCRUM424FirstResponseTest.*` | off by one minute (stale BusinessHours, house SCRUM-424/426) | — |
+
+So the FLS gap is **user visibility**, not drift. A `No such column` inside a Trigger path in
+Prod is a live production symptom for those tickets; it needs its own ticket, and the
+hardcoded Test-Org usernames are the known SCRUM-448 fixture bug. None of it is SCRUM-471's:
+no SCRUM-471 line fails anywhere in Prod.
