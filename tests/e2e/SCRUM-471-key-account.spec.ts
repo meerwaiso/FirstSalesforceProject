@@ -155,6 +155,7 @@ test.describe('[SCRUM-471] Key Account mark on the customer record', () => {
     await openRecordDetails(page, `/lightning/r/Account/${markId}/view`);
     const value = await renderedMark(page);
     expect(value, 'AC9: a customer nobody marked renders the mark as False/No').toBe('False');
+    console.log('OBSERVED ' + `AC9: ${preflight.accounts} Account records, ${preflight.markedNonTest} pre-existing marked, ${preflight.markedAll} marked overall; page renders ${value}`);
     test.info().annotations.push({ type: 'observed', description: `AC9: ${preflight.accounts} Account records, ${preflight.markedNonTest} pre-existing marked, ${preflight.markedAll} marked overall; page renders ${value}` });
   });
 
@@ -184,6 +185,7 @@ test.describe('[SCRUM-471] Key Account mark on the customer record', () => {
     await openRecordDetails(page, `/lightning/r/Account/${rec.Id}/view`);
     const value = await renderedMark(page);
     expect(value, 'AC1: the new customer renders the mark as False').toBe('False');
+    console.log('OBSERVED ' + `AC1: created ${rec.Id} via /lightning/o/Account/new, unchecked on the form, saved with Is_Key_Account__c=false, renders ${value}`);
     test.info().annotations.push({ type: 'observed', description: `AC1: created ${rec.Id} via /lightning/o/Account/new, unchecked on the form, saved with Is_Key_Account__c=false, renders ${value}` });
   });
 
@@ -199,6 +201,7 @@ test.describe('[SCRUM-471] Key Account mark on the customer record', () => {
     await openRecordDetails(page, `/lightning/r/Account/${markId}/view`);
     const value = await renderedMark(page);
     expect(value, 'AC2: after reload the page renders the mark as True').toBe('True');
+    console.log('OBSERVED ' + `AC2: save via UI -> SOQL true -> reload renders ${value}`);
     test.info().annotations.push({ type: 'observed', description: `AC2: save via UI -> SOQL true -> reload renders ${value}` });
   });
 
@@ -211,6 +214,7 @@ test.describe('[SCRUM-471] Key Account mark on the customer record', () => {
     await openRecordDetails(page, `/lightning/r/Account/${markId}/view`);
     const value = await renderedMark(page);
     expect(value, 'AC3: after reload the page renders No again').toBe('False');
+    console.log('OBSERVED ' + `AC3: clear via UI -> SOQL false -> reload renders ${value}`);
     test.info().annotations.push({ type: 'observed', description: `AC3: clear via UI -> SOQL false -> reload renders ${value}` });
   });
 
@@ -237,6 +241,7 @@ test.describe('[SCRUM-471] Key Account mark on the customer record', () => {
     expect(markBox.y, 'AC4: the mark is on the first screen (no scrolling)').toBeLessThan(viewport);
     expect(markBox.y - nameBox.y, 'AC4: the mark sits in the block below the name, not further down the page').toBeLessThan(400);
     expect(markBox.y, 'AC4: the mark is below the name label, next to it').toBeGreaterThan(nameBox.y);
+    console.log('OBSERVED ' + `AC4: aria lines name=${sec.nameLine} mark=${sec.markLine} nextSectionHeading=${sec.nextHeading}; label tops name=${nameBox.y} mark=${markBox.y} viewport=${viewport}`);
     test.info().annotations.push({ type: 'observed', description: `AC4: aria lines name=${sec.nameLine} mark=${sec.markLine} nextSectionHeading=${sec.nextHeading}; label tops name=${nameBox.y} mark=${markBox.y} viewport=${viewport}` });
   });
 
@@ -278,6 +283,7 @@ test.describe('[SCRUM-471] Key Account mark on the customer record', () => {
       expect(fixtureAfter[field], `AC8: ${field} on the customer changed by the mark toggle`).toBe(fixtureBefore[field]);
     }
     expect(fixtureAfter[MARK_API], 'AC8: the mark itself is the only field that changed').toBe(true);
+    console.log('OBSERVED ' + `AC8 before/after: accounts ${before.accounts}->${after.accounts}, cases ${before.cases}->${after.cases}, opportunities ${before.opps}->${after.opps}, email ${before.email}->${after.email}, tasks ${before.tasks}->${after.tasks}, feeds ${before.feed}->${after.feed}; Phone/Website/Name/OwnerId unchanged`);
     test.info().annotations.push({ type: 'observed', description: `AC8 before/after: accounts ${before.accounts}->${after.accounts}, cases ${before.cases}->${after.cases}, opportunities ${before.opps}->${after.opps}, email ${before.email}->${after.email}, tasks ${before.tasks}->${after.tasks}, feeds ${before.feed}->${after.feed}; Phone/Website/Name/OwnerId unchanged` });
   });
 });
