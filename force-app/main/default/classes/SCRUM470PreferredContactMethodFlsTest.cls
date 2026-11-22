@@ -71,15 +71,25 @@ private class SCRUM470PreferredContactMethodFlsTest {
                 + 'would come from the missing CRUD, not from the missing FLS.'
         );
 
+        // FALSIFIABLE half 1: getDescribe() is READ inside the runAs and ASSERTED
+        // outside any try — if the field were readable without the PS, this assert
+        // reddens instead of being swallowed.
+        Boolean readable = false;
+        System.runAs(u) {
+            readable = Contact.Preferred_Contact_Method__c.getDescribe().isAccessible();
+        }
+        System.assertEquals(
+            false, readable,
+            'Without PS SCRUM470_ContactContactWay: Preferred_Contact_Method__c must NOT be readable (AC6).'
+        );
+
+        // FALSIFIABLE half 2: the SOQL probe — NOTHING but the SELECT sits in the
+        // try, so the FLS wall is the only possible thrower. A SELECT that RESOLVES
+        // leaves threw=false and reddens the assert below.
         Boolean threw = false;
         System.runAs(u) {
             try {
                 List<Contact> rows = [SELECT Preferred_Contact_Method__c FROM Contact WITH USER_MODE LIMIT 1];
-                // Even an empty result list means the column RESOLVED → FLS present → the AC fails.
-                System.assert(
-                    false,
-                    'Without PS SCRUM470_ContactContactWay: SELECT on Preferred_Contact_Method__c must NOT resolve (AC6).'
-                );
             } catch (Exception e) {
                 threw = true; // 'No such column' / SecurityException — wording differs, both are the wall.
             }

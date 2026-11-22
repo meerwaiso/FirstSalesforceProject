@@ -171,36 +171,56 @@ private class SCRUM470PreferredContactMethodTest {
         User u = mkTestUser('auto');
         assignPS(u);
         Id cid;
+        Integer baselineCount;
         System.runAs(u) {
-            Contact c = new Contact(
+            Contact seed = new Contact(
                 LastName = 'TEST-SCRUM-470-AUTO-A',
                 Phone = '+491111111111',
-                Email = 'auto-a@example.invalid',
-                Preferred_Contact_Method__c = 'Phone'
+                Email = 'auto-a@example.invalid'
             );
-            insert c;
-            cid = c.Id;
+            insert seed;
             Contact other = new Contact(LastName = 'TEST-SCRUM-470-AUTO-B');
             insert other;
+            cid = seed.Id;
+            // BASELINE captured BEFORE the save. Contacts that already carry a value
+            // exist in Test-Org once the Tester created its AC2/AC4/AC5 fixtures, so an
+            // ABSOLUTE count over the table is not stable — only before + 1 is.
+            List<Contact> baseline = [SELECT Preferred_Contact_Method__c FROM Contact WHERE Preferred_Contact_Method__c != null];
+            baselineCount = baseline.size();
         }
-        // The save touched one field only: the OTHER Contact stays empty, and the
+        // The save: one field on one record (fresh sObject: Id + the written field only).
+        System.runAs(u) {
+            Contact updatedRec = new Contact();
+            updatedRec.Id = cid;
+            updatedRec.Preferred_Contact_Method__c = 'Phone';
+            update updatedRec;
+        }
+        // The save touched one field only: the OTHER fixture stays empty, and the
         // record's own Phone/Email are unchanged — no trigger, no Flow, no reminder.
-        List<Contact> carryingValue;
-        List<Contact> othersCarryingValue;
+        Integer afterCount;
+        List<Contact> secondFixtureCarryingValue;
         String phone;
         String email;
+        String secondPref;
         System.runAs(u) {
-            carryingValue = [SELECT Preferred_Contact_Method__c FROM Contact WHERE Preferred_Contact_Method__c != null];
-            othersCarryingValue = [SELECT Preferred_Contact_Method__c FROM Contact WHERE Id != :cid AND Preferred_Contact_Method__c != null];
-            Contact after = [SELECT Phone, Email, Preferred_Contact_Method__c FROM Contact WHERE Id = :cid LIMIT 1];
-            phone = after.Phone;
-            email = after.Email;
+            List<Contact> all = [SELECT Preferred_Contact_Method__c FROM Contact WHERE Preferred_Contact_Method__c != null];
+            afterCount = all.size();
+            secondFixtureCarryingValue = [SELECT Preferred_Contact_Method__c FROM Contact
+                                          WHERE Id != :cid AND Preferred_Contact_Method__c != null
+                                          AND LastName LIKE 'TEST-SCRUM-470%'];
+            Contact a = [SELECT Phone, Email, Preferred_Contact_Method__c FROM Contact WHERE Id = :cid LIMIT 1];
+            phone = a.Phone;
+            email = a.Email;
+            Contact b = [SELECT Preferred_Contact_Method__c FROM Contact WHERE Id != :cid AND LastName = 'TEST-SCRUM-470-AUTO-B' LIMIT 1];
+            secondPref = b.Preferred_Contact_Method__c;
         }
-        System.assertEquals(1, carryingValue.size(),
-            'AC7: only the record we set carries a preference — nothing filled in automatically.');
-        System.assertEquals(0, othersCarryingValue.size(),
-            'AC7: no second Contact received a preference (no automation).');
+        System.assertEquals(baselineCount + 1, afterCount,
+            'AC7: exactly ONE more Contact carries a preference after the save — nothing else was filled in automatically.');
+        System.assertEquals(0, secondFixtureCarryingValue.size(),
+            'AC7: no second TEST-SCRUM-470 fixture received a preference (no automation).');
         System.assertEquals('+491111111111', phone, 'AC7: the Phone field of the record is untouched by the save.');
         System.assertEquals('auto-a@example.invalid', email, 'AC7: the Email field of the record is untouched by the save.');
+        System.assert(secondPref == null,
+            'AC7: the second TEST-SCRUM-470 fixture is still empty after the save.');
     }
 }
