@@ -245,17 +245,20 @@ test.describe('[SCRUM-470] AC2 — Visibility next to phone + email', () => {
     expect(viewport.scroll, 'page is wider than the viewport → horizontal scrolling needed').toBe(viewport.w);
     expect(boxEmail.x === boxPhone.x, 'Phone and Email are not in one information area').toBe(true);
 
-    // The aria order proves the section: Phone ... Email ... Favorit Kontaktmethod ... next heading.
-    const rows = await detailsRows(page);
-    const iPhone = rows.findIndex((l) => /^- text: Phone\b/.test(l));
-    const iEmail = rows.findIndex((l) => /^- text: Email\b/.test(l));
-    const iPref = rows.findIndex((l) => l.includes(FIELD_LABEL));
-    const nextHeading = rows.findIndex((l, i) => i > iPref && /^- heading/.test(l));
+    // The aria order proves the position: among the rendered FIELD rows,
+    // the preference is the row directly after Email (measured: Phone ... Email ... Favorit Kontaktmethod).
+    const rows: string[] = await detailsRows(page);
+    const fieldRows = rows.filter((l: string) => /^- text: /.test(l));
+    const iPhone = fieldRows.findIndex((l: string) => /^- text: Phone\b/.test(l));
+    const iEmail = fieldRows.findIndex((l: string) => /^- text: Email\b/.test(l));
+    const iPref = fieldRows.findIndex((l: string) => l.includes(FIELD_LABEL));
+    const iPrefRaw = rows.findIndex((l: string) => l.includes(FIELD_LABEL));
+    const nextHeading = rows.findIndex((l: string, i: number) => i > iPrefRaw && /^- heading/.test(l));
     expect(iPhone, 'Phone row not found in the Details section').toBeGreaterThanOrEqual(0);
     expect(iEmail, 'Email row not found in the Details section').toBeGreaterThanOrEqual(0);
     expect(iPref, 'preference row not found in the Details section').toBeGreaterThanOrEqual(0);
-    expect(iPref > iEmail, 'preference does not follow Email in the rendered order').toBe(true);
-    expect(iPref - iEmail, `preference is ${iPref - iEmail} rows behind Email — measured 2`).toBeLessThanOrEqual(3);
+    expect(iPref, `preference is not the field row directly after Email (Email at ${iEmail}, preference at ${iPref})`).toBe(iEmail + 1);
+    expect(iEmail, 'Email is not after Phone in the rendered order').toBeGreaterThan(iPhone);
     expect(nextHeading > iPref, 'preference is not inside a section').toBe(true);
     expect(iPhone > rows.findIndex((l) => /^- heading/.test(l)), 'Phone is not in the first section').toBe(true);
   });
