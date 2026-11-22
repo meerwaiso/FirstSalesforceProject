@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" ?>
+<?xml version="1.0" encoding="UTF-8"?>
 <Layout xmlns="http://soap.sforce.com/2006/04/metadata">
     <excludeButtons>DataDotComClean</excludeButtons>
     <excludeButtons>OpenSlackRecordChannel</excludeButtons>
@@ -132,19 +132,6 @@
         <style>OneColumn</style>
     </layoutSections>
     <layoutSections>
-        <customLabel>true</customLabel>
-        <detailHeading>true</detailHeading>
-        <editHeading>true</editHeading>
-        <label>Fehlzeit</label>
-        <layoutColumns>
-            <layoutItems>
-                <behavior>Readonly</behavior>
-                <field>Absence_Anzeige__c</field>
-            </layoutItems>
-        </layoutColumns>
-        <style>OneColumn</style>
-    </layoutSections>
-    <layoutSections>
         <customLabel>false</customLabel>
         <detailHeading>false</detailHeading>
         <editHeading>true</editHeading>
@@ -244,8 +231,10 @@
         </layoutColumns>
         <style>TwoColumnsLeftToRight</style>
     </layoutSections>
-    <!-- SCRUM-442: Kundansatisfaction — Account-Übersicht (AC5/AC6). Alle five fields are system-maintained (Rebuilder) or a platform formula,
-         so every one is behavior=Readonly here — house SCRUM-431 Wartungsvertrag / SCRUM-436 Kundenreaktivierung. Own Section before System Information. -->
+    <!-- SCRUM-442: Kundansatisfaction — Account-Übersicht (AC5/AC6). Alle
+         five fields are system-maintained (Rebuilder) or a platform formula,
+         so every one is behavior=Readonly here — house SCRUM-431 Wartungsvertrag
+         / SCRUM-436 Kundenreaktivierung. Own Section before System Information. -->
     <layoutSections>
         <customLabel>true</customLabel>
         <detailHeading>true</detailHeading>
@@ -319,8 +308,8 @@
                 <customLink>Billing</customLink>
             </layoutItems>
         </layoutColumns>
-        <layoutColumns />
-        <layoutColumns />
+        <layoutColumns/>
+        <layoutColumns/>
         <style>CustomLinks</style>
     </layoutSections>
     <quickActionList>
@@ -385,7 +374,7 @@
         <fields>Open_Value__c</fields>
         <relatedList>OpenOpportunityHistory__c.AccountId__c</relatedList>
     </relatedLists>
-    <!-- SCRUM-468: Geräe auf Loan (AC5) — the devices that customer currently has, via the lookup Current_Customer__c on Demo_Devic__c. Only current loans: a returned device has Current_Customer__c cleared. -->
+    <!-- SCRUM-468: Geräe on Loan (AC5) - the devices that customer currently has, via the lookup Current_Customer__c on Demo_Devic__c. Only current loans: a returned device has Current_Customer__c cleared. -->
     <relatedLists>
         <fields>Designation_Name__c</fields>
         <fields>Serial_Number__c</fields>
