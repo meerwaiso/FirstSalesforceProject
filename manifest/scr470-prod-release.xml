@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-470 Prod release: exactly the force-app delta 48ee748..d3ff4f5 of the squash merge
+     (PR #191, head baa77c6, CI run 45057073901 green incl. the Prod-Org Drift Gate).
+     Member forms copied from the Developer's phase manifests scr470-phase1-fields /
+     scr470-phase2-referencing / scr470-phase3-apextests:
+     - CustomField member QUALIFIED (Contact.<Field>) — a bare member fails
+       "No source-backed components present in the package".
+     - Layout member uses the DASH form "Contact-Contact Layout".
+     - CustomField listed BEFORE PermissionSet/Layout: both reference the field, and
+       a PS or Layout item for a not-yet-existing field is rejected (house order SCRUM-430/382).
+     Layout delta verified against the org before shipping: Prod's "Contact-Contact Layout"
+     equals the repo baseline (48ee748) apart from an XML comment, and master's file adds
+     exactly ONE layoutItems entry (Preferred_Contact_Method__c) — nothing of Prod state
+     is overwritten (the SCRUM-467/468 layout-clobber trap measured, not assumed).
+     Test classes ship as components; their run in Prod is a separate phase
+     (inline RunSpecifiedTests in admin mode fails — NoTestRun is the house pattern SCRUM-464/467). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Contact.Preferred_Contact_Method__c</members>
+        <name>CustomField</name>
+    </types>
+    <types>
+        <members>SCRUM470_ContactContactWay</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Contact-Contact Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>SCRUM470PreferredContactMethodTest</members>
+        <members>SCRUM470PreferredContactMethodFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>
