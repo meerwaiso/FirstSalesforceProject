@@ -136,7 +136,7 @@ async function setMark(page: Page, path: string, want: 'true' | 'false') {
   const before = await cb.first().evaluate((el) => el.checked);
   if (before !== (want === 'true')) await cb.first().click();
   const after = await cb.first().evaluate((el) => el.checked);
-  expect(after, `AC2/AC3: the mark control must read ${want} before saving`).toBe(want);
+  expect(after, `AC2/AC3: the mark control must read ${want === 'true'} before saving`).toBe(want === 'true');
 
   const save = page.getByRole('button', { name: 'Save' });
   await expect(save.first()).toBeVisible({ timeout: 15000 });
@@ -178,7 +178,7 @@ test.describe('[SCRUM-471] Key Account mark on the customer record', () => {
 
     const rows = soql(`SELECT Id, Name, ${MARK_API}, Phone, Website FROM Account WHERE Name = '${name}'`).records;
     expect(rows.length, 'AC1: the new customer exists after the save').toBe(1);
-    const rec = rows[0].attributes;
+    const rec = rows[0];
     expect(rec['Is_Key_Account__c'], 'AC1: the saved customer carries No').toBe(false);
     // And it renders as No on the detail page, where the mark is supposed to be visible.
     await openRecordDetails(page, `/lightning/r/Account/${rec.Id}/view`);
@@ -191,7 +191,9 @@ test.describe('[SCRUM-471] Key Account mark on the customer record', () => {
     await setMark(page, `/lightning/r/Account/${markId}/view`, 'true');
     const rows = soql(`SELECT Id, ${MARK_API} FROM Account WHERE Id = '${markId}'`).records;
     expect(rows.length, 'AC2: the fixture record must exist').toBe(1);
-    expect(rows[0].attributes[MARK_API], 'AC2: after the save the customer is a key account').toBe(true);
+    // The CLI puts the queried fields at the TOP level of a record; `.attributes`
+    // only holds {type, url} (measured in the raw JSON of `sf data query --json`).
+    expect(rows[0][MARK_API], 'AC2: after the save the customer is a key account').toBe(true);
     // Post-reload persistence: a fresh navigation renders the saved value.
     await page.goto(`/lightning/r/Account/${markId}/view`, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await openRecordDetails(page, `/lightning/r/Account/${markId}/view`);
@@ -204,7 +206,7 @@ test.describe('[SCRUM-471] Key Account mark on the customer record', () => {
     await setMark(page, `/lightning/r/Account/${markId}/view`, 'false');
     const rows = soql(`SELECT Id, ${MARK_API} FROM Account WHERE Id = '${markId}'`).records;
     expect(rows.length, 'AC3: the fixture record must exist').toBe(1);
-    expect(rows[0].attributes[MARK_API], 'AC3: after clearing the customer reads No').toBe(false);
+    expect(rows[0][MARK_API], 'AC3: after clearing the customer reads No').toBe(false);
     await page.goto(`/lightning/r/Account/${markId}/view`, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await openRecordDetails(page, `/lightning/r/Account/${markId}/view`);
     const value = await renderedMark(page);
@@ -247,7 +249,7 @@ test.describe('[SCRUM-471] Key Account mark on the customer record', () => {
       tasks: soqlCount('SELECT COUNT() FROM Task'),
       feed: soqlCount('SELECT COUNT() FROM FeedItem'),
     };
-    const fixtureBefore = soql(`SELECT Id, Name, Phone, Website, OwnerId, Is_Key_Account__c FROM Account WHERE Id = '${markId}'`).records[0].attributes;
+    const fixtureBefore = soql(`SELECT Id, Name, Phone, Website, OwnerId, Is_Key_Account__c FROM Account WHERE Id = '${markId}'`).records[0];
 
     await setMark(page, `/lightning/r/Account/${markId}/view`, 'false');
     await setMark(page, `/lightning/r/Account/${markId}/view`, 'true');
@@ -260,7 +262,7 @@ test.describe('[SCRUM-471] Key Account mark on the customer record', () => {
       tasks: soqlCount('SELECT COUNT() FROM Task'),
       feed: soqlCount('SELECT COUNT() FROM FeedItem'),
     };
-    const fixtureAfter = soql(`SELECT Id, Name, Phone, Website, OwnerId, Is_Key_Account__c FROM Account WHERE Id = '${markId}'`).records[0].attributes;
+    const fixtureAfter = soql(`SELECT Id, Name, Phone, Website, OwnerId, Is_Key_Account__c FROM Account WHERE Id = '${markId}'`).records[0];
 
     for (const k of Object.keys(before)) {
       // EmailMessage/Task hold 0 records in Test-Org (measured): their equality
