@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-468 round 4, phase 10b: the guards that write the facts column (LoanRecordGuard at lend, LoanReturnGuard at return), the Permission Set grants for it (SCRUM468_Loan editable, SCRUM468_Read read-only; SCRUM468_Writeoff stays a marker set), and the two layouts: the device history list now declares exactly the Architect's four columns, and the Account page loses my Demo_Devic__c.Current_Customer__c related list (PO chose the List View surface for AC5 - a Lookup related list on a standard object page renders no rows). Field came in phase 10a. -->
+    <types>
+        <members>LoanRecordGuard</members>
+        <members>LoanReturnGuard</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>SCRUM468_Loan</members>
+        <members>SCRUM468_Read</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Demo_Devic__c-Demo Device Layout</members>
+        <members>Account-Account Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>Loan_Record__c.SCRUM468_Open_Loans</members>
+        <name>ListView</name>
+    </types>
+    <version>67.0</version>
+</Package>

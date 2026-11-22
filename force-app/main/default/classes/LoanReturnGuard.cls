@@ -17,6 +17,18 @@ public class LoanReturnGuard {
         for (Loan_Record__c loan : newRecords) {
             Loan_Record__c before = oldMap.get(loan.Id);
             Date oldReturn = (before == null) ? null : before.Loan_Return_Datum__c;
+            // SCRUM-468 round 4 (Architect AC7 shape): the history facts column carries
+            // the actual return date and the duration in days. Written in beforeUpdate on
+            // the record being saved - no extra DML, and only on the null -> filled
+            // transition so a plain edit of a returned loan rewrites nothing.
+            if (loan.Loan_Return_Datum__c != null && oldReturn == null) {
+                String facts = 'returned ' + historyDate(loan.Loan_Return_Datum__c);
+                if (loan.Loan_Start_Datum__c != null) {
+                    Integer days = loan.Loan_Return_Datum__c - loan.Loan_Start_Datum__c;
+                    facts = facts + ' / ' + days + ' Tage';
+                }
+                loan.Loan_History_Facts__c = facts;
+            }
             if (loan.Loan_Return_Datum__c != null && oldReturn == null && loan.Loan_Devic__c != null) {
                 deviceIds.add(loan.Loan_Devic__c);
             }
@@ -38,5 +50,18 @@ public class LoanReturnGuard {
         if (!updateList.isEmpty()) {
             update updateList;
         }
+    }
+
+    // dd.mm.yyyy, same shape as the lend-time facts in LoanRecordGuard.
+    private static String historyDate(Date d) {
+        String day = String.valueOf(d.getDay());
+        String month = String.valueOf(d.getMonth());
+        if (d.getDay() < 10) {
+            day = '0' + day;
+        }
+        if (d.getMonth() < 10) {
+            month = '0' + month;
+        }
+        return day + '.' + month + '.' + String.valueOf(d.getYear());
     }
 }

@@ -374,14 +374,6 @@
         <fields>Open_Value__c</fields>
         <relatedList>OpenOpportunityHistory__c.AccountId__c</relatedList>
     </relatedLists>
-    <!-- SCRUM-468: Geräe on Loan (AC5) - the devices that customer currently has, via the lookup Current_Customer__c on Demo_Devic__c. Only current loans: a returned device has Current_Customer__c cleared. -->
-    <relatedLists>
-        <fields>Designation_Name__c</fields>
-        <fields>Serial_Number__c</fields>
-        <fields>Status__c</fields>
-        <fields>Current_Loan_Due_Date__c</fields>
-        <relatedList>Demo_Devic__c.Current_Customer__c</relatedList>
-    </relatedLists>
     <relatedLists>
         <fields>CASES.CASE_NUMBER</fields>
         <fields>NAME</fields>

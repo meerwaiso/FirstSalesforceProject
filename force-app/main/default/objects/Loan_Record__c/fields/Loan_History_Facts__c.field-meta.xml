@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Loan_History_Facts__c</fullName>
+    <label>Loan history facts</label>
+    <description>SCRUM-468 round 4 (Architect AC7 shape): guard-written Text column for the device history related list. LoanRecordGuard writes "open / due dd.mm.yyyy" at lend, LoanReturnGuard rewrites "returned dd.mm.yyyy / n Tage" at return. Not a formula: a formula column does not render in this list and the field type cannot be changed in place.</description>
+    <length>120</length>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

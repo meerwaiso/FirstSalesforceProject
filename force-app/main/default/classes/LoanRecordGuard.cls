@@ -14,6 +14,15 @@
 public class LoanRecordGuard {
 
     public static void handleBeforeInsert(List<Loan_Record__c> newRecords) {
+        // SCRUM-468 round 4 (Architect AC7 shape): the history facts column is guard-
+        // written Text, not a formula - a formula column does not render in the device
+        // history list and the field type cannot be changed in place. Assigned in
+        // beforeInsert so it saves with the record and needs no extra DML.
+        for (Loan_Record__c loan : newRecords) {
+            if (loan.Loan_Due_Datum__c != null) {
+                loan.Loan_History_Facts__c = 'open / due ' + historyDate(loan.Loan_Due_Datum__c);
+            }
+        }
         Set<Id> deviceIds = new Set<Id>();
         Set<Id> customerIds = new Set<Id>();
         for (Loan_Record__c loan : newRecords) {
@@ -97,5 +106,18 @@ public class LoanRecordGuard {
         if (!updateList.isEmpty()) {
             update updateList;
         }
+    }
+
+    // dd.mm.yyyy so the history column reads like the dates the PO names in AC7.
+    private static String historyDate(Date d) {
+        String day = String.valueOf(d.getDay());
+        String month = String.valueOf(d.getMonth());
+        if (d.getDay() < 10) {
+            day = '0' + day;
+        }
+        if (d.getMonth() < 10) {
+            month = '0' + month;
+        }
+        return day + '.' + month + '.' + String.valueOf(d.getYear());
     }
 }

@@ -73,10 +73,9 @@
     </layoutSections>
     <relatedLists>
         <fields>Loan_Customer__c</fields>
-        <fields>Loan_Duration_Days__c</fields>
         <fields>Loan_Start_Datum__c</fields>
         <fields>Loan_Due_Datum__c</fields>
-        <fields>Loan_Return_Datum__c</fields>
+        <fields>Loan_History_Facts__c</fields>
         <relatedList>Loan_Record__c.Loan_Devic__c</relatedList>
     </relatedLists>
     <showEmailCheckbox>false</showEmailCheckbox>
