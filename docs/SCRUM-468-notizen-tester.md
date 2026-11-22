@@ -82,3 +82,26 @@ Loan_Record**c field census (deployed): Loan_Colleague**c Loan_Customer**c Loan_
 - Apex scoped run: 8 tests, Pass Rate 100%. Playwright spec: 9/9 green (2.1 min) at head 8bcdf9e.
 - CI smoke TypeError earlier = spec's `test.configure` -> house `test.describe.configure`.
 - afterAll cleanup verified: loans live 0, devices live 0 (baseline restored).
+
+## Acceptance criteria of SCRUM-468 (verbatim from the ticket, 2026-11-22 09:36) — for the coverage table
+
+- AC1 Device recorded: save designation+serial -> exactly one device record, shows serial, status Available.
+- AC2 Serial unique: second device, same serial -> REJECTED, answer names the device that already has it.
+- AC3 Lending: available device + start + due -> device shows Lent_Out, customer, start, due, the colleague; exactly ONE loan record.
+- AC4 One customer at a time: lend busy device to B -> REJECTED, device still shows A, open loans for that device still 1.
+- AC5 Customer view: 2 devices on loan + 1 returned -> the two CURRENT devices listed WITH due dates on the customer page, returned one not listed as current, its loan still in the history.
+- AC6 Return: return date -> device Available, customer no longer lists it as current, loan keeps start/due/actual return.
+- AC7 History on the device: EVERY loan appears with customer, start, due, actual return AND how long it lasted; row count = loans created for that device.
+- AC8 Overdue report for team leads: each overdue device once with device, customer, colleague, days overdue, most overdue first, no Available/Written-Off row.
+- AC9 Write-off by team lead: device Written_Off, lending attempt REJECTED, history still fully visible.
+- AC9n Negative write-off: Sales employee (not team lead) -> REJECTED; same for Service employee.
+- AC11 Service can read: reads every device, status, which customer has it; can neither lend nor record a return.
+- AC12 Nothing automatic: overdue device, time passes -> no email, no reminder, no task, no Flow/scheduled alert, status unchanged on its own.
+- PO test data: 4 devices, 6 loans, >=2 open past due, >=1 returned, >=1 written off, 3 customers, 2 colleagues; Account anchor named in the report.
+
+## Fix-shape evidence for AC5/AC7 (measured 2026-11-22, for the bug)
+
+- Device layout: `<relatedLists><fields>Loan_Customer__c</fields><fields>Loan_Start_Datum__c</fields><fields>Loan_Due_Datum__c</fields><fields>Loan_Return_Datum__c</fields><fields>Loan_Duration_Days__c</fields><relatedList>Loan_Record__c.Loan_Devic__c</relatedList></relatedLists>` — renders 4 columns (Lent to customer | Loan start date | Loan due date | Return date); `Loan_Duration_Days__c` is a Formula (Number) per fls-check existence line, granted read to the session user by SCRUM468_Loan + SCRUM468_Read (2 users each).
+- Account layout (line 377-384): `<relatedLists><fields>Designation_Name__c</fields><fields>Serial_Number__c</fields><fields>Status__c</fields><fields>Current_Loan_Due_Date__c</fields><relatedList>Demo_Devic__c.Current_Customer__c</relatedList></relatedLists>`; `Current_Customer__c.field-meta.xml` type=Lookup, relationshipName=Devices_On_Loan, relationshipLabel="Devices on loan", referenceTo=Account. Section paints heading only.
+- Docs (developer.salesforce.com api_meta_layouts): `<relatedLists><relatedList>` is the documented element; SOOverflow case shows chained-lookup `objectB__c.ObjectC__c` failing at DEPLOY time ("Could not find related list ... for entity ...") — our deploy SUCCEEDED, so element-name is not the proven cause. Fix shape is the Developer's call.
+
