@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-468 Prod release: exactly the force-app delta 7c19e23..6034f1b of the squash merge d5f0714 (master) -> 6034f1b (Release).
+     Member forms copied from the Developer's phase manifests (phase1/2 objects, phase5a/10b ListViews+Layout, phase3/10b PermissionSets, phase4/4b guards+triggers, phase12 test classes):
+     a NEW custom object is named once as CustomObject and its own fields ride along under objects/ (house form, proven in scr461-prod-release.xml with Competitor__c and scr464 with Fabrikant__c) -
+     CustomField members exist only for fields on STANDARD objects, which this ticket has none of.
+     NOT included: Account-Account Layout. The delta 7c19e23..6034f1b does not touch it (Architect round 4: "the Account layout at head e7eef42 is byte-identical to the layout that is already on master;
+     the related lists were dropped in round 3"). master's Account layout blob is NOT identical to the Prod blob (the Prod page carries the Fehlzeit section, the master file was retrieved from Test-Org),
+     and deploying it here would overwrite Prod state this ticket does not own (the SCRUM-467 Layout lesson).
+     Test classes ship as components; their run in Prod is a separate phase (inline test-run fails: admin mode, NoTestRun is the house pattern from SCRUM-464/467). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Demo_Devic__c</members>
+        <members>Loan_Record__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>Demo_Devic__c.SCRUM468_Overdue</members>
+        <members>Loan_Record__c.SCRUM468_Open_Loans</members>
+        <name>ListView</name>
+    </types>
+    <types>
+        <members>Demo_Devic__c-Demo Device Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>SCRUM468_Loan</members>
+        <members>SCRUM468_Read</members>
+        <members>SCRUM468_Writeoff</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>DemoDevicGuard</members>
+        <members>DemoDevicWriteoffGuard</members>
+        <members>LoanRecordGuard</members>
+        <members>LoanReturnGuard</members>
+        <members>SCRUM468LendDevicesTest</members>
+        <members>SCRUM468FlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>DemoDevicGuard</members>
+        <members>DemoDevicWriteoffGuard</members>
+        <members>LoanRecordGuard</members>
+        <members>LoanReturnGuard</members>
+        <name>ApexTrigger</name>
+    </types>
+    <version>67.0</version>
+</Package>
