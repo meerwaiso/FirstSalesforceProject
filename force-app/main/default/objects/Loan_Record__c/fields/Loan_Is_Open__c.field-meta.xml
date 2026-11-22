@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Loan_Is_Open__c</fullName>
+    <label>Loan still open</label>
+    <description>SCRUM-468 round 4 (AC5, PO decision (b)): true while the loan has no return date. Drives the filter of the ListView SCRUM468_Open_Loans; no automation reads it. House shape: SCRUM468_Overdue filters on the formula Checkbox Overdue_Today__c (measured live, 2 rows).</description>
+    <formula>ISBLANK(Loan_Return_Datum__c)</formula>
+    <type>Checkbox</type>
+</CustomField>

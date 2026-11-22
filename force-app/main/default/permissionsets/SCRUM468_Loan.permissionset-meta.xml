@@ -81,6 +81,11 @@
         <field>Loan_Record__c.Loan_History_Facts__c</field>
         <readable>true</readable>
     </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Loan_Record__c.Loan_Is_Open__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
     <label>SCRUM468_Loan</label>
     <objectPermissions>

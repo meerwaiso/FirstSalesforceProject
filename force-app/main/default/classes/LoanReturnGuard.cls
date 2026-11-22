@@ -55,16 +55,9 @@ public class LoanReturnGuard {
         }
     }
 
-    // dd.mm.yyyy, same shape as the lend-time facts in LoanRecordGuard.
+    // dd.mm.yyyy, same shape as in LoanRecordGuard (measured: Date.toString() is ISO yyyy-MM-dd).
     private static String historyDate(Date d) {
-        String day = String.valueOf(d.getDay());
-        String month = String.valueOf(d.getMonth());
-        if (d.getDay() < 10) {
-            day = '0' + day;
-        }
-        if (d.getMonth() < 10) {
-            month = '0' + month;
-        }
-        return day + '.' + month + '.' + String.valueOf(d.getYear());
+        String iso = String.valueOf(d);
+        return iso.substring(8, 10) + '.' + iso.substring(5, 7) + '.' + iso.substring(0, 4);
     }
 }

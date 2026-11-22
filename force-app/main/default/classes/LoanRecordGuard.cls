@@ -108,16 +108,11 @@ public class LoanRecordGuard {
         }
     }
 
-    // dd.mm.yyyy so the history column reads like the dates the PO names in AC7.
+    // dd.mm.yyyy. Measured on Test-Org (apex probe): Date.toString() yields ISO
+    // 'yyyy-MM-dd'; Date has no getDay/getMonth/getYear (that is DateTime), and toDateTime()
+    // does not exist on Date. Substring re-arrange is the shape that compiles.
     private static String historyDate(Date d) {
-        String day = String.valueOf(d.getDay());
-        String month = String.valueOf(d.getMonth());
-        if (d.getDay() < 10) {
-            day = '0' + day;
-        }
-        if (d.getMonth() < 10) {
-            month = '0' + month;
-        }
-        return day + '.' + month + '.' + String.valueOf(d.getYear());
+        String iso = String.valueOf(d);
+        return iso.substring(8, 10) + '.' + iso.substring(5, 7) + '.' + iso.substring(0, 4);
     }
 }
