@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- SCRUM-468 / SCRUM-469 phase 6: the two record pages that AC5 and AC7 name.
+     Account-Account Layout  = the layout that is ACTIVE in Test-Org (record-ui on a live
+       Account returned layoutId 00hWU00000XBoxxYAD). The file is the RETRIEVED org version
+       (ADR-7: after the first deploy the repo file comes from the org) plus the house
+       SCRUM-comments grafted back, plus the new <relatedLists> for the devices the customer
+       currently has. Deploying the branch version instead would have deleted the live
+       "Fehlzeit" (Absence_Anzeige__c) section another ticket owns.
+     Demo_Devic__c-Demo Device Layout = new; the object had no layout in the org, so its
+       default page showed no related list. Named after the org object label so it becomes
+       the object default (skill salesforce-platform-quirks: a differently named file would
+       deploy "Created" as a second, inactive layout).
+     NoTestRun at deploy time: layouts carry no Apex tests; the behaviour tests are in
+     phase 4 and run scoped. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Account-Account Layout</members>
+        <members>Demo_Devic__c-Demo Device Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>

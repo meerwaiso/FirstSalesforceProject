@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-468 Phase 5b (AC8 carrier, Architect review §1): the two Permission Sets that must carry Demo_Devic__c.Overdue_Today__c readable=true editable=false. Deployed after 5a so the field exists. Assignment is NOT part of a deploy: both users are assigned and read back separately. -->
+    <types>
+        <members>SCRUM468_Loan</members>
+        <members>SCRUM468_Read</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>

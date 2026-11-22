@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-468 AC9/AC9n: marker set for sales team leads only. It grants nothing at all - a Permission Set can only grant, never revoke - and DemoDevicWriteoffGuard queries PermissionSetAssignment for membership.</description>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM468_Writeoff</label>
+</PermissionSet>

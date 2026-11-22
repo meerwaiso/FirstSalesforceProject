@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Current_Customer__c</fullName>
+    <label>Current customer</label>
+    <description>SCRUM-468: the customer this device is with right now; blank whenever the status is not Lent_Out (LoanRecordGuard and LoanReturnGuard maintain it). Drives the Related List on the Account record page (AC5). Sensitive business partner data, internal only.</description>
+    <relationshipLabel>Devices on loan</relationshipLabel>
+    <relationshipName>Devices_On_Loan</relationshipName>
+    <referenceTo>Account</referenceTo>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <type>Lookup</type>
+</CustomField>

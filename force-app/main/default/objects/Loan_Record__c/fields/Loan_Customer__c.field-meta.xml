@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Loan_Customer__c</fullName>
+    <label>Lent to customer</label>
+    <description>SCRUM-468: the customer the device was lent to. Sensitive business partner data, internal only.</description>
+    <relationshipLabel>Loan records</relationshipLabel>
+    <relationshipName>Loan_Records_Lent_To</relationshipName>
+    <referenceTo>Account</referenceTo>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <type>Lookup</type>
+</CustomField>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Loan_Devic__c</fullName>
+    <label>Lent device</label>
+    <description>SCRUM-468: the device this lending period belongs to. LoanRecordGuard refuses a loan on a device that is already Lent_Out or Written_Off (AC4, AC9).</description>
+    <relationshipLabel>Loan records</relationshipLabel>
+    <relationshipName>Loan_Records_History</relationshipName>
+    <referenceTo>Demo_Devic__c</referenceTo>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <type>Lookup</type>
+</CustomField>

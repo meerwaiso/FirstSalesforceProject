@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-468 Phase 4b: the four triggers that wire the guards to the objects.
+     Deployed on their own so a compile failure in one class cannot hide whether
+     the trigger group landed in the org. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>DemoDevicGuard</members>
+        <members>LoanRecordGuard</members>
+        <members>LoanReturnGuard</members>
+        <members>DemoDevicWriteoffGuard</members>
+        <name>ApexTrigger</name>
+    </types>
+    <version>67.0</version>
+</Package>

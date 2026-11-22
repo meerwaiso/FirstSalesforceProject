@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-468 phase 8 (Architect re-review on head c40f6e9, required change 2):
+     the shared customer record page carries ONLY this ticket's delta.
+     Base = origin/master's Account-Account Layout, plus the one SCRUM-468 <relatedLists> block
+     and nothing else. The previous file was an org-retrieve result and inherited the section
+     labelled Fehlzeit with the layoutItem Absence_Anzeige__c - a field of SCRUM-457 that is in
+     neither master nor Prod-Org, which is why the Prod-Org Drift Gate reddened with exactly one
+     unresolved component (job 137010741962, validation 0Afg500000H2GDNCA3).
+     Stated consequence: deploying this file to Test-Org drops the Fehlzeit SECTION from the
+     customer page there; the field Absence_Anzeige__c itself is untouched. Whether that section
+     must come back is the PO decision on SCRUM-457 (PR #180 closed unmerged, ticket Erledigt,
+     never released) - the Architect will not fold another ticket's unreleased metadata into this
+     PR, and neither will the Developer. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Account-Account Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>

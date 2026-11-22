@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Overdue_Today__c</fullName>
+    <label>Overdue today</label>
+    <description>SCRUM-468 AC8: true only for a device that is Lent_Out and past its due date. Drives the filter of the ListView SCRUM468_Overdue; no automation reads it.</description>
+    <formula>AND(Text(Status__c) = "Lent_Out", NOT(ISBLANK(Current_Loan_Due_Date__c)), Current_Loan_Due_Date__c &lt; TODAY())</formula>
+    <type>Checkbox</type>
+</CustomField>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Current_Loan_Colleague__c</fullName>
+    <label>Current lending colleague</label>
+    <description>SCRUM-468: the sales colleague who started the current loan; LoanRecordGuard fills it from UserInfo.getUserId() when the caller left it blank. Blank when the status is not Lent_Out. Internal employee data.</description>
+    <relationshipLabel>Lent by</relationshipLabel>
+    <relationshipName>Devices_Lent_By</relationshipName>
+    <referenceTo>User</referenceTo>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <trackHistory>false</trackHistory>
+    <type>Lookup</type>
+</CustomField>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-468 Phase 4: the four guards and the two Apex test classes (same PR, same batch). They compile against the Phase 2 fields. -->
+    <types>
+        <members>DemoDevicGuard</members>
+        <members>LoanRecordGuard</members>
+        <members>LoanReturnGuard</members>
+        <members>DemoDevicWriteoffGuard</members>
+        <members>SCRUM468LendDevicesTest</members>
+        <members>SCRUM468FlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>DemoDevicGuard</members>
+        <members>LoanRecordGuard</members>
+        <members>LoanReturnGuard</members>
+        <members>DemoDevicWriteoffGuard</members>
+        <name>ApexTrigger</name>
+    </types>
+    <version>67.0</version>
+</Package>

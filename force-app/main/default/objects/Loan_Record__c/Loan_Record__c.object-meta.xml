@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>SCRUM-468 Lend Devices: one record per lending period of a demonstration device. Created when a sales colleague lends a device to a customer; Loan_Return_Datum__c stays blank while the loan is open and is set when the device comes back. Because every period is its own record, the whole lending history of a device survives returns and write-offs (AC7). Internal-only: no Experience Cloud, no customer-facing sharing.</description>
+    <enableActivities>false</enableActivities>
+    <enableBulkApi>true</enableBulkApi>
+    <enableFeeds>false</enableFeeds>
+    <enableHistory>false</enableHistory>
+    <enableLicensing>false</enableLicensing>
+    <enableReports>false</enableReports>
+    <enableSearch>true</enableSearch>
+    <enableSharing>true</enableSharing>
+    <enableStreamingApi>true</enableStreamingApi>
+    <externalSharingModel>Private</externalSharingModel>
+    <label>Loan Record</label>
+    <nameField>
+        <label>Loan Record Name</label>
+        <type>AutoNumber</type>
+        <displayFormat>LOAN-{0000}</displayFormat>
+        <startingNumber>1</startingNumber>
+    </nameField>
+    <pluralLabel>Loan Records</pluralLabel>
+    <searchLayouts></searchLayouts>
+    <sharingModel>ReadWrite</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

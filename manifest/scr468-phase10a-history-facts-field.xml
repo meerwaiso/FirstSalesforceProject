@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-468 round 4, phase 10a (Architect AC7 shape): the guard-written Text facts column on Loan_Record__c. Field before anything that references it: the guards compile against it, the Permission Sets grant it, the device layout and the ListView show it (house rule, as in phase 5a). -->
+    <types>
+        <members>Loan_Record__c.Loan_History_Facts__c</members>
+        <members>Loan_Record__c.Loan_Is_Open__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>
