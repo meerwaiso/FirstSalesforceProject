@@ -85,3 +85,8 @@ scripts/_*
 
 # scripts/e2e-run.sh: remembered failures and full logs of local E2E runs
 .e2e-run/
+
+# Agent worktrees and scratch belong next to the shared checkout (../wt-*).
+# A nested one shows up as untracked here, and `git add -A` would commit it.
+/wt-*/
+/scratch/
