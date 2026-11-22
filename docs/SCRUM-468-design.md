@@ -333,3 +333,27 @@ Three shapes, two deliverable, the choice changes the requirement, so the PO own
 - (c) drop the customer-page list from this story: the content stays provable at org level and on the device page.
 
 Neither the Architect nor the Developer picks one of the three before the PO answers.
+
+
+## Round 4 — PO picked (b); the delivered shapes (measured 22.11.2026)
+
+PO decision 22.11.2026: (b). A filtered List View of the loans that are still
+open, reached the way the AC8 overdue list is reached. No new MasterDetail
+field, no duplicate customer reference, the negative half of AC5 (a returned
+loan is not listed as current) stays demanded.
+
+What is on the branch now, each line read back at both ends:
+
+- List View on the lending record, four columns (customer, start, due, facts),
+  filtered on the formula Checkbox `Loan_Is_Open__c = ISBLANK(Loan_Return_Datum__c)`.
+  House filter shape; the literal `blank` FilterOperation is rejected by
+  validate (measured).
+- The Account-page related list is gone. The Account layout at this head is
+  byte-identical to master — no delta at all — and the org's Account layout
+  holds zero lending related lists. The shared-page drift risk is closed by
+  shape, not by argument.
+- Device page list declares exactly four columns, the fourth the guard-written
+  facts Text (`open / due ...`, rewritten `returned ... / n Tage`).
+- Org-vs-branch retrieve: both layouts identical (only XML comments differ),
+  the List View identical, both changed guards identical modulo the trailing
+  newline. Live Test-Org shape and branch agree.
