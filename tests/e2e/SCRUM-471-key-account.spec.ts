@@ -87,8 +87,12 @@ test.beforeAll(() => {
   markId = createAccount(`${TAG}-TOGGLE`);
   // AC9 pre-flight: every pre-existing customer must still read "No".
   preflight.accounts = soqlCount('SELECT COUNT() FROM Account');
-  preflight.markedNonTest = soqlCount(`SELECT COUNT() FROM Account WHERE Is_Key_Account__c = true AND Name NOT LIKE 'TEST-SCRUM471%'`);
+  // SOQL cannot negate a term with `NOT ... LIKE` in Test-Org (measured:
+  // `AND Name NOT LIKE 'x%'` and `AND NOT (Name LIKE 'x%')` both -> MALFORMED_QUERY),
+  // so the pre-existing count is measured by subtraction of this ticket's own fixtures.
   preflight.markedAll = soqlCount('SELECT COUNT() FROM Account WHERE Is_Key_Account__c = true');
+  preflight.markedTest = soqlCount(`SELECT COUNT() FROM Account WHERE Is_Key_Account__c = true AND Name LIKE 'TEST-SCRUM471%'`);
+  preflight.markedNonTest = preflight.markedAll - preflight.markedTest;
   preflight.cases = soqlCount('SELECT COUNT() FROM Case');
   preflight.opps = soqlCount('SELECT COUNT() FROM Opportunity');
   preflight.email = soqlCount('SELECT COUNT() FROM EmailMessage');
@@ -101,9 +105,11 @@ test.beforeAll(() => {
 /** The rendered value of the mark on the Details tab: 'True' | 'False' | null. */
 async function renderedMark(page: Page): Promise<string | null> {
   const snap = await page.ariaSnapshot();
-  const line = snap.split('\n').find((l) => /Key Account\s+\S+/.test(l));
+  // Measured shape (probe471b): `        - text: Key Account False Key Account`.
+  // The `text:` prefix keeps the `button "Edit Key Account"` line out of the match.
+  const line = snap.split('\n').find((l) => /text: Key Account\s+\w+/.test(l));
   if (!line) return null;
-  const m = line.match(/Key Account\s+(\w+)/);
+  const m = line.match(/text: Key Account\s+(\w+)/);
   return m ? m[1] : null;
 }
 
@@ -111,7 +117,7 @@ async function renderedMark(page: Page): Promise<string | null> {
 async function markSection(page: Page): Promise<{ markLine: number; nameLine: number; nextHeading: number }> {
   const lines = (await page.ariaSnapshot()).split('\n');
   const nameLine = lines.findIndex((l) => /text: Account Name/.test(l));
-  const markLine = lines.findIndex((l) => /Key Account/.test(l));
+  const markLine = lines.findIndex((l) => /text: Key Account/.test(l));
   const nextHeading = lines.findIndex((l, i) => i > nameLine && /heading .*level=3/.test(l));
   return { markLine, nameLine, nextHeading };
 }
