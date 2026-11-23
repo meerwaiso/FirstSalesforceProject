@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>Lead.Company_Size__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM472_CompanySize</label>
+    <description>SCRUM-472 Read + Edit on Lead.Company_Size__c for everyone who works with Leads. Clearing a band is Edit, never Delete. No object-level permissions, no profile edits.</description>
+</PermissionSet>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-472 Phase 2: the components that REFERENCE the field — the Read+Edit
+     Permission Set and the layout delta (the one Edit item directly after the
+     Required `Company` item in the first "Lead Information" section).
+     Layout file on this branch = master's file + this one item only (house
+     SCRUM-468/469): an org-retrieved layout carries Test-Org-only fields and
+     reddens the Prod-Org Drift Gate. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM472_CompanySize</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Lead-Lead Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>
