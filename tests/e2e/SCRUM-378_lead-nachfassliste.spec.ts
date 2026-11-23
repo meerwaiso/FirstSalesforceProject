@@ -84,7 +84,10 @@ const rendered = (iso: string) => {
 
 const DUE_ISO = isoOf(30);    // open, 30 days -> Is_Due__c true
 const RECENT_ISO = isoOf(3);  // open, 3 days  -> Is_Due__c false
-const CLOSED_ISO = isoOf(30); // closed        -> Is_Due__c false
+// 60, not 30: the CLOSED fixture must not share its date with the due fixture,
+// otherwise the 'excluded fixtures render no such date' asserts contradict the
+// presence assert for the same rendered string.
+const CLOSED_ISO = isoOf(60); // closed        -> Is_Due__c false
 const FIXTURE_NAMES = ['TEST-SCRUM-378-FAELLIG', 'TEST-SCRUM-378-RECENT', 'TEST-SCRUM-378-NODATE', 'TEST-SCRUM-378-CLOSED'];
 
 async function ensureFixtures() {
