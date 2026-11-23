@@ -92,7 +92,9 @@ async function ensureFixtures() {
   // an interrupted run are what made SCRUM-378 red on an otherwise clean org.
   const stale = soql(`SELECT Id FROM Lead WHERE LastName LIKE 'TEST-SCRUM-378%'`);
   for (const row of stale.records) {
-    shell(`sf data delete record --sobject Lead --record-identifier ${row.Id} --target-org ${ORG}`);
+    // Flag verified with `sf data delete record --help`: the ID flag is
+    // -i / --record-id ('--record-identifier' is rejected by the CLI).
+    shell(`sf data delete record --sobject Lead --record-id ${row.Id} --target-org ${ORG}`);
   }
 
   const seed: Array<[string, string, string, string]> = [
