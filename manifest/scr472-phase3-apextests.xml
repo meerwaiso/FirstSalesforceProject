@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-472 Phase 3: the two Apex TEST classes only (this ticket ships no
+     production Apex — ADR-1: declarative metadata). Deployed with
+     --test-level RunSpecifiedTests --tests <each class>: Test-Org has a 24 h
+     Apex test budget, the full suite belongs to CI once, at the end. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM472CompanySizeTest</members>
+        <members>SCRUM472CompanySizeFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>
