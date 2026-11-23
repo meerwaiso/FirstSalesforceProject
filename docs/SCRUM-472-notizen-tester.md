@@ -72,4 +72,38 @@ deletes and the next block re-seeds — each test asserts its own fixture state.
 ## Apex verdict (Developer's two classes, run by me)
 
 `sf project deploy start -x manifest/scr472-phase3-apextests.xml -l RunSpecifiedTests -t SCRUM472CompanySizeTest -t SCRUM472CompanySizeFlsTest --target-org Test-Org`
-→ see `scratch/t472/apex-run.json` (filled below).
+→ `scratch/t472/apex-run.json`: `status: Succeeded`, `numberTestsCompleted: 8`,
+`numberTestsTotal: 8`, `numberTestErrors: 0`, Deploy ID `0AfWU00000dL7xh0AC`
+(my own run — the Developer's was `0AfWU00000dL5iz0AC`; 8/8 reproduced independently).
+
+## CLI / SOQL quirks measured in this session (each cost a suite run)
+
+| Symptom | Cause | Fix used |
+|---|---|---|
+| `execSync` threw on the **first** `soql()` call | `sf` exits non-zero when it prints the stderr Warning "update available from 2.150.6 to 2.158.7" | `2>/dev/null \|\| true`; "No JSON in sf answer" stays the failing branch |
+| `MALFORMED_QUERY: unexpected token 'LastName NOT LIKE'` / `NOT (…)` | `X != null AND NOT (Y LIKE 'a%')` is refused in a compound WHERE; `NOT (Y LIKE 'a%')` alone works, `X != null AND Y LIKE 'a%'` works | foreign-fixture filter runs in JS on plain queries |
+| `Malformed key=value pair for value: ACME.` | `sf data create record -v` splits on whitespace, so `Company=TEST ACME One` breaks into two pairs | fixture values are single tokens (`TEST-ACME-One`) |
+| `Lead.Phone` read back masked (`+4911**` → `+4911**`) | the org masks Phone (FLS redaction) | every Phone compare stays API-to-API |
+| `unknown option: --whole` | `scripts/e2e-run.sh` takes `--all` / `--one <title>` | `--all` for the whole spec; log in `.e2e-run/logs/` |
+| side-effect guards | `FeedItem` 885 rows → the no-chatter guard IS falsifiable; `EmailMessage` and `Task` are **0 rows** → those two guards are 0-vs-0 and NOT falsifiable today | stated as partial in the coverage table |
+
+## Picker open is flaky — measured, and how the spec copes
+
+- `Edit Company Size` click → combobox 1, **listbox 0** (probe472k). The listbox with the 5
+  options exists only after clicking that combobox.
+- That click is not reliable: AC2/AC5/AC8 opened on the first click, AC4 stayed at 0 for 1m30s.
+  `openPicker` therefore clicks until the listbox exists (max 3) and asserts after each attempt —
+  same shape as `openDetailsTab` in `tests/e2e/record-page.ts`.
+- Playwright `fill()` on the combobox does NOT open the picker (probe472e: options 0).
+- Typing into a field that already shows a value **appends** to it (AC3 saw
+  `TEST-ACME-Three` + typed text) → AC3 edits `Description`, which its fixture leaves blank.
+- `SELECT Id, Id, …` → MALFORMED_QUERY: `READ_COLS` already carries `Id`.
+- `expect(array).toHaveCount(n)` is invalid → `toHaveLength(n)`.
+
+## Run mechanics (house)
+
+- `scripts/e2e-run.sh <spec> [--grep <regex>] [--one <title>]` — resolves the org host from the
+  CLI, writes `test-results/<spec>--<stamp>/` (HTML + `playwright-results.json`), log `.e2e-run/logs/`.
+- `--grep` green is **not** a handoff verdict — run `--all`.
+- `test-results/` lives INSIDE the worktree → copy the report out before `git worktree remove`.
+
