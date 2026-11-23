@@ -101,6 +101,11 @@ No `<objectPermissions>` block: a PS must not grant broader object access (house
 3. **Existing Lead list views / Sales reports are out of scope** (PO decision). `objects/Lead/listViews/Nachfassliste.listView-meta.xml` and the Sales reports get no new column. House column token for a custom field is the full `Lead.X__c` (measured on that file: `<columns>Lead.Last_Attempt_Date__c</columns>`) — if the user wants the column, that token shape is already proven.
 4. **No `.field` marker file.** A bare `<ApiName>.field` (metadata format inside a source-format dir) breaks EVERY deploy from this repo; `git log --all --name-only -- '*.field'` = zero hits (skill reference).
 
+## Counts that must travel with the spec (PO measured)
+
+- Leads carrying `Company_Size__c` immediately after go-live: **expected 0** (no default, no backfill). A criterion exercised on zero records is `untested`, not `PASS`.
+- Total leads in Test-Org at go-live: **not measured by me (no org access)** — Tester measures and reports the number before asserting any Lead-count criterion.
+
 ## Open points (non-blocking)
 
 - [ ] PO's "extend *every* Permission Set that grants Lead access" vs. **one** dedicated PS assigned to that same user set → decision: dedicated `SCRUM472_CompanySize` + assignment (item 4). Churn/impact avoided: 5 PSs would otherwise be redeployed AND reassigned. Developer: if he disagrees, the acceptance test is identical; do NOT edit Permission Profiles.
