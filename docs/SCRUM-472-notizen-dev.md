@@ -36,3 +36,22 @@
 | leads carrying a size | `SELECT COUNT() FROM Lead WHERE Company_Size__c != null` -> 0 (PO expectation met) |
 | layout delta | `git diff origin/master -- layouts/Lead-Lead Layout.layout-meta.xml` = only the one Edit `Company_Size__c` item after the Required `Company` item (never an org-retrieved file) |
 
+## Apex tests (Test-Org, 2026-11-23)
+
+- `sf project deploy start -x manifest/scr472-phase3-apextests.xml -l RunSpecifiedTests -t SCRUM472CompanySizeTest -t SCRUM472CompanySizeFlsTest -o Test-Org` -> Deploy ID 0AfWU00000dL5iz0AC, Components 2/2, **Tests Successful 8/8, Failed 0**.
+- No production Apex in this ticket (ADR-1 declarative) -> no coverage metric; the ≥85 % rule applies to new/changed production classes, of which there are none (house precedent SCRUM-471).
+
+## ⚠ Finding: AC5 (invalid band rejected) is NOT enforceable below the UI
+
+Measured 2026-11-23 in Test-Org — both accept an out-of-band value and STORE it:
+- Apex: `insert` with `Company_Size__c = 'several hundred'` -> no exception (the first test run failed on exactly this assumption).
+- REST API: create probe record `00QWU00000iUQq92AG` (`sf data create record -o Test-Org -s Lead -v "LastName=TEST-SCRUM-472-BANDPROBE Company=ProbeCo Company_Size__c=up_to_10"`), then
+  `sf data update record -o Test-Org -s Lead -i 00QWU00000iUQq92AG -v "Company_Size__c=nonsense_band"` -> "Successfully updated record", read-back `COMPANY_SIZE__C = nonsense_band`.
+- Cleanup: `sf data delete record ...` -> Success; afterwards `SELECT COUNT() FROM Lead WHERE Company_Size__c != null` -> 0 again.
+- Consequence: NO Apex/CLI assert can prove AC5; the SCRUM472CompanySizeTest class has no AC5 method, only this note. The enforced half is the Lightning UI (a restricted Picklist offers only the four labels, no free text) -> Tester's Playwright criterion. PO/Architect decision needed if a hard boundary below the UI is wanted (that would be a Validation Rule, which the PO excluded from this story).
+
+## ⚠ Note for the Tester / not exercisable
+
+Sort/filter AC (criterion 6): out of scope per PO (no list-view column added), so no artefact to click; bands are only groupable via SOQL.
+
+
