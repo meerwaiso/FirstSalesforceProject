@@ -140,10 +140,22 @@ test.describe('[SCRUM-378] Nachfassliste für Leads', () => {
     await expect(page.getByText(/Sorted by Letzter Versuch/).first()).toBeVisible({ timeout: 30000 });
 
     const body = page.locator('body');
-    // The org reports the filter state itself: exactly one item, filtered by the formula
-    // (the due lead only). RECENT (3d), NODATE, CLOSED are all excluded by the filter.
-    await expect(body.getByText(/1 item/).first()).toBeVisible();
-    await expect(body.getByText(/Filtered by Ist fällig/).first()).toBeVisible();
+    await expect(body.getByText(/Filtered by Ist f\\u00e4llig/).first()).toBeVisible();
+
+    // SCRUM-474: the count is not a constant. A second due lead (API-378-OK)
+    // belongs to another ticket, so asserting "1 item" measured the org, not the
+    // filter. The org's own due-count is the expectation; the page must agree.
+    const dueRows = soql(`SELECT Id, LastName FROM Lead WHERE Is_Due__c = true`);
+    const dueCount = dueRows.totalSize;
+    expect(dueCount, 'the org must have at least one due lead for this test to mean anything').toBeGreaterThan(0);
+    expect(dueRows.records.map((r) => r.LastName),
+      'fixture precondition: TEST-SCRUM-378-FAELLIG must be among the due leads').toContain('TEST-SCRUM-378-FAELLIG');
+
+    const declared = body.getByText(new RegExp(`${dueCount} item`));
+    await expect(declared.first()).toBeVisible({ timeout: 30000 });
+
+    const listedRows = page.locator('table tbody tr');
+    await expect(listedRows).toHaveCount(dueCount);
     // The one surviving row carries its date in the declared column:
     await expect(body.getByText(rendered(DUE_ISO)).first()).toBeVisible();
     // None of the excluded fixtures may carry a rendered value of their own date:
