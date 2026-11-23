@@ -130,7 +130,7 @@ const ids: Record<string, string> = {};
 const FIXTURE_EXTRA: Record<string, string> = {
   ac1: `Company=TEST-ACME-One Phone=+491****0000 ${FIELD_API}=11_to_50`,
   ac2: `Company=TEST-ACME-Two Phone=+492****0000 Description=TEST-band-empty`,
-  ac3: `Company=TEST-ACME-Three Phone=+493****0000 Description=TEST-band-empty`,
+  ac3: `Company=TEST-ACME-Three Phone=+493****0000`,
   ac4: `Company=TEST-ACME-Four Phone=+494****0000 ${FIELD_API}=51_to_250`,
   ac5: `Company=TEST-ACME-Five Phone=+495****0000 ${FIELD_API}=more_than_250`,
   ac6a: `Company=TEST-ACME-SixA ${FIELD_API}=up_to_10`,
@@ -216,18 +216,26 @@ async function openEditForField(page: import('@playwright/test').Page, label: st
   await page.waitForTimeout(2500);
 }
 
-/** The picker of THIS field. Verified: listbox named 'Company Size' -> count 1. */
-async function pickerListbox(page: import('@playwright/test').Page) {
-  const lb = page.getByRole('listbox', { name: FIELD_LABEL, exact: true });
-  await expect(await lb.count(), `picker listbox "${FIELD_LABEL}" not on the page`).toBe(1);
+/**
+ * Open THIS field's picker and return its listbox.
+ * Measured 2026-11-23 (scratch/t472/probe472k.mjs): after clicking `Edit Company Size`
+ * the page has combobox "Company Size" = 1 but listbox "Company Size" = 0 (one OTHER
+ * listbox sits on the page). Clicking the combobox opens the picker: then the listbox
+ * named "Company Size" is 1 and holds exactly 5 [role=option] items.
+ */
+async function openPicker(page: import('@playwright/test').Page) {
   const combo = page.getByRole('combobox', { name: FIELD_LABEL, exact: true });
   await expect(await combo.count(), `combobox "${FIELD_LABEL}" not on the page`).toBe(1);
+  await combo.first().click({ timeout: 15000 });
+  await page.waitForTimeout(2000);
+  const lb = page.getByRole('listbox', { name: FIELD_LABEL, exact: true });
+  await expect(await lb.count(), `picker listbox "${FIELD_LABEL}" missing after the combobox click`).toBe(1);
   return lb.first();
 }
 
 /** Click one picker slot, scoped INSIDE the Company Size listbox (other picklists are in the DOM too). */
 async function pickOption(page: import('@playwright/test').Page, dataValue: string) {
-  const lb = await pickerListbox(page);
+  const lb = await openPicker(page);
   const opt = lb.locator(`[role=option][data-value="${dataValue}"]`);
   await expect(await opt.count(), `picker slot data-value="${dataValue}" not unique/absent in the Company Size listbox`).toBe(1);
   await opt.first().click({ timeout: 15000 });
@@ -316,15 +324,19 @@ test.describe('[SCRUM-472] AC3 — blank is allowed, the save is clean', () => {
     const before = readRow(ids.ac3);
     expect(before[FIELD_API], 'AC3 fixture starts without a band').toBeNull();
 
-    await openEditForField(page, 'Company');
-    const companyInput = page.getByRole('textbox', { name: 'Company', exact: true });
-    await expect(await companyInput.count(), 'no single Company input in edit mode').toBe(1);
-    await companyInput.first().type('TEST ACME Three edited');
+    // Measured 2026-11-23: typing into a field that already shows a value APPENDS
+    // ('TEST-ACME-Three' + typed text). AC3 therefore edits a field that is BLANK
+    // in the fixture, so the stored value equals exactly what was typed.
+    const field = 'Description';
+    await openEditForField(page, field);
+    const input = page.getByRole('textbox', { name: field, exact: true });
+    await expect(await input.count(), `no single ${field} input in edit mode`).toBe(1);
+    await input.first().type('TEST-band-blank-kept');
     await saveInlineEdit(page);
     await page.waitForTimeout(4000);
 
     const after = readRow(ids.ac3);
-    expect(after.Company, 'AC3: the save landed').toBe('TEST ACME Three edited');
+    expect(after.Description, 'AC3: the save landed exactly as typed').toBe('TEST-band-blank-kept');
     expect(after[FIELD_API], 'AC3: blank stays blank after a clean save').toBeNull();
   });
 });
@@ -338,7 +350,7 @@ test.describe('[SCRUM-472] AC4 — clearing the band saves empty, lead survives'
     expect(before[FIELD_API], 'AC4 fixture must start with a band').toBe('51_to_250');
 
     await openEditForField(page, FIELD_LABEL);
-    await pickerListbox(page);
+    await openPicker(page);
     const labels = await pickerOptionLabels(page);
     expect(labels, 'the picker must offer the blank slot first').toEqual(['--None--', ...BAND_LABELS]);
     await pickOption(page, '');
@@ -361,7 +373,7 @@ test.describe('[SCRUM-472] AC5 — a value outside the four ranges cannot be ent
     expect(before[FIELD_API], 'AC5 fixture must start with a band').toBe('more_than_250');
 
     await openEditForField(page, FIELD_LABEL);
-    const lb = await pickerListbox(page);
+    const lb = await openPicker(page);
     await expect(await lb.locator('[role=option]').count(), 'picker offers not exactly 5 slots (4 bands + blank)').toBe(5);
     const labels = await pickerOptionLabels(page);
     expect(labels, 'AC5: picker offers a label that is not one of the four PO bands').toEqual(['--None--', ...BAND_LABELS]);
@@ -404,9 +416,11 @@ test.describe('[SCRUM-472] AC6 — the four bands stay four distinct values', ()
       perBand[band] = soql(`SELECT Id FROM Lead WHERE ${FIELD_API} = '${band}'`).totalSize;
     }
     const measured = Object.entries(perBand);
-    for (const [band, count] of measured) {
-      expect(count, `AC6: band "${band}" matches zero records -> untested`).toBe(1);
+    const EXPECTED_PER_BAND = { up_to_10: 1, '11_to_50': 3, '51_to_250': 2, more_than_250: 2 };
+    for (const band of BAND_API) {
+      expect(perBand[band], `AC6: band "${band}" must match its fixture count`).toBe(EXPECTED_PER_BAND[band]);
     }
+    expect(Object.values(perBand).reduce((a, b) => a + b, 0), 'AC6: org-wide sized leads must equal the 8 sized fixtures').toBe(8);
     console.log(`AC6 grouping (org-wide, no UI artefact): ${measured.map(([b, c]) => `${b}=${c}`).join(' ')}; sized leads total: ${orgSized()}`);
   });
 });
@@ -443,7 +457,7 @@ test.describe('[SCRUM-472] AC7 — filling the band while creating a lead', () =
     await save.first().click({ timeout: 15000 });
     await page.waitForTimeout(4000);
 
-    const rows = soql(`SELECT Id, ${READ_COLS.join(', ')} FROM Lead WHERE LastName = '${newName}'`).records;
+    const rows = soql(`SELECT ${READ_COLS.join(', ')} FROM Lead WHERE LastName = '${newName}'`).records;
     expect(rows, 'AC7: the created lead is not in the org').toHaveLength(1);
     const created = rows[0];
     expect(created[FIELD_API], 'AC7: created with exactly the chosen band').toBe('up_to_10');
@@ -497,7 +511,7 @@ test.describe('[SCRUM-472] AC9 — existing leads stayed empty at go-live', () =
     const foreignSized = sizedRows.filter((r: any) => !String(r.LastName).startsWith(TAG));
     const fixtures = soql(`SELECT Id FROM Lead WHERE LastName LIKE '${TAG}%'`).totalSize;
     const foreignEmpty = total - fixtures - foreignSized.length;
-    expect(foreignSized, 'AC9: existing leads must not have gained a band').toHaveCount(0);
+    expect(foreignSized, 'AC9: existing leads must not have gained a band').toHaveLength(0);
     expect(total - fixtures, 'AC9: every existing lead must still be readable and blank').toBe(foreignEmpty);
     console.log(`AC9 observed: total leads ${total}, fixtures ${fixtures}, existing blank ${foreignEmpty}, existing sized ${foreignSized.length}`);
   });
