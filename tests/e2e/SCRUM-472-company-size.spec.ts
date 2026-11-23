@@ -160,8 +160,12 @@ test.beforeAll(() => {
       cli(`sf data create record -s Lead -v "LastName=${name} ${FIXTURE_EXTRA[key]}" --target-org ${ORG} --json`);
     }
   }
+  // ids is keyed by the FIXTURE KEY ('ac1'), not by LastName — openDetails/readRow use ids[key].
+  const keyOfName: Record<string, string> = {};
+  for (const k of Object.keys(NAMES)) keyOfName[NAMES[k]] = k;
   for (const row of soql(`SELECT Id, LastName FROM Lead WHERE LastName LIKE '${TAG}%'`).records) {
-    ids[row.LastName] = row.Id;
+    const key = keyOfName[row.LastName] ?? row.LastName;
+    ids[key] = row.Id;
   }
   for (const key of ['ac1', 'ac2', 'ac3', 'ac4', 'ac5', 'ac6a', 'ac6b', 'ac6c', 'ac6d', 'ac8']) {
     if (!ids[NAMES[key]]) throw new Error(`fixture ${NAMES[key]} missing — seeding failed`);
