@@ -16,6 +16,55 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 23.11.2026 — The lead record shows the company's size band (SCRUM-472)
+
+**What changes**
+
+- A lead can now say how big the company behind it is: one new box „Company Size" on the
+  lead record, with exactly four fixed bands — `up to 10 employees`, `11 to 50 employees`,
+  `51 to 250 employees`, `more than 250 employees`. Empty stays allowed and nothing is
+  filled in for you: on 23.11.2026 the production org holds **22 leads, 0 of them carrying
+  a size**.
+- Choosing a band triggers nothing else — no email, no task, no change on any other record,
+  and clearing a band is a change, never a deletion. This delivery contains no production
+  code at all; the two Apex classes that were deployed are checks, not behaviour.
+- No other lead field was touched: the box is a new field, no existing field was changed or
+  repurposed, so no data moved anywhere.
+
+**Where you see it**
+
+- In the first block of the lead page, directly under the company name — the read-back from
+  the production org shows the item order `Company`, `Company_Size__c`, `Title`.
+- Anyone who may open a lead sees the band. Filling it in or changing it is granted by one
+  permission set, `SCRUM472_CompanySize` (read + edit); it is assigned in the production
+  org to 2 users, read back as 2 assignments.
+
+**What is deliberately missing**
+
+- Nobody has filled a band yet. Choosing a band stays a human decision.
+- **Sorting or filtering by size is not usable yet**: no list view or report in the views you
+  use today shows this column, so that part of the request is still open, not delivered. It
+  needs one decision — which Lead views and reports get the column.
+- **Rejecting a value outside the four bands is only enforced in the page**: the four bands
+  are the field's own value list, so the UI accepts nothing else; there is no code behind it,
+  and nothing outside the UI was tested against that.
+
+**Evidence**
+
+- Deploy jobs: field `0Afg500000H4rFFCAZ` (1/1 component), permission set + Lead layout
+  `0Afg500000H4rS9CAJ` (2/2, 0 errors), the two test classes `0Afg500000H4quICAR` (2/2).
+- Field read back in production: `Lead.Company_Size__c` exists as a picklist with exactly the
+  four bands (`up_to_10`, `11_to_50`, `51_to_250`, `more_than_250`), no default, blank
+  allowed (`scripts/fls-check.sh Lead Company_Size__c Prod-Org`, step 1).
+- Field read through a real session in the production org: `SELECT Id, Company_Size__c
+  FROM Lead` returns **22 rows** without „No such column"; `Company_Size__c != null` returns
+  **0 rows**.
+- Permission set assignments read back: 2 rows for `SCRUM472_CompanySize` →
+  `devops-agent@cline.de` and `meerwais.osmani.3ecaf61ebe28@agentforce.com` (step 3 of the
+  same command).
+- Apex in production, orgId `00Dg500000DkTtzEAF`: `SCRUM472CompanySizeTest` 5/5 passed,
+  `SCRUM472CompanySizeFlsTest` 3/3 passed.
+
 ## 23.11.2026 — The customer record shows a „Key Account" mark (SCRUM-471)
 
 **What changes**
