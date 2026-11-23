@@ -140,7 +140,7 @@ test.describe('[SCRUM-378] Nachfassliste für Leads', () => {
     await expect(page.getByText(/Sorted by Letzter Versuch/).first()).toBeVisible({ timeout: 30000 });
 
     const body = page.locator('body');
-    await expect(body.getByText(/Filtered by Ist f\\u00e4llig/).first()).toBeVisible();
+    await expect(body.getByText(/Filtered by Ist fällig/).first()).toBeVisible();
 
     // SCRUM-474: the count is not a constant. A second due lead (API-378-OK)
     // belongs to another ticket, so asserting "1 item" measured the org, not the
