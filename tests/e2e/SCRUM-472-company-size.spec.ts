@@ -226,10 +226,17 @@ async function openEditForField(page: import('@playwright/test').Page, label: st
 async function openPicker(page: import('@playwright/test').Page) {
   const combo = page.getByRole('combobox', { name: FIELD_LABEL, exact: true });
   await expect(await combo.count(), `combobox "${FIELD_LABEL}" not on the page`).toBe(1);
-  await combo.first().click({ timeout: 15000 });
-  await page.waitForTimeout(2000);
+  // House-shape retry (same failure mode as openDetailsTab in tests/e2e/record-page.ts):
+  // Playwright reports the combobox click as successful while Lightning has not attached
+  // the picker yet; the listbox then stays at 0 and no error is raised. Measured 2026-11-23:
+  // AC2/AC5/AC8 opened the picker on the first click, AC4 did not (identical DOM otherwise).
   const lb = page.getByRole('listbox', { name: FIELD_LABEL, exact: true });
-  await expect(await lb.count(), `picker listbox "${FIELD_LABEL}" missing after the combobox click`).toBe(1);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if ((await lb.count()) === 1) return lb.first();
+    await combo.first().click({ timeout: 15000 });
+    await page.waitForTimeout(2500);
+  }
+  await expect(await lb.count(), `picker listbox "${FIELD_LABEL}" never opened after 3 combobox clicks`).toBe(1);
   return lb.first();
 }
 
