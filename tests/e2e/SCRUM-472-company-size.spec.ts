@@ -125,17 +125,19 @@ const ids: Record<string, string> = {};
 
 // `sf data create record -v` takes space-separated key=value pairs (measured: a bare
 // value without `LastName=` fails 'Malformed key=value pair').
+// Measured: `-v` splits on whitespace -> a value containing a space ('TEST ACME One')
+// is refused ('Malformed key=value pair for value: ACME.'). Fixture values are single tokens.
 const FIXTURE_EXTRA: Record<string, string> = {
-  ac1: `Company=TEST ACME One Phone=+491****0000 ${FIELD_API}=11_to_50`,
-  ac2: `Company=TEST ACME Two Phone=+492****0000 Description=TEST band empty`,
-  ac3: `Company=TEST ACME Three Phone=+493****0000 Description=TEST band empty`,
-  ac4: `Company=TEST ACME Four Phone=+494****0000 ${FIELD_API}=51_to_250`,
-  ac5: `Company=TEST ACME Five Phone=+495****0000 ${FIELD_API}=more_than_250`,
-  ac6a: `Company=TEST ACME SixA ${FIELD_API}=up_to_10`,
-  ac6b: `Company=TEST ACME SixB ${FIELD_API}=11_to_50`,
-  ac6c: `Company=TEST ACME SixC ${FIELD_API}=51_to_250`,
-  ac6d: `Company=TEST ACME SixD ${FIELD_API}=more_than_250`,
-  ac8: `Company=TEST ACME Eight Phone=+498****0000 Description=TEST side effects ${FIELD_API}=11_to_50`,
+  ac1: `Company=TEST-ACME-One Phone=+491****0000 ${FIELD_API}=11_to_50`,
+  ac2: `Company=TEST-ACME-Two Phone=+492****0000 Description=TEST-band-empty`,
+  ac3: `Company=TEST-ACME-Three Phone=+493****0000 Description=TEST-band-empty`,
+  ac4: `Company=TEST-ACME-Four Phone=+494****0000 ${FIELD_API}=51_to_250`,
+  ac5: `Company=TEST-ACME-Five Phone=+495****0000 ${FIELD_API}=more_than_250`,
+  ac6a: `Company=TEST-ACME-SixA ${FIELD_API}=up_to_10`,
+  ac6b: `Company=TEST-ACME-SixB ${FIELD_API}=11_to_50`,
+  ac6c: `Company=TEST-ACME-SixC ${FIELD_API}=51_to_250`,
+  ac6d: `Company=TEST-ACME-SixD ${FIELD_API}=more_than_250`,
+  ac8: `Company=TEST-ACME-Eight Phone=+498****0000 Description=TEST-side-effects ${FIELD_API}=11_to_50`,
 };
 
 test.beforeAll(() => {
