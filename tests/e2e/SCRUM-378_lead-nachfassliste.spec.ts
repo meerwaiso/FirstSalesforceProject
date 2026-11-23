@@ -36,46 +36,90 @@ import { execSync } from 'child_process';
  * status, date), not "exactly 4 td cells".
  */
 
-// Fixture IDs created for this ticket (Test-Org; admin session owns them).
-const FAELLIG_ID = '00QWU00000fQF3q2AG'; // open, 2026-08-12, Is_Due=true
+// ---------------------------------------------------------------------------
+// FIXTURES — measured and re-derived at run time (SCRUM-474 fix, 2026-11-23).
+//
+// The old code seeded ABSOLUTE dates (2026-08-12 due / 2026-08-29 recent) and
+// only created a record when a query COMMAND exited non-zero. Two drift bugs:
+//   * Is_Due__c is derived from Last_Attempt_Date__c, so 'RECENT' turned due
+//     14 days after the absolute date; on 2026-11-23 TWO fixtures were due and
+//     the list/report asserts that expect one were red (SCRUM-474).
+//   * `sf data query` exits 0 for an EMPTY result, so `exists` was always true
+//     and the spec never re-seeded a deleted fixture.
+// Now: dates are relative to today, every TEST-SCRUM-378-* record is deleted
+// and reseeded fresh, and the due precondition is READ BACK from the org
+// (falsifiable), never assumed.
+// ---------------------------------------------------------------------------
+const ORG = 'Test-Org';
 
-/** Ensure all four fixtures exist with the expected fields (idempotent). */
+function soql(query: string) {
+  const out = execSync(
+    `sf data query --query "${query}" --target-org ${ORG} --json 2>/dev/null || true`
+  ).toString();
+  const answer = JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1));
+  if (!answer.result) throw new Error(`No JSON in sf answer: ${out}`);
+  return answer.result;
+}
+
+function shell(command: string) {
+  execSync(`${command} 2>/dev/null || true`, { stdio: ['pipe', 'pipe', 'pipe'] });
+}
+
+const DAY_MS = 86_400_000;
+const isoOf = (offsetDays: number) =>
+  new Date(Date.now() - offsetDays * DAY_MS).toISOString().slice(0, 10);
+// Lightning renders dates in the UI locale: DD.MM.YYYY (ISO is rejected on the form).
+const rendered = (iso: string) => {
+  const [year, month, day] = iso.split('-');
+  return `${Number(day)}.${Number(month)}.${year}`;
+};
+
+const DUE_ISO = isoOf(30);    // open, 30 days -> Is_Due__c true
+const RECENT_ISO = isoOf(3);  // open, 3 days  -> Is_Due__c false
+const CLOSED_ISO = isoOf(30); // closed        -> Is_Due__c false
+const FIXTURE_NAMES = ['TEST-SCRUM-378-FAELLIG', 'TEST-SCRUM-378-RECENT', 'TEST-SCRUM-378-NODATE', 'TEST-SCRUM-378-CLOSED'];
+
 async function ensureFixtures() {
-  const seed: Array<[string, string, string, string, string]> = [
-    ['FAELLIG', 'Open - Not Contacted', '2026-08-12', 'TestfirmaFaellig', '2026-08-12'],
-    ['RECENT', 'Working - Contacted', '2026-08-29', 'TestfirmaRecent', '2026-08-29'],
-    ['NODATE', 'Open - Not Contacted', '', 'TestfirmaNodate', ''],
-  ];
-  const run = (args: string[]) => {
-    try {
-      execSync(`sf ${args.join(' ')} 2>/dev/null`, { stdio: ['pipe', 'pipe', 'pipe'] });
-      return true;
-    } catch {
-      return false;
-    }
-  };
-  for (const [tag, status, date, company, lastDate] of seed) {
-    const id = `TEST-SCRUM-378-${tag}`;
-    const exists = run(
-      ['data', 'query', '-o', 'Test-Org', `-q`, `SELECT Id FROM Lead WHERE Name LIKE '${id}%' LIMIT 1`]
-    );
-    if (!exists) {
-      const v = `LastName=${id} Company=${company} 'Status=${status}' LeadSource=Email${
-        lastDate ? ` Last_Attempt_Date__c=${lastDate}` : ''
-      }`;
-      run(['data', 'create', 'record', '-s', 'Lead', '-o', 'Test-Org', '-v', v]);
-    }
+  // Sweep first: the spec owns the TEST-SCRUM-378-* namespace, and stale rows from
+  // an interrupted run are what made SCRUM-378 red on an otherwise clean org.
+  const stale = soql(`SELECT Id FROM Lead WHERE LastName LIKE 'TEST-SCRUM-378%'`);
+  for (const row of stale.records) {
+    shell(`sf data delete record --sobject Lead --record-identifier ${row.Id} --target-org ${ORG}`);
   }
-  // CLOSED fixture is created once and reused (status changes keep it excluded).
-  run([
-    'data', 'create', 'record', '-s', 'Lead', '-o', 'Test-Org', '-v',
-    "LastName=TEST-SCRUM-378-CLOSED Company=TestfirmaClosed 'Status=Closed - Not Converted' LeadSource=Email",
-  ]);
+
+  const seed: Array<[string, string, string, string]> = [
+    ['FAELLIG', 'Open - Not Contacted', 'TestfirmaFaellig', DUE_ISO],
+    ['RECENT', 'Working - Contacted', 'TestfirmaRecent', RECENT_ISO],
+    ['NODATE', 'Open - Not Contacted', 'TestfirmaNodate', ''],
+    ['CLOSED', 'Closed - Not Converted', 'TestfirmaClosed', CLOSED_ISO],
+  ];
+  for (const [tag, status, company, date] of seed) {
+    const name = `TEST-SCRUM-378-${tag}`;
+    const values = `LastName=${name} Company=${company} LeadSource=Email 'Status=${status}'${
+      date ? ` Last_Attempt_Date__c=${date}` : ''}`;
+    shell(`sf data create record --sobject Lead --target-org ${ORG} -v "${values}"`);
+  }
+
+  // Precondition read back from the org: exactly ONE fixture is due, and it is
+  // the FAELLIG one. A formula change or a rejected seed fails here, not in the UI.
+  const rows = soql(`SELECT Id, LastName, Is_Due__c, Last_Attempt_Date__c FROM Lead WHERE LastName LIKE 'TEST-SCRUM-378%'`);
+  expect(rows.totalSize, 'all four fixtures must exist').toBe(4);
+  const due = rows.records.filter((r) => r.Is_Due__c === true).map((r) => r.LastName).sort();
+  expect(due, 'fixture precondition: exactly one TEST-SCRUM-378 lead may be Is_Due__c = true').toEqual(['TEST-SCRUM-378-FAELLIG']);
+  const faellig = rows.records.find((r) => r.LastName === 'TEST-SCRUM-378-FAELLIG');
+  expect(faellig?.Last_Attempt_Date__c, 'the due fixture must carry the seeded date').toBe(DUE_ISO);
+}
+
+/** Id of a fixture, looked up by name (no hardcoded record id). */
+async function fixtureId(name: string) {
+  const rows = soql(`SELECT Id FROM Lead WHERE LastName = '${name}'`);
+  expect(rows.totalSize, `fixture ${name} must exist`).toBe(1);
+  return rows.records[0].Id;
 }
 
 test.describe('[SCRUM-378] Nachfassliste für Leads', () => {
-  test.beforeAll(() => {
-    ensureFixtures();
+  test.beforeAll(async () => {
+    await ensureFixtures();
   });
 
   test('AC list filter: only open+due lead remains; recent/no-date/closed are excluded', async ({ page }) => {
@@ -91,15 +135,16 @@ test.describe('[SCRUM-378] Nachfassliste für Leads', () => {
     await expect(body.getByText(/1 item/).first()).toBeVisible();
     await expect(body.getByText(/Filtered by Ist fällig/).first()).toBeVisible();
     // The one surviving row carries its date in the declared column:
-    await expect(body.getByText('12.08.2026').first()).toBeVisible();
+    await expect(body.getByText(rendered(DUE_ISO)).first()).toBeVisible();
     // None of the excluded fixtures may carry a rendered value of their own date:
-    await expect(body.getByText('29.08.2026', { exact: true })).toHaveCount(0); // RECENT
+    await expect(body.getByText(rendered(RECENT_ISO), { exact: true })).toHaveCount(0); // RECENT
     // No-date / closed rows render no date cell at all (only one row exists):
-    await expect(body.getByText('01.08.2026', { exact: true })).toHaveCount(0); // CLOSED
+    await expect(body.getByText(rendered(CLOSED_ISO), { exact: true })).toHaveCount(0); // CLOSED
   });
 
   test('AC layout: "Letzter Versuch" and "Ist fällig" appear together on the Lead record page', async ({ page }) => {
-    await page.goto(`/lightning/r/Lead/${FAELLIG_ID}/view`);
+    const faelligId = await fixtureId('TEST-SCRUM-378-FAELLIG');
+    await page.goto(`/lightning/r/Lead/${faelligId}/view`);
     await page.waitForSelector('.slds-global-header, one-appnav', { timeout: 60000 });
     await page.waitForLoadState('domcontentloaded');
 
@@ -161,7 +206,7 @@ test.describe('[SCRUM-378] Nachfassliste für Leads', () => {
     if (!(await inFrame('TEST-SCRUM-378-FAELLIG'))) missing.push('Name');
     if (!(await inFrame('TestfirmaFaellig'))) missing.push('Firma (Company)');
     if (!(await inFrame('Open - Not Contacted'))) missing.push('Status');
-    if (!(await inFrame('12.08.2026'))) missing.push('Letzter Versuch (date)');
+    if (!(await inFrame(rendered(DUE_ISO)))) missing.push('Letzter Versuch (date)');
     expect(
       missing,
       `AC "Name · Firma · Status · Letzter Versuch" violated — missing from report: ${missing.join(', ')}.`,
@@ -206,7 +251,10 @@ test.describe('[SCRUM-378] Nachfassliste für Leads', () => {
     await company.fill('TestfirmaValidation');
     const dateField = page.getByLabel(/Letzter Versuch/).first();
     await dateField.click();
-    await dateField.fill('2026-12-31');
+    // A future date must be rejected at any run date: derived from today, rendered
+    // the way the form reads it (DD.MM.YYYY — ISO is rejected outright).
+    const futureIso = new Date(Date.now() + 30 * DAY_MS).toISOString().slice(0, 10);
+    await dateField.fill(rendered(futureIso));
     await dateField.press('Enter');
     await page.waitForTimeout(1000);
 
