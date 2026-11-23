@@ -62,6 +62,8 @@ const BAND_LABELS = [
 
 // ── org helpers (house shape, proven in SCRUM-470) ─────────────────────
 
+/** sf writes a "update available" Warning to stderr AND exits non-zero -> execSync throws.
+ * The JSON on stdout is the verdict: swallow stderr, and let "No JSON" be the failure. */
 function shellJson(out: string): any {
   const clean = out.replace(/\uFEFF/g, '').replace(/\u001b\[[0-9;]*[a-z]/gi, '');
   const start = clean.indexOf('{');
@@ -72,7 +74,8 @@ function shellJson(out: string): any {
 
 function soql(query: string): any {
   const out = execSync(
-    `sf data query --query ${JSON.stringify(query)} --target-org ${ORG} --json`,
+    // `|| true`: the CLI exits non-zero for its own stderr Warning; no JSON on stdout = real error.
+    `sf data query --query ${JSON.stringify(query)} --target-org ${ORG} --json 2>/dev/null || true`,
     { encoding: 'utf-8', timeout: 120000, stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, FORCE_COLOR: '0' } },
   );
   return shellJson(out).result;
@@ -80,7 +83,7 @@ function soql(query: string): any {
 
 function cli(cmd: string): any {
   return shellJson(
-    execSync(cmd, { encoding: 'utf-8', timeout: 120000, stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, FORCE_COLOR: '0' } }),
+    execSync(`${cmd} 2>/dev/null || true`, { encoding: 'utf-8', timeout: 120000, stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, FORCE_COLOR: '0' } }),
   );
 }
 
