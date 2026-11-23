@@ -154,12 +154,17 @@ test.beforeAll(() => {
     );
   }
 
+  const seeded: string[] = [];
   for (const key of Object.keys(FIXTURE_EXTRA)) {
     const name = NAMES[key];
     if (soql(`SELECT Id FROM Lead WHERE LastName = '${name}'`).totalSize === 0) {
-      cli(`sf data create record -s Lead -v "LastName=${name} ${FIXTURE_EXTRA[key]}" --target-org ${ORG} --json`);
+      const answer = cli(`sf data create record -s Lead -v "LastName=${name} ${FIXTURE_EXTRA[key]}" --target-org ${ORG} --json`);
+      seeded.push(`${name} -> ${JSON.stringify(answer?.result ?? answer).slice(0, 120)}`);
+    } else {
+      seeded.push(`${name} already present`);
     }
   }
+  console.log(`[SCRUM-472 seed] TAG=${TAG} (${seeded.length} fixtures attempted):`, seeded.join(' | ').slice(0, 1800));
   // ids is keyed by the FIXTURE KEY ('ac1'), not by LastName — openDetails/readRow use ids[key].
   const keyOfName: Record<string, string> = {};
   for (const k of Object.keys(NAMES)) keyOfName[NAMES[k]] = k;
@@ -168,7 +173,7 @@ test.beforeAll(() => {
     ids[key] = row.Id;
   }
   for (const key of ['ac1', 'ac2', 'ac3', 'ac4', 'ac5', 'ac6a', 'ac6b', 'ac6c', 'ac6d', 'ac8']) {
-    if (!ids[NAMES[key]]) throw new Error(`fixture ${NAMES[key]} missing — seeding failed`);
+    if (!ids[key]) throw new Error(`fixture ${NAMES[key]} missing — seeding failed`);
   }
 
   requireData([
