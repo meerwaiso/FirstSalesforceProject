@@ -123,18 +123,20 @@ const NAMES: Record<string, string> = {
 };
 const ids: Record<string, string> = {};
 
-const FIXTURE_SPECS: Array<[string, string]> = [
-  [NAMES.ac1, `${NAMES.ac1} Company=TEST ACME One Phone=+491****0000 ${FIELD_API}=11_to_50`],
-  [NAMES.ac2, `${NAMES.ac2} Company=TEST ACME Two Phone=+492****0000 Description=TEST band empty`],
-  [NAMES.ac3, `${NAMES.ac3} Company=TEST ACME Three Phone=+493****0000 Description=TEST band empty`],
-  [NAMES.ac4, `${NAMES.ac4} Company=TEST ACME Four Phone=+494****0000 ${FIELD_API}=51_to_250`],
-  [NAMES.ac5, `${NAMES.ac5} Company=TEST ACME Five Phone=+495****0000 ${FIELD_API}=more_than_250`],
-  [NAMES.ac6a, `${NAMES.ac6a} Company=TEST ACME SixA ${FIELD_API}=up_to_10`],
-  [NAMES.ac6b, `${NAMES.ac6b} Company=TEST ACME SixB ${FIELD_API}=11_to_50`],
-  [NAMES.ac6c, `${NAMES.ac6c} Company=TEST ACME SixC ${FIELD_API}=51_to_250`],
-  [NAMES.ac6d, `${NAMES.ac6d} Company=TEST ACME SixD ${FIELD_API}=more_than_250`],
-  [NAMES.ac8, `${NAMES.ac8} Company=TEST ACME Eight Phone=+498****0000 Description=TEST side effects ${FIELD_API}=11_to_50`],
-];
+// `sf data create record -v` takes space-separated key=value pairs (measured: a bare
+// value without `LastName=` fails 'Malformed key=value pair').
+const FIXTURE_EXTRA: Record<string, string> = {
+  ac1: `Company=TEST ACME One Phone=+491****0000 ${FIELD_API}=11_to_50`,
+  ac2: `Company=TEST ACME Two Phone=+492****0000 Description=TEST band empty`,
+  ac3: `Company=TEST ACME Three Phone=+493****0000 Description=TEST band empty`,
+  ac4: `Company=TEST ACME Four Phone=+494****0000 ${FIELD_API}=51_to_250`,
+  ac5: `Company=TEST ACME Five Phone=+495****0000 ${FIELD_API}=more_than_250`,
+  ac6a: `Company=TEST ACME SixA ${FIELD_API}=up_to_10`,
+  ac6b: `Company=TEST ACME SixB ${FIELD_API}=11_to_50`,
+  ac6c: `Company=TEST ACME SixC ${FIELD_API}=51_to_250`,
+  ac6d: `Company=TEST ACME SixD ${FIELD_API}=more_than_250`,
+  ac8: `Company=TEST ACME Eight Phone=+498****0000 Description=TEST side effects ${FIELD_API}=11_to_50`,
+};
 
 test.beforeAll(() => {
   // AC9 baseline BEFORE any fixture exists: nothing may carry a value at go-live.
@@ -150,9 +152,10 @@ test.beforeAll(() => {
     );
   }
 
-  for (const [name, values] of FIXTURE_SPECS) {
+  for (const key of Object.keys(FIXTURE_EXTRA)) {
+    const name = NAMES[key];
     if (soql(`SELECT Id FROM Lead WHERE LastName = '${name}'`).totalSize === 0) {
-      cli(`sf data create record -s Lead -v "${values}" --target-org ${ORG} --json`);
+      cli(`sf data create record -s Lead -v "LastName=${name} ${FIXTURE_EXTRA[key]}" --target-org ${ORG} --json`);
     }
   }
   for (const row of soql(`SELECT Id, LastName FROM Lead WHERE LastName LIKE '${TAG}%'`).records) {
