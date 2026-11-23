@@ -53,12 +53,20 @@ import { execSync } from 'child_process';
 const ORG = 'Test-Org';
 
 function soql(query: string) {
+  // FORCE_COLOR=0: sf paints its output when a TTY-ish env asks for colour, which
+  // corrupts the JSON (measured in this project).
   const out = execSync(
-    `sf data query --query "${query}" --target-org ${ORG} --json 2>/dev/null || true`
+    `sf data query --query "${query}" --target-org ${ORG} --json 2>/dev/null || true`,
+    { env: { ...process.env, FORCE_COLOR: '0' } },
   ).toString();
-  const answer = JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1));
-  if (!answer.result) throw new Error(`No JSON in sf answer: ${out}`);
-  return answer.result;
+  try {
+    const answer = JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1));
+    if (!answer.result) throw new Error(`No result in sf answer: ${out}`);
+    return answer.result;
+  } catch (e) {
+    // Name the raw payload: a parse error that hides the answer is a dead end.
+    throw new Error(`sf answer not JSON: ${e} | raw=${JSON.stringify(out)}`);
+  }
 }
 
 function shell(command: string) {
