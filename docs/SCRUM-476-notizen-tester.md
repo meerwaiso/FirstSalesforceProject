@@ -45,3 +45,38 @@ Alle Befunde measured in Test-Org (`sf ... --target-org devops-agent@cline.test`
 
 - `EmailMessage`/`Task` are **empty tables**: a delta assertion on them is `0 == 0` and cannot fail — measure deltas on `FeedItem` (900), `Contact`, `Opportunity`, `Case`
 - never assert an org-wide equality on a table the org holds empty (house finding SCRUM-471)
+
+## Shape of the fixture model (measured 2026-11-24, cost one run each)
+
+- `Lead.Company` is TEXT — `sf sobject describe --sobject Lead` → `type: string, length 255, createable`.
+  Creating a lead whose Company name matches no Account leaves the `Account` total at 268 and 0 Accounts
+  under that name. A lead therefore NEVER references a customer: the relationship is
+  `ConvertedAccountId` (reference, `createable: false`) → readable by SOQL, unwritable by CLI/Apex.
+- `Company` is REQUIRED on Lead: a lead without it dies `REQUIRED_FIELD_MISSING: [Company]`
+  (`sf data create record`, exit 1). Band-less fixture leads still need Company text.
+- Consequence for the E2E fixtures: pre-existing customers (AC4/AC5/AC6/AC13) are seeded as Accounts
+  and must already exist; customers for the create-new path (AC1/AC2/AC12/batch) must NOT exist before
+  the conversion — the conversion creates exactly one and the delta on `Account` is +1.
+- Aborted Playwright runs leave their `beforeAll` seeds behind: an aborted run's `afterAll` does not
+  always delete. The spec's own sweep at the START of `beforeAll` (delete `TEST-SCRUM-476-E2E*` first)
+  is what makes a re-run honest; `sf data query` exits 0 for empty results, so an exit-code check
+  never detects the leftovers — count the rows.
+
+## Measured 2026-11-24, second half of the station (all read back from Test-Org)
+
+- `SELECT Id, Name FROM Account WHERE Company_Size__c != null` -> 45 rows: 43 named `TEST-476-*`
+  (other agents' fixtures: `TEST-476-LimA/LimB/Limit/Tie`), 2 are this run's (`-C-EXIST-SIZED`,
+  `-C-HAND`). `... AND Name NOT LIKE 'TEST%'` -> 0 rows: NO real customer carries a band.
+  `Account` total 268 -> 311 (+43 foreign fixture leftovers, not mine to delete).
+- `SELECT Id, LastName FROM Lead WHERE Company_Size__c != null` -> 142: 39 of them named literally
+  `newSized / keep / attachFill / attachSized / b1 / b2 / b3 / hand / old / newBlank …` — the
+  seeding bug where `mkLead` passed the fixture KEY into `-v`. These 44 orphan records (leads +
+  their customers) are mine and were deleted with `sf data delete record -s Lead -i <Id>` (44/44
+  success, re-query 0 left). 94 `TEST-476*` leads of other agents left untouched.
+- Playwright BDD default test timeout is 30 s and a cold Lightning navigation exceeds it
+  (`page.goto … Test timeout of 30000ms exceeded` in run-476-e2e-g…/final.log). House pattern
+  (SCRUM-445, SCRUM-434): every test carries an explicit `test.setTimeout(…)`. All 11 tests now use 300000.
+- The AC11 go-live precondition must ignore foreign fixture namespaces (`TEST-*`), otherwise another
+  agent's leftovers turn the baseline red — that is what killed run-476-e2e-final (42 `TEST-476-Limit*`).
+- `Company` on Lead is TEXT (string 255, required) and `ConvertedAccountId` is `createable: false`;
+  a conversion's customer is named by the Id the picker chose, never by the Company text.
