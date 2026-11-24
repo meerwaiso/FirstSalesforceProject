@@ -106,3 +106,27 @@ field -> PS pair + layout -> assign both PS (`sf org assign permset`) -> handler
 
 - `Account.NumberOfEmployees` stays untouched (Architect F-1).
 
+
+## Review round 1 (PR #196 rejected) — measured findings
+
+- `Exception` has NO `getType()` in this org's Apex (deploy report 0AfWU00000dNP7J0AW:
+  "Method does not exist or incorrect signature: void getType() from the type Exception").
+  A bare `throw;` is not Apex either ("Unexpected token ';'") — re-throw is `throw e;`.
+  Access refusals are therefore discriminated on the fault TEXT in `getMessage()`
+  (upper-cased, `indexOf` is case-sensitive).
+- `new Exception('...')` and `System.abort(String)` do not compile in anonymous scripts
+  ("Type cannot be constructed: Exception" / "Method does not exist: void abort(String)").
+  A throw with a message needs a declared `class X extends Exception {}`.
+- An anonymous `sf apex run` script cannot `insert` a User:
+  `LICENSE_LIMIT_EXCEEDED` (Test-Org is at the active-user licence limit). Inside an Apex
+  TEST the same insert works — the read-only fixture users only exist in test context.
+- Fixture shapes the org accepts (house, read off `SCRUM416OpenOpportunityRollupTest` /
+  `SCRUM365OpenCasesCountTest`): `Opportunity(AccountId, Name, StageName, CloseDate)` —
+  `AccountName` is NOT a field here; `Case(ContactId, Status='New', Subject)` — Case has no
+  AccountId, and `Case.ContactId` must be an Id OF TYPE Contact.
+- Test-Org test budget: the phase-5 deploy with RunSpecifiedTests took 6m03s for 18 tests;
+  one more full run of both classes is ~6 min, so the class deploy is done with
+  `-l NoTestRun` and the run is issued separately (`sf apex run test`).
+- F-6 discriminator is MEASURED green: `probe_accessRefusalIsRecognised` runs a real
+  read-only fixture user, the update IS refused, and `isAccessRefusal` recognised the fault
+  (test green). The read-only user really refused (`refused == true` assert green).
