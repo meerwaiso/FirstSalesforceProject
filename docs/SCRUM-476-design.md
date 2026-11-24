@@ -11,17 +11,17 @@ range; existing customer: only when blank), afterwards hand-maintained, visible 
 
 ## Measured facts (each with the command that measured it, 2026-11-24)
 
-| # | Fact | Command |
-|---|---|---|
-| M1 | `Account.Company_Size__c` does **not** exist in Test-Org | `scripts/fls-check.sh Account Company_Size__c Test-Org` → "1. Existenz NEIN — nicht in dieser Org deployt." |
-| M2 | `Account` **does** carry the standard field `NumberOfEmployees` (label "Employees") | `sf sobject describe --sobject Account` → `"name": "NumberOfEmployees"` |
-| M3 | Four picklist API values of the lead field, verbatim: `up_to_10` / `11_to_50` / `51_to_250` / `more_than_250`, labels "up to 10 employees" … "more than 250 employees" | `git show origin/master:force-app/main/default/objects/Lead/fields/Company_Size__c.field-meta.xml` |
-| M4 | Only **one** Account-level trigger exists today: `AccountLockGuard on Account (before update)` — no Account insert/afterSave trigger | `git ls-tree -r origin/master --name-only \| grep triggers/` + read of the trigger file |
-| M5 | House FLS pattern for an Account field = a **pair**: `SCRUM471_KeyAccount_Read` (readable, not editable) + `SCRUM471_KeyAccount_Set` (readable + editable), field-only, no object CRUD | `git show origin/master:.../SCRUM471_KeyAccount_{Read,Set}.permissionset-meta.xml` |
-| M6 | House layout placement = item right after the name field, `behavior Edit`, with an XML comment naming the ticket | `git show origin/master:.../layouts/Lead-Lead Layout.layout-meta.xml` (SCRUM-472 item after `Company`) |
-| M7 | House trigger shape: `<apiVersion>62.0</apiVersion>`, thin trigger file + separate `…Handler` class, `Trigger.isInsert` / `isUpdate` dispatch | `git show origin/master:.../triggers/LeadDuplicateGuard{.trigger,.trigger-meta.xml}` |
-| M8 | Four Account layouts tracked in source: `Account Layout`, `Account (Sales) Layout`, `Account (Marketing) Layout`, `Account (Support) Layout` | `git ls-tree -r origin/master --name-only \| grep layouts/` |
-| M9 | Survey basis: `origin/master` @ **93e7f0c** (`[TESTER][SCRUM-474] … (#195)`), after `git fetch origin` | `git log -1 --format='%h %s' origin/master` |
+| #   | Fact                                                                                                                                                                                   | Command                                                                                                     |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| M1  | `Account.Company_Size__c` does **not** exist in Test-Org                                                                                                                               | `scripts/fls-check.sh Account Company_Size__c Test-Org` → "1. Existenz NEIN — nicht in dieser Org deployt." |
+| M2  | `Account` **does** carry the standard field `NumberOfEmployees` (label "Employees")                                                                                                    | `sf sobject describe --sobject Account` → `"name": "NumberOfEmployees"`                                     |
+| M3  | Four picklist API values of the lead field, verbatim: `up_to_10` / `11_to_50` / `51_to_250` / `more_than_250`, labels "up to 10 employees" … "more than 250 employees"                 | `git show origin/master:force-app/main/default/objects/Lead/fields/Company_Size__c.field-meta.xml`          |
+| M4  | Only **one** Account-level trigger exists today: `AccountLockGuard on Account (before update)` — no Account insert/afterSave trigger                                                   | `git ls-tree -r origin/master --name-only \| grep triggers/` + read of the trigger file                     |
+| M5  | House FLS pattern for an Account field = a **pair**: `SCRUM471_KeyAccount_Read` (readable, not editable) + `SCRUM471_KeyAccount_Set` (readable + editable), field-only, no object CRUD | `git show origin/master:.../SCRUM471_KeyAccount_{Read,Set}.permissionset-meta.xml`                          |
+| M6  | House layout placement = item right after the name field, `behavior Edit`, with an XML comment naming the ticket                                                                       | `git show origin/master:.../layouts/Lead-Lead Layout.layout-meta.xml` (SCRUM-472 item after `Company`)      |
+| M7  | House trigger shape: `<apiVersion>62.0</apiVersion>`, thin trigger file + separate `…Handler` class, `Trigger.isInsert` / `isUpdate` dispatch                                          | `git show origin/master:.../triggers/LeadDuplicateGuard{.trigger,.trigger-meta.xml}`                        |
+| M8  | Four Account layouts tracked in source: `Account Layout`, `Account (Sales) Layout`, `Account (Marketing) Layout`, `Account (Support) Layout`                                           | `git ls-tree -r origin/master --name-only \| grep layouts/`                                                 |
+| M9  | Survey basis: `origin/master` @ **93e7f0c** (`[TESTER][SCRUM-474] … (#195)`), after `git fetch origin`                                                                                 | `git log -1 --format='%h %s' origin/master`                                                                 |
 
 ⚠️ M2 corrects the PO's statement "no size or employee field exists on Account": that was checked
 against the **repo** (custom fields), not against the org's standard field list. `NumberOfEmployees`
@@ -37,10 +37,11 @@ populate `NumberOfEmployees`, and the Tester must not read "no employee field" a
    (proven shape from SCRUM-472 — do not invent one).
 
    ```xml
-   <?xml version="1.0" encoding="UTF-8"?>
+   <?xml version="1.0" encoding="UTF-8" ?>
    <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
        <fullName>Company_Size__c</fullName>
-       <description>Employee-size band of the customer (SCRUM-476): hand-set; blank = not known yet. Carried once from the lead at conversion, never computed, never defaulted.</description>
+       <description
+     >Employee-size band of the customer (SCRUM-476): hand-set; blank = not known yet. Carried once from the lead at conversion, never computed, never defaulted.</description>
        <externalId>false</externalId>
        <label>Company Size</label>
        <required>false</required>
@@ -49,14 +50,19 @@ populate `NumberOfEmployees`, and the Tester must not read "no employee field" a
        <valueSet>
            <valueSetDefinition>
                <sorted>false</sorted>
-               <value><fullName>up_to_10</fullName><default>false</default><label>up to 10 employees</label></value>
-               <value><fullName>11_to_50</fullName><default>false</default><label>11 to 50 employees</label></value>
-               <value><fullName>51_to_250</fullName><default>false</default><label>51 to 250 employees</label></value>
-               <value><fullName>more_than_250</fullName><default>false</default><label>more than 250 employees</label></value>
+               <value><fullName>up_to_10</fullName><default
+           >false</default><label>up to 10 employees</label></value>
+               <value><fullName>11_to_50</fullName><default
+           >false</default><label>11 to 50 employees</label></value>
+               <value><fullName>51_to_250</fullName><default
+           >false</default><label>51 to 250 employees</label></value>
+               <value><fullName>more_than_250</fullName><default
+           >false</default><label>more than 250 employees</label></value>
            </valueSetDefinition>
        </valueSet>
    </CustomField>
    ```
+
    **The SCRUM-472 file is the authority for the third label** (`51_to_250` → "51 to 250 employees").
    Copy M3 verbatim; this comment is a spec, the repo file is the source of truth.
 
@@ -92,9 +98,9 @@ populate `NumberOfEmployees`, and the Tester must not read "no employee field" a
 >
 > ---
 >
-> *(superseded round-1 spec, kept for the record:)* 3. **Trigger A (new customer)** — `force-app/main/default/triggers/AccountCompanySizeCarry.trigger`
-   `trigger AccountCompanySizeCarry on Account (after update, after insert)` … only the insert
-   branch acts. `<apiVersion>62.0</apiVersion>`, `<status>Active</status>` (M7).
+> _(superseded round-1 spec, kept for the record:)_ 3. **Trigger A (new customer)** — `force-app/main/default/triggers/AccountCompanySizeCarry.trigger`
+> `trigger AccountCompanySizeCarry on Account (after update, after insert)` … only the insert
+> branch acts. `<apiVersion>62.0</apiVersion>`, `<status>Active</status>` (M7).
 
 4. **Trigger B (existing customer)** — `force-app/main/default/triggers/LeadCompanySizeCarry.trigger`
    `trigger LeadCompanySizeCarry on Lead (before update, after update)` … only the after-update
@@ -140,6 +146,7 @@ populate `NumberOfEmployees`, and the Tester must not read "no employee field" a
        }
    }
    ```
+
    (Sketch for the Developer, not compilable Apex; `putIfAbsent`-style semantics and the band
    lookup are named above in words.)
 
@@ -150,9 +157,9 @@ populate `NumberOfEmployees`, and the Tester must not read "no employee field" a
    - `force-app/main/default/permissionsets/SCRUM476_CompanySize_Set.permissionset-meta.xml` —
      `readable=true`, `editable=true` → AC 7, 8 and "Create" of the CRUD table (colleagues who
      edit customers today).
-   Copy the SCRUM-471 files verbatim apart from `<field>`/`<label>`/`<description>`; **no
-   `objectPermissions`, no user entries in source** (M5). Clearing = Edit ⇒ no Delete granted.
-   `Lead.Company_Size__c` stays owned by `SCRUM472_CompanySize` — do **not** restate it here.
+     Copy the SCRUM-471 files verbatim apart from `<field>`/`<label>`/`<description>`; **no
+     `objectPermissions`, no user entries in source** (M5). Clearing = Edit ⇒ no Delete granted.
+     `Lead.Company_Size__c` stays owned by `SCRUM472_CompanySize` — do **not** restate it here.
 
 7. **Test artefacts expected at Review** (the PR is not approvable without them — SCRUM-359 rule):
    `classes/SCRUM476CompanySizeTest.cls` (behaviour) + `classes/SCRUM476CompanySizeFlsTest.cls`
@@ -185,12 +192,12 @@ populate `NumberOfEmployees`, and the Tester must not read "no employee field" a
   Lightning customer page renders the default layout's detail section; the three classic variants
   stay untouched. If the user views customers under a variant layout, that is an org step for
   @devops-agent, not a source change (see ⚠️ F-3).
-- **ADR-6 "Attach" is detected as a *change* of `Lead.Company`, not as every lead save.** Without
+- **ADR-6 "Attach" is detected as a _change_ of `Lead.Company`, not as every lead save.** Without
   that gate, editing a sized lead later would silently refill a customer that someone had left
   blank — AC 12 ("changing an old lead does not change the customer") says the carry is a one-time
   event tied to the attach, not a standing rule.
 - **ADR-7 No Validation Rule for AC 9 (invalid range rejected).** A `valueSet` **without**
-  `valueSetLookup` is a *restricted* picklist: a value outside the four is rejected by the record
+  `valueSetLookup` is a _restricted_ picklist: a value outside the four is rejected by the record
   API/UI itself (proven precedent: the identical shape on `Lead`, SCRUM-472). A Validation Rule on
   a standard object would additionally redden every test class that can save the record in the
   blocked state — none is needed, none is delivered.
@@ -198,7 +205,7 @@ populate `NumberOfEmployees`, and the Tester must not read "no employee field" a
   happens inside a trigger context (system mode); the house precedent SCRUM-436 measured exactly
   this (a user with read-only FLS, a trigger wrote the read-only field, no `FieldSecurityException`,
   probe run `707WU00001LcArj` green). So no third `…_Write` PS is designed for the carry path.
-  The **hand-maintained** path (AC 7/8) *is* user-mode DML and needs the `…_Set` PS. Not re-probed
+  The **hand-maintained** path (AC 7/8) _is_ user-mode DML and needs the `…_Set` PS. Not re-probed
   here (no org write access); the Tester's `System.runAs` class measures the hand path, and the
   FLS test class must be falsifiable per the house rule (assert `isAccessible/isUpdateable = false`,
   never an `assert(false)` inside the try).
@@ -206,7 +213,7 @@ populate `NumberOfEmployees`, and the Tester must not read "no employee field" a
 ## Governor limits & risks (documented per AGENTS.md)
 
 - **Bulkification:** exactly **one SOQL per trigger event** on each side, keyed by `Set<String>
-  Account.Name`, plus **one** bulk `update` in the Lead path. No SOQL in a loop, no per-record
+Account.Name`, plus **one** bulk `update` in the Lead path. No SOQL in a loop, no per-record
   queries. Batch conversion of 200 leads ⇒ ≤2 queries, ≤1 DML statement.
 - **Skip-before-query:** both sides return before any SOQL when the band is already set or no
   `Company` changed — `Account` is a hot object (imports, Data Cloud clean-ups); the trigger costs
@@ -219,7 +226,7 @@ populate `NumberOfEmployees`, and the Tester must not read "no employee field" a
   `update` is still wrapped in `SavePoint`/`Rollback` so a **refusal** (ownership/CRUD, see F-2)
   cannot abort the lead save and thus cannot break the conversion.
 - **No new `Account` validation rule, no new Account insert path** ⇒ no cascade over existing
-  Account/Lead test classes (the SCRUM-442 hazard does not apply; the fill only *adds* a
+  Account/Lead test classes (the SCRUM-442 hazard does not apply; the fill only _adds_ a
   non-blank value on records that were blank).
 
 ## Sharing model impact
@@ -261,45 +268,45 @@ populate `NumberOfEmployees`, and the Tester must not read "no employee field" a
 
 ## Technical acceptance criteria → artefact at Review
 
-| AC | Artefact |
-|---|---|
-| 1 new customer takes the lead's band | `SCRUM476CompanySizeTest` (insert path) **and** E2E via the convert button |
-| 2 lead without size ⇒ clean empty save | Apex test: `Company_Size__c = null`, assert save + empty |
-| 3 lead keeps its own size | Apex/E2E read-back of the lead after conversion |
-| 4 existing sized customer never overwritten (conflicting band) | Apex + E2E, PO's conflicting pair `51_to_250` vs `up_to_10` |
-| 5 blank existing customer filled | **E2E** (attach flow, non-owner) — Apex alone insufficient (F-2) |
-| 6 batch conversion, own band each | Apex batch of ≥20 records, one query asserted (SOQL count) |
-| 7/8 set / change / clear by hand | `System.runAs(converter)` Edit + empty-write, assert no throw, record survives |
-| 9 invalid range rejected | restricted-picklist try/catch, assert a throw **outside** the try (falsifiable) |
-| 10 visible to readers next to the name | `…FlsTest` (readable true, editable false under `Read` PS) + E2E locator on the customer page, probed not guessed |
-| 11 no backfill / existing customers stay empty | SOQL count before/after on untouched Accounts |
-| 12 no email/task/feed/other record | EmailMessage/Task/SocialPost + `getAccountRecords` row-count asserts **plus** an Account-workflow row count — do not assert a bare equality on a table the org holds empty (house finding SCRUM-471: a 0==0 assert is vacuous) |
-| 13 later lead edit ≠ customer change | Apex: second lead save with `Company` unchanged ⇒ assert no Account write |
+| AC                                                             | Artefact                                                                                                                                                                                                                       |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1 new customer takes the lead's band                           | `SCRUM476CompanySizeTest` (insert path) **and** E2E via the convert button                                                                                                                                                     |
+| 2 lead without size ⇒ clean empty save                         | Apex test: `Company_Size__c = null`, assert save + empty                                                                                                                                                                       |
+| 3 lead keeps its own size                                      | Apex/E2E read-back of the lead after conversion                                                                                                                                                                                |
+| 4 existing sized customer never overwritten (conflicting band) | Apex + E2E, PO's conflicting pair `51_to_250` vs `up_to_10`                                                                                                                                                                    |
+| 5 blank existing customer filled                               | **E2E** (attach flow, non-owner) — Apex alone insufficient (F-2)                                                                                                                                                               |
+| 6 batch conversion, own band each                              | Apex batch of ≥20 records, one query asserted (SOQL count)                                                                                                                                                                     |
+| 7/8 set / change / clear by hand                               | `System.runAs(converter)` Edit + empty-write, assert no throw, record survives                                                                                                                                                 |
+| 9 invalid range rejected                                       | restricted-picklist try/catch, assert a throw **outside** the try (falsifiable)                                                                                                                                                |
+| 10 visible to readers next to the name                         | `…FlsTest` (readable true, editable false under `Read` PS) + E2E locator on the customer page, probed not guessed                                                                                                              |
+| 11 no backfill / existing customers stay empty                 | SOQL count before/after on untouched Accounts                                                                                                                                                                                  |
+| 12 no email/task/feed/other record                             | EmailMessage/Task/SocialPost + `getAccountRecords` row-count asserts **plus** an Account-workflow row count — do not assert a bare equality on a table the org holds empty (house finding SCRUM-471: a 0==0 assert is vacuous) |
+| 13 later lead edit ≠ customer change                           | Apex: second lead save with `Company` unchanged ⇒ assert no Account write                                                                                                                                                      |
 
 ## Offene Punkte (nicht blocken die Implementierung)
 
 - [ ] Ambiguous band for a **new** customer whose name matches several sized leads: rule taken =
-  **newest lead (max `Id`) wins**, no error, nothing else touched. Flag to @po-agent if the user
-  wants oldest-wins or "only when exactly one".
-  **Re-measured against the corrected design (round 2):** ambiguity is only possible where **several
-  Leads convert to one `ConvertedAccountId` in the same batch**. The handler writes
-  `bandOfLead.put(ConvertedAccountId) = band` while iterating `after`, so the winner is whichever
-  record the save order delivers **last** — not the newest Lead. PO accepted newest-wins and requires
-  the tie-break to be named in the release note, so the handler must either pick
-  `max(Lead.Id)` per Account Id explicitly, or the release note must state "letz-converted lead wins"
-  exactly as observed. An unspecified order is neither.
+      **newest lead (max `Id`) wins**, no error, nothing else touched. Flag to @po-agent if the user
+      wants oldest-wins or "only when exactly one".
+      **Re-measured against the corrected design (round 2):** ambiguity is only possible where **several
+      Leads convert to one `ConvertedAccountId` in the same batch**. The handler writes
+      `bandOfLead.put(ConvertedAccountId) = band` while iterating `after`, so the winner is whichever
+      record the save order delivers **last** — not the newest Lead. PO accepted newest-wins and requires
+      the tie-break to be named in the release note, so the handler must either pick
+      `max(Lead.Id)` per Account Id explicitly, or the release note must state "letz-converted lead wins"
+      exactly as observed. An unspecified order is neither.
 - [x] **SUPERSEDED by the amendment above — there is no name matching left.** The PO decision is
-  kept as the reason, not as a rule: `Lead.ConvertedAccountId` names the customer exactly, so nothing
-  is ambiguous and nothing is guessed. The surviving testable shape is the **regression** in R-5 below:
-  an Account created by import or manual creation whose `Name` matches a sized Lead stays **blank**.
-  (Original PO decision, comment 23806, REJECTED as a business rule: on an **ambiguous name the
-  carry-over is skipped, nothing is guessed**, and the conversion/attach still saves cleanly —
-  writing a band onto a customer the colleague did not aim at puts a fact on a possibly unrelated
-  record, and a wrong band is worse than an empty one. The reason stands; the B-side / A-side name
-  rules and the two-Accounts-one-Name fixture are superseded, see R-5.)
+      kept as the reason, not as a rule: `Lead.ConvertedAccountId` names the customer exactly, so nothing
+      is ambiguous and nothing is guessed. The surviving testable shape is the **regression** in R-5 below:
+      an Account created by import or manual creation whose `Name` matches a sized Lead stays **blank**.
+      (Original PO decision, comment 23806, REJECTED as a business rule: on an **ambiguous name the
+      carry-over is skipped, nothing is guessed**, and the conversion/attach still saves cleanly —
+      writing a band onto a customer the colleague did not aim at puts a fact on a possibly unrelated
+      record, and a wrong band is worse than an empty one. The reason stands; the B-side / A-side name
+      rules and the two-Accounts-one-Name fixture are superseded, see R-5.)
 - [ ] F-3 layout variants: org step, owner @devops-agent before Release.
 - [ ] F-2 OWD/ownership: owner @tester-agent (E2E, non-owner), outcome may move the story back to
-  @po-agent if the fill is refused.
+      @po-agent if the fill is refused.
 
 ## ⚠️ F-6 (Review round 1) — a swallowed write can hide another ticket's rule
 
@@ -308,7 +315,7 @@ re-evaluates the **Account-level `before update` trigger (`AccountLockGuard`) an
 Account Validation Rules that exist on `origin/master`** (`LockReason_PflichtBeiGesperrt`,
 `Wartungsvertrag_End_Before_Start`). A rejection there must **not** be swallowed silently: a
 blanket `catch (Exception)` also eats a genuine rule violation or a governor-limit fault, which
-leaves a customer created *without* its band and nothing on record. Narrow the catch by
+leaves a customer created _without_ its band and nothing on record. Narrow the catch by
 **measuring** what an ownership refusal actually raises (the Tester's non-owner save names it) and
 re-throw anything that is not an access refusal. Typed catch names were probed and do **not**
 compile in anonymous Apex on Test-Org (`InvalidAccessFault`, `InsufficientAccessToDataFault`,
@@ -342,12 +349,12 @@ Evidence read off the org, not off the CI log (`sf data query -t -q "… ApexTes
 ApexTestRunResultId = '05mWU000002dNrdYAE' AND Outcome != 'Pass'"`; queue item `(6/10)` at
 2026-11-24 12:10 CET):
 
-| failing method | measured message |
-|---|---|
-| `bulk_conversions_carryEveryBand` | `ConvertLead failed … LIMIT_EXCEEDED, "There was an error converting the lead"` (200 conversions) |
-| `convert_existingCustomer_blank_fillsBand` | `Expected: 001WU00002M3a4nYAB, Actual: 001WU00002M3a4oYAB` |
-| `convert_existingCustomer_withSize_neverOverwritten` | `Expected: 001WU00002M3a4pYAB, Actual: 001WU00002M3a4qYAB` |
-| `editOfConvertedLead_neverRefills` | `Update failed … CANNOT_UPDATE_CONVERTED_LEAD, cannot reference converted lead` |
+| failing method                                       | measured message                                                                                  |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `bulk_conversions_carryEveryBand`                    | `ConvertLead failed … LIMIT_EXCEEDED, "There was an error converting the lead"` (200 conversions) |
+| `convert_existingCustomer_blank_fillsBand`           | `Expected: 001WU00002M3a4nYAB, Actual: 001WU00002M3a4oYAB`                                        |
+| `convert_existingCustomer_withSize_neverOverwritten` | `Expected: 001WU00002M3a4pYAB, Actual: 001WU00002M3a4qYAB`                                        |
+| `editOfConvertedLead_neverRefills`                   | `Update failed … CANNOT_UPDATE_CONVERTED_LEAD, cannot reference converted lead`                   |
 
 - **R-1 The two attach fixtures never hit the fixture's customer.** Both sides of the failed assert
   are Account Ids (`001` prefix), so `Database.convertLead` attached to a **different** customer than
@@ -369,9 +376,9 @@ ApexTestRunResultId = '05mWU000002dNrdYAE' AND Outcome != 'Pass'"`; queue item `
   open the savepoint only when `write` is non-empty; if both trip → the carry must not open a savepoint
   per event at all. Do **not** shrink the fixture to 20 records to get green: the count is a criterion.
 - **R-4 Org read-backs, both verified 2026-11-24:** `SELECT Id, Name FROM ApexTrigger WHERE Name LIKE
-  '%CompanySize%'` → **only** `LeadCompanySizeCarry` (`01qWU00000AvdjeYAB`) — the Account trigger is
+'%CompanySize%'` → **only** `LeadCompanySizeCarry` (`01qWU00000AvdjeYAB`) — the Account trigger is
   gone in repo **and** org. `SELECT Id, Company FROM Lead WHERE IsConverted = true AND
-  ConvertedAccountId != null` → **1** record (`Testfirma394Converted`); `ConvertedAccountId = null` →
+ConvertedAccountId != null` → **1** record (`Testfirma394Converted`); `ConvertedAccountId = null` →
   **0** records, so "every conversion names its customer by Id" is exercised on **0 records =
   untested**, not `PASS`. The whole carry is still only exercisable on fixtures (Test-Org 66 Leads /
   0 sized, Prod 22/0 — the PO's gap).
@@ -394,7 +401,7 @@ Read back myself: `gh pr checks 196` on run `45388344584` → Lint pass, README 
   - Account `TEST-476-ProbeAttach` (blank band) + Lead carrying `more_than_250`, converted with
     `Database.LeadConvert` **`lc.setAccountId(<the existing Account's Id>)`** →
     `ok=true sameRecord=true returned=001WU00002M3ibWYAR fixture=001WU00002M3ibWYAR accounts=1
-    bands=001WU00002M3ibWYAR/more_than_250` — the conversion **reuses** the existing customer and the
+bands=001WU00002M3ibWYAR/more_than_250` — the conversion **reuses** the existing customer and the
     handler **filled its band** ⇒ **AC 5 is exercisable in Apex.**
   - Same shape, existing Account holds `51_to_250`, Lead carries `up_to_10` →
     `sameRecord=true accounts=1 bands=…/51_to_250` — **not overwritten**, the PO's conflicting pair ⇒
@@ -489,12 +496,23 @@ All four items from §Review round 2 are closed with measurements taken in Test-
 - **AC 12 is platform-enforced on the Apex path:** `update` of a converted Lead dies with
   `CANNOT_UPDATE_CONVERTED_LEAD`. The test asserts the refusal plus the band read-back; it no
   longer pretends an edit can succeed.
-- **`LIMIT_EXCEEDED` in the bulk fixture belongs to the org, not to the handler:** 10
-  `convertLead` calls in one save save, 20 die, 200 die (measured by running the same fixture
-  at each size). The handler stays at ONE SOQL plus ONE bulkified update per after-update
-  event at any size.
+- **`LIMIT_EXCEEDED` in the bulk fixture is a query budget, not an org limit** (corrected
+  where this note stands; measured 2026-11-24 with `scratch/probe_limit476b.cls` through
+  `sf apex run`): ONE `convertLead` call over 25 rows saves 25/25; 30 SEPARATE
+  `convertLead` calls in the same transaction save 5 and the remaining 25 die
+  `LIMIT_EXCEEDED` ("There was an error converting the lead"); one call over 120 rows dies
+  with the platform's own words, `System.LimitException: Too many SOQL queries: 101`.
+  The 100-query cap of the enclosing Apex transaction is spent per conversion **event** by
+  the two Lead triggers that exist in the org — master `LeadDuplicateGuard` (before insert,
+  before update; its SCRUM-386 header states 1 SOQL, 0 DML per invocation) and my
+  `LeadCompanySizeCarry` (1 SOQL + 1 bulkified update) — plus `convertLead`'s own record
+  work. Nothing org-limited was reached; how many conversions fit depends on what the
+  transaction had already spent. `convertedStatus` must be `'Closed - Converted'`
+  (`'_Converted'` dies `INVALID_STATUS`, an artefact of the probe, not of the platform).
 - **The PO's tie-break is now deterministic.** Several Leads in one save may name the same
-  customer (reachable through the UI attach path, not through Apex `convertLead` — see above).
+  customer — reachable through the UI attach path AND through Apex `convertLead` with
+  `setAccountId` (measured in round 4: `sameRecord=true`, one Account reused; see the
+  corrected note above).
   The winner is the Lead with the highest `Id` (Salesforce Ids increase with creation) — the
   PO's accepted "newest lead wins" — never save order, which the platform does not define.
   The release note will state it in words; no claim is made here about a release note that does
