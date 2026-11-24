@@ -258,3 +258,28 @@ Account --target-org Test-Org`: `up_to_10 / 11_to_50 / 51_to_250 / more_than_250
   `getDetailedStackTrace(Int)`; `QueryAll` / `DeleteAll` namespaces do not exist in an
   anonymous `sf apex run` block (`QueryAll` has only `countFrom`), and `s = delete s;`
   does not compile there — clean up probe records with `sf data delete record` per Id.
+
+## Round 6 - corrections that stand as measured facts (2026-11-24 15:3x)
+
+- Verdict oracle for the live code: `sf apex run test --tests SCRUM476CompanySizeTest --tests
+SCRUM476CompanySizeFlsTest -o Test-Org --wait 25 -r json --code-coverage` -> 16 tests, 16 passing,
+  passRate 100%, outcome Passed, testRunId **707WU00001WHmgq**, testStartTime 2026-11-24T14:25:21Z,
+  testExecutionTime 81032 ms. The run-id `707WU00001WHiMh` (74096 ms) was an EARLIER run of the same
+  suite; do not quote it for this deployment. Payload path: `result.summary`.
+- The org really runs the round-5 file: `ApexClass` (Tooling API) `SCRUM476CompanySizeTest`,
+  LastModifiedDate 2026-11-24T13:37:12, Body 25932 chars; `tieBreak_twoLeadsOneCustomer_newestLeadWins`
+  x1, `inOneConversionCall` x1, `withinTheOrgsBound` x0, `attachLeadTo` x5, `setAccountId` x6,
+  `getAccountId` x13. Deploy `0AfWU00000dNmBy0AK` Succeeded, 2 components, 0 failures.
+- `ApexClass` columns: `Name, Body, BodyCrc, Id, LengthWithoutComments, Status, Created*, LastModified*,
+ApiVersion, NamespacePrefix, IsValid, SystemModstamp`. There is NO `Active`, `SobjectName`, `LastUpdated`
+  or `Size` column - `sf sobject describe --sobject ApexClass` says so in one call.
+- Coverage payload entries carry `name`, `totalLines`, `totalCovered`, `coveredPercent`, `lines{lineNo:0|1}`
+  (not `className`): CompanySizeCarryHandler id 01pWU00000TkuL3YAJ 25/28 = 89 %, uncovered lines **61,
+  93, 97** = the non-flip `continue` (AC 12) and the `catch`/`Database.Rollback(carried)` refusal path
+  (F-2) -> "a refusal never aborts a conversion" is NOT exercised by any Apex test, still open.
+  LeadCompanySizeCarry id 01qWU00000AvdjeYAB 2/2 = 100 %.
+- CI: all four jobs completed/success on PR head `b03e83d` (run 45406013065): Prod-Org Drift Gate
+  13:41:42Z->13:53:35Z, Lint 46 s, README 8 s, Smoke 5m19s. The earlier "Drift pending" claim was STALE.
+- `sf data delete record -i <id>` WITHOUT `-s <object>` fails EVERY call (134/134 here) and leaves the
+  records: probe cleanup must be `sf data delete record -i <id> -s Lead|Account`. After the corrected
+  loop: 94 Leads + 43 Accounts deleted, 0 records match TEST-476%.
