@@ -67,7 +67,32 @@ populate `NumberOfEmployees`, and the Tester must not read "no employee field" a
    never commit a layout retrieved from the org (it would carry Test-Org-only fields into the Prod
    Drift Gate). Leave the Sales/Marketing/Support variants untouched (§ADR-5).
 
-3. **Trigger A (new customer)** — `force-app/main/default/triggers/AccountCompanySizeCarry.trigger`
+> **AMENDMENT 2026-11-24, review round 2 (user decision — items 3 to 5 below are superseded).**
+> A lead conversion does NOT change `Lead.Company`. It flips `Lead.IsConverted` false → true and
+> writes `Lead.ConvertedAccountId`, and that **Id names the customer exactly** — so there is no
+> name matching and no ambiguity anywhere. Corrected spec:
+>
+> - **No Account trigger, no name lookups.** `AccountCompanySizeCarry` is deleted from repo and org.
+> - **One trigger:** `LeadCompanySizeCarry on Lead (after update)` →
+>   `CompanySizeCarryHandler.carryConvertedLeads(List<Lead> after, Map<Id, Lead> before)`.
+> - **Act only on a conversion:** `IsConverted` true in `after`, false in `before`,
+>   `ConvertedAccountId != null`. An edit of an already converted lead changes nothing (AC 12).
+> - **Fill that one Account, only while blank:** one SOQL
+>   `SELECT Id, Company_Size__c FROM Account WHERE Id IN :ids AND Company_Size__c = null`,
+>   then ONE bulkified `update` of fresh sObjects (Id + the written field only, house SCRUM-459).
+> - **Savepoint:** `Savepoint sp = Database.setSavepoint();` / `Database.Rollback(sp)` — both
+>   exist in this org (measured 2026-11-24: `setSavepoint()` compiles, `Rollback(sp)` undid an
+>   `update`). The earlier "no rollback primitive" note probed the wrong shapes.
+> - **Tests:** `Database.convertLead` for a new customer, and for an existing customer **with**
+>   and **without** a size.
+> - **Why item 3 was wrong:** keying the Account-insert path on `Lead.Company` (= a Name) wrote a
+>   band onto ANY new Account whose Name matched a sized Lead — imports and manual creation. Test-Org
+>   holds 268 Accounts under 106 distinct Names, 19 Name-groups with duplicates (up to 35 per Name),
+>   so that violated "nothing else happens when a size is set".
+>
+> ---
+>
+> *(superseded round-1 spec, kept for the record:)* 3. **Trigger A (new customer)** — `force-app/main/default/triggers/AccountCompanySizeCarry.trigger`
    `trigger AccountCompanySizeCarry on Account (after update, after insert)` … only the insert
    branch acts. `<apiVersion>62.0</apiVersion>`, `<status>Active</status>` (M7).
 

@@ -149,3 +149,29 @@ field -> PS pair + layout -> assign both PS (`sf org assign permset`) -> handler
   `Error (ALREADY_IN_PROCESS): Test already enqueued 01pWU00000TkuDu` — the org had MY
   deploy's RunSpecifiedTests job enqueued at the same time. One Apex test run per org at a
   time; the CI step needs a re-run with the org test queue free.
+
+## Review round 2 (2026-11-24, user decision: conversion = IsConverted flip + ConvertedAccountId)
+
+Measured in Test-Org, this round, each line with the command that produced it:
+
+- `Lead` carries `IsConverted` and `ConvertedAccountId`:
+  `sf sobject describe -s Lead -o Test-Org --json` (fields list read with jq).
+- `Database.setSavepoint()` EXISTS (the user was right, my earlier note was wrong):
+  scratch `probe476_savepoint.cls` — `Savepoint sp = Database.setSavepoint();` compiles.
+  `Database.rollback(sp, 1)` does NOT ("Method does not exist or incorrect signature: void rollback(Savepoint, Integer)");
+  `Database.Rollback(sp)` compiles AND rolls the update back (probe script ran to completion,
+  the read-back Name stayed the pre-update value). Shapes that failed before and were never this API:
+  `Savepoint.set()/pop()`, a `SAVEPOINT` statement.
+- `System.Math.fmod` does NOT exist ("Method does not exist or incorrect signature: void fmod(Integer, Integer)
+  from the type System.Math", deploy report of phase5). Cycle the band list with an index instead.
+- `Opportunity` has NO `AccountName` field (measured earlier, report 0AfWU00000dNGSE0A4): seed with
+  `AccountId`, count by `Name`.
+- Deleting an org trigger: `sf project delete source -o Test-Org -m "ApexTrigger:AccountCompanySizeCarry" -r -l NoTestRun`
+  -> Deploy ID 0AfWU00000dNUAD0A4, Status Succeeded, 1 component. Verified gone with
+  `sf data query -t -q "SELECT Name FROM ApexTrigger" -o Test-Org --json` (path `.result.records`;
+  only `LeadCompanySizeCarry` matches CompanySize).
+- New handler API live: anonymous script calling `CompanySizeCarryHandler.carryConvertedLeads(new List<Lead>(), new Map<Id,Lead>())`
+  ran to completion (the old class has no such method -> compile would fail). Deploy IDs:
+  handler 0AfWU00000dNURx0AO, trigger 0AfWU00000dNUTZ0A4, tests 0AfWU... (phase5 Succeeded, 3 components).
+- `convertLead` LINKS an existing Account by Name: with one existing Account named like the Lead's
+  Company, `res.getAccountId()` == that existing Account Id (asserted in the test, not assumed).

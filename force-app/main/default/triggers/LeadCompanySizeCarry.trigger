@@ -1,18 +1,21 @@
 /**
- * [SCRUM-476] Lead-Trigger: attaching a lead to an EXISTING customer fills that
- * customer only while it is still blank (AC4, AC5, AC12). The attach saves ONLY the
- * Lead — the Account record is not part of that save — so no Account-side code can
- * see the event and the fill has to live here (design ADR-4).
+ * [SCRUM-476] Lead-Trigger: the ONLY carry-over point. A conversion flips
+ * Lead.IsConverted false -> true and names the customer by Lead.ConvertedAccountId —
+ * an exact Id, no name matching, no ambiguity (user decision 2026-11-24, ADR-4 round 2).
  *
- * ADR-6: the attach is a CHANGE of Lead.Company, not every lead save. Editing a
- * sized lead afterwards must never refill a customer (AC12).
- * after update only: Trigger.oldMap holds the pre-save Company (house proof:
- * OpportunityFollowupMonitorTrigger, after update + oldMap, deployed green).
- * Coexists with LeadDuplicateGuard (before insert/update) — different phase, no
- * ordering dependency. Handler: CompanySizeCarryHandler.
+ * The Account-side trigger of the first round (AccountCompanySizeCarry) is deleted: it
+ * keyed on Lead.Company, so ANY new Account whose Name matched a sized Lead got the band —
+ * with 19 Name-groups carrying duplicates in Test-Org (up to 35 Accounts in one Name) that
+ * wrote employee bands onto records nobody aimed at.
+ *
+ * after update only: Trigger.oldMap carries the pre-save IsConverted, which is what makes
+ * a flip distinguishable from an edit of an already converted lead (AC12). House proof for
+ * after update + oldMap: OpportunityFollowupMonitorTrigger, deployed green.
+ * Coexists with LeadDuplicateGuard (before insert/update) — different phase, no ordering
+ * dependency. Handler: CompanySizeCarryHandler.
  */
-trigger LeadCompanySizeCarry on Lead (before update, after update) {
+trigger LeadCompanySizeCarry on Lead (after update) {
     if (Trigger.isAfter && Trigger.isUpdate) {
-        CompanySizeCarryHandler.fillBlankCustomers(Trigger.new, Trigger.oldMap);
+        CompanySizeCarryHandler.carryConvertedLeads(Trigger.new, Trigger.oldMap);
     }
 }
