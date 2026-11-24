@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-476 Phase 1: the Picklist field on the standard Account (the customer).
+     Deployed ALONE first: the Permission Sets and the Account layout REFERENCE the
+     field, so they would fail against a not-yet-existing field (house order
+     SCRUM-430/382/470/471/472). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>Account.Company_Size__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>

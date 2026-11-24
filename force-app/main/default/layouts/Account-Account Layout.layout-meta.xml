@@ -17,6 +17,12 @@
                 <behavior>Required</behavior>
                 <field>Name</field>
             </layoutItems>
+            <!-- SCRUM-476: Company Size (employee-count band carried once from the lead at
+                 conversion, afterwards hand-maintained: set / change / clear = Edit) -->
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>Company_Size__c</field>
+            </layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>
                 <field>Is_Key_Account__c</field>

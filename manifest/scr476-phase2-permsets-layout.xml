@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-476 Phase 2: the components that REFERENCE the field — the Read/Set
+     Permission Set pair (house SCRUM-471 pattern on Account) and the layout delta
+     (one Edit item directly after the `Name` item of the first "Account Details"
+     section). The layout file on this branch = master's file + this one item only:
+     an org-retrieved layout carries Test-Org-only fields and reddens the Prod-Org
+     Drift Gate. The Sales/Marketing/Support layout variants stay untouched (ADR-5). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM476_CompanySize_Read</members>
+        <members>SCRUM476_CompanySize_Set</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Account-Account Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>67.0</version>
+</Package>

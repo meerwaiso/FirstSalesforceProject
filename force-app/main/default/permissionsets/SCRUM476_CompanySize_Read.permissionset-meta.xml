@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Account.Company_Size__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM476_CompanySize_Read</label>
+    <description>SCRUM-476 Read-FLS: the customer Company Size band is visible to everyone who may open a customer record (Sales and Service staff). Read only, no edit, no object CRUD. Profiles unchanged.</description>
+</PermissionSet>
