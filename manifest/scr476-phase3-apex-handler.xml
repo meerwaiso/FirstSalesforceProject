@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-476 Phase 3: the handler ALONE. The two triggers COMPILE against it, so
+     it must be live before they deploy (house rule: helper before consumer,
+     SCRUM-430/382/472). Deployed with -l NoTestRun: no test class of this ticket
+     exists in the org yet. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>CompanySizeCarryHandler</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>
