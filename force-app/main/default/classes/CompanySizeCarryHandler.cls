@@ -5,9 +5,11 @@
  *
  * ADR-4 / two entries, two save events:
  *   A) carryToNewAccounts  — a NEW customer is an Account INSERT. The band is looked
- *      up by name (Lead.Company is the name-based reference to Account.Name) and
- *      assigned IN PLACE in the after-save, so there is no second DML statement and
- *      no recursion.
+ *      up by name (Lead.Company is the name-based reference to Account.Name). Measured
+ *      in this org: writing an after-insert record is refused, so the band is written by
+ *      ONE bulkified update of fresh sObjects (Id + the written field only, house
+ *      SCRUM-459) — that update re-fires this trigger, where the
+ *      Company_Size__c = null filter stops it.
  *   B) fillBlankCustomers  — ATTACHING a lead to an existing customer saves ONLY the
  *      Lead: the Account record is not part of that save, so no Account-side code can
  *      see the event. The fill is one bulkified update, SavePoint-wrapped, because the
@@ -36,16 +38,33 @@ public without sharing class CompanySizeCarryHandler {
     public static void carryToNewAccounts(List<Account> newAccounts) {
         List<Account> blank = new List<Account>();
         Set<String> names = new Set<String>();
+        // PO decision (SCRUM-476 comment 23806): an AMBIGUOUS name is skipped, nothing
+        // is guessed. inBatch counts the name inside the inserted batch — two new customers
+        // with one Name in one save cannot be told apart, so neither may be written.
+        Map<String, Integer> inBatch = new Map<String, Integer>();
         for (Account acct : newAccounts) {
-            if (acct.Company_Size__c == null
-                && acct.Name != null
-                && !carried.contains(acct.Id)) {
-                blank.add(acct);
-                names.add(acct.Name.toLowerCase());
+            if (acct.Company_Size__c == null && acct.Name != null) {
+                String nk = acct.Name.toLowerCase();
+                inBatch.put(nk, inBatch.containsKey(nk) ? inBatch.get(nk) + 1 : 1);
+                if (!carried.contains(acct.Id)) {
+                    blank.add(acct);
+                    names.add(nk);
+                }
             }
         }
         if (blank.isEmpty()) {
             return; // band already set or nothing named: the save stays query-free
+        }
+        Set<String> unambiguous = new Set<String>();
+        for (String n : names) {
+            if (inBatch.get(n) > 1) {
+                continue; // repeated in this batch -> ambiguous
+            }
+            unambiguous.add(n);
+        }
+        names = unambiguous;
+        if (names.isEmpty()) {
+            return;
         }
 
         Map<String, String> band = bandsOfLeadsNamed(names);
@@ -62,10 +81,30 @@ public without sharing class CompanySizeCarryHandler {
         // only, house SCRUM-459) instead. The re-fire of AccountCompanySizeCarry on that update
         // is stopped by the Company_Size__c = null filter, so there is no recursion.
         List<Account> fill = new List<Account>();
+        // PO decision (comment 23806), A-side: the inserted record is NOT yet visible to
+        // SOQL in an after-save (measured 2026-11-24), so this count is the number of OTHER
+        // Accounts carrying the same Name. >= 2 others -> the name is ambiguous, skip.
+        // == 1 other -> what looks like a new customer is in fact a second customer on an
+        // existing name: apply the fill-only-if-blank rule (this record is blank by filter),
+        // never guess which of the same-name customers the colleague meant.
+        Map<String, Integer> sameName = new Map<String, Integer>();
+        for (Account acct : [SELECT Id, Name FROM Account WHERE Name IN :names]) {
+            String k = acct.Name == null ? '' : acct.Name.toLowerCase();
+            if (k != '') {
+                sameName.put(k, sameName.containsKey(k) ? sameName.get(k) + 1 : 1);
+            }
+        }
         for (Account acct : blank) {
             String key = acct.Name.toLowerCase();
             if (!band.containsKey(key)) {
                 continue;
+            }
+            if (inBatch.get(key) > 1) {
+                continue; // ambiguous inside the batch
+            }
+            Integer others = sameName.containsKey(key) ? sameName.get(key) : 0;
+            if (others >= 2) {
+                continue; // ambiguous against the org
             }
             Account fresh = new Account(Id = acct.Id, Company_Size__c = band.get(key));
             fill.add(fresh);
@@ -79,7 +118,15 @@ public without sharing class CompanySizeCarryHandler {
                 carried.add(acct.Id);
             }
         } catch (Exception e) {
-            // Refused write: the new customer simply starts without a size (AC 2/AC 10).
+            // F-6 (review round 1): ONLY an access refusal may be swallowed. That update
+            // re-evaluates AccountLockGuard and the two Account Validation Rules that live
+            // on master, so a blanket catch would eat a genuine rule violation and leave a
+            // customer without its band and nothing on record.
+            if (!isAccessRefusal(e)) {
+                throw e;
+            }
+            // Access refusal (the converter does not own/carry that record): the new
+            // customer simply starts without a size (AC 2 / AC 10).
         }
     }
 
@@ -123,20 +170,33 @@ public without sharing class CompanySizeCarryHandler {
         }
 
         Set<String> names = band.keySet(); // Apex Map.keySet() -> Set<String> (measured)
-        List<Account> write = new List<Account>();
-        // The blank filter is server-side: a customer that already carries a band is
-        // never even selected, so it can never be overwritten (AC 4).
-        for (Account acct : [
+        // PO decision (comment 23806), B-side: group the candidates by Name FIRST. A name
+        // that matches two or more blank customers is ambiguous — the colleague aimed at one
+        // customer, the name cannot tell which, so NONE of them may be written.
+        List<Account> candidates = [
             SELECT Id, Name, Company_Size__c
             FROM Account
             WHERE Company_Size__c = null AND Name IN :names
-        ]) {
-            if (acct.Name == null
+        ];
+        Map<String, Integer> blanksPerName = new Map<String, Integer>();
+        for (Account acct : candidates) {
+            String k = acct.Name == null ? '' : acct.Name.toLowerCase();
+            if (k != '') {
+                blanksPerName.put(k, blanksPerName.containsKey(k) ? blanksPerName.get(k) + 1 : 1);
+            }
+        }
+        List<Account> write = new List<Account>();
+        for (Account acct : candidates) {
+            String key = acct.Name == null ? '' : acct.Name.toLowerCase();
+            if (key == ''
                 || carried.contains(acct.Id)
-                || !band.containsKey(acct.Name.toLowerCase())) {
+                || !band.containsKey(key)) {
                 continue;
             }
-            acct.Company_Size__c = band.get(acct.Name.toLowerCase());
+            if (blanksPerName.get(key) > 1) {
+                continue; // ambiguous name -> skip every match, nothing guessed
+            }
+            acct.Company_Size__c = band.get(key);
             write.add(acct);
         }
         if (write.isEmpty()) {
@@ -157,8 +217,42 @@ public without sharing class CompanySizeCarryHandler {
                 carried.add(acct.Id);
             }
         } catch (Exception e) {
-            // F-2: refused write — deliberately swallowed. The band stays empty for this
-            // customer; the lead save (and with it the conversion) continues unharmed.
+            // F-6 (review round 1): swallowed ONLY if it is an access refusal. Anything
+            // else — AccountLockGuard, the two Account Validation Rules on master
+            // (LockReason_PflichtBeiGesperrt, Wartungsvertrag_End_Before_Start), a
+            // governor-limit fault — is re-thrown, so a rule violation cannot hide behind
+            // a customer that exists without its band.
+            if (!isAccessRefusal(e)) {
+                throw e;
+            }
+            // F-2: refused because of access — the band stays empty for this customer and
+            // the lead save (and with it the conversion) continues unharmed.
         }
+    }
+
+    // Discriminating an access refusal WITHOUT a typed catch: the typed names
+    // (InvalidAccessFault / InsufficientAccessToDataFault / InsufficientAccessToDataException
+    // / InvalidAccessException / AccessFault) do not compile in Apex on Test-Org
+    // (scripts/apex-probe.sh, five probes 2026-11-24), so the runtime type string decides.
+    // PROBE-476 (test class) measures what an FLS write refusal actually raises; anything
+    // outside these signatures is NOT an access refusal and is re-thrown.
+    // Public so SCRUM476CompanySizeTest (probe_accessRefusalIsRecognised) can measure that
+    // the discriminator really recognises a live FLS write refusal.
+    public static Boolean isAccessRefusal(Exception e) {
+        // Exception has no getType() on this org's Apex (measured by the deploy report of
+        // 0AfWU00000dNP7J0AW: "Method does not exist ... void getType() from the type
+        // Exception"), and the typed catch names do not compile either (five probes) — so
+        // the SOAP fault text carried in getMessage() decides.
+        String m = e == null ? '' : String.valueOf(e.getMessage());
+        if (m == '') {
+            return false;
+        }
+        m = m.toUpperCase(); // indexOf is case-sensitive; the SOAP fault text is not fixed case
+        return m.indexOf('INSUFFICIENT') >= 0
+            || m.indexOf('NOT ENOUGH PERMISSIONS') >= 0
+            || m.indexOf('NO SUCH COLUMN') >= 0
+            || m.indexOf('INACCESSIBLE') >= 0
+            || m.indexOf('NOT WRITEABLE') >= 0
+            || m.indexOf('READ ONLY') >= 0;
     }
 }
