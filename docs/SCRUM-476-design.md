@@ -281,24 +281,22 @@ populate `NumberOfEmployees`, and the Tester must not read "no employee field" a
 - [ ] Ambiguous band for a **new** customer whose name matches several sized leads: rule taken =
   **newest lead (max `Id`) wins**, no error, nothing else touched. Flag to @po-agent if the user
   wants oldest-wins or "only when exactly one".
-- [x] **Two Accounts sharing one `Name` — PO decision (SCRUM-476 comment 23806, REJECTED as a
-  business rule):** on an **ambiguous name the carry-over is skipped, nothing is guessed**, and the
-  conversion/attach still saves cleanly. Writing a band onto a customer the colleague did not aim at
-  puts a fact on a possibly unrelated record, and a wrong band is worse than an empty one. This is
-  now a **hard requirement**, not an open point:
-  - **B-side (attach):** group the `Account WHERE Name IN :names` result by `Name`; write only where
-    the group holds **exactly one** blank Account. Two or more same-name customers ⇒ skip all of them.
-  - **A-side (new customer):** a name appearing **more than once in the inserted batch** is ambiguous
-    ⇒ skip. A new customer whose name also matches **pre-existing** customers is ambiguous too:
-    one extra SOQL (`SELECT Id, Name FROM Account WHERE Name IN :names`) counts matches per name —
-    remember the record being inserted is not yet visible to SOQL in an after-save, so **count ≥ 2
-    ⇒ skip**, and count == 1 for an existing record means the "new customer" was in fact an existing
-    customer ⇒ apply the fill-only-if-blank rule instead.
-  - **Testable shape (must not rest on a zero count):** fixtures carry **two `Account`s with one
-    identical `TEST-476-` Name, both blank, plus one sized lead** → expected after the attach:
-    **both still blank**. Tester additionally counts Accounts sharing a Name in the org; a count of
-    0 makes the criterion `UNTESTED`, not `PASS`, and no release note may claim the ambiguity is
-    handled.
+  **Re-measured against the corrected design (round 2):** ambiguity is only possible where **several
+  Leads convert to one `ConvertedAccountId` in the same batch**. The handler writes
+  `bandOfLead.put(ConvertedAccountId) = band` while iterating `after`, so the winner is whichever
+  record the save order delivers **last** — not the newest Lead. PO accepted newest-wins and requires
+  the tie-break to be named in the release note, so the handler must either pick
+  `max(Lead.Id)` per Account Id explicitly, or the release note must state "letz-converted lead wins"
+  exactly as observed. An unspecified order is neither.
+- [x] **SUPERSEDED by the amendment above — there is no name matching left.** The PO decision is
+  kept as the reason, not as a rule: `Lead.ConvertedAccountId` names the customer exactly, so nothing
+  is ambiguous and nothing is guessed. The surviving testable shape is the **regression** in R-5 below:
+  an Account created by import or manual creation whose `Name` matches a sized Lead stays **blank**.
+  (Original PO decision, comment 23806, REJECTED as a business rule: on an **ambiguous name the
+  carry-over is skipped, nothing is guessed**, and the conversion/attach still saves cleanly —
+  writing a band onto a customer the colleague did not aim at puts a fact on a possibly unrelated
+  record, and a wrong band is worse than an empty one. The reason stands; the B-side / A-side name
+  rules and the two-Accounts-one-Name fixture are superseded, see R-5.)
 - [ ] F-3 layout variants: org step, owner @devops-agent before Release.
 - [ ] F-2 OWD/ownership: owner @tester-agent (E2E, non-owner), outcome may move the story back to
   @po-agent if the fill is refused.
@@ -337,6 +335,52 @@ value, measured — not on a name guessed from memory.
    both still blank after the attach. Without it the criterion is untested (count 0 ⇒ not `PASS`).
 5. Keep `docs/RELEASE-NOTES.md` free of AC 9 (UI-only) and of any claim that the ambiguity or the
    "refusal never aborts" guarantee is proven, until the Tester watched a real convert/attach save.
+
+## Review round 2 (PR #196, head `740b292`) — measured in Test-Org, verdict REJECTED
+
+Evidence read off the org, not off the CI log (`sf data query -t -q "… ApexTestResult WHERE
+ApexTestRunResultId = '05mWU000002dNrdYAE' AND Outcome != 'Pass'"`; queue item `(6/10)` at
+2026-11-24 12:10 CET):
+
+| failing method | measured message |
+|---|---|
+| `bulk_conversions_carryEveryBand` | `ConvertLead failed … LIMIT_EXCEEDED, "There was an error converting the lead"` (200 conversions) |
+| `convert_existingCustomer_blank_fillsBand` | `Expected: 001WU00002M3a4nYAB, Actual: 001WU00002M3a4oYAB` |
+| `convert_existingCustomer_withSize_neverOverwritten` | `Expected: 001WU00002M3a4pYAB, Actual: 001WU00002M3a4qYAB` |
+| `editOfConvertedLead_neverRefills` | `Update failed … CANNOT_UPDATE_CONVERTED_LEAD, cannot reference converted lead` |
+
+- **R-1 The two attach fixtures never hit the fixture's customer.** Both sides of the failed assert
+  are Account Ids (`001` prefix), so `Database.convertLead` attached to a **different** customer than
+  the fixture held. Until the test asserts `res.getAccountId() == fixtureAccountId` and reads the band
+  back on **that** record, AC 4 ("never overwritten", PO's conflicting pair) and AC 5 ("blank existing
+  customer filled") have **no automated test at all** — the PO's "measured, not assumed" rule.
+- **R-2 A converted Lead cannot be updated in this org**: `update` raises
+  `CANNOT_UPDATE_CONVERTED_LEAD`. AC 12/13 ("an edit of an already converted lead changes nothing")
+  is therefore **platform-enforced on the Apex path** and only E2E-exercisable on the UI path; the
+  flip-gate stays (REST/DML callers that clear `IsConverted` reach it), but the Apex method that
+  pretends to edit a converted Lead can never run. Delete it or replace it with an assertion on the
+  `CANNOT_UPDATE_CONVERTED_LEAD` fault.
+- **R-3 The bulk criterion (AC 6/7) is red with `LIMIT_EXCEEDED` inside `convertLead` at 200
+  conversions.** Cause **not yet measured** — hypothesis: `Database.setSavepoint()` is opened once per
+  conversion event by the handler and `convertLead` manages its own rollback, so the per-transaction
+  savepoint allowance runs out. Discriminator, one test class, both directions: N conversions onto an
+  **existing** Account (savepoint + SOQL + `update`) vs N conversions whose `Company` names **no**
+  Account (savepoint + SOQL, `update` skipped because `write` is empty). If only the first trips →
+  open the savepoint only when `write` is non-empty; if both trip → the carry must not open a savepoint
+  per event at all. Do **not** shrink the fixture to 20 records to get green: the count is a criterion.
+- **R-4 Org read-backs, both verified 2026-11-24:** `SELECT Id, Name FROM ApexTrigger WHERE Name LIKE
+  '%CompanySize%'` → **only** `LeadCompanySizeCarry` (`01qWU00000AvdjeYAB`) — the Account trigger is
+  gone in repo **and** org. `SELECT Id, Company FROM Lead WHERE IsConverted = true AND
+  ConvertedAccountId != null` → **1** record (`Testfirma394Converted`); `ConvertedAccountId = null` →
+  **0** records, so "every conversion names its customer by Id" is exercised on **0 records =
+  untested**, not `PASS`. The whole carry is still only exercisable on fixtures (Test-Org 66 Leads /
+  0 sized, Prod 22/0 — the PO's gap).
+- **R-5 The surviving name regression:** an `Account` created by import or manual creation that shares
+  the `Name` of a sized Lead must stay **blank**. That is what the deleted Account-insert path used to
+  violate; keep exactly one assertion ("at most one record written" / "the import stays blank"), the
+  two-Accounts-one-Name skip fixture is superseded.
+- **R-6** `System.runAs` is now present in the behaviour class (round-1 item 2 resolved); the gate
+  evidence to re-check after the fix is `scripts/fls-gate.py --base origin/master --org Test-Org`.
 
 ## Build order for the Developer
 
