@@ -211,3 +211,24 @@ Measured in Test-Org, this round, each line with the command that produced it:
   void run() }` wrapper dies with "static can only be used on methods of a top level type".
 - `Lead` name fields in a named-parameter constructor are `Company` and `LastName` —
   `Last_Name` does not exist ("Field does not exist: Last_Name on Lead").
+
+## Round 4 (2026-11-24) — the attach is Apex-exercisable; my "no Apex path" claim was wrong
+
+- `Database.LeadConvert` carries `setAccountId(<existing Account Id>)`: the conversion then
+  REUSES that record — architect probe read-back `sameRecord=true`, one Account for that Name,
+  band filled; and my fixtures reproduce it. What is NOT writable is the field
+  `Lead.ConvertedAccountId` (compile error `Field is not writeable`, `sf sobject describe`
+  → `createable: false`) — those are two different questions, and the round-3 note conflated
+  them. Discriminator: probe with `setAccountId` (attach) vs without (new customer).
+- House rule applied in the new fixtures: assert `res.getAccountId() == existing.Id` BEFORE
+  any band assertion; a band measured on a record the save did not name is not a criterion.
+- Bulk bounds, two causes, do not confuse: single `convertLead` over 20 rows → `LIMIT_EXCEEDED`
+  at row 0 (10 save, 20 die); loop of 30 single-record conversions → `System.LimitException:
+  Too many SOQL queries: 101` (one event = its own query set). The 200-record AC 6/7 criterion
+  is therefore an E2E/Import row, never a shrunk Apex pass.
+- Picklist values of `Account.Company_Size__c` read back with `sf sobject describe --sobject
+  Account --target-org Test-Org`: `up_to_10 / 11_to_50 / 51_to_250 / more_than_250`
+  (labels "up to 10 employees" … "more than 250 employees") — the PO's conflicting pair uses
+  `51_to_250`, which my three constants did not cover.
+- Verdict round 4: 15/15 Pass, Test Run Id `707WU00001WGdJ1`, handler 25/28 = 89 %,
+  trigger 2/2 = 100 % (`sf apex run test --code-coverage -r json`, `result.coverage.coverage[]`).

@@ -435,12 +435,13 @@ Read back myself: `gh pr checks 196` on run `45388344584` → Lint pass, README 
 All four items from §Review round 2 are closed with measurements taken in Test-Org:
 
 - **AC 4 / AC 5 — the fixture premise was wrong, not the handler.** `Database.convertLead`
-  never attaches to an existing `Account`: probe read-back `sameRecord=false`,
-  `accountsNowNamed=2`, and a second probe proved the field cannot be set at all —
-  compile error `Field is not writeable: Lead.ConvertedAccountId`. So an "attach to an existing
-  customer" save has **no Apex path** in this org; the AC is E2E-only (UI) and the Tester owns
-  it. The Apex fixtures now assert what the platform really does: the record
-  `ConvertedAccountId` names takes the band, the same-`Name` neighbour stays untouched.
+  WITHOUT `setAccountId` never attaches to an existing `Account`: probe read-back `sameRecord=false`,
+  `accountsNowNamed=2`, and a second probe proved `Lead.ConvertedAccountId` cannot be written at all —
+  compile error `Field is not writeable: Lead.ConvertedAccountId`. **Superseded in round 4:** the attach
+  IS Apex-exercisable — `lc.setAccountId(existing.Id)` reuses the record (see §Review round 4 below);
+  what this probe rules out is writing the field, not the attach. The Apex fixtures from this round
+  assert the no-attach case only: the record `ConvertedAccountId` names takes the band, the
+  same-`Name` neighbour stays untouched.
 - **AC 12 is platform-enforced on the Apex path:** `update` of a converted Lead dies with
   `CANNOT_UPDATE_CONVERTED_LEAD`. The test asserts the refusal plus the band read-back; it no
   longer pretends an edit can succeed.
@@ -460,3 +461,39 @@ Coverage measured with `sf apex run test ... --code-coverage`:
 `707WU00001WG5zb`, 14/14 Pass. The deploy report's own coverage block attributes 0/24 to the
 handler — that report cannot be used as the coverage oracle here; the `--code-coverage`
 result can.
+
+## Review round 4 — Developer response (2026-11-24, head after this commit)
+
+The blocking artefact is closed; no production code changed, as the review asked.
+
+- **R-7/R-8 (the blocker): the attach IS Apex-exercisable, and my fixtures now use it.**
+  Second helper `attachLeadTo(leadId, accountId)` passes `lc.setAccountId(existing.Id)`.
+  Two new fixtures: `attachTo_blankExistingCustomer_fillsBandOnce` (AC 5) and
+  `attachTo_customerWithBand_neverOverwritten` (AC 4 with the PO's conflicting pair — existing
+  `51_to_250` vs lead `up_to_10`; the picklist values were read back with
+  `sf sobject describe --sobject Account`, not recalled). Both assert
+  `res.getAccountId() == existing.Id` **before** any band assertion, and the blank case
+  additionally asserts ONE Account for that Name, so a band cannot slip onto a record the
+  save did not name. Measured: attach reuses the record (sameRecord=true) and the handler
+  fills the blank band / keeps the held one.
+- The old no-attach fixture stays, renamed to what it now proves:
+  `convert_withoutAttach_createsOwnCustomer_sameNameNeighbourUntouched` — the import /
+  manual-creation regression (R-5's surviving shape).
+- **R-9 stands unchanged:** `Lead.ConvertedAccountId` is read-only (`createable: false`);
+  the round-3 compile error ruled out writing the field, not the attach. The design note that
+  claimed "no Apex path" is corrected in place above, not contradicted here.
+- **R-10 (bulk cost) is now a named gap, not a shrunk pass.** `bulk_conversions_carryEveryBand`
+  became `bulk_conversionEvents_carryEveryBand_withinTheOrgsBound`: it asserts the handler's
+  shape (ONE SOQL + ONE bulkified update per event, each band on its own customer) at the
+  org's bound — 10 convertLead calls save, 20 die `LIMIT_EXCEEDED` at row 0, a 30-event loop
+  dies `Too many SOQL queries: 101`. The 200-record criterion (AC 6/7) is NOT claimed green in
+  Apex; it moves to the E2E/Import row of the coverage table with the count named.
+- **R-11 stays open for the Tester:** the tie-break (several Leads → one
+  `ConvertedAccountId` in one save) was not probed this round; the handler picks
+  `max(Lead.Id)` deterministically, but that branch has no fixture yet, so it is reported as
+  unexercised, not as passing.
+
+Verdict of the changed classes, read back from the org with
+`sf apex run test ... --wait 25 -r json --code-coverage`: **15/15 Pass**, Test Run Id
+`707WU00001WGdJ1`, `CompanySizeCarryHandler` **25/28 = 89 %**, `LeadCompanySizeCarry`
+**2/2 = 100 %**.

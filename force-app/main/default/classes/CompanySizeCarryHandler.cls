@@ -40,12 +40,12 @@ public without sharing class CompanySizeCarryHandler {
 
     public static void carryConvertedLeads(List<Lead> after, Map<Id, Lead> before) {
         // Account Id -> the Lead whose band wins for that customer. Several Leads in ONE
-        // save can name the SAME customer (the UI attach path does; the Apex convertLead
-        // path cannot — measured 2026-11-24: sameRecord=false, one new Account per
-        // conversion, and Lead.ConvertedAccountId is "not writeable" on the wire). The
-        // PO's accepted tie-break is "newest lead wins", so the winner is picked by Id —
-        // Salesforce Ids increase with creation — and never by save order, which the
-        // platform does not define. Deterministic by construction, not "last saved".
+        // save can name the SAME customer — the UI attach path does, and so does Apex
+        // convertLead WITH lc.setAccountId(the same Id) (measured 2026-11-24: sameRecord=true,
+        // one Account reused); a conversion WITHOUT setAccountId names its own new Account
+        // (sameRecord=false). The PO's accepted tie-break is "newest lead wins", so the
+        // winner is picked by Id — Salesforce Ids increase with creation — and never by
+        // save order, which the platform does not define. Deterministic by construction.
         Map<Id, Lead> winnerOfCustomer = new Map<Id, Lead>();
         for (Lead l : after) {
             if (!l.IsConverted
