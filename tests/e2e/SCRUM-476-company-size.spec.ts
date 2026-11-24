@@ -282,21 +282,22 @@ async function rowsBetweenNameAndSize(page: import('@playwright/test').Page): Pr
 
 /** The picker for the band on the customer (verified: combobox exists only in edit mode). */
 async function openBandPicker(page: import('@playwright/test').Page) {
+  // Measured (probe 476n + run g6 error context, 2026-11-24): on a FRESH Details tab the field
+  // carries exactly one `button "Edit Company Size"`. On a tab that an earlier step already put
+  // into edit mode the aria shows `combobox "Company Size" [expanded]` + `listbox "Company Size"`
+  // and NO button at all — so the helper must be idempotent: reuse an open picker, otherwise open
+  // one. Both routes end in the same assertion (one listbox), which keeps a failing branch.
+  const lb = page.getByRole('listbox', { name: LABEL, exact: true });
+  for (let i = 0; i < 10; i++) { if ((await lb.count()) === 1) break; await page.waitForTimeout(2000); }
+  if ((await lb.count()) === 1) return lb.first();
   const btn = page.getByRole('button', { name: `Edit ${LABEL}`, exact: true });
-  // Measured (probe 2026-11-24): the button is there exactly once on a painted Details tab,
-  // but the body paints AFTER the global header — an unpainted page reports 0, so poll first.
   for (let i = 0; i < 10; i++) { if ((await btn.count()) === 1) break; await page.waitForTimeout(2000); }
-  // ariaSnapshot is the proven read route (probes 476h/476n); evaluateAll(e => e.inner()) is not
-  // available on these Locators (run g5: TypeError "e.inner is not a function").
   const seen = (await page.ariaSnapshot()).split('\n').filter((l) => /Company Size/.test(l)).slice(0, 8);
-  await expect(await btn.count(), `no single "Edit ${LABEL}" button on the customer; buttons matching /Company Size/ seen: ${JSON.stringify(seen)}`).toBe(1);
+  await expect(await btn.count(), `no single "Edit ${LABEL}" button and no open picker on the customer; aria lines seen: ${JSON.stringify(seen)}`).toBe(1);
   await btn.first().click({ timeout: 15000 });
   const combo = page.getByRole('combobox', { name: LABEL, exact: true });
   for (let i = 0; i < 8; i++) { if ((await combo.count()) === 1) break; await page.waitForTimeout(2000); }
   await expect(await combo.count(), `combobox "${LABEL}" not in edit mode`).toBe(1);
-  const lb = page.getByRole('listbox', { name: LABEL, exact: true });
-  // House retry (same failure mode as openDetailsTab): a click can report success while
-  // Lightning has not attached the picker — the listbox then stays at 0 and nothing errors.
   for (let attempt = 0; attempt < 3; attempt++) {
     if ((await lb.count()) === 1) break;
     await combo.first().click({ timeout: 15000 });
