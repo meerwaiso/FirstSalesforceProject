@@ -286,7 +286,8 @@ async function openBandPicker(page: import('@playwright/test').Page) {
   // Measured (probe 2026-11-24): the button is there exactly once on a painted Details tab,
   // but the body paints AFTER the global header — an unpainted page reports 0, so poll first.
   for (let i = 0; i < 10; i++) { if ((await btn.count()) === 1) break; await page.waitForTimeout(2000); }
-  await expect(await btn.count(), `no single "Edit ${LABEL}" button on the customer`).toBe(1);
+  const seen = await page.getByRole('button', { name: /Company Size/ }).evaluateAll((es) => es.map((e) => (e.inner()).replace(/\s+/g, ' ').trim()));
+  await expect(await btn.count(), `no single "Edit ${LABEL}" button on the customer; buttons matching /Company Size/ seen: ${JSON.stringify(seen)}`).toBe(1);
   await btn.first().click({ timeout: 15000 });
   const combo = page.getByRole('combobox', { name: LABEL, exact: true });
   for (let i = 0; i < 8; i++) { if ((await combo.count()) === 1) break; await page.waitForTimeout(2000); }
@@ -414,12 +415,15 @@ test.describe('[SCRUM-476] AC1/AC3 — a sized lead converted into a new custome
     // falsifiable. A band-less lead is a legal conversion in the same org state.
     const blankFixture = leadRows(LEADN.newBlankPair)[0];
     expect(blankFixture[API], 'the comparison lead must carry no band').toBeNull();
+    // The sized window must END before the band-less conversion starts: one conversion already
+    // adds its own record chatter, so measuring both inside one window compared 6 vs 3 (run g3,
+    // line 425) — a spec bug, not a product one. Two windows, each around ONE conversion.
+    const dSized = diff(beforeSized, snap());
     const beforeBlank = snap();
     await convertLeadForm(page, 'newBlankPair', null);
     const blankRows = accRows(CUST.newBlankPair);
     expect(blankRows.length, 'the band-less conversion created its customer too').toBe(1);
     expect(blankRows[0][API], 'the band-less customer stays empty').toBeNull();
-    const dSized = diff(beforeSized, snap());
     const dBlank = diff(beforeBlank, snap());
     for (const k of ['feed', 'email', 'task', 'contact', 'opp', 'case']) {
       expect(dSized[k], `AC12: the sized conversion touches no more ${k} than the band-less one`).toBe(dBlank[k]);
@@ -673,7 +677,9 @@ test.describe('[SCRUM-476] AC13 — changing an old lead after the customer has 
     // and the criterion (the customer's band never moves) is checked after either.
     const btn = page.getByRole('button', { name: `Edit ${LABEL}`, exact: true });
     const offered = await btn.count();
-    expect(offered, 'the lead page offers either 0 or 1 Edit Company Size control').toBeOneOf([0, 1]);
+    // Playwright BDD has no toBeOneOf (run g3: TypeError "not a function"). The guard that
+    // matters is "at most one control", and OBSERVED says which of the two outcomes happened.
+    expect(offered, 'the lead page offers at most one Edit Company Size control').toBeLessThanOrEqual(1);
     if (offered === 1) {
       await btn.first().click({ timeout: 15000 });
       await page.waitForTimeout(2500);
