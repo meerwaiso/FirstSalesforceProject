@@ -80,3 +80,44 @@ Alle Befunde measured in Test-Org (`sf ... --target-org devops-agent@cline.test`
   agent's leftovers turn the baseline red — that is what killed run-476-e2e-final (42 `TEST-476-Limit*`).
 - `Company` on Lead is TEXT (string 255, required) and `ConvertedAccountId` is `createable: false`;
   a conversion's customer is named by the Id the picker chose, never by the Company text.
+
+## Measurements 2026-11-24 (round: E2E spec on head 5590c9a, probes 476h..476n)
+
+- Attach path in the Convert-Lead form (probe476k, org read-back): `fill("Account Search", <name>)`
+  -> click `option "Search for matching accounts …"` (opens an "Accounts Results" panel) -> click
+  `link "<name>"` there -> aria shows `Account Search - Current Selection: <name>` -> press the form's
+  own Convert button (the button BELOW the "Convert Lead" heading; the record page carries a second
+  one). Result: `IsConverted=true`, `ConvertedAccountId == <existing Account Id>`, accounts named
+  = 1 (no second customer), existing band NOT overwritten. Clicking the nested record OPTION instead
+  navigates away and converts nothing (measured in probe476i).
+- `fill` + submit WITHOUT selecting a record = the create-new path: creates a NEW Account
+  (probe476j R2: ConvertedAccountId = the new 001WU…, accounts named = 2).
+- Clearing a filled band on the customer (probe476n): `button "Edit Company Size"` = 1 on a painted
+  Details tab (also when filled; `Change Company Size` = 0), then `combobox "Company Size"` (exact
+  name matches, value shows the current band), click it -> `listbox` with
+  `[role=option][data-value=""]` plus the 4 ranges, click the blank slot -> combobox value
+  `--None--`, `button "Save"` = 1 -> org `Company_Size__c = null`.
+- Picker race: on a fresh record page the body paints AFTER `.slds-global-header`; querying the Edit
+  button or the combobox immediately reports 0 (probe476m). Poll up to ~20 s, then assert count==1.
+- FeedItem counts are only comparable per actor: `CreatedById = <session user>`; the global count
+  carried another run's posts (6 vs 3 for the same conversion pair). Session user:
+  `SELECT Id, Username FROM User` -> devops-agent@cline.test.
+- Org dirt of my probes cleaned 2026-11-24: 3 Accounts `PROBE-476M-CUST` deleted (3/3 success),
+  re-query `Account WHERE Name LIKE 'PROBE-476%'` -> 0. The Architect read them at 15:2x as
+  `COUNT(Account WHERE Company_Size__c != null) = 3`.
+- FLS read-back via `scripts/fls-check.sh Account Company_Size__c Test-Org`: grants
+  `SCRUM476_CompanySize_Read` (read), `SCRUM476_CompanySize_Set` (read+edit), foreign
+  `AncCrmIntegrationUser` (read, no edit, assigned to NOBODY = inert). Both of our PSs: 2 users
+  (`devops-agent@cline.test`, `meerwais.osmani@resourceful-bear-6f1u4j.com`), IsActive=true,
+  IsRevoked=false (PermissionSetAssignment WHERE PermissionSetId = …).
+- Org-retrieved Account layouts (`sf project retrieve start --metadata "Layout:Account-…" -o Test-Org
+-r …`): `Account Layout` contains Company_Size\_\_c; `Account (Marketing)/(Sales)/(Support) Layout`
+  contain it 0 times. Profile->layout mapping NOT verified: UI API `/tour/layoutAssignments/...`
+  returns "URL No Longer Exists" on API v68, and `/lightning/setup/LayoutAssignments/home` ->
+  "Page not found". Open question for AC9 (which layouts the sales/service profiles actually open).
+- Apex org read-back (`sf data query -t … ApexTestRunResult`): newest run
+  `05mWU000002dQ9ZYAU` CreatedDate 2026-11-24T15:00:06Z Status Completed, MethodsEnqueued/Completed
+  16/16, MethodsFailed 0; `ApexTestResult WHERE ApexTestRunResultId = that` -> 16 rows, 16 Pass.
+  Entity fields: ApexTestRunResult has NO `Name`/`Message`; use Status, MethodsEnqueued/Completed/
+  Failed, StartTime, EndTime. ApexTestResult outcome column is `Outcome`, name is `MethodName`.
+  PermissionSetAssignment fields: `AssigneeId`, `PermissionSetId` (no AssignedUser/PermissionSetName).
