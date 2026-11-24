@@ -382,6 +382,44 @@ ApexTestRunResultId = '05mWU000002dNrdYAE' AND Outcome != 'Pass'"`; queue item `
 - **R-6** `System.runAs` is now present in the behaviour class (round-1 item 2 resolved); the gate
   evidence to re-check after the fix is `scripts/fls-gate.py --base origin/master --org Test-Org`.
 
+## Review round 3 (PR #196, head `29794b9`) — measured, verdict REJECTED (one item blocks)
+
+Read back myself: `gh pr checks 196` on run `45388344584` → Lint pass, README pass, Smoke pass (5m12s),
+**Prod-Org Drift Gate pending (0 s)** — the merge gate is open, not green. Org: newest
+`ApexTestQueueItem` pair `(11/11)` + `(3/3)` = 14 Pass, consistent with Test Run
+`707WU00001WG5zb`. `System.runAs` still present in the behaviour class.
+
+- **R-7 The premise "there is no Apex path to the attach case" is FALSE — measured by me in Test-Org
+  2026-11-24 13:05/13:06 CET with `sf apex run` (two probes, both self-cleaned):**
+  - Account `TEST-476-ProbeAttach` (blank band) + Lead carrying `more_than_250`, converted with
+    `Database.LeadConvert` **`lc.setAccountId(<the existing Account's Id>)`** →
+    `ok=true sameRecord=true returned=001WU00002M3ibWYAR fixture=001WU00002M3ibWYAR accounts=1
+    bands=001WU00002M3ibWYAR/more_than_250` — the conversion **reuses** the existing customer and the
+    handler **filled its band** ⇒ **AC 5 is exercisable in Apex.**
+  - Same shape, existing Account holds `51_to_250`, Lead carries `up_to_10` →
+    `sameRecord=true accounts=1 bands=…/51_to_250` — **not overwritten**, the PO's conflicting pair ⇒
+    **AC 4 is exercisable in Apex.**
+- **R-8 Why their fixtures miss it:** the helper is `private static Database.LeadConvert convertLead(Id leadId)`
+  and sets only `setLeadId` + `setConvertedStatus` — **no `setAccountId`**, so every conversion in the
+  class creates a NEW Account and `res.getAccountId() != existing.Id` ("sameRecord=false") is a property
+  of the helper, not of the platform. The attach fixtures need a second helper that passes
+  `setAccountId(existing.Id)`; then assert `res.getAccountId() == existing.Id` **before** any band
+  assert (house rule: a criterion asserted against a record the save did not name is not a criterion).
+- **R-9 What does stand:** `Lead.ConvertedAccountId` is read-only —
+  `sf sobject describe --sobject Lead` → `createable: false`, no `editable` flag — so writing it in
+  Apex dies at compile. Read-only on the write side, readable on our side; nothing in the handler writes it.
+- **R-10 Governor cost, both causes measured, do not confuse them:** my probe loop of 30 single-record
+  conversions died `System.LimitException: Too many SOQL queries: 101` — each conversion **event** costs
+  its own queries (the handler's 1 SOQL is among them). Their single `convertLead` call over 200 rows
+  dies `LIMIT_EXCEEDED` at row 0 (their measurement: 10 save, 20 die). So AC 6/7 cannot be exercised
+  at 200 records in one Apex transaction in this org; the handler's cost is **one SOQL + one update per
+  event**, which is the right shape for a bulk save. The bulk criterion belongs to the E2E/Import path
+  with the record count named in the coverage table — shrinking an Apex fixture to 10 rows is not a
+  pass for a 200-record criterion.
+- **R-11 Unverified, left open:** whether the tie-break (several Leads converting to ONE
+  `ConvertedAccountId` in one call) is Apex-exercisable — not probed. Until measured it stays a
+  Tester criterion.
+
 ## Build order for the Developer
 
 1. Field meta → 2. Permission Set pair → 3. assign both PS in Test-Org + read back
