@@ -205,7 +205,10 @@ test.beforeAll(() => {
   // criterion. They are named, not deleted: they are not this run's namespace.
   const sizedAny = soql(`SELECT Id, Name FROM Account WHERE ${API} != null`).records;
   const sizedForeign = sizedAny.filter((r: any) => !String(r.Name).startsWith(TAG));
-  const sizedReal = sizedForeign.filter((r: any) => !String(r.Name).startsWith('TEST-'));
+  // 'TEST-*' and 'PROBE-*' are other runs' fixture/probe namespaces — probe leftovers of other
+  // agents (measured 2026-11-24: PROBE-476M-CUST ×3 with bands, TEST-476-Limit* ×42). They are
+  // named below, never deleted here (not this run's namespace), and never counted as REAL.
+  const sizedReal = sizedForeign.filter((r: any) => !String(r.Name).startsWith('TEST-') && !String(r.Name).startsWith('PROBE-'));
   const sizedForeignFixtures = sizedForeign.length - sizedReal.length;
   if (sizedReal.length > 0) {
     throw new Error(`AC11 precondition broken at go-live: ${sizedReal.length} real customers already carry a band (${sizedReal.slice(0, 3).map((r: any) => r.Name).join(', ')})`);
@@ -600,7 +603,7 @@ test.describe('[SCRUM-476] AC10/AC11 — visibility next to Account Name, nothin
     test.setTimeout(300000);
     const foreignSizedAll = soql(`SELECT Id, Name FROM Account WHERE ${API} != null`).records
       .filter((r: any) => !String(r.Name).startsWith(TAG));
-    const foreignSized = foreignSizedAll.filter((r: any) => !String(r.Name).startsWith('TEST-'));
+    const foreignSized = foreignSizedAll.filter((r: any) => !String(r.Name).startsWith('TEST-') && !String(r.Name).startsWith('PROBE-'));
     expect(foreignSized.length, 'AC11: no REAL customer outside this run\'s fixtures may carry a band').toBe(0);
     const foreignFixtureSized = foreignSizedAll.length - foreignSized.length;
     const foreignTotal = accounts();
