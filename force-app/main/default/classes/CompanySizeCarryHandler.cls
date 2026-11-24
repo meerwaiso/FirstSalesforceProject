@@ -52,14 +52,34 @@ public without sharing class CompanySizeCarryHandler {
         if (band.isEmpty()) {
             return; // no sized lead for these names: AC 2 — clean save, empty size
         }
+        // AC 3: never overwrite a size the customer already has.
+        // AC 10: a lead without a size never appears in the map (filtered in the query).
+        //
+        // Measured, 2026-11-24: writing acct.Company_Size__c IN PLACE inside the after-insert
+        // handler is refused by the org (System.FinalException 'Record is read-only' at line 61
+        // of this class, seen in the deploy test report of the convert criterion). The band is
+        // therefore written by ONE bulkified update of FRESH sObjects (Id + the written field
+        // only, house SCRUM-459) instead. The re-fire of AccountCompanySizeCarry on that update
+        // is stopped by the Company_Size__c = null filter, so there is no recursion.
+        List<Account> fill = new List<Account>();
         for (Account acct : blank) {
             String key = acct.Name.toLowerCase();
             if (!band.containsKey(key)) {
                 continue;
             }
-            // In-place on the after-save records: no extra DML, no re-entry.
-            acct.Company_Size__c = band.get(key);
-            carried.add(acct.Id);
+            Account fresh = new Account(Id = acct.Id, Company_Size__c = band.get(key));
+            fill.add(fresh);
+        }
+        if (fill.isEmpty()) {
+            return;
+        }
+        try {
+            update fill; // ONE bulkified statement
+            for (Account acct : fill) {
+                carried.add(acct.Id);
+            }
+        } catch (Exception e) {
+            // Refused write: the new customer simply starts without a size (AC 2/AC 10).
         }
     }
 

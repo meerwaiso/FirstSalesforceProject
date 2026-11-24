@@ -40,18 +40,12 @@ private class SCRUM476CompanySizeTest {
         return l;
     }
 
-    // The two Lead states of an attach, built explicitly (Apex has no sObject.cloneMe()
-    // — measured with scripts/apex-probe.sh 2026-11-24): before = the save as it happens,
-    // old = the save as it was before the button.
-    private static Lead leadAttached(Id id, String company, String band) {
+    // Measured 2026-11-24: Lead.Company is a REQUIRED field in this org (a Lead insert
+    // without it fails REQUIRED_FIELD_MISSING [Company]), so "not yet attached" is a lead
+    // whose Company names something that is NOT a customer — the attach is the CHANGE of
+    // Company (ADR-6 / AC 12).
+    private static Lead leadState(Id id, String company, String band) {
         Lead l = new Lead(LastName = 'TEST-SCRUM-476', Company = company);
-        l.Company_Size__c = band;
-        l.Id = id;
-        return l;
-    }
-
-    private static Lead leadDetached(Id id, String band) {
-        Lead l = new Lead(LastName = 'TEST-SCRUM-476');
         l.Company_Size__c = band;
         l.Id = id;
         return l;
@@ -131,13 +125,13 @@ private class SCRUM476CompanySizeTest {
         a.Company_Size__c = BAND_LARGE; // the carefully checked value of the customer
         insert a;
 
-        Lead l = mkLead(null, BAND_SMALL); // the PO's conflicting pair: 51_to_250 vs up to 10
+        Lead l = mkLead('TEST-476-CoUnattached', BAND_SMALL); // the PO's conflicting pair: 51_to_250 vs up to 10
         insert l;
         Id leadId = l.Id;
 
         CompanySizeCarryHandler.fillBlankCustomers(
-            new List<Lead>{ leadAttached(leadId, 'TEST-476-CoC', BAND_SMALL) },
-            new Map<Id, Lead>{ leadId => leadDetached(leadId, BAND_SMALL) }
+            new List<Lead>{ leadState(leadId, 'TEST-476-CoC', BAND_SMALL) },
+            new Map<Id, Lead>{ leadId => leadState(leadId, 'TEST-476-CoUnattached', BAND_SMALL) }
         );
 
         Account after = [SELECT Company_Size__c FROM Account WHERE Name = 'TEST-476-CoC' LIMIT 1];
@@ -152,13 +146,13 @@ private class SCRUM476CompanySizeTest {
         a.Company_Size__c = null;
         insert a;
 
-        Lead l = mkLead(null, BAND_SMALL);
+        Lead l = mkLead('TEST-476-CoUnattached', BAND_SMALL);
         insert l;
         Id leadId = l.Id;
 
         CompanySizeCarryHandler.fillBlankCustomers(
-            new List<Lead>{ leadAttached(leadId, 'TEST-476-CoD', BAND_SMALL) },
-            new Map<Id, Lead>{ leadId => leadDetached(leadId, BAND_SMALL) }
+            new List<Lead>{ leadState(leadId, 'TEST-476-CoD', BAND_SMALL) },
+            new Map<Id, Lead>{ leadId => leadState(leadId, 'TEST-476-CoUnattached', BAND_SMALL) }
         );
 
         Account after = [SELECT Company_Size__c FROM Account WHERE Name = 'TEST-476-CoD' LIMIT 1];
@@ -178,8 +172,8 @@ private class SCRUM476CompanySizeTest {
         Id leadId = l.Id;
 
         CompanySizeCarryHandler.fillBlankCustomers(
-            new List<Lead>{ leadAttached(leadId, 'TEST-476-CoE', BAND_HUGE) }, // only the band changed
-            new Map<Id, Lead>{ leadId => leadAttached(leadId, 'TEST-476-CoE', BAND_SMALL) }
+            new List<Lead>{ leadState(leadId, 'TEST-476-CoE', BAND_HUGE) }, // only the band changed
+            new Map<Id, Lead>{ leadId => leadState(leadId, 'TEST-476-CoE', BAND_SMALL) }
         );
 
         Account after = [SELECT Company_Size__c FROM Account WHERE Name = 'TEST-476-CoE' LIMIT 1];
@@ -190,13 +184,13 @@ private class SCRUM476CompanySizeTest {
     // ---- AC 5/AC 7: an attach with NO name match writes nothing ----
     @isTest
     static void attach_unknownCustomer_writesNothing() {
-        Lead l = mkLead(null, BAND_SMALL);
+        Lead l = mkLead('TEST-476-CoUnattached', BAND_SMALL);
         insert l;
         Id leadId = l.Id;
 
         CompanySizeCarryHandler.fillBlankCustomers(
-            new List<Lead>{ leadAttached(leadId, 'TEST-476-CoNoSuchCustomer', BAND_SMALL) },
-            new Map<Id, Lead>{ leadId => leadDetached(leadId, BAND_SMALL) }
+            new List<Lead>{ leadState(leadId, 'TEST-476-CoNoSuchCustomer', BAND_SMALL) },
+            new Map<Id, Lead>{ leadId => leadState(leadId, 'TEST-476-CoUnattached', BAND_SMALL) }
         );
 
         List<Account> matches = [SELECT Company_Size__c FROM Account WHERE Name = 'TEST-476-CoNoSuchCustomer'];
@@ -231,8 +225,8 @@ private class SCRUM476CompanySizeTest {
 
         // change the ATTACHED LEAD -> the customer stays
         CompanySizeCarryHandler.fillBlankCustomers(
-            new List<Lead>{ leadAttached(leadId, 'TEST-476-CoF', BAND_HUGE) },
-            new Map<Id, Lead>{ leadId => leadAttached(leadId, 'TEST-476-CoF', BAND_SMALL) }
+            new List<Lead>{ leadState(leadId, 'TEST-476-CoF', BAND_HUGE) },
+            new Map<Id, Lead>{ leadId => leadState(leadId, 'TEST-476-CoF', BAND_SMALL) }
         );
         Account afterBoth = [SELECT Company_Size__c FROM Account WHERE Name = 'TEST-476-CoF' LIMIT 1];
         System.assertEquals(BAND_MID, afterBoth.Company_Size__c,
