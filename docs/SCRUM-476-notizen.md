@@ -175,3 +175,22 @@ Measured in Test-Org, this round, each line with the command that produced it:
   handler 0AfWU00000dNURx0AO, trigger 0AfWU00000dNUTZ0A4, tests 0AfWU... (phase5 Succeeded, 3 components).
 - `convertLead` LINKS an existing Account by Name: with one existing Account named like the Lead's
   Company, `res.getAccountId()` == that existing Account Id (asserted in the test, not assumed).
+
+## Org behaviour measured while repairing the rewritten tests (2026-11-24)
+
+- convertLead does NOT attach to an existing Account with the same Name. Probe
+  `probe476_attach.cls` via `sf apex run`: `success=true accountId=001WU00002M2WCeYAN
+  existingId=001WU00002M2WCdYAN`, `sameRecord=false`, `accountsNowNamed=2` — the conversion
+  creates its OWN Account and the pre-existing same-Name customer stays untouched. So the
+  fill-only-if-blank property is asserted on the record ConvertedAccountId names, and the
+  same-Name neighbour is asserted UNTOUCHED; an "attach to an existing customer" path is NOT
+  reachable from Apex convertLead in this org and can only be shown through the UI (Tester).
+- Editing a converted Lead is refused by the org: `CANNOT_UPDATE_CONVERTED_LEAD`
+  ("cannot reference converted lead") on `update l`. AC 12 is therefore proven by that refusal
+  plus the band read-back, not by an update that succeeds.
+- Bulk conversion limit belongs to the org: 10 convertLead calls in one save save,
+  20 die with `LIMIT_EXCEEDED` ("There was an error converting the lead"). Measured by
+  running the same test at 10 (green) and 20 (red) — 200 also red (round 1).
+- Verdict of the rewritten classes: 13/13 Pass (10 behaviour + 3 FLS), Test Run Id
+  707WU00001WFq6yYAD (`sf apex run test --tests SCRUM476CompanySizeTest --tests
+  SCRUM476CompanySizeFlsTest --target-org Test-Org --wait 30 --result-format json`).
