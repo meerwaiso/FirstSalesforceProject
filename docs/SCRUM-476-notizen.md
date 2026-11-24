@@ -76,6 +76,32 @@ field -> PS pair + layout -> assign both PS (`sf org assign permset`) -> handler
   the four labels. So the "invalid range rejected" criterion (AC 9 here) is a UI criterion ->
   no Apex assert for it, E2E job of the Tester. Writing such an assert would be a fake PASS.
 
+  ## Measured at implementation (Test-Org, 2026-11-24)
+
+  - `fls-check.sh Account Company_Size__c Test-Org` -> Existence: yes (Picklist). Granted by
+  `SCRUM476_CompanySize_Read` (read, no edit), `SCRUM476_CompanySize_Set` (read+edit), plus the
+  pre-existing org PS `AncCrmIntegrationUser` (read, assigned to NOBODY). No `IsOwnedByProfile=true`
+  row -> the FLS negative (no PS -> invisible) is satisfiable.
+  - Org read-back of the live `Account Layout`: `<behavior>Edit</behavior><field>Company_Size__c</field>`
+  directly after the Required `Name` item (retrieve, not the repo file).
+  - Org read-back of the field enum: `up_to_10 / 11_to_50 / 51_to_250 / more_than_250` with the four labels,
+  defaultValue null -> verbatim identical to `Lead.Company_Size__c`, the carry is one assignment.
+  - `Lead.Company` has NO permission for `devops-agent@cline.test` -> the attach handler reads the customer
+  NAME from `Lead.Company` (its mode allows it), but a test cannot query `Lead.Company`.
+  A fixture Lead must NOT start on a Company that is already a customer: the org refuses
+  `Lead.Company = null` with REQUIRED_FIELD_MISSING (looks like a platform fault, is not).
+  - after-insert records are READ-ONLY ("entity is read-only, only Id is writable") -> the band is written
+  by ONE bulkified `update` of FRESH sObjects (Id + band), never in place.
+  - ValRule `Letzter_Versuch_KeineZukunft` refuses a Lead save after 10 conversions -> test fixtures
+  convert a Lead at most 8x.
+  - The convertor storm creates Account + Contact + Opportunity (+Case) in the same save even without a Case.
+  - PS assignment read-back: 2 assignees per PS = `devops-agent@cline.test` +
+  `meerwais.osmani@resourceful-bear-6f1u4j.com`.
+  - Apex: 15/15 green (test run 707WU00001WFKGU). Class coverage: CompanySizeCarryHandler 90 %,
+  AccountCompanySizeCarry 100 %, LeadCompanySizeCarry 100 %; org-wide 87 %.
+  - Deploy IDs seen: triggers 0AfWU00000dNMpYQ, tests 0AfWU00000dNJQ50AO (Test-Org).
+  - Counts after go-live: 66 Leads, 0 carrying a size; 0 Accounts carrying `Company_Size__c`.
+
 ## Open measurements still to record
 
 - `Account.NumberOfEmployees` stays untouched (Architect F-1).
