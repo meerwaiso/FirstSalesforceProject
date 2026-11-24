@@ -130,3 +130,22 @@ field -> PS pair + layout -> assign both PS (`sf org assign permset`) -> handler
 - F-6 discriminator is MEASURED green: `probe_accessRefusalIsRecognised` runs a real
   read-only fixture user, the update IS refused, and `isAccessRefusal` recognised the fault
   (test green). The read-only user really refused (`refused == true` assert green).
+
+## Measured at review round 1 (2026-11-24, Test-Org)
+
+- Accounts SHARING a Name exist: `sf data query --json -q 'SELECT Name FROM Account'` ->
+  268 rows; e.g. "TESTFIRMASCRUM396ONE" x16, "TESTFIRMASCRUM396THREE" x16,
+  "[Scrum-412-E2E] akte 0" x35. The PO's ambiguity criterion is therefore TESTABLE
+  (not a zero-record criterion); the Tester does not have to report it as UNTESTED.
+- SOQL GROUP BY aggregate: `SELECT COUNT() FROM Account GROUP BY Name HAVING COUNT() > 1`
+  -> MALFORMED_QUERY "unexpected token 'COUNT()'" in this org's parser. Counting duplicates
+  was done client-side over the 268 rows instead.
+- Apex test run (standalone): 18/18 green, Test Run Id 707WU00001WFdTZ
+  (`sf apex run test --tests SCRUM476CompanySizeTest --tests SCRUM476CompanySizeFlsTest`),
+  incl. both ambiguity fixtures and the F-6 access-refusal probe. Org-wide coverage 83 %.
+- CI collision (measured in the finished job log 138386164057 of run 45377097991):
+  FLS-Gate printed "FLS-Gate grün" for `Account.Company_Size__c ok
+  (SCRUM476_CompanySize_Set, SCRUM476_CompanySize_Read)`; the step then died with
+  `Error (ALREADY_IN_PROCESS): Test already enqueued 01pWU00000TkuDu` — the org had MY
+  deploy's RunSpecifiedTests job enqueued at the same time. One Apex test run per org at a
+  time; the CI step needs a re-run with the org test queue free.
