@@ -256,12 +256,62 @@ populate `NumberOfEmployees`, and the Tester must not read "no employee field" a
 - [ ] Ambiguous band for a **new** customer whose name matches several sized leads: rule taken =
   **newest lead (max `Id`) wins**, no error, nothing else touched. Flag to @po-agent if the user
   wants oldest-wins or "only when exactly one".
-- [ ] Two Accounts sharing one `Name` (name-based `Lead.Company`): the fill targets **all** blank
-  matches; a new customer matches by its own name only. Flag to @po-agent as a data-quality
-  question — out of scope, must not silently guess.
+- [x] **Two Accounts sharing one `Name` — PO decision (SCRUM-476 comment 23806, REJECTED as a
+  business rule):** on an **ambiguous name the carry-over is skipped, nothing is guessed**, and the
+  conversion/attach still saves cleanly. Writing a band onto a customer the colleague did not aim at
+  puts a fact on a possibly unrelated record, and a wrong band is worse than an empty one. This is
+  now a **hard requirement**, not an open point:
+  - **B-side (attach):** group the `Account WHERE Name IN :names` result by `Name`; write only where
+    the group holds **exactly one** blank Account. Two or more same-name customers ⇒ skip all of them.
+  - **A-side (new customer):** a name appearing **more than once in the inserted batch** is ambiguous
+    ⇒ skip. A new customer whose name also matches **pre-existing** customers is ambiguous too:
+    one extra SOQL (`SELECT Id, Name FROM Account WHERE Name IN :names`) counts matches per name —
+    remember the record being inserted is not yet visible to SOQL in an after-save, so **count ≥ 2
+    ⇒ skip**, and count == 1 for an existing record means the "new customer" was in fact an existing
+    customer ⇒ apply the fill-only-if-blank rule instead.
+  - **Testable shape (must not rest on a zero count):** fixtures carry **two `Account`s with one
+    identical `TEST-476-` Name, both blank, plus one sized lead** → expected after the attach:
+    **both still blank**. Tester additionally counts Accounts sharing a Name in the org; a count of
+    0 makes the criterion `UNTESTED`, not `PASS`, and no release note may claim the ambiguity is
+    handled.
 - [ ] F-3 layout variants: org step, owner @devops-agent before Release.
 - [ ] F-2 OWD/ownership: owner @tester-agent (E2E, non-owner), outcome may move the story back to
   @po-agent if the fill is refused.
+
+## ⚠️ F-6 (Review round 1) — a swallowed write can hide another ticket's rule
+
+The carry writes the customer with an **`update`**, not in place, so on that record Salesforce
+re-evaluates the **Account-level `before update` trigger (`AccountLockGuard`) and the two
+Account Validation Rules that exist on `origin/master`** (`LockReason_PflichtBeiGesperrt`,
+`Wartungsvertrag_End_Before_Start`). A rejection there must **not** be swallowed silently: a
+blanket `catch (Exception)` also eats a genuine rule violation or a governor-limit fault, which
+leaves a customer created *without* its band and nothing on record. Narrow the catch by
+**measuring** what an ownership refusal actually raises (the Tester's non-owner save names it) and
+re-throw anything that is not an access refusal. Typed catch names were probed and do **not**
+compile in anonymous Apex on Test-Org (`InvalidAccessFault`, `InsufficientAccessToDataFault`,
+`InsufficientAccessToDataException`, `InvalidAccessException`, `AccessFault` — all rejected via
+`scripts/apex-probe.sh`, 2026-11-24), so discriminate on the caught exception's own message/type
+value, measured — not on a name guessed from memory.
+
+## Review round 1 (PR #196, head `ab8a3f2`) — required changes, verdict REJECTED
+
+1. **Ambiguity skip (PO decision, comment 23806)** — the branch writes **every** blank name match
+   on both sides. Implement the hard rule above (handler change, both entries).
+2. **`SCRUM476CompanySizeTest` has zero `System.runAs`** (verified by reading the class on the
+   branch, not only from the gate log) → `scripts/fls-gate.py --base origin/master --org Test-Org`
+   reddens CI. House shape: `SCRUM424FirstResponseFlsTest` (PS setup inserts, then DML/SOQL inside
+   `System.runAs(u)`), and the gate error is `MIXED_DML_OPERATION`, not a metadata defect.
+3. **Vacuous side-effect asserts:** `carry_createsNoOtherRecord` asserts org-wide
+   `[SELECT Id FROM Contact]`, `FROM Opportunity`, `FROM Case` all `== 0`. In an org that happens
+   to hold none of these, an equality on an empty table is `0 == 0` and cannot fail (house finding
+   SCRUM-471); it also turns red the moment any colleague creates a Contact. Measure the **delta
+   across one save** (count before, count after, assert equal) on a table that is **seeded with one
+   control record**, and name the EmailMessage/Task/Feed tables the org holds empty as seeded, not
+   vacuous.
+4. **Ambiguity fixture:** two Accounts, identical `TEST-476-` Name, both blank, one sized lead →
+   both still blank after the attach. Without it the criterion is untested (count 0 ⇒ not `PASS`).
+5. Keep `docs/RELEASE-NOTES.md` free of AC 9 (UI-only) and of any claim that the ambiguity or the
+   "refusal never aborts" guarantee is proven, until the Tester watched a real convert/attach save.
 
 ## Build order for the Developer
 
