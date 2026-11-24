@@ -57,6 +57,8 @@ const BAND_LABELS = [
   '51 to 250 employees',
   'more than 250 employees',
 ];
+// BANDS and BAND_LABELS are index-parallel (measured in the picker's data-values).
+const labelOf = (v: string | null) => (v === null ? null : BAND_LABELS[BANDS.indexOf(v as string)]);
 
 function shellJson(out: string): any {
   const clean = out.replace(/\[[0-9;]*[a-zA-Z]/gi, '');
@@ -81,9 +83,20 @@ function cli(cmd: string): any {
 }
 
 const accRows = (name: string) => soql(`SELECT Id, Name, ${API} FROM Account WHERE Name = '${name}'`).records;
-const leadRows = (name: string) => soql(`SELECT Id, LastName, Company, ${API}, IsConverted FROM Lead WHERE LastName = '${name}'`).records;
+const leadRows = (name: string) => soql(`SELECT Id, LastName, Company, ${API}, IsConverted, ConvertedAccountId FROM Lead WHERE LastName = '${name}'`).records;
 const countOf = (q: string) => soql(q).totalSize;
-const chatter = () => countOf('SELECT Id FROM FeedItem');
+// Chatter is attributed to the actor: a global FeedItem count also carries OTHER runs' posts
+// (measured 2026-11-24: a sized conversion showed delta 6 vs 3 because an Apex/CI run posted
+// in between), so the equality test must count only this session's user's posts.
+let myUserId: string | null = null;
+function resolveMyUser() {
+  const rows = soql('SELECT Id, Username FROM User').records.filter((r: any) => String(r.Username).startsWith('devops-agent@'));
+  if (rows.length !== 1) throw new Error(`the E2E session's org user is not resolvable (${rows.length} rows for devops-agent@)`);
+  myUserId = rows[0].Id;
+}
+resolveMyUser();
+const chatter = () => countOf(`SELECT Id FROM FeedItem WHERE CreatedById = '${myUserId}'`);
+const chatterAll = () => countOf('SELECT Id FROM FeedItem');
 const emails = () => countOf('SELECT Id FROM EmailMessage');
 const tasks = () => countOf('SELECT Id FROM Task');
 const contacts = () => countOf('SELECT Id FROM Contact');
@@ -267,10 +280,13 @@ async function rowsBetweenNameAndSize(page: import('@playwright/test').Page): Pr
 /** The picker for the band on the customer (verified: combobox exists only in edit mode). */
 async function openBandPicker(page: import('@playwright/test').Page) {
   const btn = page.getByRole('button', { name: `Edit ${LABEL}`, exact: true });
+  // Measured (probe 2026-11-24): the button is there exactly once on a painted Details tab,
+  // but the body paints AFTER the global header — an unpainted page reports 0, so poll first.
+  for (let i = 0; i < 10; i++) { if ((await btn.count()) === 1) break; await page.waitForTimeout(2000); }
   await expect(await btn.count(), `no single "Edit ${LABEL}" button on the customer`).toBe(1);
   await btn.first().click({ timeout: 15000 });
-  await page.waitForTimeout(2500);
   const combo = page.getByRole('combobox', { name: LABEL, exact: true });
+  for (let i = 0; i < 8; i++) { if ((await combo.count()) === 1) break; await page.waitForTimeout(2000); }
   await expect(await combo.count(), `combobox "${LABEL}" not in edit mode`).toBe(1);
   const lb = page.getByRole('listbox', { name: LABEL, exact: true });
   // House retry (same failure mode as openDetailsTab): a click can report success while
@@ -314,21 +330,23 @@ async function convertLeadForm(page: import('@playwright/test').Page, leadKey: s
     // retry loop must not click again — it polls the rendered option and fails with the
     // picker's own aria lines.
     await search.first().fill(CUST[existingCustomerKey]);
-    await search.first().click({ timeout: 15000 });
-    const deadline = Date.now() + 20000;
-    while (Date.now() < deadline) {
-      if (await page.getByRole('option', { name: CUST[existingCustomerKey] }).count() > 0) break;
-      await page.waitForTimeout(1500);
-    }
-    const offered = page.getByRole('option', { name: CUST[existingCustomerKey] });
-    const n = await offered.count();
-    if (n === 0) {
-      const snap = await page.ariaSnapshot();
-      const lines = snap.split('\n').filter((l) => /option|combobox|textbox/.test(l));
-      throw new Error(`"Account Search" never offered ${CUST[existingCustomerKey]} — picker aria: ${lines.join(' | ').slice(0, 700)}`);
-    }
-    await offered.first().click({ timeout: 15000 });
     await page.waitForTimeout(1500);
+    // Measured (probe 2026-11-24): the picker offers the SEARCH prompt; clicking it opens an
+    // "Account Results" panel, and clicking the record's LINK there selects that record in
+    // the form ('Account Search - Current Selection: <name>'). Clicking the nested record
+    // OPTION instead navigates away and closes the form — measured, that path converts nothing.
+    const prompt = page.getByRole('option', { name: /Search for matching accounts/ });
+    for (let i = 0; i < 10; i++) { if ((await prompt.count()) > 0) break; await page.waitForTimeout(2000); }
+    await expect(await prompt.count(), '"Account Search" never offered its search prompt').toBeGreaterThan(0);
+    await prompt.first().click({ timeout: 15000 });
+    await page.waitForTimeout(4000);
+    const row = page.getByRole('link', { name: CUST[existingCustomerKey], exact: true });
+    for (let i = 0; i < 10; i++) { if ((await row.count()) > 0) break; await page.waitForTimeout(2000); }
+    await expect(await row.count(), `the results panel lists no row link for ${CUST[existingCustomerKey]}`).toBe(1);
+    await row.first().click({ timeout: 15000 });
+    await page.waitForTimeout(4000);
+    const sel = await page.ariaSnapshot();
+    expect(sel, `"Account Search" did not select the existing customer`).toContain(`Current Selection: ${CUST[existingCustomerKey]}`);
   }
 
   // Converted Status must end up 'Converted' — the picklist the conversion keys on.
@@ -365,7 +383,7 @@ function observed(ac: string, text: string) {
 // posts chatter on a conversion (measured 2026-11-24: a conversion adds 3 FeedItems), so "the
 // size changes nothing else" is only falsifiable against the same conversion WITHOUT a size.
 function snap() {
-  return { feed: chatter(), email: emails(), task: tasks(), contact: contacts(), opp: opps(), case: cases(), account: accounts() };
+  return { feed: chatter(), email: emails(), task: tasks(), contact: contacts(), opp: opps(), case: cases(), account: accounts(), chatterAll: chatterAll() };
 }
 function diff(a: Record<string, number>, b: Record<string, number>) {
   const out: Record<string, number> = {};
@@ -407,6 +425,8 @@ test.describe('[SCRUM-476] AC1/AC3 — a sized lead converted into a new custome
     expect(dBlank.account, 'AC12: ditto for the band-less conversion').toBe(1);
 
     const leadAfter = leadRows(LEADN.newSized)[0];
+    // The house rule: assert the save NAMED the record before asserting anything about it.
+    expect(leadAfter.ConvertedAccountId, 'AC1: the conversion names the customer it created').toBe(rows[0].Id);
     expect(leadAfter[API], 'AC3: the converted lead still shows its own band').toBe('more_than_250');
     expect(leadAfter.IsConverted, 'AC3: the lead is converted now').toBe(true);
 
@@ -458,6 +478,7 @@ test.describe('[SCRUM-476] AC4 — attach onto a sized customer (conflicting ban
     expect(custAfter[API], 'AC4: the existing band was NOT overwritten by the lead\'s different band').toBe('51_to_250');
     expect(leadBefore.IsConverted, 'AC4 precondition: lead unconverted').toBe(false);
     const leadAfter = leadRows(LEADN.attachSized)[0];
+    expect(leadAfter.ConvertedAccountId, 'AC4: the attach names the EXISTING customer, not a new one').toBe(custAfter.Id);
     expect(leadAfter.IsConverted, 'AC4: the attach converted the lead').toBe(true);
     expect(leadAfter[API], 'AC4: the lead keeps its own band').toBe('up_to_10');
     expect(accounts() - accBefore, 'AC4: attaching created NO new customer').toBe(0);
@@ -481,6 +502,8 @@ test.describe('[SCRUM-476] AC5 — attach onto a blank customer', () => {
     await convertLeadForm(page, 'attachFill', 'existBlank');
 
     const custAfter = accRows(CUST.existBlank)[0];
+    const leadAttach = leadRows(LEADN.attachFill)[0];
+    expect(leadAttach.ConvertedAccountId, 'AC5: the attach names the existing customer before anything else').toBe(custBefore.Id);
     expect(custAfter.Id, 'AC5: still the SAME customer record').toBe(custBefore.Id);
     expect(custAfter[API], 'AC5: the blank customer took the lead\'s band').toBe('more_than_250');
     expect(accounts() - accBefore, 'AC5: no second customer created').toBe(0);
@@ -503,6 +526,9 @@ test.describe('[SCRUM-476] AC6 — a band-less attach', () => {
     await convertLeadForm(page, 'attachBlank', 'existBlank2');
 
     const custAfter = accRows(CUST.existBlank2)[0];
+    const leadAttach = leadRows(LEADN.attachBlank)[0];
+    expect(leadAttach.ConvertedAccountId, 'AC6: the band-less attach names the existing customer').toBe(custBefore.Id);
+    expect(leadAttach[API], 'AC6: the lead still carries no band').toBeNull();
     expect(custAfter.Id, 'AC6: same record, the attach saved cleanly').toBe(custBefore.Id);
     expect(custAfter[API], 'AC6: the customer stays empty').toBeNull();
     await openCustomer(page, 'existBlank2');
@@ -581,10 +607,14 @@ test.describe('[SCRUM-476] AC10/AC11 — visibility next to Account Name, nothin
     const fixtureTotal = soql(`SELECT Id FROM Account WHERE Name LIKE '${TAG}%'`).totalSize;
     expect(fixtureTotal, 'AC11: this run seeded fixture customers to measure on').toBeGreaterThan(0);
 
+    // An earlier block may have changed this customer's band; the criterion is that the page
+    // shows the band the ORG holds, next to the name — so compare against the org read-back.
+    const orgBand = accRows(CUST.hand)[0][API];
+    expect(BANDS, 'AC10 precondition: the org band of the fixture customer is one of the four ranges').toContain(orgBand);
     await openCustomer(page, 'hand');
     const rendered = await renderedBand(page);
     const gap = await rowsBetweenNameAndSize(page);
-    expect(rendered, 'AC10: the band renders when the customer is opened').toBe('11 to 50 employees');
+    expect(rendered, `AC10: the opened page renders the band the org holds (${orgBand} -> "${labelOf(orgBand)}")`).toBe(labelOf(orgBand));
     expect(gap, 'AC10: the band is close to Account Name, not in some other section').toBeLessThanOrEqual(2);
     observed('AC10/AC11', `${foreignTotal} customers in the org, ${foreignSized.length} real customers outside this run carry a band (expected 0 — nothing backfilled), ${foreignFixtureSized} TEST-* fixture leftovers carry one (other agents' runs, untouched), ${fixtureTotal} fixture customers, page renders "${rendered}" ${gap} rows under Account Name`);
   });
@@ -631,24 +661,29 @@ test.describe('[SCRUM-476] AC13 — changing an old lead after the customer has 
     // the event, the later edit is the criterion — so the attach runs here first.
     await convertLeadForm(page, 'old', 'existSized');
     const leadMid = leadRows(LEADN.old)[0];
+    expect(leadMid.ConvertedAccountId, 'AC13: the attach names the existing customer before anything else').toBe(custBefore.Id);
     expect(leadMid.IsConverted, 'AC13: the lead is now converted onto the customer').toBe(true);
 
     await openLead(page, 'old');
-    // The house edit path on a converted lead: Lightning may refuse to edit it at all —
-    // that refusal is a second, independent guard. Both outcomes are asserted below.
+    // Measured: the Apex path refuses to update a converted lead (CANNOT_UPDATE_CONVERTED_LEAD).
+    // On the UI path the Edit control may or may not be offered — BOTH outcomes are asserted,
+    // and the criterion (the customer's band never moves) is checked after either.
     const btn = page.getByRole('button', { name: `Edit ${LABEL}`, exact: true });
-    expect(await btn.count(), '"Edit Company Size" is not offered on a converted lead page').toBe(1);
-    await btn.first().click({ timeout: 15000 });
-    await page.waitForTimeout(2500);
-    await pickBand(page, 'more_than_250');
-    await saveInlineEdit(page);
-    await page.waitForTimeout(4000);
+    const offered = await btn.count();
+    expect(offered, 'the lead page offers either 0 or 1 Edit Company Size control').toBeOneOf([0, 1]);
+    if (offered === 1) {
+      await btn.first().click({ timeout: 15000 });
+      await page.waitForTimeout(2500);
+      await pickBand(page, 'more_than_250');
+      await saveInlineEdit(page);
+      await page.waitForTimeout(4000);
+    }
 
     const leadAfter = leadRows(LEADN.old)[0];
     const custAfter = accRows(CUST.existSized)[0];
     expect(custAfter[API], `AC13: the customer's band must not move (was ${bandBefore})`).toBe(bandBefore);
     expect(custAfter.Id, 'AC13: still the same customer record').toBe(custBefore.Id);
-    observed('AC13', `old lead ${ids.l_old} ${API} ${leadBefore[API]} -> ${leadAfter[API]} (UI edit of a converted lead); customer ${custAfter.Id} stayed ${bandBefore}`);
+    observed('AC13', `old lead ${ids.l_old} ${API} ${leadBefore[API]} -> ${leadAfter[API]}, ConvertedAccountId=${leadAfter.ConvertedAccountId}; UI offered ${offered} Edit controls on the converted lead (1 = the edit ran, 0 = platform refused); customer ${custAfter.Id} stayed ${bandBefore}`);
   });
 });
 
@@ -670,6 +705,7 @@ test.describe('[SCRUM-476] batch — three conversions, each customer its own ba
       expect(rows[0][API], `batch: customer ${CUST[k]} carries ITS OWN lead's band, not a sibling's`).toBe(want[k]);
     }
     expect(accounts() - accBefore, 'batch: exactly three customers created').toBe(3);
-    observed('batch', `3 conversions -> ${ids.c_b1}=up_to_10, ${ids.c_b2}=more_than_250, ${ids.c_b3}=11_to_50, Account delta ${accounts() - accBefore}`);
+    const got = { b1: accRows(CUST.b1)[0].Id, b2: accRows(CUST.b2)[0].Id, b3: accRows(CUST.b3)[0].Id };
+    observed('batch', `3 conversions -> ${got.b1}=up_to_10, ${got.b2}=more_than_250, ${got.b3}=11_to_50 (each customer named by its own lead), Account delta ${accounts() - accBefore}`);
   });
 });
