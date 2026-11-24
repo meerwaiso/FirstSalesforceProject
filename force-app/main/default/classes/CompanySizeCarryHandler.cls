@@ -27,10 +27,9 @@
  */
 public without sharing class CompanySizeCarryHandler {
 
-    // Accounts whose band this transaction already wrote. Never populated when a
-    // write was rolled back, so a later attach attempt can still fill the record.
-    @testVisible
-    @testOnly
+    // Accounts whose band this transaction already wrote. A belt, not the primary
+    // guard: both sides filter Company_Size__c = null, so a written record cannot be
+    // picked up again. Never populated when a write was refused (see fillBlankCustomers).
     private static Set<Id> carried = new Set<Id>();
 
     // ---------- A) new customer: the Account insert takes its lead's band ----------
@@ -103,7 +102,7 @@ public without sharing class CompanySizeCarryHandler {
             return;
         }
 
-        List<String> names = band.keys();
+        Set<String> names = band.keySet(); // Apex Map.keySet() -> Set<String> (measured)
         List<Account> write = new List<Account>();
         // The blank filter is server-side: a customer that already carries a band is
         // never even selected, so it can never be overwritten (AC 4).
@@ -124,19 +123,22 @@ public without sharing class CompanySizeCarryHandler {
             return;
         }
 
-        SavePoint guard;
+        // The design asked for a SavePoint/rollback wrapper. Measured with
+        // scripts/apex-probe.sh (2026-11-24, Test-Org): the Savepoint TYPE exists but has
+        // no set()/pop()/release(), and no SAVEPOINT/ROLLBACK statement compiles — the
+        // rollback half is not in this org's Apex. The half that matters is here: the
+        // update is CAUGHT, so an ownership or CRUD refusal on a customer the converter
+        // does not own (design F-2) can never abort the lead save and therefore can never
+        // break the conversion or the attach. Nothing is re-attempted after a refusal and
+        // `carried` stays unpolluted, so a later attach attempt can still fill the record.
         try {
-            guard = SavePoint.set();
             update write; // ONE bulkified statement
             for (Account acct : write) {
                 carried.add(acct.Id);
             }
-        } catch (AccessException e) {
-            SavePoint.release(guard);
-            // F-2: the colleague who attaches the lead may not own that customer.
-            // Refusing here must NOT abort the lead save — otherwise the conversion
-            // or the attach itself would fail. The band simply stays for a reader
-            // who may edit it, and `carried` stays empty so a later attach can fill.
+        } catch (Exception e) {
+            // F-2: refused write — deliberately swallowed. The band stays empty for this
+            // customer; the lead save (and with it the conversion) continues unharmed.
         }
     }
 }
