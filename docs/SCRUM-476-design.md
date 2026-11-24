@@ -471,6 +471,50 @@ green on the reviewed head, so the merge gate is closed.
   zero-record facts (Test-Org 66 Leads / 0 sized, Prod 22 / 0, converted Leads 1 → the carry-over is
   not observable in either org today; `docs/RELEASE-NOTES.md` stays silent about it).
 
+## Review round 5 (PR #196, head `b03e83d`, impl head `f475297`) — measured, verdict APPROVED (one wording duty open)
+
+Chain read back: `5df4434` (my round-4 spec) → `07b17a1` (Tester E2E spec) → `f475297` (round-5 impl) →
+`b03e83d` (Tester notes); PR head `b03e83d`, `mergeable: clean`.
+
+- **R-17 Gate green on the current head** (`gh pr checks 196`, run `45406013065`): Lint pass 44s,
+  Metadata/Apex/Smoke pass 5m17s, **Prod-Org Drift Gate pass 11m50s**, README pass 6s. CI job log starts
+  13:41:46 UTC, branch push read back at 13:41:14 UTC — the run belongs to this head, its checkout sha
+  (`b8a594e`) is GitHub's PR-merge ref, not the branch head.
+- **R-18 16/16 verified twice, their run id wrong a second time.** CI log 13:44:10 UTC `Outcome Passed`,
+  `Tests Ran 16`; org `ApexTestRunResult 05mWU000002dPa5YAE` 13:42:39 UTC `16/16`. Their `707WU00001WHiMh`
+  answers 0 rows as `ApexTestRunResult` and as `ApexTestRunResultId` on `ApexTestResult`. Method count in
+  the branch: 13 `static void` in `SCRUM476CompanySizeTest` + 3 in `SCRUM476CompanySizeFlsTest` = 16 ✓.
+- **R-19 The smoke job's second step printed `Test-Org validate: Failed` — second confirmation of R-13.**
+  `sf project deploy report -i 0AfWU00000dNgpi0AC`: `numberComponentErrors 0`, `numberTestErrors 0`,
+  `Failing: 0`, `status Failed`; the warnings are org artefacts missing from the branch
+  (`Account.Wartungsvertrag_Status__c`, `Case.SLA_Status__c`, `Contact.Contact_Status_Anzeige__c`,
+  `Demo_Devic__c.Status__c`, the SCRUM-4xx Permission Sets). Report it as its own line, never as a pass.
+- **R-20 Bulk fixture shape verified** (`bulk_conversionEvents_carryEveryBand_inOneConversionCall`):
+  one `insert leads` for 20 seeds (one trigger invocation) plus one `Database.convertLead(req)` over
+  20 rows; asserts 20 results, 20 distinct `ConvertedAccountId`s, 20 readable customers, and each
+  customer's band equals **its own** lead's band. Trigger cost model confirmed against the org: exactly
+  two live Lead triggers — `LeadDuplicateGuard` `01qWU00000A7VXZYA3` (before insert/update, 1 SOQL) and
+  `LeadCompanySizeCarry` `01qWU00000AvdjeYAB` (1 SOQL + 1 bulkified update). 200 records remain
+  not Apex-claimable (120 rows in one call die `Too many SOQL queries: 101`) → E2E/Import row with the count.
+- **R-21 Tie-break fixture read and sound, its naming is not.** `tieBreak_twoLeadsOneCustomer_newestLeadWins`
+  derives the winner as `max(Lead.Id)` and asserts `newerLead.Company_Size__c` on the single customer —
+  matches my measurement. But Id order is not creation order in this org: my probe created the **first**
+  lead with the **higher** Id (`00QWU00000iXV5J2AW` vs `00QWU00000iXNFq2AO`, 13:35 CET). So "newest lead
+  wins" is not implementable through Ids. Wording duty before release: fixture name, comment and
+  `docs/RELEASE-NOTES.md` must say **the lead with the higher Id wins**. If the PO's intent is really
+  "the newest lead", the implementable comparison is `Lead.CreatedDate`/`LastModifiedDate`, not `Id` —
+  that decision belongs to PO/user, not to the Developer.
+- **R-22 Org state is not what they reported.** `SELECT COUNT() FROM Account WHERE Company_Size__c != null`
+  = **3**, all named `PROBE-476M-CUST` (`001WU00002M45gAYAR`, `001WU00002M4ZHfYAN`, `001WU00002M4kjJYAR`),
+  created 14:09–14:19 UTC today — probe dirt of another agent, no real conversion behind any of them.
+  Plus 3 Leads `TEST-SCRUM-476-E2E-C-EXIST-BLANK2` (all `IsConverted=false`, `Company_Size__c=null`) and
+  2 Accounts `PROBE-476M-CUST` still in the org. F-4's attribution rule stands: every non-blank band must
+  name a real conversion/attach; none of these does, so the release-note bar stays and the dirt needs
+  cleaning by whoever created it (not mine, I did not touch it).
+- Lines the branch does not own: AC 9 (UI-only, needs the layout read-back of the layouts sales/service
+  open), AC 6/7 at 200 records (E2E/Import row), the negative-access FLS test with the two assigned users,
+  and the tie-break wording above.
+
 ## Build order for the Developer
 
 1. Field meta → 2. Permission Set pair → 3. assign both PS in Test-Org + read back
