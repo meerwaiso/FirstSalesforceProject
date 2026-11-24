@@ -233,6 +233,27 @@ private class SCRUM476CompanySizeTest {
             'AC7: changing the lead changed nothing on the customer (attached -> no re-fill).');
     }
 
+    // ---- AC 5 end-to-end through the LEAD trigger (a real Lead save) ----
+    @isTest
+    static void attach_fires_the_RealLeadUpdateTrigger() {
+        Account a = mkCustomer('TEST-476-CoLive');
+        a.Company_Size__c = null;
+        insert a;
+
+        Lead l = mkLead('TEST-476-CoNotYet', BAND_HUGE);
+        insert l;
+
+        // A real update of the Lead: LeadCompanySizeCarry must answer the attach.
+        // (The org's convertor may convert this lead as well — that storm belongs to
+        // SCRUM-472; the assertion here is about the CUSTOMER that already existed.)
+        l.Company = 'TEST-476-CoLive';
+        update l;
+
+        Account after = [SELECT Company_Size__c FROM Account WHERE Name = 'TEST-476-CoLive' LIMIT 1];
+        System.assertEquals(BAND_HUGE, after.Company_Size__c,
+            'AC5: the Lead-side trigger filled the blank existing customer on a real save.');
+    }
+
     // ---- AC 11: the carry touches nothing else (one save => no other record) ----
     @isTest
     static void carry_createsNoOtherRecord() {
