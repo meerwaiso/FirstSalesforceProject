@@ -286,7 +286,9 @@ async function openBandPicker(page: import('@playwright/test').Page) {
   // Measured (probe 2026-11-24): the button is there exactly once on a painted Details tab,
   // but the body paints AFTER the global header — an unpainted page reports 0, so poll first.
   for (let i = 0; i < 10; i++) { if ((await btn.count()) === 1) break; await page.waitForTimeout(2000); }
-  const seen = await page.getByRole('button', { name: /Company Size/ }).evaluateAll((es) => es.map((e) => (e.inner()).replace(/\s+/g, ' ').trim()));
+  // ariaSnapshot is the proven read route (probes 476h/476n); evaluateAll(e => e.inner()) is not
+  // available on these Locators (run g5: TypeError "e.inner is not a function").
+  const seen = (await page.ariaSnapshot()).split('\n').filter((l) => /Company Size/.test(l)).slice(0, 8);
   await expect(await btn.count(), `no single "Edit ${LABEL}" button on the customer; buttons matching /Company Size/ seen: ${JSON.stringify(seen)}`).toBe(1);
   await btn.first().click({ timeout: 15000 });
   const combo = page.getByRole('combobox', { name: LABEL, exact: true });
