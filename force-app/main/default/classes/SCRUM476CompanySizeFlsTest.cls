@@ -24,18 +24,18 @@
  * System Administrators inherit FLS on custom fields — the fixture user is a Standard User
  * (verified in SCRUM-329/386).
  *
- * The customer fixture is created in System mode BEFORE any runAs work of the same method:
- * an Account insert under a synthetic user would first trip the org's Validation Rules
- * (AccountStreetZipRequired / AccountStateRequired / AccountWebsiteAndPhoneRequired /
- * AccountEmailAndCityRequired — house SCRUM-449) and the missing CRUD of the other Account
- * PSs, which is the Tester's finding, not an FLS fact about THIS field. The values asserted
- * below are about Company_Size__c only; the record itself is written before runAs begins.
+ * The customer fixture is created INSIDE System.runAs like in the house class (one mixed-DML
+ * rule for the whole method), and it is a bare new Account(Name=...): the Account Validation
+ * Rules of this org (LockReason_PflichtBeiGesperrt, Wartungsvertrag_End_Before_Start) do not
+ * refuse a plain insert — house SCRUM471KeyAccountTest inserts exactly this and is green.
  */
 @isTest
 private class SCRUM476CompanySizeFlsTest {
 
     private static final String PS_READ = 'SCRUM476_CompanySize_Read';
     private static final String PS_SET = 'SCRUM476_CompanySize_Set';
+    private static final String BAND_SMALL = 'up_to_10';
+    private static final String BAND_MID = '11_to_50';
 
     private static User mkTestUser(String tag) {
         Profile p = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
@@ -55,25 +55,11 @@ private class SCRUM476CompanySizeFlsTest {
         return u;
     }
 
-    private static Id psId(String name) {
-        List<PermissionSet> found = [SELECT Id FROM PermissionSet WHERE Name = :name];
-        System.assertEquals(1, found.size(),
-            'Precondition: ' + name + ' must exist in the org, otherwise the asserts below test nothing.');
-        return found[0].Id;
-    }
-
     private static void assignPs(User u, String psName) {
-        insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = psId(psName));
-    }
-
-    private static Account mkCustomer(String name) {
-        Account a = new Account(
-            Name = name, Street = 'Test-Street 1', PostalCode = '12345', State = 'NY',
-            PhoneNumber = '03012345678', Website = 'https://test.invalid',
-            Email = 'test-476-fls@x.invalid', AddressCity = 'TestCity'
-        );
-        insert a;
-        return a;
+        List<PermissionSet> found = [SELECT Id FROM PermissionSet WHERE Name = :psName];
+        System.assertEquals(1, found.size(),
+            'Precondition: ' + psName + ' must exist in the org, otherwise the asserts below test nothing.');
+        insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = found[0].Id);
     }
 
     private static Boolean customerReadableBy(User u) {
@@ -104,8 +90,12 @@ private class SCRUM476CompanySizeFlsTest {
     @isTest
     static void withoutPS_size_invisible_and_unwritable() {
         User u = mkTestUser('none');
-        Account a = mkCustomer('TEST-476-FLS-NONE');
-        Id acctId = a.Id;
+        Id acctId;
+        System.runAs(u) {
+            Account a = new Account(Name = 'TEST-476-FLS-NONE');
+            insert a;
+            acctId = a.Id;
+        }
         System.assert(customerReadableBy(u),
             'Precondition: the Standard User must read the Account OBJECT, otherwise the wall below '
                 + 'is missing CRUD, not FLS (a test-local *_TestObjectAccess PS is needed then, house SCRUM-442/451/464/467).');
@@ -136,7 +126,7 @@ private class SCRUM476CompanySizeFlsTest {
             try {
                 Account fresh = new Account();
                 fresh.Id = acctId;
-                fresh.Company_Size__c = 'up_to_10';
+                fresh.Company_Size__c = BAND_SMALL; // FRESH sObject: Id + the written field only (house SCRUM-459)
                 update fresh;
             } catch (Exception e) {
                 threwUpdate = true;
@@ -150,8 +140,12 @@ private class SCRUM476CompanySizeFlsTest {
     static void readPS_only_visible_but_not_writable() {
         User u = mkTestUser('read');
         assignPs(u, PS_READ);
-        Account a = mkCustomer('TEST-476-FLS-READ');
-        Id acctId = a.Id;
+        Id acctId;
+        System.runAs(u) {
+            Account a = new Account(Name = 'TEST-476-FLS-READ');
+            insert a;
+            acctId = a.Id;
+        }
         System.assert(customerReadableBy(u), 'Precondition: the PS holder must read the Account object.');
 
         System.assert(sizeReadableBy(u),
@@ -166,7 +160,7 @@ private class SCRUM476CompanySizeFlsTest {
             try {
                 Account fresh = new Account();
                 fresh.Id = acctId;
-                fresh.Company_Size__c = 'up_to_10';
+                fresh.Company_Size__c = BAND_SMALL;
                 update fresh;
             } catch (Exception e) {
                 threwUpdate = true;
@@ -181,24 +175,27 @@ private class SCRUM476CompanySizeFlsTest {
         User u = mkTestUser('both');
         assignPs(u, PS_READ);
         assignPs(u, PS_SET);
-        Account a = mkCustomer('TEST-476-FLS-BOTH');
-        Id acctId = a.Id;
+        Id acctId;
+        System.runAs(u) {
+            Account a = new Account(Name = 'TEST-476-FLS-BOTH');
+            insert a;
+            acctId = a.Id;
+        }
         System.assert(customerReadableBy(u), 'Precondition: the PS holder must read the Account object.');
-
         System.assert(sizeReadableBy(u), 'AC1: with the pair the size IS visible.');
         System.assert(sizeWritableBy(u), 'AC2/AC4: with the pair the size is editable (set AND clear).');
 
         System.runAs(u) {
             Account fresh = new Account();
             fresh.Id = acctId;
-            fresh.Company_Size__c = '11_to_50';
+            fresh.Company_Size__c = BAND_MID;
             update fresh; // AC2: setting by hand saves
         }
         String afterSet;
         System.runAs(u) {
             afterSet = [SELECT Company_Size__c FROM Account WHERE Id = :acctId WITH USER_MODE LIMIT 1].Company_Size__c;
         }
-        System.assertEquals('11_to_50', afterSet, 'AC2: after the save the customer reads the chosen band.');
+        System.assertEquals(BAND_MID, afterSet, 'AC2: after the save the customer reads the chosen band.');
 
         System.runAs(u) {
             Account fresh = new Account();

@@ -1,10 +1,8 @@
 /**
  * [SCRUM-476] Behaviour proof for CompanySizeCarryHandler + both triggers.
  *
- * House pattern SCRUM472CompanySizeTest: one criterion per @isTest method, TEST-476
- * fixture names, org-level Validation Rules satisfied on every Account insert
- * (AccountStreetZipRequired / AccountStateRequired refuse a bare insert — house
- * SCRUM-449), and an assert that can actually go red.
+ * House pattern SCRUM472CompanySizeTest / SCRUM471KeyAccountTest: one criterion per
+ * @isTest method, TEST-476 fixture names, an assert that can actually go red.
  *
  * PATH A (new customer) runs THROUGH THE REAL TRIGGER: an Account insert fires
  * AccountCompanySizeCarry, so the insert below covers handler AND trigger.
@@ -24,18 +22,16 @@
 @isTest
 private class SCRUM476CompanySizeTest {
 
-    private static final String STREET = 'Test-Street 1';
-    private static final String ZIP = '12345';
-    private static final String STATE = 'NY';
+    private static final String BAND_SMALL = 'up_to_10';
+    private static final String BAND_MID = '11_to_50';
+    private static final String BAND_LARGE = '51_to_250';
+    private static final String BAND_HUGE = 'more_than_250';
 
-    // An Account that the org's Validation Rules accept (house SCRUM-449).
+    // A bare customer: the Account Validation Rules in this org (LockReason_PflichtBeiGesperrt,
+    // Wartungsvertrag_End_Before_Start) do not refuse a plain insert — house
+    // SCRUM471KeyAccountTest inserts new Account(Name=...) and is green.
     private static Account mkCustomer(String name) {
-        Account a = new Account(
-            Name = name, Street = STREET, PostalCode = ZIP, State = STATE,
-            PhoneNumber = '03012345678', Website = 'https://test.invalid',
-            Email = 'test-476@x.invalid', AddressCity = 'TestCity'
-        );
-        return a;
+        return new Account(Name = name);
     }
 
     private static Lead mkLead(String company, String band) {
@@ -44,21 +40,37 @@ private class SCRUM476CompanySizeTest {
         return l;
     }
 
-    // ---- AC 1/AC 2: a new customer takes its lead's band THROUGH THE TRIGGER ----
+    // The two Lead states of an attach, built explicitly (Apex has no sObject.cloneMe()
+    // — measured with scripts/apex-probe.sh 2026-11-24): before = the save as it happens,
+    // old = the save as it was before the button.
+    private static Lead leadAttached(Id id, String company, String band) {
+        Lead l = new Lead(LastName = 'TEST-SCRUM-476', Company = company);
+        l.Company_Size__c = band;
+        l.Id = id;
+        return l;
+    }
+
+    private static Lead leadDetached(Id id, String band) {
+        Lead l = new Lead(LastName = 'TEST-SCRUM-476');
+        l.Company_Size__c = band;
+        l.Id = id;
+        return l;
+    }
+
+    // ---- AC 1/AC 2/AC 3: a new customer takes its lead's band THROUGH THE TRIGGER ----
     @isTest
     static void convert_newCustomer_takes_leadBand_viaTrigger() {
-        Lead l = mkLead('TEST-476-CoA', 'more_than_250');
+        Lead l = mkLead('TEST-476-CoA', BAND_HUGE);
         insert l;
         Account a = mkCustomer('TEST-476-CoA');
         insert a; // fires AccountCompanySizeCarry -> carryToNewAccounts
 
         Account after = [SELECT Name, Company_Size__c FROM Account WHERE Name = 'TEST-476-CoA' LIMIT 1];
-        System.assertEquals('more_than_250', after.Company_Size__c,
+        System.assertEquals(BAND_HUGE, after.Company_Size__c,
             'AC1/AC2/AC3: the new customer got exactly its lead\'s band and no other.');
 
-        Id leadId = l.Id;
-        Lead leadAfter = [SELECT Company_Size__c FROM Lead WHERE Id = :leadId LIMIT 1];
-        System.assertEquals('more_than_250', leadAfter.Company_Size__c,
+        Lead leadAfter = [SELECT Company_Size__c FROM Lead WHERE Company = 'TEST-476-CoA' LIMIT 1];
+        System.assertEquals(BAND_HUGE, leadAfter.Company_Size__c,
             'AC1: the carry never changed anything on the lead itself.');
     }
 
@@ -70,7 +82,7 @@ private class SCRUM476CompanySizeTest {
         Account a = mkCustomer('TEST-476-CoBlank');
         insert a;
 
-        Account after = [SELECT Name, Company_Size__c FROM Account WHERE Name = 'TEST-476-CoBlank' LIMIT 1];
+        Account after = [SELECT Company_Size__c FROM Account WHERE Name = 'TEST-476-CoBlank' LIMIT 1];
         System.assertEquals(null, after.Company_Size__c,
             'AC1/AC10: without a band on the lead the customer starts blank — nothing is defaulted.');
     }
@@ -92,7 +104,7 @@ private class SCRUM476CompanySizeTest {
         List<Account> customers = new List<Account>();
         for (Integer i = 0; i < 20; i++) {
             String nm = 'TEST-476-Co' + i;
-            leads.add(mkLead(nm, (Integer.mod(i, 2) == 0) ? 'up_to_10' : '11_to_50'));
+            leads.add(mkLead(nm, Math.mod(i, 2) == 0 ? BAND_SMALL : BAND_MID));
             customers.add(mkCustomer(nm));
         }
         // ONE bulk insert per object: two separate statements would be two trigger
@@ -104,7 +116,7 @@ private class SCRUM476CompanySizeTest {
         System.assertEquals(20, after.size(), 'AC2: every customer of the batch exists.');
         Map<String, String> expect = new Map<String, String>();
         for (Integer i = 0; i < 20; i++) {
-            expect.put('TEST-476-Co' + i, (Integer.mod(i, 2) == 0) ? 'up_to_10' : '11_to_50');
+            expect.put('TEST-476-Co' + i, Math.mod(i, 2) == 0 ? BAND_SMALL : BAND_MID);
         }
         for (Account a : after) {
             System.assertEquals(expect.get(a.Name), a.Company_Size__c,
@@ -116,22 +128,20 @@ private class SCRUM476CompanySizeTest {
     @isTest
     static void attach_existingCustomerWithBand_untouched() {
         Account a = mkCustomer('TEST-476-CoC');
-        a.Company_Size__c = '51_to_250';
+        a.Company_Size__c = BAND_LARGE; // the carefully checked value of the customer
         insert a;
 
-        Lead l = mkLead(null, 'up_to_10'); // the PO's conflicting pair: 51_to_250 vs up_to_10
-        l.Company = null;
+        Lead l = mkLead(null, BAND_SMALL); // the PO's conflicting pair: 51_to_250 vs up to 10
         insert l;
         Id leadId = l.Id;
 
-        Lead before = new Lead();
-        before.Id = leadId;
-        Lead old = before.cloneMe();
-        before.Company = 'TEST-476-CoC';
-        CompanySizeCarryHandler.fillBlankCustomers(new List<Lead>{before}, new Map<Id, Lead>{leadId: old});
+        CompanySizeCarryHandler.fillBlankCustomers(
+            new List<Lead>{ leadAttached(leadId, 'TEST-476-CoC', BAND_SMALL) },
+            new Map<Id, Lead>{ leadId => leadDetached(leadId, BAND_SMALL) }
+        );
 
         Account after = [SELECT Company_Size__c FROM Account WHERE Name = 'TEST-476-CoC' LIMIT 1];
-        System.assertEquals('51_to_250', after.Company_Size__c,
+        System.assertEquals(BAND_LARGE, after.Company_Size__c,
             'AC4: the checked band of the existing customer was NOT replaced by the lead\'s.');
     }
 
@@ -142,19 +152,17 @@ private class SCRUM476CompanySizeTest {
         a.Company_Size__c = null;
         insert a;
 
-        Lead l = mkLead(null, 'up_to_10');
-        l.Company = null;
+        Lead l = mkLead(null, BAND_SMALL);
         insert l;
         Id leadId = l.Id;
 
-        Lead before = new Lead();
-        before.Id = leadId;
-        Lead old = before.cloneMe();
-        before.Company = 'TEST-476-CoD';
-        CompanySizeCarryHandler.fillBlankCustomers(new List<Lead>{before}, new Map<Id, Lead>{leadId: old});
+        CompanySizeCarryHandler.fillBlankCustomers(
+            new List<Lead>{ leadAttached(leadId, 'TEST-476-CoD', BAND_SMALL) },
+            new Map<Id, Lead>{ leadId => leadDetached(leadId, BAND_SMALL) }
+        );
 
         Account after = [SELECT Company_Size__c FROM Account WHERE Name = 'TEST-476-CoD' LIMIT 1];
-        System.assertEquals('up_to_10', after.Company_Size__c,
+        System.assertEquals(BAND_SMALL, after.Company_Size__c,
             'AC5: the blank customer took exactly the lead\'s band (the write itself).');
     }
 
@@ -165,15 +173,14 @@ private class SCRUM476CompanySizeTest {
         a.Company_Size__c = null;
         insert a;
 
-        Lead l = mkLead('TEST-476-CoE', 'up_to_10'); // already attached: Company was already set
+        Lead l = mkLead('TEST-476-CoE', BAND_SMALL); // already attached: Company was already set
         insert l;
         Id leadId = l.Id;
 
-        Lead before = new Lead();
-        before.Id = leadId;
-        Lead old = before.cloneMe();
-        before.Company_Size__c = 'more_than_250'; // only the band changed, Company untouched
-        CompanySizeCarryHandler.fillBlankCustomers(new List<Lead>{before}, new Map<Id, Lead>{leadId: old});
+        CompanySizeCarryHandler.fillBlankCustomers(
+            new List<Lead>{ leadAttached(leadId, 'TEST-476-CoE', BAND_HUGE) }, // only the band changed
+            new Map<Id, Lead>{ leadId => leadAttached(leadId, 'TEST-476-CoE', BAND_SMALL) }
+        );
 
         Account after = [SELECT Company_Size__c FROM Account WHERE Name = 'TEST-476-CoE' LIMIT 1];
         System.assertEquals(null, after.Company_Size__c,
@@ -183,16 +190,14 @@ private class SCRUM476CompanySizeTest {
     // ---- AC 5/AC 7: an attach with NO name match writes nothing ----
     @isTest
     static void attach_unknownCustomer_writesNothing() {
-        Lead l = mkLead(null, 'up_to_10');
-        l.Company = null;
+        Lead l = mkLead(null, BAND_SMALL);
         insert l;
         Id leadId = l.Id;
 
-        Lead before = new Lead();
-        before.Id = leadId;
-        Lead old = before.cloneMe();
-        before.Company = 'TEST-476-CoNoSuchCustomer';
-        CompanySizeCarryHandler.fillBlankCustomers(new List<Lead>{before}, new Map<Id, Lead>{leadId: old});
+        CompanySizeCarryHandler.fillBlankCustomers(
+            new List<Lead>{ leadAttached(leadId, 'TEST-476-CoNoSuchCustomer', BAND_SMALL) },
+            new Map<Id, Lead>{ leadId => leadDetached(leadId, BAND_SMALL) }
+        );
 
         List<Account> matches = [SELECT Company_Size__c FROM Account WHERE Name = 'TEST-476-CoNoSuchCustomer'];
         System.assertEquals(0, matches.size(),
@@ -210,39 +215,37 @@ private class SCRUM476CompanySizeTest {
     // ---- AC 6/AC 7: two independent changes, each measured, the other untouched ----
     @isTest
     static void leadBandAndCustomerBand_stayIndependent() {
-        Lead l = mkLead('TEST-476-CoF', 'up_to_10');
+        Lead l = mkLead('TEST-476-CoF', BAND_SMALL);
         insert l;
         Account a = mkCustomer('TEST-476-CoF');
-        a.Company_Size__c = '51_to_250'; // hand-set, deliberately different from the lead
+        a.Company_Size__c = BAND_LARGE; // hand-set, deliberately different from the lead
         insert a;
         Id leadId = l.Id;
 
         // change the CUSTOMER -> the lead stays
-        Account upd = a.cloneMe();
-        upd.Company_Size__c = '11_to_50';
+        Account upd = new Account(Id = a.Id, Company_Size__c = BAND_MID);
         update upd;
         Lead leadAfter = [SELECT Company_Size__c FROM Lead WHERE Id = :leadId LIMIT 1];
-        System.assertEquals('up_to_10', leadAfter.Company_Size__c,
+        System.assertEquals(BAND_SMALL, leadAfter.Company_Size__c,
             'AC7: changing the customer changed nothing on the lead.');
 
-        // change the LEAD -> the customer stays
-        Lead l2 = new Lead();
-        l2.Id = leadId;
-        Lead old = l2.cloneMe();
-        l2.Company_Size__c = 'more_than_250';
-        CompanySizeCarryHandler.fillBlankCustomers(new List<Lead>{l2}, new Map<Id, Lead>{leadId: old});
+        // change the ATTACHED LEAD -> the customer stays
+        CompanySizeCarryHandler.fillBlankCustomers(
+            new List<Lead>{ leadAttached(leadId, 'TEST-476-CoF', BAND_HUGE) },
+            new Map<Id, Lead>{ leadId => leadAttached(leadId, 'TEST-476-CoF', BAND_SMALL) }
+        );
         Account afterBoth = [SELECT Company_Size__c FROM Account WHERE Name = 'TEST-476-CoF' LIMIT 1];
-        System.assertEquals('11_to_50', afterBoth.Company_Size__c,
+        System.assertEquals(BAND_MID, afterBoth.Company_Size__c,
             'AC7: changing the lead changed nothing on the customer (attached -> no re-fill).');
     }
 
     // ---- AC 11: the carry touches nothing else (one save => no other record) ----
     @isTest
     static void carry_createsNoOtherRecord() {
-        Lead l = mkLead('TEST-476-CoG', 'up_to_10');
+        Lead l = mkLead('TEST-476-CoG', BAND_SMALL);
         insert l;
         Account a = mkCustomer('TEST-476-CoG');
-        insert a;
+        insert a; // the carry runs inside this insert
         List<Contact> contacts = [SELECT Id FROM Contact];
         List<Opportunity> opps = [SELECT Id FROM Opportunity];
         List<Case> cases = [SELECT Id FROM Case];
