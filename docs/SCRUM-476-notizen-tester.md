@@ -121,3 +121,31 @@ Alle Befunde measured in Test-Org (`sf ... --target-org devops-agent@cline.test`
   Entity fields: ApexTestRunResult has NO `Name`/`Message`; use Status, MethodsEnqueued/Completed/
   Failed, StartTime, EndTime. ApexTestResult outcome column is `Outcome`, name is `MethodName`.
   PermissionSetAssignment fields: `AssigneeId`, `PermissionSetId` (no AssignedUser/PermissionSetName).
+
+## Run g3 verdict 2026-11-24 (16:43->17:01, 11 tests, 18.1 m) — 8 passed / 3 failed
+
+- AC1/AC3 failed at the AC12 pair-check: `dSized.feed` 6 vs `dBlank.feed` 3. Root cause is the
+  SPEC, not the org: `beforeSized` window ran up to a `snap()` taken AFTER the second conversion,
+  so the sized window contained both conversions' record chatter. Fix: one window per conversion
+  (dSized computed before the band-less conversion starts). Commit: "split the feed windows per
+  conversion".
+- AC7/AC8 (clearing) failed in `openBandPicker`: `button "Edit Company Size"` count 0 after 10x2 s
+  polling — probe476n measured that exact button = 1 on a painted Details tab, so this is state-
+  dependent, not a layout fact. The helper now also prints every button matching /Company Size/ in
+  the failure message, so the next read names the label Lightning used.
+- AC13 failed with `TypeError: expect(...).toBeOneOf is not a function` — Playwright BDD has no
+  `toBeOneOf`. Replaced with `toBeLessThanOrEqual(1)` (at most one control) + OBSERVED names which
+  outcome happened.
+- FeedItem fields (describe --json): Id, ParentId, Type, CreatedById, CreatedDate, Title, Body,
+  LinkUrl, RelatedRecordId, HasFeedEntity, CommentCount, LikeCount. NO RootItemId, NO Name.
+- CLI parse trap (measured twice): `sf data query -t --target-org Test-Org --query ...` ->
+  INVALID_TYPE "sObject type 'Account' is not supported"; the SAME query with `-o Test-Org -q`
+  returns rows. Tooling API (`-t`) sees custom objects only — use it for ApexTestRunResult etc.,
+  never for Account/Lead counts.
+- Org counts with the standard (non-tooling) API, 2026-11-24 17:0x: 272 Accounts total (205 not
+  named TEST-_, 67 TEST-_, 2 PROBE-384-AC2 from another ticket), 22 TEST-_ Leads, 0 PROBE-476 records
+  left of my probes; Leads carrying Company_Size\_\_c: 9, all 9 named TEST-SCRUM-476-E2E-_ (0 organic);
+  Accounts carrying Company_Size\_\_c: 2, both TEST-SCRUM-476-E2E-\* (0 organic); converted Leads with
+  a non-null ConvertedAccountId: 1 organic (00QWU00000fbQIT2A2 -> 001WU00002CKIAdYAP).
+  So the organic pool for the carry-over is ZERO records: every end-to-end proof needs my fixtures,
+  and the coverage rows must say so.
