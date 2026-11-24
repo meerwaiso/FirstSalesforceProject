@@ -420,6 +420,50 @@ Read back myself: `gh pr checks 196` on run `45388344584` → Lint pass, README 
   `ConvertedAccountId` in one call) is Apex-exercisable — not probed. Until measured it stays a
   Tester criterion.
 
+## Review round 4 (PR #196, head `9f77ae8`) — measured, verdict APPROVED (with named coverage lines)
+
+Read back on 2026-11-24 with `gh pr checks 196` (run `45392054477`): Lint & Format pass 49s,
+Metadata/Apex/Smoke pass 6m1s, **Prod-Org Drift Gate pass 11m44s**, README pass 6s — all four
+green on the reviewed head, so the merge gate is closed.
+
+- **R-12 The 15/15 Pass is verified, the quoted run id is not.** CI log 12:20:04 UTC: `Outcome Passed`,
+  `Tests Ran 15`, scope `RunSpecifiedTests — SCRUM476CompanySizeFlsTest,SCRUM476CompanySizeTest`;
+  org `ApexTestRunResult 05mWU000002dOpJYAU` 2026-11-24T12:18:27 UTC, `MethodsEnqueued/Completed 15/15`.
+  Their `707WU00001WGdJ1` answers 0 rows as an `ApexTestRunResult` and as `ApexTestRunResultId` on
+  `ApexTestResult` — quote `05mWU000002dOpJYAU` in the next handoff.
+- **R-13 The smoke job's second step printed `Test-Org validate: Failed` while the job passed.**
+  `sf project deploy report -i 0AfWU00000dNZD80AO -o Test-Org`: `numberComponentErrors 0`,
+  `numberTestErrors 0`, `Failing: 0`, `status Failed` — the verdict comes from the
+  "returned from org, but not found in the local project" warnings (SCRUM-453/459/461/464/467/468/470/471/472
+  Permission Sets, i.e. artefacts that live in the org, not in this branch). Not a defect of this branch;
+  it belongs in the report as its own line, never as a pass.
+- **R-14 Attach fixtures now correct (read from `9f77ae8`):** helper `attachLeadTo(Id leadId, Id accountId)`
+  sets `lc.setAccountId(accountId)`; `attachTo_blankExistingCustomer_fillsBandOnce` asserts
+  `System.assertEquals(existing.Id, res.getAccountId(), …)` BEFORE the band assert and
+  `1 == named.size()`; `attachTo_customerWithBand_neverOverwritten` holds `51_to_250` against a lead
+  carrying `up_to_10` and asserts the held band. Handler diff against `4da604f` is comment-only —
+  `winnerOfCustomer` untouched.
+- **R-15 Their FLS sentence is wrong in this org.** `scripts/fls-check.sh Account Company_Size__c Test-Org`:
+  field exists (Picklist); granted by `SCRUM476_CompanySize_Read` (read) and `SCRUM476_CompanySize_Set`
+  (read+edit), **each assigned to 2 users** (`devops-agent@cline.test`,
+  `meerwais.osmani@resourceful-bear-…com`). The third grant `AncCrmIntegrationUser` (read, edit=false)
+  is a foreign Permission Set assigned to **nobody** — inert, not ours. The negative-access test still
+  belongs to the Tester with the real user pair; nothing in the branch is unassigned.
+- **R-16 Tie-break measured by me 13:35–13:36 CET (probe `p476_tie5.cls`, cleanup: 4 deletes Success,
+  0 records left under `TEST-476%`):** Account `001WU00002M3pv7YAB` blank; Leads `up_to_10` =
+  `00QWU00000iXV5J2AW` and `more_than_250` = `00QWU00000iXNFq2AO`; ONE `Database.convertLead` call,
+  both converts `setAccountId(the same Account)` → `CONVERTED ok=2`, `BAND after=up_to_10`, and the
+  **higher** Id belongs to the `up_to_10` lead — highest Lead Id wins, i.e. `winnerOfCustomer` as
+  implemented. Note the higher Id is NOT the later-created lead, so the release note must say
+  **"the lead with the higher Id wins"**, never "neuesten" — otherwise the note states something the
+  org does not do. Still no fixture in the class → the Tester owns the row (UI attach path or an
+  Apex fixture); it must not be claimed as covered by the branch.
+- Lines the branch does NOT own and must not be called covered: AC 6/7 at 200 records (E2E/Import row,
+  counts measured: 30 single-record events → `Too many SOQL queries: 101`; one `convertLead` over 20
+  rows → `LIMIT_EXCEEDED` at row 0; 10 save / 20 die), AC 9 (UI-only), the tie-break above, and the
+  zero-record facts (Test-Org 66 Leads / 0 sized, Prod 22 / 0, converted Leads 1 → the carry-over is
+  not observable in either org today; `docs/RELEASE-NOTES.md` stays silent about it).
+
 ## Build order for the Developer
 
 1. Field meta → 2. Permission Set pair → 3. assign both PS in Test-Org + read back
