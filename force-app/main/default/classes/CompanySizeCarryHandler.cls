@@ -39,14 +39,19 @@
 public without sharing class CompanySizeCarryHandler {
 
     public static void carryConvertedLeads(List<Lead> after, Map<Id, Lead> before) {
-        // Account Id -> the band of the lead that was converted into it. One conversion
-        // names exactly one Account by Id, so this map cannot be ambiguous by shape.
-        Map<Id, String> bandOfLead = new Map<Id, String>();
+        // Account Id -> the Lead whose band wins for that customer. Several Leads in ONE
+        // save can name the SAME customer (the UI attach path does; the Apex convertLead
+        // path cannot — measured 2026-11-24: sameRecord=false, one new Account per
+        // conversion, and Lead.ConvertedAccountId is "not writeable" on the wire). The
+        // PO's accepted tie-break is "newest lead wins", so the winner is picked by Id —
+        // Salesforce Ids increase with creation — and never by save order, which the
+        // platform does not define. Deterministic by construction, not "last saved".
+        Map<Id, Lead> winnerOfCustomer = new Map<Id, Lead>();
         for (Lead l : after) {
             if (!l.IsConverted
                 || l.ConvertedAccountId == null
                 || l.Company_Size__c == null) {
-                continue; // nothing to carry: AC 1 (no band) / a lead not converted here
+                continue; // nothing to carry: no band on the lead / not converted here
             }
             Lead was = before.get(l.Id);
             if (was == null || was.IsConverted) {
@@ -55,13 +60,16 @@ public without sharing class CompanySizeCarryHandler {
                 // edit of an already converted lead never re-fills its customer.
                 continue;
             }
-            bandOfLead.put(l.ConvertedAccountId, l.Company_Size__c);
+            Lead held = winnerOfCustomer.get(l.ConvertedAccountId);
+            if (held == null || l.Id > held.Id) {
+                winnerOfCustomer.put(l.ConvertedAccountId, l); // newest Lead wins (AC 13 tie-break)
+            }
         }
-        if (bandOfLead.isEmpty()) {
+        if (winnerOfCustomer.isEmpty()) {
             return; // no conversion in this save: zero queries, zero writes
         }
 
-        Set<Id> targets = bandOfLead.keySet(); // Map.keySet() -> Set<Id> (measured)
+        Set<Id> targets = winnerOfCustomer.keySet(); // Map.keySet() -> Set<Id> (measured)
         List<Account> blank = [
             SELECT Id, Company_Size__c
             FROM Account
@@ -76,7 +84,7 @@ public without sharing class CompanySizeCarryHandler {
         // writeable for reasons unrelated to this band.
         List<Account> write = new List<Account>();
         for (Account a : blank) {
-            write.add(new Account(Id = a.Id, Company_Size__c = bandOfLead.get(a.Id)));
+            write.add(new Account(Id = a.Id, Company_Size__c = winnerOfCustomer.get(a.Id).Company_Size__c));
         }
 
         Savepoint carried = Database.setSavepoint();

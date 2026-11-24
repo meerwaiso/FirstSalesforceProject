@@ -194,3 +194,20 @@ Measured in Test-Org, this round, each line with the command that produced it:
 - Verdict of the rewritten classes: 13/13 Pass (10 behaviour + 3 FLS), Test Run Id
   707WU00001WFsxWYAT (`sf apex run test --tests SCRUM476CompanySizeTest --tests
   SCRUM476CompanySizeFlsTest --target-org Test-Org --wait 30 --result-format json`).
+
+## Coverage and conversion-field limits measured on the round-3 head (2026-11-24)
+
+- `sf apex run test` has `--code-coverage` (`-c`), and with `-r json` the payload is
+  `result.coverage.coverage[]` with `name / totalLines / totalCovered / coveredPercent` —
+  NOT `result.codes`. Measured: `CompanySizeCarryHandler` 24/28 = 86 %,
+  `LeadCompanySizeCarry` 2/2 = 100 %, run `707WU00001WG5zb`, 14/14 Pass.
+- A `sf project deploy start` report's `details.runTestResult.codeCoverage` attributed **0/24**
+  to the handler in the same situation — that block is not the coverage oracle, the
+  `--code-coverage` run is. Do not quote 0 % to a reviewer.
+- `Lead.ConvertedAccountId` cannot be assigned at all: `sf apex run` compile error
+  `Field is not writeable: Lead.ConvertedAccountId` (scratch `probe476_attach3.cls`). Combined
+  with `sameRecord=false` this closes any Apex "attach to existing customer" fixture.
+- Anonymous `sf apex run` scripts must be plain statements: a `public class X { public static
+  void run() }` wrapper dies with "static can only be used on methods of a top level type".
+- `Lead` name fields in a named-parameter constructor are `Company` and `LastName` —
+  `Last_Name` does not exist ("Field does not exist: Last_Name on Lead").

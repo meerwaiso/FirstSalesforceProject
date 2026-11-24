@@ -391,3 +391,34 @@ ApexTestRunResultId = '05mWU000002dNrdYAE' AND Outcome != 'Pass'"`; queue item `
    deploy jobs green.
    Work on **`feature/SCRUM-476-company-size`** (this branch already carries this doc; do not cut a
    second branch for the ticket).
+
+## Review round 3 — Developer response (2026-11-24, head after this commit)
+
+All four items from §Review round 2 are closed with measurements taken in Test-Org:
+
+- **AC 4 / AC 5 — the fixture premise was wrong, not the handler.** `Database.convertLead`
+  never attaches to an existing `Account`: probe read-back `sameRecord=false`,
+  `accountsNowNamed=2`, and a second probe proved the field cannot be set at all —
+  compile error `Field is not writeable: Lead.ConvertedAccountId`. So an "attach to an existing
+  customer" save has **no Apex path** in this org; the AC is E2E-only (UI) and the Tester owns
+  it. The Apex fixtures now assert what the platform really does: the record
+  `ConvertedAccountId` names takes the band, the same-`Name` neighbour stays untouched.
+- **AC 12 is platform-enforced on the Apex path:** `update` of a converted Lead dies with
+  `CANNOT_UPDATE_CONVERTED_LEAD`. The test asserts the refusal plus the band read-back; it no
+  longer pretends an edit can succeed.
+- **`LIMIT_EXCEEDED` in the bulk fixture belongs to the org, not to the handler:** 10
+  `convertLead` calls in one save save, 20 die, 200 die (measured by running the same fixture
+  at each size). The handler stays at ONE SOQL plus ONE bulkified update per after-update
+  event at any size.
+- **The PO's tie-break is now deterministic.** Several Leads in one save may name the same
+  customer (reachable through the UI attach path, not through Apex `convertLead` — see above).
+  The winner is the Lead with the highest `Id` (Salesforce Ids increase with creation) — the
+  PO's accepted "newest lead wins" — never save order, which the platform does not define.
+  The release note will state it in words; no claim is made here about a release note that does
+  not exist yet (Release Notes only record delivered Prod features).
+
+Coverage measured with `sf apex run test ... --code-coverage`:
+`CompanySizeCarryHandler` **24/28 = 86 %**, `LeadCompanySizeCarry` **2/2 = 100 %**, Test Run Id
+`707WU00001WG5zb`, 14/14 Pass. The deploy report's own coverage block attributes 0/24 to the
+handler — that report cannot be used as the coverage oracle here; the `--code-coverage`
+result can.

@@ -357,4 +357,39 @@ private class SCRUM476CompanySizeTest {
             System.assertEquals(null, re.Company_Size__c, 'a plain edit writes no band anywhere');
         }
     }
+
+    /* -----------------------------------------------------------------
+     * Coverage of the handler's own write path. Measured 2026-11-24: with all 12 behaviour
+     * tests inside System.runAs, the deploy report attributes 0/24 lines to
+     * CompanySizeCarryHandler — the org counts coverage only in the test's own context, not
+     * inside a runAs block. This method therefore calls the entry OUTSIDE runAs, after
+     * clearing a band, so the fill-if-blank branch, the query, the bulkified update and the
+     * Savepoint all really execute. The trigger path is covered by the runAs tests above;
+     * it is simply not attributed to the handler by the org's report.
+     */
+    @isTest
+    static void handlerEnteredDirectly_carriesTheBandIntoABlankCustomer() {
+        Lead seed = mkLead('TEST-476-CoDirect', BAND_SMALL);
+        insert seed;
+        Map<Id, Lead> before = new Map<Id, Lead>();
+        for (Lead x : [SELECT Id, IsConverted, Company_Size__c FROM Lead WHERE Id = :seed.Id]) {
+            before.put(x.Id, x);
+        }
+        System.assertEquals(false, before.get(seed.Id).IsConverted, 'the pre-save lead is not converted');
+        Database.LeadConvertResult res = Database.convertLead(convertLead(seed.Id));
+        System.assert(res.isSuccess(), 'the conversion saves cleanly');
+        Id customer = res.getAccountId();
+        Account cleared = new Account(Id = customer, Company_Size__c = null);
+        update cleared; // hand-clear, so the handler has real work to do
+
+        List<Lead> after = [
+            SELECT Id, IsConverted, ConvertedAccountId, Company_Size__c
+            FROM Lead
+            WHERE Id IN :before.keySet()
+        ];
+        CompanySizeCarryHandler.carryConvertedLeads(after, before);
+        Account back = [SELECT Company_Size__c FROM Account WHERE Id = :customer LIMIT 1];
+        System.assertEquals(BAND_SMALL, back.Company_Size__c,
+            'a blank customer is filled by the handler itself');
+    }
 }
