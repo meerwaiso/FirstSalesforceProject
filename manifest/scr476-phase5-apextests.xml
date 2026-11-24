@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-476 Phase 5: the test classes, shipped in the SAME PR as the code (house
+     rule: Apex tests cover the new or changed classes in the same change).
+     Deploy with -l RunSpecifiedTests and ONE --tests per class: naming the deployed
+     class itself measures 0% (house SCRUM-442/446). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM476CompanySizeTest</members>
+        <members>SCRUM476CompanySizeFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>
