@@ -47,4 +47,28 @@ saving an Opportunity — my AC9 negative test stays DML-free (getDescribe only)
   restore before committing, else the drift gate sees an org-retrieved copy.
 - `SELECT Id, Name FROM Report` -t → INVALID_TYPE ("sObject type 'Report' is not supported");
   read the Id from the retrieve manifest instead.
-- FieldDefinition has no `FieldDataType` column on this org → ask with fewer columns.
+- FieldDefinition has no `FieldDataType` column on this org -> ask with fewer columns.
+
+## SCRUM-478 (Drift Gate red on head 5368b7f) - measured 2026-11-25 18:5x
+
+- Root cause confirmed: SCRUM477StageDaysReadTest.cls:14 hardcoded
+  `FROM User WHERE Username = 'meerwais.osmani@resourceful-bear-6f1u4j.com' LIMIT 1` +
+  `System.assertEquals(1, users.size(), ...)` -> in Prod-Org 0 rows ->
+  'List has no rows for assignment to SObject'. DevOps' reading was right.
+- Fix applied (commit 12304c4, pushed to feature/SCRUM-477-current-stage-days):
+  no username named any more; loop over `SELECT Id, Username FROM User WHERE IsActive = true`
+  with System.runAs per user. runAs consumes no licence -> no licence problem in either org.
+- Test-Org after the change: 3 tests, 1 failure. The failure is NOT a locator problem:
+  8 active Users, 2 of them read StageName on Opportunity but NOT Stage_Days_In_Current_Stage__c
+  (integration@00dwu00000oibvj2ay.com, insightssecurity@00dwu00000oibvj2ay.com).
+  PS SCRUM477_CurrentStageDays_Read exists (Id 0PSWU00000YFgTB4A1), not assigned to those two.
+- PS assignment is NOT readable via Apex/SOQL here: PermissionSetAssignment as Tooling sObject
+  returns only Id + attributes (no field names); `AssignedPermissionSetApiName`,
+  `PermissionSetName`, `PermissionSet__Id`, `User__Id`, `ProfileId`, `ApiName` all INVALID_FIELD.
+  Read the assignees from the .permissionset-meta.xml on the branch instead.
+- CI on new head 12304c4 = run 45670266619 (event pull_request, started 2026-11-25T17:58:09Z).
+- gh quirks hit: `gh run watch <id> --json` does NOT exist (only --exit-status/--interval);
+  `gh run view <id> --json jobs` needs the fields arg; `gh api .../actions/runs` returned runs=null
+  while `gh run list --branch ...` works; wrong repo name guessed from the PS/PR text
+  (remote is meerwaiso/FirstSalesforceProject).
+
