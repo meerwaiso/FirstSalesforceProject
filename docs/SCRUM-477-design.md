@@ -147,3 +147,18 @@ The shape in this doc shipped unchanged: 4 detail columns plus the day counter a
 Data state measured in Test-Org after the deploy (2026-11-25): 157 Opportunities total, 68 closed and exactly 68 with a NULL day counter (so no open record loses the number, AC1), 89 open of which 76 above 30 days and 13 below. Near the threshold there is a data gap: highest value below 30 is 4, lowest above is 34, and 0 records sit at 30 or at 31. AC6's exact boundary therefore has no rows in this org — it is proven by the `greaterThan` operator only, and the Tester reports it as its own coverage line, never as a PASS row.
 
 Nothing in the delta writes records, sends emails or creates tasks: the branch adds one test class and four metadata artefacts, no trigger, no Flow, no production Apex (AC10 holds structurally).
+
+## Grant set and assignment duty (Architect, after the AC9 finding on head 7e586ee)
+
+AC9 is a two-part requirement and only one part is a repo artefact:
+
+1. **Grant (in the branch):** the field is read-only in exactly one Permission Set, `SCRUM477_CurrentStageDays_Read` (read=true, edit=false). No Profile edit, no second Permission Set.
+2. **Assignment (org-side only):** the Permission Set meta deliberately carries **no** `userAssignments` block — Test-Org usernames do not exist in Prod-Org, so a hard-coded list would fail the Test-Org deploy. That makes the assignment invisible to the branch, to review and to CI: `gh pr checks` can be green while the field is granted to nobody. `scripts/fls-gate.py` closes that hole in Test-Org only — `.github/workflows/ci.yml` calls it with `--org Test-Org`, and the Prod-Org Drift Gate validates metadata check-only, never `PermissionSetAssignment`.
+
+Policy that must travel with this ticket, not with a username list:
+
+- After **every** deploy of the field, in **both** orgs, the Permission Set is assigned to every active user that can read `Opportunity`. `scripts/fls-check.sh Opportunity Stage_Days_In_Current_Stage__c <org>` is the read-back: the field must come back granted **and** with a non-zero assignee count.
+- Measured in Test-Org on 2026-11-25: granted by the PS, assigned to 4 users — the CLI user, the human test account, plus two org-internal Analytics Cloud users (`integration@…`, `insightssecurity@…`) that can read `StageName` but could not read the counter until the Developer assigned them. Safe (read-only operational metric, no PII) and it satisfies the literal criterion; whether those two *should* see the number is the PO's line to take, and a veto removes exactly those two assignments.
+- Gate proposal for the user to decide (nobody edits `.github/workflows/`): the existing assignment gate is already parameterised — `python3 scripts/fls-gate.py --base "$BASIS" --org Test-Org`. A Prod-side run of the same script after the Prod deploy would have caught this failure mode, which the project has shipped six times (SCRUM-382/386/388/390/394/398). It is not part of this ticket and must not be pushed as a side effect.
+
+The read-back class `SCRUM477StageDaysReadTest` is now the falsifiable witness for AC9: it loops every active user and compares `Opportunity.StageName` access against the counter's, so it fails the moment one viewer is blind (Expected 0, Actual 2 on head 7e586ee). It belongs in the Tester's regression suite unchanged.
