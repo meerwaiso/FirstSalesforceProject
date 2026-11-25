@@ -149,3 +149,25 @@ Alle Befunde measured in Test-Org (`sf ... --target-org devops-agent@cline.test`
   a non-null ConvertedAccountId: 1 organic (00QWU00000fbQIT2A2 -> 001WU00002CKIAdYAP).
   So the organic pool for the carry-over is ZERO records: every end-to-end proof needs my fixtures,
   and the coverage rows must say so.
+
+## AC9/AC10 layout + profile read-back 2026-11-24 (org Test-Org, `sf data query` standard API)
+
+- `SELECT Id, Name FROM Layout WHERE Name LIKE 'Account%'` -> 4 layouts: Account (Marketing) Layout,
+  Account (Sales) Layout, Account (Support) Layout, Account Layout. Org-retrieved metadata
+  (`sf project retrieve start --metadata "Layout:Account-…" -o Test-Org -r …`): Company_Size\_\_c hits
+  = 1 in `Account Layout`, 0 in each of the three branded layouts.
+- `SELECT Id, Username, Alias, ProfileId FROM User` -> 8 users. The two Permission-Set assignees
+  (`meerwais.osmani@resourceful-bear-6f1u4j.com`, `devops-agent@cline.test`) both carry
+  ProfileId 00eWU00000NzbYTYAZ = **System Administrator**. No user in Test-Org carries
+  `Custom: Sales Profile` (00eWU00000NzbZ7YAJ) / Support / Marketing (the 41 profiles exist, unused).
+  So the "visible to every sales + service user" leg has ZERO exercisable users in Test-Org -> the
+  row is NOT COVERED (0 records), not PASS. The branded layouts are the risk: 0 hits means a user
+  whose profile opens one of them never sees the band.
+- UI API for profile->layout assignment is dead on this org: `/services/abi/layoutAssignments/<pid>/-1`
+  and `/tour/layoutAssignments/<pid>/-1` both -> "URL No Longer Exists" (classic ABI removed in Lightning).
+- `SELECT … FROM User` works on the STANDARD api only (tooling API -> INVALID_TYPE), same trap as Account.
+- Playwright BDD has no `toBeOneOf`; and `locator.evaluateAll((es) => es.map(e => e.inner()))`
+  throws "e.inner is not a function" — ariaSnapshot() is the working aria read (probes 476h/476n).
+- Spec fixes landed this round (commits on feature/SCRUM-476-company-size): feed windows split per
+  conversion; `seen` labels via ariaSnapshot; toBeLessThanOrEqual(1) instead of toBeOneOf; attach via
+  the search-results record LINK (fill+submit alone created a SECOND customer, probe476j R2 measured).
