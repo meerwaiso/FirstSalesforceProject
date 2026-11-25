@@ -1,0 +1,285 @@
+# SCRUM-476 — Developer notizen (measured 2026-11-24)
+
+Nur gemessen Fakten, je jeeline with the command. Read this first after every compaction.
+
+## Org / Session
+
+- `sf org list`: Test-Org alias -> `devops-agent@cline.test` (orgId 00DWU00000oibVJ2AY),
+  Prod-Org alias -> `devops-agent@cline.de`. Developer works on Test-Org only.
+- `scripts/fls-check.sh Account Company_Size__c Test-Org` -> "Existenz NEIN — nicht in dieser
+  Org deployt." (Architect M1 confirmed, 2026-11-24)
+
+## House shapes (each read from origin/master in the SCRUM-476 worktree)
+
+- Lead field authority `objects/Lead/fields/Company_Size__c.field-meta.xml`: four API values
+  `up_to_10` / `11_to_50` / `51_to_250` / `more_than_250`, labels "up to 10 employees" /
+  "11 to 50 employees" / "51 to 250 employees" / "more than 250 employees". `<required>false`,
+  no `<defaultValue>`, `<trackTrending>false`, no blank marker.
+- PS pair house `SCRUM471_KeyAccount_Read` / `SCRUM471_KeyAccount_Set`: fieldPermissions only,
+  no objectPermissions, no user entries in source. Read: editable=false readable=true. Set: both true.
+- Layout item house (`Lead-Lead Layout.layout-meta.xml` line 24-27): `<layoutItems>`
+  `<behavior>Edit</behavior><field>Company_Size__c</field>` directly after the `Company` item
+  in the first section.
+- Trigger house shape: `apiVersion 62.0`, `<status>Active</status>`, thin trigger file + handler class.
+- Only Account trigger today: `AccountLockGuard on Account (before update)` -> handler
+  `AccountLockClearHandler` (static `hasFired` per-transaction guard).
+- Four Account layouts in source; default `Account-Account Layout.layout-meta.xml` = 433 lines.
+- Deploy job house (SCRUM-472): phase1 field alone, phase2 PS+layout (they reference the field),
+  phase3 Apex test classes with `--test-level RunSpecifiedTests --tests <class>`.
+- e2e specs ship inside the feature PR (house: SCRUM-472 spec in PR #194, SCRUM-471 spec in PR #193).
+- `scripts/fls-check.sh` exists in the repo root and answers the 3-query FLS chain.
+
+## Worktree
+
+- Own worktree: `/home/fino/Desktop/SoftwareProjects/Salesforce/scr476-wt` on
+  `feature/SCRUM-476-company-size` (Architect branch head ce2efb2). Shared checkout stays untouched.
+
+## Deploy order (measured constraint, memory house rule)
+
+field -> PS pair + layout -> assign both PS (`sf org assign permset`) -> handler class ALONE
+-> two triggers -> Apex test classes (RunSpecifiedTests, one `--tests` flag per class).
+
+## Deploy commands that work on this CLI (2.150.6, measured 2026-11-24)
+
+- `sf project deploy validate --manifest <file> --test-level ...` REJECTS `--source-dir`
+  together with `--manifest` ("--manifest cannot also be provided when using --source-dir").
+- `validate` has NO `NoTestRun` option (options: RunAllTestsInOrg|RunLocalTests|RunSpecifiedTests|RunRelevantTests,
+  default RunLocalTests). The pure dry run is therefore:
+  `sf project deploy start --dry-run -l NoTestRun -x manifest/<file> -o Test-Org --concise`
+- Deploy: `sf project deploy start -x manifest/<file> -o Test-Org --concise` (also accepts `-l NoTestRun`).
+- Assign: `sf org assign permset -n <PS> -n <PS> -o Test-Org -b <user> -b <user>`.
+
+## Measured in Test-Org 2026-11-24 (after field + PS deploy)
+
+- Deploy IDs: phase1 field `0AfWU00000dNFr70AG`, phase2 PS pair + layout `0AfWU00000dNFvx0AG`,
+  both Status: Succeeded (dry runs before them: `0AfWU00000dNFpV0AW`, `0AfWU00000dNBMz0AO`).
+- SOQL BEFORE assigning the PS: `No such column 'Company_Size__c' on entity 'Account'` -> FLS wall.
+- `sf org assign permset` assigned BOTH PS to `devops-agent@cline.test` AND to
+  `meerwais.osmani@resourceful-bear-6f1u4j.com`.
+- `PermissionSetAssignment` read-back: totalSize 4 (2 PS x 2 users).
+- `FieldPermissions` for Account.Company_Size\_\_c: 3 rows, ALL `IsOwnedByProfile=false`:
+  `SCRUM476_CompanySize_Read` (read, no edit), `SCRUM476_CompanySize_Set` (read+edit),
+  plus a pre-existing org PS `Agentic Near Core CRM` (read only).
+  => NO Profile grants the field: the negative FLS test (a fresh Standard User without any
+  PS cannot read/write it) is satisfiable, not unsatisfiable-by-construction.
+- SOQL read-back through the CLI session after assignment: 3 rows, all `Company_Size__c = null`.
+- Counts (F-4 baseline BEFORE go-live): `SELECT COUNT() FROM Account` -> 268;
+  `Account WHERE Company_Size__c != null` -> 0; `Lead WHERE Company_Size__c != null` -> 0.
+  The carry-over has NO source record to be exercised on in Test-Org (PO gap also measured by
+  the Tester: 66 Leads / 0 sized) -> fixtures must be seeded, AC1/AC4/AC5 are untested on org data.
+
+## Contradiction found in the house (report to the Architect, do not re-assert)
+
+- Design ADR-7 claims a restricted `valueSet` rejects an out-of-range value. The SCRUM-472 test
+  class in the SAME repo measured the opposite on the identical shape (2026-11-23): Apex AND the
+  REST API both ACCEPT and STORE `several hundred` / `nonsense_band`; only the Lightning UI offers
+  the four labels. So the "invalid range rejected" criterion (AC 9 here) is a UI criterion ->
+  no Apex assert for it, E2E job of the Tester. Writing such an assert would be a fake PASS.
+
+  ## Measured at implementation (Test-Org, 2026-11-24)
+  - `fls-check.sh Account Company_Size__c Test-Org` -> Existence: yes (Picklist). Granted by
+    `SCRUM476_CompanySize_Read` (read, no edit), `SCRUM476_CompanySize_Set` (read+edit), plus the
+    pre-existing org PS `AncCrmIntegrationUser` (read, assigned to NOBODY). No `IsOwnedByProfile=true`
+    row -> the FLS negative (no PS -> invisible) is satisfiable.
+  - Org read-back of the live `Account Layout`: `<behavior>Edit</behavior><field>Company_Size__c</field>`
+    directly after the Required `Name` item (retrieve, not the repo file).
+  - Org read-back of the field enum: `up_to_10 / 11_to_50 / 51_to_250 / more_than_250` with the four labels,
+    defaultValue null -> verbatim identical to `Lead.Company_Size__c`, the carry is one assignment.
+  - `Lead.Company` has NO permission for `devops-agent@cline.test` -> the attach handler reads the customer
+    NAME from `Lead.Company` (its mode allows it), but a test cannot query `Lead.Company`.
+    A fixture Lead must NOT start on a Company that is already a customer: the org refuses
+    `Lead.Company = null` with REQUIRED_FIELD_MISSING (looks like a platform fault, is not).
+  - after-insert records are READ-ONLY ("entity is read-only, only Id is writable") -> the band is written
+    by ONE bulkified `update` of FRESH sObjects (Id + band), never in place.
+  - ValRule `Letzter_Versuch_KeineZukunft` refuses a Lead save after 10 conversions -> test fixtures
+    convert a Lead at most 8x.
+  - The convertor storm creates Account + Contact + Opportunity (+Case) in the same save even without a Case.
+  - PS assignment read-back: 2 assignees per PS = `devops-agent@cline.test` +
+    `meerwais.osmani@resourceful-bear-6f1u4j.com`.
+  - Apex: 15/15 green (test run 707WU00001WFKGU). Class coverage: CompanySizeCarryHandler 90 %,
+    AccountCompanySizeCarry 100 %, LeadCompanySizeCarry 100 %; org-wide 87 %.
+  - Deploy IDs seen: triggers 0AfWU00000dNMpYQ, tests 0AfWU00000dNJQ50AO (Test-Org).
+  - Counts after go-live: 66 Leads, 0 carrying a size; 0 Accounts carrying `Company_Size__c`.
+
+## Open measurements still to record
+
+- `Account.NumberOfEmployees` stays untouched (Architect F-1).
+
+## Review round 1 (PR #196 rejected) — measured findings
+
+- `Exception` has NO `getType()` in this org's Apex (deploy report 0AfWU00000dNP7J0AW:
+  "Method does not exist or incorrect signature: void getType() from the type Exception").
+  A bare `throw;` is not Apex either ("Unexpected token ';'") — re-throw is `throw e;`.
+  Access refusals are therefore discriminated on the fault TEXT in `getMessage()`
+  (upper-cased, `indexOf` is case-sensitive).
+- `new Exception('...')` and `System.abort(String)` do not compile in anonymous scripts
+  ("Type cannot be constructed: Exception" / "Method does not exist: void abort(String)").
+  A throw with a message needs a declared `class X extends Exception {}`.
+- An anonymous `sf apex run` script cannot `insert` a User:
+  `LICENSE_LIMIT_EXCEEDED` (Test-Org is at the active-user licence limit). Inside an Apex
+  TEST the same insert works — the read-only fixture users only exist in test context.
+- Fixture shapes the org accepts (house, read off `SCRUM416OpenOpportunityRollupTest` /
+  `SCRUM365OpenCasesCountTest`): `Opportunity(AccountId, Name, StageName, CloseDate)` —
+  `AccountName` is NOT a field here; `Case(ContactId, Status='New', Subject)` — Case has no
+  AccountId, and `Case.ContactId` must be an Id OF TYPE Contact.
+- Test-Org test budget: the phase-5 deploy with RunSpecifiedTests took 6m03s for 18 tests;
+  one more full run of both classes is ~6 min, so the class deploy is done with
+  `-l NoTestRun` and the run is issued separately (`sf apex run test`).
+- F-6 discriminator is MEASURED green: `probe_accessRefusalIsRecognised` runs a real
+  read-only fixture user, the update IS refused, and `isAccessRefusal` recognised the fault
+  (test green). The read-only user really refused (`refused == true` assert green).
+
+## Measured at review round 1 (2026-11-24, Test-Org)
+
+- Accounts SHARING a Name exist: `sf data query --json -q 'SELECT Name FROM Account'` ->
+  268 rows; e.g. "TESTFIRMASCRUM396ONE" x16, "TESTFIRMASCRUM396THREE" x16,
+  "[Scrum-412-E2E] akte 0" x35. The PO's ambiguity criterion is therefore TESTABLE
+  (not a zero-record criterion); the Tester does not have to report it as UNTESTED.
+- SOQL GROUP BY aggregate: `SELECT COUNT() FROM Account GROUP BY Name HAVING COUNT() > 1`
+  -> MALFORMED_QUERY "unexpected token 'COUNT()'" in this org's parser. Counting duplicates
+  was done client-side over the 268 rows instead.
+- Apex test run (standalone): 18/18 green, Test Run Id 707WU00001WFdTZ
+  (`sf apex run test --tests SCRUM476CompanySizeTest --tests SCRUM476CompanySizeFlsTest`),
+  incl. both ambiguity fixtures and the F-6 access-refusal probe. Org-wide coverage 83 %.
+- CI collision (measured in the finished job log 138386164057 of run 45377097991):
+  FLS-Gate printed "FLS-Gate grün" for `Account.Company_Size__c ok
+(SCRUM476_CompanySize_Set, SCRUM476_CompanySize_Read)`; the step then died with
+  `Error (ALREADY_IN_PROCESS): Test already enqueued 01pWU00000TkuDu` — the org had MY
+  deploy's RunSpecifiedTests job enqueued at the same time. One Apex test run per org at a
+  time; the CI step needs a re-run with the org test queue free.
+
+## Review round 2 (2026-11-24, user decision: conversion = IsConverted flip + ConvertedAccountId)
+
+Measured in Test-Org, this round, each line with the command that produced it:
+
+- `Lead` carries `IsConverted` and `ConvertedAccountId`:
+  `sf sobject describe -s Lead -o Test-Org --json` (fields list read with jq).
+- `Database.setSavepoint()` EXISTS (the user was right, my earlier note was wrong):
+  scratch `probe476_savepoint.cls` — `Savepoint sp = Database.setSavepoint();` compiles.
+  `Database.rollback(sp, 1)` does NOT ("Method does not exist or incorrect signature: void rollback(Savepoint, Integer)");
+  `Database.Rollback(sp)` compiles AND rolls the update back (probe script ran to completion,
+  the read-back Name stayed the pre-update value). Shapes that failed before and were never this API:
+  `Savepoint.set()/pop()`, a `SAVEPOINT` statement.
+- `System.Math.fmod` does NOT exist ("Method does not exist or incorrect signature: void fmod(Integer, Integer)
+  from the type System.Math", deploy report of phase5). Cycle the band list with an index instead.
+- `Opportunity` has NO `AccountName` field (measured earlier, report 0AfWU00000dNGSE0A4): seed with
+  `AccountId`, count by `Name`.
+- Deleting an org trigger: `sf project delete source -o Test-Org -m "ApexTrigger:AccountCompanySizeCarry" -r -l NoTestRun`
+  -> Deploy ID 0AfWU00000dNUAD0A4, Status Succeeded, 1 component. Verified gone with
+  `sf data query -t -q "SELECT Name FROM ApexTrigger" -o Test-Org --json` (path `.result.records`;
+  only `LeadCompanySizeCarry` matches CompanySize).
+- New handler API live: anonymous script calling `CompanySizeCarryHandler.carryConvertedLeads(new List<Lead>(), new Map<Id,Lead>())`
+  ran to completion (the old class has no such method -> compile would fail). Deploy IDs:
+  handler 0AfWU00000dNURx0AO, trigger 0AfWU00000dNUTZ0A4, tests 0AfWU... (phase5 Succeeded, 3 components).
+- `convertLead` LINKS an existing Account by Name: with one existing Account named like the Lead's
+  Company, `res.getAccountId()` == that existing Account Id (asserted in the test, not assumed).
+
+## Org behaviour measured while repairing the rewritten tests (2026-11-24)
+
+- convertLead does NOT attach to an existing Account with the same Name. Probe
+  `probe476_attach.cls` via `sf apex run`: `success=true accountId=001WU00002M2WCeYAN
+existingId=001WU00002M2WCdYAN`, `sameRecord=false`, `accountsNowNamed=2` — the conversion
+  creates its OWN Account and the pre-existing same-Name customer stays untouched. So the
+  fill-only-if-blank property is asserted on the record ConvertedAccountId names, and the
+  same-Name neighbour is asserted UNTOUCHED; an "attach to an existing customer" path is NOT
+  reachable from Apex convertLead in this org and can only be shown through the UI (Tester).
+- Editing a converted Lead is refused by the org: `CANNOT_UPDATE_CONVERTED_LEAD`
+  ("cannot reference converted lead") on `update l`. AC 12 is therefore proven by that refusal
+  plus the band read-back, not by an update that succeeds.
+- Bulk conversion limit belongs to the org: 10 convertLead calls in one save save,
+  20 die with `LIMIT_EXCEEDED` ("There was an error converting the lead"). Measured by
+  running the same test at 10 (green) and 20 (red) — 200 also red (round 1).
+- Verdict of the rewritten classes: 13/13 Pass (10 behaviour + 3 FLS), Test Run Id
+  707WU00001WFsxWYAT (`sf apex run test --tests SCRUM476CompanySizeTest --tests
+SCRUM476CompanySizeFlsTest --target-org Test-Org --wait 30 --result-format json`).
+
+## Coverage and conversion-field limits measured on the round-3 head (2026-11-24)
+
+- `sf apex run test` has `--code-coverage` (`-c`), and with `-r json` the payload is
+  `result.coverage.coverage[]` with `name / totalLines / totalCovered / coveredPercent` —
+  NOT `result.codes`. Measured: `CompanySizeCarryHandler` 24/28 = 86 %,
+  `LeadCompanySizeCarry` 2/2 = 100 %, run `707WU00001WG5zb`, 14/14 Pass.
+- A `sf project deploy start` report's `details.runTestResult.codeCoverage` attributed **0/24**
+  to the handler in the same situation — that block is not the coverage oracle, the
+  `--code-coverage` run is. Do not quote 0 % to a reviewer.
+- `Lead.ConvertedAccountId` cannot be assigned at all: `sf apex run` compile error
+  `Field is not writeable: Lead.ConvertedAccountId` (scratch `probe476_attach3.cls`). Combined
+  with `sameRecord=false` this closes any Apex "attach to existing customer" fixture.
+- Anonymous `sf apex run` scripts must be plain statements: a `public class X { public static
+void run() }` wrapper dies with "static can only be used on methods of a top level type".
+- `Lead` name fields in a named-parameter constructor are `Company` and `LastName` —
+  `Last_Name` does not exist ("Field does not exist: Last_Name on Lead").
+
+## Round 4 (2026-11-24) — the attach is Apex-exercisable; my "no Apex path" claim was wrong
+
+- `Database.LeadConvert` carries `setAccountId(<existing Account Id>)`: the conversion then
+  REUSES that record — architect probe read-back `sameRecord=true`, one Account for that Name,
+  band filled; and my fixtures reproduce it. What is NOT writable is the field
+  `Lead.ConvertedAccountId` (compile error `Field is not writeable`, `sf sobject describe`
+  → `createable: false`) — those are two different questions, and the round-3 note conflated
+  them. Discriminator: probe with `setAccountId` (attach) vs without (new customer).
+- House rule applied in the new fixtures: assert `res.getAccountId() == existing.Id` BEFORE
+  any band assertion; a band measured on a record the save did not name is not a criterion.
+- Bulk bounds, two causes, do not confuse: single `convertLead` over 20 rows → `LIMIT_EXCEEDED`
+  at row 0 (10 save, 20 die); loop of 30 single-record conversions → `System.LimitException:
+Too many SOQL queries: 101` (one event = its own query set). The 200-record AC 6/7 criterion
+  is therefore an E2E/Import row, never a shrunk Apex pass.
+- Picklist values of `Account.Company_Size__c` read back with `sf sobject describe --sobject
+Account --target-org Test-Org`: `up_to_10 / 11_to_50 / 51_to_250 / more_than_250`
+  (labels "up to 10 employees" … "more than 250 employees") — the PO's conflicting pair uses
+  `51_to_250`, which my three constants did not cover.
+- Verdict round 4: 15/15 Pass, Test Run Id `707WU00001WGdJ1`, handler 25/28 = 89 %,
+  trigger 2/2 = 100 % (`sf apex run test --code-coverage -r json`, `result.coverage.coverage[]`).
+
+## Round 5 (2026-11-24) — LIMIT_EXCEEDED is a query budget, and the tie-break is Apex-exercisable
+
+- `LIMIT_EXCEEDED` after N conversions is NOT an org limit. Measured with
+  `scratch/probe_limit476b.cls` (`sf apex run`): ONE `convertLead` call over 25 rows →
+  25/25 saved. 30 SEPARATE `convertLead` calls in the same transaction → 5 saved, 25 die
+  `LIMIT_EXCEEDED` ("There was an error converting the lead"). One call over 120 rows →
+  the platform's own words: `System.LimitException: Too many SOQL queries: 101`. The budget
+  is the 100-query cap of the ENCLOSING Apex transaction. Per conversion event the org runs
+  the two Lead triggers that exist — master `LeadDuplicateGuard` (before insert, before
+  update, 1 SOQL / 0 DML per its SCRUM-386 header) and my `LeadCompanySizeCarry` (1 SOQL +
+  1 bulkified update) — so the number of conversions that fits depends on what the
+  transaction already spent (the probe inserted 30 Leads with 30 separate inserts = 30
+  queries). A fixture must therefore seed with ONE insert and convert with ONE call.
+- `convertedStatus` value: `'Closed - Converted'` (the class uses it); `'_Converted'` dies
+  `INVALID_STATUS` — probe artefact, not a platform limit.
+- The tie-break IS Apex-exercisable. `scratch/probe_tie476.cls`: one blank Account, TWO
+  Leads (bands `up_to_10` / `more_than_250`), ONE `convertLead` call with BOTH requests
+  carrying `setAccountId(same Account)` → `returned=2`, one Account (id unchanged),
+  final band `more_than_250` = the newer Lead (higher Id). With never-overwrite this also
+  proves both saves came as ONE trigger invocation — a second invocation would have kept
+  the first band. Now covered by `tieBreak_twoLeadsOneCustomer_newestLeadWins`.
+- API artefacts measured this round (fixes two guesses, same family):
+  `Database.LeadConvertResult` has `isSuccess()` and `getAccountId()` — NOT
+  `getSuccess()` / `getSaved()`; `catch (Exception e)` has no `getType()` /
+  `getDetailedStackTrace(Int)`; `QueryAll` / `DeleteAll` namespaces do not exist in an
+  anonymous `sf apex run` block (`QueryAll` has only `countFrom`), and `s = delete s;`
+  does not compile there — clean up probe records with `sf data delete record` per Id.
+
+## Round 6 - corrections that stand as measured facts (2026-11-24 15:3x)
+
+- Verdict oracle for the live code: `sf apex run test --tests SCRUM476CompanySizeTest --tests
+SCRUM476CompanySizeFlsTest -o Test-Org --wait 25 -r json --code-coverage` -> 16 tests, 16 passing,
+  passRate 100%, outcome Passed, testRunId **707WU00001WHmgq**, testStartTime 2026-11-24T14:25:21Z,
+  testExecutionTime 81032 ms. The run-id `707WU00001WHiMh` (74096 ms) was an EARLIER run of the same
+  suite; do not quote it for this deployment. Payload path: `result.summary`.
+- The org really runs the round-5 file: `ApexClass` (Tooling API) `SCRUM476CompanySizeTest`,
+  LastModifiedDate 2026-11-24T13:37:12, Body 25932 chars; `tieBreak_twoLeadsOneCustomer_newestLeadWins`
+  x1, `inOneConversionCall` x1, `withinTheOrgsBound` x0, `attachLeadTo` x5, `setAccountId` x6,
+  `getAccountId` x13. Deploy `0AfWU00000dNmBy0AK` Succeeded, 2 components, 0 failures.
+- `ApexClass` columns: `Name, Body, BodyCrc, Id, LengthWithoutComments, Status, Created*, LastModified*,
+ApiVersion, NamespacePrefix, IsValid, SystemModstamp`. There is NO `Active`, `SobjectName`, `LastUpdated`
+  or `Size` column - `sf sobject describe --sobject ApexClass` says so in one call.
+- Coverage payload entries carry `name`, `totalLines`, `totalCovered`, `coveredPercent`, `lines{lineNo:0|1}`
+  (not `className`): CompanySizeCarryHandler id 01pWU00000TkuL3YAJ 25/28 = 89 %, uncovered lines **61,
+  93, 97** = the non-flip `continue` (AC 12) and the `catch`/`Database.Rollback(carried)` refusal path
+  (F-2) -> "a refusal never aborts a conversion" is NOT exercised by any Apex test, still open.
+  LeadCompanySizeCarry id 01qWU00000AvdjeYAB 2/2 = 100 %.
+- CI: all four jobs completed/success on PR head `b03e83d` (run 45406013065): Prod-Org Drift Gate
+  13:41:42Z->13:53:35Z, Lint 46 s, README 8 s, Smoke 5m19s. The earlier "Drift pending" claim was STALE.
+- `sf data delete record -i <id>` WITHOUT `-s <object>` fails EVERY call (134/134 here) and leaves the
+  records: probe cleanup must be `sf data delete record -i <id> -s Lead|Account`. After the corrected
+  loop: 94 Leads + 43 Accounts deleted, 0 records match TEST-476%.

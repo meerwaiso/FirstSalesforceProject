@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Company_Size__c</fullName>
+    <description>Employee-size band of the customer (SCRUM-476): hand-set by the colleague, blank = not known yet. Carried once from the lead at conversion, nothing else computes it, nothing defaults it.</description>
+    <externalId>false</externalId>
+    <label>Company Size</label>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>up_to_10</fullName>
+                <default>false</default>
+                <label>up to 10 employees</label>
+            </value>
+            <value>
+                <fullName>11_to_50</fullName>
+                <default>false</default>
+                <label>11 to 50 employees</label>
+            </value>
+            <value>
+                <fullName>51_to_250</fullName>
+                <default>false</default>
+                <label>51 to 250 employees</label>
+            </value>
+            <value>
+                <fullName>more_than_250</fullName>
+                <default>false</default>
+                <label>more than 250 employees</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

@@ -1,0 +1,703 @@
+/**
+ * [SCRUM-476] Behaviour test for the ONE carry-over point: a Lead conversion.
+ *
+ * Review round 2 (user decision 2026-11-24): a conversion does not touch Lead.Company.
+ * It flips Lead.IsConverted false -> true and writes Lead.ConvertedAccountId, and that
+ * Id names the customer exactly. So every fixture here goes through the real API the
+ * colleagues use — Database.convertLead (house shape: SCRUM386LeadDuplicateTest) — and
+ * never through a hand-built Account write.
+ *
+ * Measured in Test-Org before this round (docs/SCRUM-476-notizen.md): the deleted Account
+ * trigger keyed on Lead.Company, i.e. on a NAME, and 268 Accounts sit under 106 distinct
+ * Names with 19 Name-groups holding duplicates (up to 35 Accounts in one group). That wrote
+ * bands onto records nobody aimed at. Test `nameMatch_withoutConversion_writesNothing` is
+ * the regression for exactly that complaint.
+ *
+ * House FLS/runAs pattern (model: SCRUM424FirstResponseFlsTest): the fixture User and its
+ * PermissionSetAssignment inserts happen OUTSIDE System.runAs, all business DML and SOQL
+ * INSIDE one runAs of that same user — otherwise the org refuses with MIXED_DML_OPERATION,
+ * and CI runs the suite with RunLocalTests (measured: green only with RunSpecifiedTests).
+ *
+ * @author developer-agent
+ * @date 2026-11-24
+ */
+@isTest
+private class SCRUM476CompanySizeTest {
+  private static final String BAND_LARGE = 'more_than_250';
+  private static final String BAND_MID = '11_to_50';
+  private static final String BAND_SMALL = 'up_to_10';
+
+  private static User mkUser(String alias) {
+    Profile standard = [
+      SELECT Id
+      FROM Profile
+      WHERE Name = 'Standard User'
+      LIMIT 1
+    ][0];
+    String sfx = String.valueOf(System.now().getTime());
+    User u = new User(
+      ProfileId = standard.Id,
+      LastName = 'Scr476 ' + alias,
+      Alias = alias, // max 8 characters
+      Email = alias + sfx + '@x.invalid',
+      Username = alias + sfx + '@x.invalid',
+      EmailEncodingKey = 'UTF-8',
+      LanguageLocaleKey = 'en_US',
+      LocaleSidKey = 'en_US',
+      TimeZoneSidKey = 'Europe/Berlin'
+    );
+    insert u;
+    return u;
+  }
+
+  /**
+   * Every SCRUM permission set of this project, assigned to the fixture user: the carried
+   * field itself needs SCRUM476_CompanySize_Set (read + edit); the conversion needs Lead
+   * CRUD and Account CRUD, which the same union of project sets provides (measured: inserts
+   * and convertLead save under this union).
+   */
+  private static void grantProjectSets(User u) {
+    List<PermissionSet> sets = [
+      SELECT Id, Name
+      FROM PermissionSet
+      WHERE Name LIKE 'SCRUM%'
+    ];
+    List<PermissionSetAssignment> assigns = new List<PermissionSetAssignment>();
+    for (PermissionSet ps : sets) {
+      assigns.add(
+        new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id)
+      );
+    }
+    insert assigns; // strictly before any System.runAs (MIXED_DML)
+  }
+
+  private static Lead mkLead(String company, String band) {
+    Lead l = new Lead(Company = company, LastName = 'Carrier');
+    if (band != null) {
+      l.Company_Size__c = band;
+    }
+    return l;
+  }
+
+  private static Database.LeadConvert convertLead(Id leadId) {
+    Database.LeadConvert lc = new Database.LeadConvert();
+    lc.setLeadId(leadId);
+    lc.setConvertedStatus('Closed - Converted');
+    return lc;
+  }
+
+  /* The attach variant: the conversion NAMES an existing customer via setAccountId.
+   * Measured 2026-11-24 (architect probe + my fixtures): with setAccountId the org REUSES
+   * that Account — res.getAccountId() == existing.Id, one Account for that Name — and the
+   * handler fills its blank band / never replaces a held one. Without setAccountId the
+   * conversion creates a NEW Account ("sameRecord=false"), which is a property of THIS
+   * helper, not of the platform. House rule honoured below: the record the save names is
+   * asserted BEFORE any band assertion. */
+  private static Database.LeadConvert attachLeadTo(Id leadId, Id accountId) {
+    Database.LeadConvert lc = new Database.LeadConvert();
+    lc.setLeadId(leadId);
+    lc.setAccountId(accountId);
+    lc.setConvertedStatus('Closed - Converted');
+    return lc;
+  }
+
+  /* -----------------------------------------------------------------
+   * AC 1 / AC 2 — a lead WITHOUT a band converts to a customer that stays blank.
+   */
+  @isTest
+  static void convert_leadWithoutBand_startsBlank() {
+    User u = mkUser('cnobnd1');
+    grantProjectSets(u);
+    System.runAs(u) {
+      Lead l = mkLead('TEST-476-CoPlain', null);
+      insert l;
+      Database.LeadConvertResult res = Database.convertLead(convertLead(l.Id));
+      System.assert(res.isSuccess(), 'the conversion itself must save cleanly');
+      Account a = [
+        SELECT Company_Size__c
+        FROM Account
+        WHERE Id = :res.getAccountId()
+        LIMIT 1
+      ];
+      System.assertEquals(
+        null,
+        a.Company_Size__c,
+        'a lead without a band starts the customer empty'
+      );
+    }
+  }
+
+  /* -----------------------------------------------------------------
+   * AC 3 — a lead WITH a band, converted to a NEW customer: the new customer carries
+   * exactly that band. res.getAccountId() is the customer the Id names.
+   */
+  @isTest
+  static void convert_newCustomer_takes_leadBand() {
+    User u = mkUser('cnew1x');
+    grantProjectSets(u);
+    System.runAs(u) {
+      Lead l = mkLead('TEST-476-CoNew', BAND_LARGE);
+      insert l;
+      Database.LeadConvertResult res = Database.convertLead(convertLead(l.Id));
+      System.assert(res.isSuccess(), 'the conversion itself must save cleanly');
+      Account a = [
+        SELECT Company_Size__c
+        FROM Account
+        WHERE Id = :res.getAccountId()
+        LIMIT 1
+      ];
+      System.assertEquals(
+        BAND_LARGE,
+        a.Company_Size__c,
+        'the new customer carries the band the lead was created with'
+      );
+    }
+  }
+
+  /* -----------------------------------------------------------------
+   * A conversion WITHOUT an explicit attach names its own new customer (measured:
+   * sameRecord=false). The neighbour that merely shares the Name stays untouched — this is
+   * the import/manual-creation regression, the deleted Account-insert path wrote it.
+   */
+  @isTest
+  static void convert_withoutAttach_createsOwnCustomer_sameNameNeighbourUntouched() {
+    User u = mkUser('cblank1');
+    grantProjectSets(u);
+    System.runAs(u) {
+      Account existing = new Account(Name = 'TEST-476-CoBlank');
+      insert existing;
+      Lead l = mkLead('TEST-476-CoBlank', BAND_MID);
+      insert l;
+      Database.LeadConvertResult res = Database.convertLead(convertLead(l.Id));
+      System.assert(res.isSuccess(), 'the conversion itself must save cleanly');
+      System.assertNotEquals(
+        existing.Id,
+        res.getAccountId(),
+        'a conversion without setAccountId names a NEW customer (measured)'
+      );
+      Account named = [
+        SELECT Company_Size__c
+        FROM Account
+        WHERE Id = :res.getAccountId()
+        LIMIT 1
+      ];
+      System.assertEquals(
+        BAND_MID,
+        named.Company_Size__c,
+        'the customer the conversion names carries the lead band'
+      );
+      Account other = [
+        SELECT Company_Size__c
+        FROM Account
+        WHERE Id = :existing.Id
+        LIMIT 1
+      ];
+      System.assertEquals(
+        null,
+        other.Company_Size__c,
+        'a customer that only shares the Name stays untouched'
+      );
+    }
+  }
+
+  /* -----------------------------------------------------------------
+   * AC 5 — a BLANK existing customer is filled by the ATTACH. Exercised in Apex through
+   * setAccountId (R-7/R-8 measured in Test-Org: the org REUSES that record — sameRecord=true,
+   * one Account for that Name — and the handler fills its blank band). The record the save
+   * names is asserted BEFORE any band assertion (house rule: a criterion measured against a
+   * record the save did not name is not a criterion).
+   */
+  @isTest
+  static void attachTo_blankExistingCustomer_fillsBandOnce() {
+    User u = mkUser('cattach1');
+    grantProjectSets(u);
+    System.runAs(u) {
+      Account existing = new Account(Name = 'TEST-476-CoAttach');
+      insert existing;
+      Lead l = mkLead('TEST-476-CoAttach', BAND_MID);
+      insert l;
+      Database.LeadConvertResult res = Database.convertLead(
+        attachLeadTo(l.Id, existing.Id)
+      );
+      System.assert(res.isSuccess(), 'the attach itself must save cleanly');
+      System.assertEquals(
+        existing.Id,
+        res.getAccountId(),
+        'the attach names the existing customer, not a new one'
+      );
+      List<Account> named = [
+        SELECT Id
+        FROM Account
+        WHERE Name = 'TEST-476-CoAttach'
+      ];
+      System.assertEquals(
+        1,
+        named.size(),
+        'no second customer was created for that Name'
+      );
+      Account a = [
+        SELECT Company_Size__c
+        FROM Account
+        WHERE Id = :existing.Id
+        LIMIT 1
+      ];
+      System.assertEquals(
+        BAND_MID,
+        a.Company_Size__c,
+        'the blank customer was filled once with the lead band'
+      );
+    }
+  }
+
+  /* -----------------------------------------------------------------
+   * AC 4 — the PO's conflicting pair: the existing customer holds 51_to_250 (measured picklist
+   * value via `sf sobject describe --sobject Account`), the lead carries up_to_10. Same attach
+   * as above, so the only difference under test is a band that is already there.
+   */
+  @isTest
+  static void attachTo_customerWithBand_neverOverwritten() {
+    User u = mkUser('cattach2');
+    grantProjectSets(u);
+    System.runAs(u) {
+      Account existing = new Account(
+        Name = 'TEST-476-CoAttachKept',
+        Company_Size__c = '51_to_250'
+      );
+      insert existing;
+      Lead l = mkLead('TEST-476-CoAttachKept', BAND_SMALL);
+      insert l;
+      Database.LeadConvertResult res = Database.convertLead(
+        attachLeadTo(l.Id, existing.Id)
+      );
+      System.assert(res.isSuccess(), 'the attach itself must save cleanly');
+      System.assertEquals(
+        existing.Id,
+        res.getAccountId(),
+        'the attach names the existing customer'
+      );
+      Account kept = [
+        SELECT Company_Size__c
+        FROM Account
+        WHERE Id = :existing.Id
+        LIMIT 1
+      ];
+      System.assertEquals(
+        '51_to_250',
+        kept.Company_Size__c,
+        'the held band wins over the lead band (AC 4)'
+      );
+    }
+  }
+
+  /* -----------------------------------------------------------------
+   * The PO's tie-break, exercised in Apex (R-11 was "unprobed" — the attach makes it
+   * reachable): TWO Leads, different bands, BOTH attaching to the SAME existing customer
+   * in ONE convertLead call. Measured 2026-11-24 (scratch/probe_tie476.cls, sf apex run):
+   * returned=2, one Account (id unchanged), final band = more_than_250 = the band of the
+   * NEWER Lead (higher Id) — the handler's winnerOfCustomer picks max(Lead.Id), and the
+   * never-overwrite rule proves the two saves came as ONE trigger invocation (a second
+   * invocation would have kept the first band).
+   */
+  @isTest
+  static void tieBreak_twoLeadsOneCustomer_newestLeadWins() {
+    User u = mkUser('ctiebrk');
+    grantProjectSets(u);
+    System.runAs(u) {
+      Account existing = new Account(Name = 'TEST-476-Tie');
+      insert existing;
+      Lead older = mkLead('TEST-476-Tie', BAND_SMALL);
+      insert older;
+      Lead newer = mkLead('TEST-476-Tie', BAND_LARGE);
+      insert newer;
+      Lead newerLead = (newer.Id > older.Id) ? newer : older;
+      Lead olderLead = (newer.Id > older.Id) ? older : newer;
+      List<Database.LeadConvert> req = new List<Database.LeadConvert>();
+      req.add(attachLeadTo(olderLead.Id, existing.Id));
+      req.add(attachLeadTo(newerLead.Id, existing.Id));
+      List<Database.LeadConvertResult> res = Database.convertLead(req);
+      System.assertEquals(2, res.size(), 'both attaches returned');
+      for (Database.LeadConvertResult r : res) {
+        System.assert(
+          r.isSuccess(),
+          'a refusal must not abort the other attach'
+        );
+        System.assertEquals(
+          existing.Id,
+          r.getAccountId(),
+          'both attaches name the SAME existing customer'
+        );
+      }
+      List<Account> named = [
+        SELECT Id
+        FROM Account
+        WHERE Name = 'TEST-476-Tie'
+      ];
+      System.assertEquals(
+        1,
+        named.size(),
+        'still exactly one customer for that Name'
+      );
+      Account a = [
+        SELECT Company_Size__c
+        FROM Account
+        WHERE Id = :existing.Id
+        LIMIT 1
+      ];
+      System.assertEquals(
+        newerLead.Company_Size__c,
+        a.Company_Size__c,
+        'the newest lead wins the tie (PO tie-break, picked by max Lead.Id)'
+      );
+    }
+  }
+
+  /* -----------------------------------------------------------------
+   * AC 12 — editing an already converted lead changes nothing on its customer.
+   * Measured in this org: the edit itself is refused (CANNOT_UPDATE_CONVERTED_LEAD), so the
+   * re-fill path cannot even be reached; the assert names which half is proven how.
+   */
+  @isTest
+  static void editOfConvertedLead_neverRefills() {
+    User u = mkUser('cedit1x');
+    grantProjectSets(u);
+    System.runAs(u) {
+      Lead l = mkLead('TEST-476-CoEdit', BAND_LARGE);
+      insert l;
+      Database.LeadConvertResult res = Database.convertLead(convertLead(l.Id));
+      System.assert(res.isSuccess(), 'the conversion itself must save cleanly');
+      Account before = [
+        SELECT Company_Size__c
+        FROM Account
+        WHERE Id = :res.getAccountId()
+        LIMIT 1
+      ];
+      System.assertEquals(BAND_LARGE, before.Company_Size__c);
+      boolean refused = false;
+      try {
+        l.Company_Size__c = BAND_MID;
+        update l;
+      } catch (Exception e) {
+        refused = true; // the org refuses: CANNOT_UPDATE_CONVERTED_LEAD
+      }
+      System.assert(
+        refused,
+        'AC12: this org must refuse editing a converted lead (measured)'
+      );
+      Account after = [
+        SELECT Company_Size__c
+        FROM Account
+        WHERE Id = :res.getAccountId()
+        LIMIT 1
+      ];
+      System.assertEquals(
+        BAND_LARGE,
+        after.Company_Size__c,
+        'the customer keeps the band it got from the conversion'
+      );
+    }
+  }
+
+  /* -----------------------------------------------------------------
+   * The user's complaint as a regression: a sized Lead whose Company equals the Name of an
+   * Account that is merely CREATED (import, manual creation) must not put a band on that
+   * Account. The first round wrote it via the Account-side trigger.
+   */
+  @isTest
+  static void nameMatch_withoutConversion_writesNothing() {
+    User u = mkUser('ctrap1x');
+    grantProjectSets(u);
+    System.runAs(u) {
+      Lead sized = mkLead('TEST-476-CoTrapName', BAND_LARGE);
+      insert sized;
+      Account imported = new Account(Name = 'TEST-476-CoTrapName');
+      insert imported;
+      Account a = [
+        SELECT Company_Size__c
+        FROM Account
+        WHERE Id = :imported.Id
+        LIMIT 1
+      ];
+      System.assertEquals(
+        null,
+        a.Company_Size__c,
+        'an Account that was not converted from that lead keeps no band'
+      );
+    }
+  }
+
+  /* -----------------------------------------------------------------
+   * Bounded blast radius: a Name that is not unique. The Id of the conversion names ONE
+   * customer, so at most one record may gain a band — the first round wrote every match.
+   */
+  @isTest
+  static void convert_duplicateName_touchesAtMostOneCustomer() {
+    User u = mkUser('ctwin1x');
+    grantProjectSets(u);
+    System.runAs(u) {
+      Account first = new Account(Name = 'TEST-476-CoTwin');
+      insert first;
+      Account second = new Account(Name = 'TEST-476-CoTwin');
+      insert second;
+      Lead l = mkLead('TEST-476-CoTwin', BAND_LARGE);
+      insert l;
+      Database.LeadConvertResult res = Database.convertLead(convertLead(l.Id));
+      System.assert(res.isSuccess(), 'the conversion itself must save cleanly');
+      List<Account> twins = [
+        SELECT Id, Company_Size__c
+        FROM Account
+        WHERE Name = 'TEST-476-CoTwin'
+      ];
+      Integer written = 0;
+      for (Account a : twins) {
+        if (a.Company_Size__c != null) {
+          written++;
+        }
+      }
+      System.assertEquals(
+        1,
+        written,
+        'one conversion writes one customer, never every name-match'
+      );
+      Account hit = [
+        SELECT Company_Size__c
+        FROM Account
+        WHERE Id = :res.getAccountId()
+        LIMIT 1
+      ];
+      System.assertEquals(
+        BAND_LARGE,
+        hit.Company_Size__c,
+        'the customer the Id names carries the band'
+      );
+    }
+  }
+
+  /* -----------------------------------------------------------------
+   * F-5 — one conversion save must not create or change a record on Contact, Opportunity
+   * or Case. Those tables are seeded here so a delta can actually be MEASURED: a criterion
+   * over an org-empty table passes by construction (house finding SCRUM-471).
+   */
+  @isTest
+  static void carry_createsNoOtherRecord() {
+    User u = mkUser('cdelta1');
+    grantProjectSets(u);
+    System.runAs(u) {
+      Account anchor = new Account(Name = 'TEST-476-CoAnchor');
+      insert anchor;
+      for (Integer i = 0; i < 5; i++) {
+        String tag = String.valueOf(i);
+        Contact c = new Contact(
+          LastName = 'TEST-476-C' + tag,
+          AccountId = anchor.Id
+        );
+        insert c;
+        Opportunity o = new Opportunity(
+          Name = 'TEST-476-O' + tag,
+          AccountId = anchor.Id,
+          StageName = 'Hot Lead',
+          CloseDate = Date.today()
+        );
+        insert o;
+        Case k = new Case(Subject = 'TEST-476-K' + tag, Status = 'New');
+        insert k;
+      }
+      Integer beforeContact = [
+        SELECT COUNT()
+        FROM Contact
+        WHERE LastName LIKE 'TEST-476-C%'
+      ];
+      Integer beforeOpp = [
+        SELECT COUNT()
+        FROM Opportunity
+        WHERE Name LIKE 'TEST-476-O%'
+      ];
+      Integer beforeCase = [
+        SELECT COUNT()
+        FROM Case
+        WHERE Subject LIKE 'TEST-476-K%'
+      ];
+
+      Lead l = mkLead('TEST-476-CoDelta', BAND_SMALL);
+      insert l;
+      Database.convertLead(convertLead(l.Id));
+
+      Integer afterContact = [
+        SELECT COUNT()
+        FROM Contact
+        WHERE LastName LIKE 'TEST-476-C%'
+      ];
+      Integer afterOpp = [
+        SELECT COUNT()
+        FROM Opportunity
+        WHERE Name LIKE 'TEST-476-O%'
+      ];
+      Integer afterCase = [
+        SELECT COUNT()
+        FROM Case
+        WHERE Subject LIKE 'TEST-476-K%'
+      ];
+      System.assertEquals(beforeContact, afterContact, 'no Contact touched');
+      System.assertEquals(beforeOpp, afterOpp, 'no Opportunity touched');
+      System.assertEquals(beforeCase, afterCase, 'no Case touched');
+    }
+  }
+
+  /* -----------------------------------------------------------------
+   * AC 6 as far as one Apex transaction in this org allows. Measured bounds, both causes:
+   * a single convertLead over 20 rows dies LIMIT_EXCEEDED at row 0 (10 save, 20 die), and a
+   * loop of 30 single-record conversions dies System.LimitException: Too many SOQL queries:
+   * 101 — every conversion EVENT costs its own queries, the handler's single SOQL among them.
+   * So the 200-record criterion CANNOT be green in one Apex transaction; it belongs to the
+   * E2E/Import row of the coverage table with the record count named (Tester). What this
+   * fixture proves is the handler's shape: ONE SOQL plus ONE bulkified update per
+   * after-update event, and every band on ITS OWN customer.
+   */
+  @isTest
+  static void bulk_conversionEvents_carryEveryBand_inOneConversionCall() {
+    User u = mkUser('cbulk1x');
+    grantProjectSets(u);
+    System.runAs(u) {
+      List<String> bands = new List<String>{ BAND_LARGE, BAND_MID, BAND_SMALL };
+      List<Lead> leads = new List<Lead>();
+      Integer bi = 0;
+      for (Integer i = 0; i < 20; i++) {
+        String tag = String.valueOf(i);
+        leads.add(mkLead('TEST-476-Bulk' + tag, bands.get(bi)));
+        bi = (bi >= 2) ? 0 : bi + 1; // no System.Math.fmod in Apex (measured)
+      }
+      insert leads; // ONE insert: ONE trigger invocation for the seed
+      // ONE convertLead call for all 20 rows: the trigger fires once with 20 records,
+      // which is the shape the criterion means ("200 Records converted together").
+      // Measured 2026-11-24 (scratch/probe_limit476b.cls, sf apex run): 25 rows in ONE
+      // call save 25/25; 120 rows die System.LimitException: Too many SOQL queries: 101
+      // — the cap of the ENCLOSING Apex transaction, spent by the Lead triggers
+      // (master LeadDuplicateGuard 1 SOQL per invocation + this handler 1 SOQL + 1
+      // bulkified update), not by an org limit. The 200-record row of the criterion
+      // therefore belongs to the E2E/Import table; shrinking a fixture is not a pass.
+      List<Database.LeadConvert> req = new List<Database.LeadConvert>();
+      for (Lead l : leads) {
+        req.add(convertLead(l.Id));
+      }
+      List<Database.LeadConvertResult> res = Database.convertLead(req);
+      System.assertEquals(20, res.size(), 'every conversion returned');
+      List<Lead> converted = [
+        SELECT Id, Company_Size__c, ConvertedAccountId, IsConverted
+        FROM Lead
+        WHERE Id IN :leads
+      ];
+      System.assertEquals(
+        20,
+        converted.size(),
+        'every conversion saved cleanly'
+      );
+      Map<Id, String> bandOfCustomer = new Map<Id, String>();
+      Set<Id> customers = new Set<Id>();
+      for (Lead l : converted) {
+        System.assertEquals(true, l.IsConverted, 'every lead is converted');
+        System.assertNotEquals(
+          null,
+          l.ConvertedAccountId,
+          'every conversion names a customer'
+        );
+        customers.add(l.ConvertedAccountId);
+        bandOfCustomer.put(l.ConvertedAccountId, l.Company_Size__c);
+      }
+      System.assertEquals(20, customers.size(), 'one customer per conversion');
+      List<Account> custs = [
+        SELECT Id, Company_Size__c
+        FROM Account
+        WHERE Id IN :customers
+      ];
+      System.assertEquals(20, custs.size(), 'all 20 customers readable');
+      for (Account a : custs) {
+        System.assertEquals(
+          bandOfCustomer.get(a.Id),
+          a.Company_Size__c,
+          'the band on this customer is the band of ITS lead'
+        );
+      }
+    }
+  }
+
+  /* -----------------------------------------------------------------
+   * Nothing happens on a plain Lead edit that is no conversion: no customer is created and
+   * no record gains a band.
+   */
+  @isTest
+  static void plainLeadEdit_createsNoCustomerAndNoBand() {
+    User u = mkUser('cplain2');
+    grantProjectSets(u);
+    System.runAs(u) {
+      Lead l = new Lead(
+        Company = 'TEST-476-CoPlainEdit',
+        LastName = 'Plain Editor'
+      );
+      insert l;
+      l.Company = 'TEST-476-CoPlainEdited';
+      update l;
+      Integer created = [
+        SELECT COUNT()
+        FROM Account
+        WHERE Name = 'TEST-476-CoPlainEdited'
+      ];
+      System.assertEquals(0, created, 'a plain edit creates no customer');
+      Lead re = [SELECT Company_Size__c FROM Lead WHERE Id = :l.Id LIMIT 1];
+      System.assertEquals(
+        null,
+        re.Company_Size__c,
+        'a plain edit writes no band anywhere'
+      );
+    }
+  }
+
+  /* -----------------------------------------------------------------
+   * Coverage of the handler's own write path. Measured 2026-11-24: with all 12 behaviour
+   * tests inside System.runAs, the deploy report attributes 0/24 lines to
+   * CompanySizeCarryHandler — the org counts coverage only in the test's own context, not
+   * inside a runAs block. This method therefore calls the entry OUTSIDE runAs, after
+   * clearing a band, so the fill-if-blank branch, the query, the bulkified update and the
+   * Savepoint all really execute. The trigger path is covered by the runAs tests above;
+   * it is simply not attributed to the handler by the org's report.
+   */
+  @isTest
+  static void handlerEnteredDirectly_carriesTheBandIntoABlankCustomer() {
+    Lead seed = mkLead('TEST-476-CoDirect', BAND_SMALL);
+    insert seed;
+    Map<Id, Lead> before = new Map<Id, Lead>();
+    for (Lead x : [
+      SELECT Id, IsConverted, Company_Size__c
+      FROM Lead
+      WHERE Id = :seed.Id
+    ]) {
+      before.put(x.Id, x);
+    }
+    System.assertEquals(
+      false,
+      before.get(seed.Id).IsConverted,
+      'the pre-save lead is not converted'
+    );
+    Database.LeadConvertResult res = Database.convertLead(convertLead(seed.Id));
+    System.assert(res.isSuccess(), 'the conversion saves cleanly');
+    Id customer = res.getAccountId();
+    Account cleared = new Account(Id = customer, Company_Size__c = null);
+    update cleared; // hand-clear, so the handler has real work to do
+
+    List<Lead> after = [
+      SELECT Id, IsConverted, ConvertedAccountId, Company_Size__c
+      FROM Lead
+      WHERE Id IN :before.keySet()
+    ];
+    CompanySizeCarryHandler.carryConvertedLeads(after, before);
+    Account back = [
+      SELECT Company_Size__c
+      FROM Account
+      WHERE Id = :customer
+      LIMIT 1
+    ];
+    System.assertEquals(
+      BAND_SMALL,
+      back.Company_Size__c,
+      'a blank customer is filled by the handler itself'
+    );
+  }
+}

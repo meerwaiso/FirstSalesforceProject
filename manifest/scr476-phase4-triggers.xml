@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-476 Phase 4: the two triggers (they compile against the live handler,
+     phase 3). One Trigger per object (house rule): AccountCompanySizeCarry beside
+     AccountLockGuard (before update, different phase), LeadCompanySizeCarry beside
+     LeadDuplicateGuard (before *, different phase). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>LeadCompanySizeCarry</members>
+        <name>ApexTrigger</name>
+    </types>
+    <version>67.0</version>
+</Package>
