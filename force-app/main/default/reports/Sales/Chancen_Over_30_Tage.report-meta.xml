@@ -10,12 +10,15 @@
         <field>STAGE_NAME</field>
     </columns>
     <columns>
-        <field>Opportunity.Stage_Days_In_Current_Stage__c</field>
-    </columns>
-    <columns>
         <field>AMOUNT</field>
     </columns>
-    <description>SCRUM-477: Open Opportunities that have sat in their current stage for more than 30 days (31 and up), longest stuck first. Columns: opportunity, owner, current stage, days, amount. Won/Lost deals are excluded twice: by the STAGE_NAME filter and by the NULL branch of the day counter.</description>
+    <!-- SCRUM-477 AC8 (longest stuck first) is groupingsDown on the day counter with
+         sortOrder Desc. The org rejects the same field in BOTH lists ("You can't
+         include groupings in the selected columns list"), so the day count is NOT a
+         detail column: it is the group label of each row group - exactly the house
+         mechanism of Ueberfaellige_Faelle (SCRUM-390), where PRIORITY is the grouping
+         and only the other fields are columns. -->
+    <description>SCRUM-477: Open Opportunities that sat more than 30 days (31+) in their current stage, longest stuck first. Columns: opportunity, owner, stage, amount; the day count is the group label (AC7/AC8). Won/Lost deals are never listed.</description>
     <filter>
         <criteriaItems>
             <column>STAGE_NAME</column>
