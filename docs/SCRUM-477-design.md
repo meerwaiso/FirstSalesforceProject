@@ -139,3 +139,11 @@ The PO could not measure (no org access) → the expected row count of the stuck
 
 ## Deployment duty for the Developer (handoff must carry the read-back)
 Branch `feature/SCRUM-477-...` cut fresh from `master`; deploy to Test-Org only; manifest per component, per deploy command (house rule: `--manifest <own>/x.xml` and `--target-dir` both). Handoff comment must carry the `PermissionSetAssignment` read-back for **both** the CLI user and the human test account plus one field read back through a real session.
+
+## Review resolution (Architect, PR #197, head 6b67d49)
+
+The shape in this doc shipped unchanged: 4 detail columns plus the day counter as the **group label** of a `groupingsDown ... Desc` row group. The org rejects the counter in both lists ("You can't include groupings in the selected columns list"), so AC7's fifth value and AC8's sort share one mechanism — a Details-format report would show five columns per row but cannot sort. Accepted: AC7 is read as "the day count is visible per group header, the four other values per row"; the E2E spec must assert the group header label, not a fifth detail column.
+
+Data state measured in Test-Org after the deploy (2026-11-25): 157 Opportunities total, 68 closed and exactly 68 with a NULL day counter (so no open record loses the number, AC1), 89 open of which 76 above 30 days and 13 below. Near the threshold there is a data gap: highest value below 30 is 4, lowest above is 34, and 0 records sit at 30 or at 31. AC6's exact boundary therefore has no rows in this org — it is proven by the `greaterThan` operator only, and the Tester reports it as its own coverage line, never as a PASS row.
+
+Nothing in the delta writes records, sends emails or creates tasks: the branch adds one test class and four metadata artefacts, no trigger, no Flow, no production Apex (AC10 holds structurally).
