@@ -297,7 +297,7 @@ async function openBandPicker(page: import('@playwright/test').Page) {
   for (let i = 0; i < 10; i++) { if ((await btn.count()) === 1 || (await combo.count()) === 1) break; await page.waitForTimeout(2000); }
   const seen = (await page.ariaSnapshot()).split('\n').filter((l) => /Company Size/.test(l)).slice(0, 8);
   const route = (await btn.count()) === 1 ? 'edit-button' : (await combo.count()) === 1 ? 'selection' : 'none';
-  expect(route, `neither "Edit ${LABEL}" nor an already-selected combobox on the customer; aria lines seen: ${JSON.stringify(seen)}`).isNotEqualTo('none');
+  await expect(route === 'none', `neither "Edit ${LABEL}" nor an already-selected combobox on the customer; aria lines seen: ${JSON.stringify(seen)}`).toBe(false);
   if (route === 'edit-button') {
     await btn.first().click({ timeout: 15000 });
     for (let i = 0; i < 8; i++) { if ((await combo.count()) === 1) break; await page.waitForTimeout(2000); }
