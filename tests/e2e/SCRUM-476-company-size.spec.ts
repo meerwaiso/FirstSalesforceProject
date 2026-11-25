@@ -128,6 +128,7 @@ const LEADN: Record<string, string> = {
   attachSized: `${TAG}-L-ATTACH-SIZED`,
   attachFill: `${TAG}-L-ATTACH-FILL`,
   attachBlank: `${TAG}-L-ATTACH-BLANK`,
+  cmpBlank: `${TAG}-L-CMP-BLANK`,   // AC12's comparison lead — no other block may convert it
   hand: `${TAG}-L-HAND`,
   old: `${TAG}-L-OLD`,
   b1: `${TAG}-L-B1`,
@@ -166,6 +167,7 @@ function seedFixtures() {
   mkLead('attachSized', CUST.existSized, 'up_to_10');   // AC4 conflicting pair
   mkLead('attachFill', CUST.existBlank, 'more_than_250'); // AC5 fills a blank customer
   mkLead('attachBlank', CUST.existBlank2);               // AC6 nothing to carry
+  mkLead('cmpBlank', `${TAG}-CMP-LEAD-NONE`);               // AC12 comparison: blank band, own name (no customer of that name)
   mkLead('hand', CUST.hand, '11_to_50');
   mkLead('old', CUST.existSized, '51_to_250');           // AC13: becomes "old" by attaching first
   mkLead('b1', CUST.b1, 'up_to_10');
@@ -658,10 +660,13 @@ test.describe('[SCRUM-476] AC12 — a conversion touches nothing else', () => {
     const dSized = diff(beforeSized, snap());
     // comparison: the same kind of conversion for a lead WITHOUT a size (an attach here,
     // so the Account delta is allowed to differ — only the side-effect tables must match)
-    const blankFixture = leadRows(LEADN.attachBlank)[0];
+    // AC12's comparison must be a lead no earlier block converted: L-ATTACH-BLANK is consumed by
+    // AC6 (measured: the Convert action was gone 20 s after opening it — the lead was already
+    // converted). L-CMP-BLANK belongs to this block only.
+    const blankFixture = leadRows(LEADN.cmpBlank)[0];
     expect(blankFixture[API], 'the comparison lead carries no band').toBeNull();
     const beforeBlank = snap();
-    await convertLeadForm(page, 'attachBlank', 'existBlank2');
+    await convertLeadForm(page, 'cmpBlank', 'existBlank2');
     const dBlank = diff(beforeBlank, snap());
     for (const k of ['feed', 'email', 'task', 'contact', 'opp', 'case']) {
       expect(dSized[k], `AC12: the sized conversion causes no ${k} side effect beyond a band-less conversion`).toBe(dBlank[k]);
