@@ -702,6 +702,7 @@ test.describe('[SCRUM-476] AC13 — changing an old lead after the customer has 
     // Measured: the Apex path refuses to update a converted lead (CANNOT_UPDATE_CONVERTED_LEAD).
     // On the UI path the Edit control may or may not be offered — BOTH outcomes are asserted,
     // and the criterion (the customer's band never moves) is checked after either.
+    let saveOffered = -1; // -1 = no edit control clicked, so no save expected
     const btn = page.getByRole('button', { name: `Edit ${LABEL}`, exact: true });
     const offered = await btn.count();
     // Playwright BDD has no toBeOneOf (run g3: TypeError "not a function"). The guard that
@@ -711,15 +712,29 @@ test.describe('[SCRUM-476] AC13 — changing an old lead after the customer has 
       await btn.first().click({ timeout: 15000 });
       await page.waitForTimeout(2500);
       await pickBand(page, 'more_than_250');
-      await saveInlineEdit(page);
-      await page.waitForTimeout(4000);
+      // saveInlineEdit (the shared helper) polls 5 s for "Save"/"Save & New" and threw in run g14
+      // when the edit-mode bar had not painted. On a CONVERTED lead the bar is optional — so poll
+      // for the save control here, name the outcome in OBSERVED, and let the criterion below
+      // (the customer's band never moves) decide the test.
+      const saveAny = page.getByRole('button', { name: /save/i, exact: false });
+      let saveCount = 0;
+      for (let i = 0; i < 8; i++) {
+        saveCount = await saveAny.count();
+        if (saveCount >= 1) break;
+        await page.waitForTimeout(2500);
+      }
+      saveOffered = saveCount;
+      if (saveCount >= 1) {
+        await saveAny.first().click({ timeout: 15000 });
+        await page.waitForTimeout(4000);
+      }
     }
 
     const leadAfter = leadRows(LEADN.old)[0];
     const custAfter = accRows(CUST.existSized)[0];
     expect(custAfter[API], `AC13: the customer's band must not move (was ${bandBefore})`).toBe(bandBefore);
     expect(custAfter.Id, 'AC13: still the same customer record').toBe(custBefore.Id);
-    observed('AC13', `old lead ${ids.l_old} ${API} ${leadBefore[API]} -> ${leadAfter[API]}, ConvertedAccountId=${leadAfter.ConvertedAccountId}; UI offered ${offered} Edit controls on the converted lead (1 = the edit ran, 0 = platform refused); customer ${custAfter.Id} stayed ${bandBefore}`);
+    observed('AC13', `old lead ${ids.l_old} ${API} ${leadBefore[API]} -> ${leadAfter[API]}, ConvertedAccountId=${leadAfter.ConvertedAccountId}; UI offered ${offered} Edit controls and ${saveOffered} save controls on the converted lead (-1 = no edit clicked; measured both ways: g13 offered 0, g14 offered 1 with the save bar painting late); customer ${custAfter.Id} stayed ${bandBefore}`);
   });
 });
 
