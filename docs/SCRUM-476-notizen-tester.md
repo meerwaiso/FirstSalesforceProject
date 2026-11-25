@@ -214,3 +214,10 @@ Alle Befunde measured in Test-Org (`sf ... --target-org devops-agent@cline.test`
 - CI measured: run 45639461938 on head **32408d7** = 4/4 pass (Lint 42 s, Smoke 5m58s, Drift Gate 14m4s, README 5 s). Runs on 9714222/a512f16 not yet listed -> DevOps must read CI on the FINAL head; both are test-artifact-only commits.
 - Apex evidence unchanged: run 05mWU000002dQ9ZYAU (2026-11-24T15:00:06Z) Completed, 16 enqueued / 0 failed (13 + 3 FLS methods: withoutPS invisible+unwritable, readPS visible-not-writable, bothPS editable).
 - g13 = full suite on head a512f16 (the final spec head) — the verdict run.
+
+## g14 (full, head ddaf133, 17:0x-17:2x): 11 passed / 1 failed (16.0 m)
+
+- AC12 green after the de-shared fixture; new OBSERVED line: sized create-new vs band-less attach — feed 3/email 0/task 0/contact 1/opp 1/case 0 equal both ways, Account 1 vs 0.
+- AC13 red at `tests/e2e/record-page.ts:118` `expect(getByRole('button',{name:'Save & New'})).toBeVisible(5000)` — the shared helper's 5 s poll missed the edit-mode save bar (it paints late; g13 had no edit control at all, so the branch never ran). Fixed in head ca75366: AC13 polls the save control 8x2.5 s, records `saveOffered` in OBSERVED, and the criterion (customer band unchanged) is asserted after BOTH outcomes.
+- probe476q (measured 2026-11-25 17:3x): the form submit is NOT always a second `button "Convert"` — with only 1 Convert button found, my probe never converted (IsConverted=false, ConvertedAccountId null), so probe476q cannot prove the converted-lead edit state; the spec's own convertLeadForm (heading-box + below-heading candidate) is the working route. SOQL trap: `WHERE Id=00Q...` -> MALFORMED_QUERY "unexpected token"; query by `LastName = '...'` instead. Probe leftovers TEST-476Q-L/CUST cleaned by name before re-run.
+- g15 = final full-suite verdict run on head ca75366.
