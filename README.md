@@ -36,6 +36,65 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 25.11.2026 — Every open deal shows how long it has sat in its stage (SCRUM-477)
+
+**What changes**
+
+- An open deal now carries the box „Tage jetzige Stage": whole days it has been sitting in the
+  stage it is in now. A deal that reached its stage today shows 0, a deal nobody moved for five
+  months shows 153.
+- The number starts over at every stage change, forward as well as backward. Moving a deal from
+  „Signing" back to „Proposal" begins again at 0.
+- Nobody maintains it and nobody can write it: the value is there the moment you open the deal.
+  Deals that already existed keep their real age, counted from the last time their stage really
+  changed; deals whose stage never changed after they were created count from their creation.
+- Finished deals - Closed Won and Closed Lost - never carry a number and can never reach the list.
+- Nothing else happens: no email, no task, no automatic change, and no other box on the deal is
+  touched because of this.
+
+**Where you see it**
+
+- In the opportunity record page, the box „Tage jetzige Stage" (the production Opportunity page
+  layout).
+- One overview for sales: the report „Chancen_Over_30_Tage" in the report folder „Sales". It lists
+  the open deals that sat more than 30 days (31 and up) in their current stage, the longest stuck
+  one first. The day count is the heading above each group of rows; the columns name the deal, its
+  owner, its current stage and its amount.
+- Anyone who can see the deal can see the number: in the production org the read right
+  `SCRUM477_CurrentStageDays_Read` is granted read-only and assigned to 4 users -
+  `devops-agent@cline.de`, `meerwais.osmani.3ecaf61ebe28@agentforce.com`,
+  `integration@00dg500000dkttzeaf.com`, `insightssecurity@00dg500000dkttzeaf.com`. No user, none
+  of them, can change the number.
+
+**What is deliberately missing**
+
+- **The list has never been opened.** The number of deals behind it was measured by query, not in
+  the report: in production **13 of 31** deals qualify on 25.11.2026. The org's own copy of the
+  report definition could not be read back this round - the retrieve by report name answers
+  "cannot be found" for every live report in both orgs, so it proves nothing in either direction.
+  The deployed definition was read from the merged source; the next pull request's Prod-Org Drift
+  Gate is the org-side proof.
+- **The 30-day edge is untested.** No deal sits at 30 or 31 days in either org - in production all
+  13 stuck deals sit at exactly 153 days, in the test org the neighbouring values are 4 and 34.
+  The deployed filter reads "greater than 30", so a deal at exactly 30 days must stay off the list
+  and one at 31 days must appear; that behaviour has never been observed.
+- **These counts move, the same day.** Test-Org: 61 of 157 deals. Prod-Org: 13 of 31. Stage work on
+  other tickets put 15 test deals back to 0 within one day, so a count never travels as a constant
+  - measure it again when you write it down.
+
+**Evidence**
+
+- Prod-Org deploys: field `0Afg500000H9YVJCA3`, Permission Set plus layout plus report
+  `0Afg500000H9YgbCAF` (3 of 3 components), read-back class `0Afg500000H9YiDCAV`. The report could
+  only be deployed after the field existed - the validate of phase 2 and 3 failed with
+  "No such column" until it did.
+- Read back in production by the PO on 25.11.2026, through the session of a user who holds the
+  read right: field present (formula, number), granted read=true, edit=false, assigned to 4 users;
+  31 deals, 13 of them over 30 days in their current stage, 0 of those Closed Won or Closed Lost,
+  0 of 13 with a value off by more than one day, all 13 on a record nobody edited for over 3 days.
+- Release tag on the remote: `release/2026-11-25-SCRUM-477` - tag object `7c802ac`, pointing at the
+  squash merge `d90fe6b`.
+
 ## 25.11.2026 — A converted lead hands its company size band to the customer (SCRUM-476)
 
 **What changes**
