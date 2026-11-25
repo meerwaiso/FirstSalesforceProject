@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Stage_Days_In_Current_Stage__c</fullName>
+    <label>Tage jetzige Stage</label>
+    <description>SCRUM-477: Whole days the open Opportunity has sat in its current Stage. Anchor is LastStageChangeDate (the real stage history, never ModifiedDate), so a stage change - forward or backward - restarts the count at 0. Records whose stage never changed after creation fall back to CreatedDate. Closed Won / Closed Lost return NULL, so a finished deal can never reach the stuck list. Formelfeld: systemberechnet, nobody maintains it by hand.</description>
+    <type>Number</type>
+    <precision>10</precision>
+    <scale>0</scale>
+    <unique>false</unique>
+    <formula>IF(OR(ISPICKVAL(StageName, "Closed Won"), ISPICKVAL(StageName, "Closed Lost")), NULL, TODAY() - DATEVALUE(IF(ISBLANK(LastStageChangeDate), CreatedDate, LastStageChangeDate)))</formula>
+</CustomField>
