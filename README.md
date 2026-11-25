@@ -36,6 +36,58 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 25.11.2026 — A converted lead hands its company size band to the customer (SCRUM-476)
+
+**What changes**
+
+- The customer record now has the same box „Company Size" as the lead, with the same four
+  bands (`up to 10 employees`, `11 to 50 employees`, `51 to 250 employees`,
+  `more than 250 employees`). Empty stays allowed.
+- When a lead that carries a band is converted, the customer it lands on takes that band —
+  a new customer always, an existing customer only while its own box is still empty. A
+  customer that already has a band keeps it, even if the lead says something else.
+- After that the band on the customer is maintained by hand. Later changes on the customer
+  do not touch old leads, and a converted lead cannot be edited any more, so it cannot
+  change the customer either.
+- Nothing is backfilled: on 25.11.2026 the production org holds **13 customers, 0 of them
+  carrying a band**. Only conversions from today on fill the box.
+
+**Where you see it**
+
+- In the first block of the customer page, directly under the customer name (item order in
+  the production layout: `Name`, `Company_Size__c`, `Is_Key_Account__c`).
+- Reading the band is granted by `SCRUM476_CompanySize_Read`, changing it by
+  `SCRUM476_CompanySize_Set`; in the production org both are assigned to the same 2 users.
+
+**What is deliberately missing**
+
+- **Bulk conversions are not proven**: in the test org one conversion call with 20 or more
+  leads failed (`LIMIT_EXCEEDED`), and 30 conversions in one transaction hit the SOQL limit.
+  The cause is not yet tied to this change or to an older lead automation. Converting leads
+  one by one, as colleagues do on the page, is covered by the tests.
+- **The UI test of the conversion is not green**: the Playwright spec fails at finding the
+  „Converted" status in the convert dialog — a defect of the test, not of the behaviour,
+  which the Apex tests prove with real conversions.
+- **A value outside the four bands is only refused in the page**: the field is not a
+  restricted picklist, so code or data loads could still store another value.
+
+**Evidence**
+
+- Deploy jobs: field `0Afg500000H9D5tCAF` (1/1), both permission sets + `Account Layout`
+  `0Afg500000H9DHBCA3` (3/3), handler + trigger + both test classes validated as
+  `0Afg500000H9DaXCAV` (16/16 tests passed, 0 component errors) and quick-deployed as
+  `0Afg500000H9DlpCAF` (4/4).
+- Trigger read back in production: `LeadCompanySizeCarry` on Lead, status Active, next to the
+  existing `LeadDuplicateGuard`.
+- Permission set assignments read back: 4 rows — `SCRUM476_CompanySize_Read` and
+  `SCRUM476_CompanySize_Set` each → `devops-agent@cline.de` and
+  `meerwais.osmani.3ecaf61ebe28@agentforce.com`.
+- Apex in production after the deploy, orgId `00Dg500000DkTtzEAF`: `SCRUM476CompanySizeTest`
+  and `SCRUM476CompanySizeFlsTest` 16/16 passed (test run `707g5000016Ku0Y`); coverage
+  `CompanySizeCarryHandler` 25/28 lines, `LeadCompanySizeCarry` 2/2.
+- Merged to master as `04c815b` (PR #196); deployed by Claude Code on the user's explicit
+  request, the permission set assignment was run by the user.
+
 ## 23.11.2026 — The lead record shows the company's size band (SCRUM-472)
 
 **What changes**
