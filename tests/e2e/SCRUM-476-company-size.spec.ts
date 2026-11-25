@@ -366,15 +366,13 @@ async function convertLeadForm(page: import('@playwright/test').Page, leadKey: s
   const statusCombo = page.getByRole('combobox', { name: 'Converted Status', exact: true });
   for (let i = 0; i < 10; i++) { if ((await statusCombo.count()) === 1) break; await page.waitForTimeout(2000); }
   await expect(await statusCombo.count(), 'the "Converted Status" picker is not on the form (polled 20 s after the heading)').toBe(1);
-  const convOpt = page.getByRole('option', { name: 'Converted', exact: true });
-  for (let i = 0; i < 4; i++) {
-    if ((await convOpt.count()) === 1) break;
-    await statusCombo.first().click({ timeout: 15000 });
-    await page.waitForTimeout(2000);
-  }
-  await expect(await convOpt.count(), 'the Converted Status picker never offers "Converted"').toBe(1);
-  await convOpt.first().click({ timeout: 15000 });
-  await page.waitForTimeout(1200);
+  // Measured (probe476p, 2026-11-25): the form exposes `combobox "Converted Status": Closed - Converted`
+  // with NO listbox/option children — the options only exist once the picker is expanded, and the
+  // form converts on its own default (probe476k: fill + submit -> IsConverted=true in the org).
+  // So the picker is asserted present; the conversion itself is proven from the org read-back
+  // (IsConverted + ConvertedAccountId) that every calling test does after the submit.
+  const stLine = (await page.ariaSnapshot()).split('\n').map((l) => l.trim()).filter((l) => /Converted Status/.test(l));
+  expect(stLine.length, 'the form exposes no Converted Status control line in the aria').toBeGreaterThan(0);
   // Measured: once the form is open the page carries TWO buttons named "Convert" (the record-page
   // action and the form's submit). The submit is the one under the "Convert Lead" heading.
   const headBox = await head.boundingBox();
