@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>SCRUM-477: Read-only FLS for Opportunity.Stage_Days_In_Current_Stage__c. Read access for every user who can see the opportunity; editable=false, so nobody can write the day counter by hand. Deploying this set is only half the work - it must also be assigned to the acting users.</description>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>Opportunity.Stage_Days_In_Current_Stage__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM477_CurrentStageDays_Read</label>
+</PermissionSet>

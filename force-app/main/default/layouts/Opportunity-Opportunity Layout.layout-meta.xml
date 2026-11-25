@@ -75,6 +75,13 @@
                 <behavior>Readonly</behavior>
                 <field>Value_Tier__c</field>
             </layoutItems>
+            <!-- SCRUM-477: day counter of the current stage, behavior=Readonly -
+                 the value is systemcomputed and may not be edited by hand (AC8/AC9).
+                 House: Is_Overdue__c / Value_Tier__c in this very section. -->
+            <layoutItems>
+                <behavior>Readonly</behavior>
+                <field>Stage_Days_In_Current_Stage__c</field>
+            </layoutItems>
             <layoutItems>
                 <behavior>Edit</behavior>
                 <field>Rueckruf_desired__c</field>
