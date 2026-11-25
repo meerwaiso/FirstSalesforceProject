@@ -47,9 +47,9 @@ public class SCRUM477StageDaysReadTest {
         System.assert(!records.isEmpty(), 'no stuck record found: criterion untested');
         for (Opportunity o : records) {
             Date anchor = (o.LastStageChangeDate != null)
-                ? o.LastStageChangeDate.getDate()
-                : o.CreatedDate.getDate();
-            Integer expected = Date.today().dayDistance(anchor);
+                ? o.LastStageChangeDate.date()
+                : o.CreatedDate.date();
+            Integer expected = anchor.daysBetween(Date.today());
             System.assertEquals(expected, (Integer) o.Stage_Days_In_Current_Stage__c,
                                 'days must be TODAY minus the last real stage change, not the go-live date (' + o.Name + ')');
         }
