@@ -1,12 +1,15 @@
-@isTest
+@isTest(SeeAllData=true)
 public class SCRUM477StageDaysReadTest {
 
-    // SCRUM-477: the day counter Opportunity.Stage_Days_In_Current_Stage__c must be
-    // READABLE for a real org user holding SCRUM477_CurrentStageDays_Read and never
-    // WRITABLE. Deliberately read-only: no DML at all, so no MIXED_DML constraint
-    // and nothing to clean up in the org.
+    // SCRUM-477: read-back of the live feature in Test-Org, NOT an isolated unit test.
+    // SeeAllData is deliberate: the criteria this class carries (the human test user
+    // can READ the counter, the counter equals today minus the LAST REAL stage change
+    // of records that already exist, closed deals show NULL) are about records the
+    // feature must not touch - a fixture cannot have a past stage history, because
+    // CreatedDate and LastStageChangeDate cannot be backdated. Every assertion that
+    // depends on org data says "criterion untested" instead of passing silently.
 
-    @isTest
+    @isTest(SeeAllData=true)
     static void humanSessionReadsTheCounter() {
         User hu = [SELECT Id, Username FROM User WHERE Username = 'meerwais.osmani@resourceful-bear-6f1u4j.com' LIMIT 1];
         Boolean readable = false;
@@ -34,7 +37,7 @@ public class SCRUM477StageDaysReadTest {
         System.assert(topDays > 30, 'the top row must be strictly over 30 days (greaterThan 30, AC6)');
     }
 
-    @isTest
+    @isTest(SeeAllData=true)
     static void anchorIsTheLastRealStageChange() {
         // AC1/AC4/AC5: the number equals today minus the LAST REAL stage change,
         // measured on records that already exist in Test-Org - nothing here was
@@ -55,7 +58,7 @@ public class SCRUM477StageDaysReadTest {
         }
     }
 
-    @isTest
+    @isTest(SeeAllData=true)
     static void closedDealsCarryNoNumber() {
         // AC2, cell side: a closed deal returns NULL, so it can never satisfy the
         // > 30 filter of the stuck list - even before the STAGE_NAME filter.
