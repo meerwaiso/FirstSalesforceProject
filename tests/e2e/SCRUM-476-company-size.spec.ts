@@ -327,8 +327,16 @@ async function pickBand(page: import('@playwright/test').Page, dataValue: string
  */
 async function convertLeadForm(page: import('@playwright/test').Page, leadKey: string, existingCustomerKey: string | null) {
   await openLead(page, leadKey);
+  // The Lightning action buttons paint after the record body; poll before asserting (AC12 lost
+  // this assertion once in g12 while every other block found the button).
   const openBtn = page.getByRole('button', { name: 'Convert', exact: true });
-  await expect(await openBtn.count(), '"Convert" action button not on the lead page').toBe(1);
+  let btnCount = 0;
+  for (let i = 0; i < 10; i++) {
+    btnCount = await openBtn.count();
+    if (btnCount >= 1) break;
+    await page.waitForTimeout(2000);
+  }
+  await expect(btnCount, '"Convert" action button not on the lead page (polled 20 s)').toBe(1);
   await openBtn.first().click({ timeout: 15000 });
   await page.waitForTimeout(5000);
   const head = page.getByText('Convert Lead', { exact: true });
@@ -748,10 +756,14 @@ test.describe('[SCRUM-476] AC9 — a value outside the four ranges is refused', 
     const offered = await lb.locator('[role=option]').evaluateAll((es) => es.map((e) => e.getAttribute('data-value')));
     expect(offered, 'AC9: the picker offers exactly the blank slot plus the four ranges').toEqual(['', ...BANDS]);
 
+    // Measured (g12 error-context 2026-11-25): the picker IS a <button role="combobox" aria-haspopup="listbox"
+    // data-value="51 to 250 employees"> — fill() is refused ("not an <input>, <textarea> or [contenteditable]"),
+    // so the bogus text is typed into the focused combobox with keyboard events.
     const combo = page.getByRole('combobox', { name: LABEL, exact: true });
     await expect(await combo.count(), 'the Company Size combobox is not on the page').toBe(1);
-    await combo.first().fill(bogus);
-    await combo.first().click({ timeout: 15000 });
+    const dataValue = await combo.first().getAttribute('data-value');
+    expect(dataValue, 'AC9 baseline: the picker holds the seeded range').toBe('51 to 250 employees');
+    await combo.first().type(bogus, { delay: 90 });
     await page.waitForTimeout(2500);
 
     const offered2 = await lb.locator('[role=option]').evaluateAll((es) => es.map((e) => e.getAttribute('data-value')));
