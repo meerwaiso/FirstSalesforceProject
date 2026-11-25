@@ -282,22 +282,27 @@ async function rowsBetweenNameAndSize(page: import('@playwright/test').Page): Pr
 
 /** The picker for the band on the customer (verified: combobox exists only in edit mode). */
 async function openBandPicker(page: import('@playwright/test').Page) {
-  // Measured (probe 476n + run g6 error context, 2026-11-24): on a FRESH Details tab the field
-  // carries exactly one `button "Edit Company Size"`. On a tab that an earlier step already put
-  // into edit mode the aria shows `combobox "Company Size" [expanded]` + `listbox "Company Size"`
-  // and NO button at all — so the helper must be idempotent: reuse an open picker, otherwise open
-  // one. Both routes end in the same assertion (one listbox), which keeps a failing branch.
+  // Measured (probe 476n + runs g6/g8 error contexts, 2026-11-24/25) on /lightning/r/Account/<id>/view:
+  //  - fresh Details tab: exactly one `button "Edit Company Size"`, no combobox, no listbox
+  //  - tab an earlier step already put in edit mode: `combobox "Company Size" [expanded]` +
+  //    `listbox "Company Size"` and NO button
+  //  - tab left in SELECTION mode after a previous picker (run g8, AC13): `combobox "Company Size":
+  //    51 to 250 employees` — a value already chosen, NO listbox and NO button
+  // So the helper has three entry routes and always ends at one open listbox.
   const lb = page.getByRole('listbox', { name: LABEL, exact: true });
+  const combo = page.getByRole('combobox', { name: LABEL, exact: true });
+  const btn = page.getByRole('button', { name: `Edit ${LABEL}`, exact: true });
   for (let i = 0; i < 10; i++) { if ((await lb.count()) === 1) break; await page.waitForTimeout(2000); }
   if ((await lb.count()) === 1) return lb.first();
-  const btn = page.getByRole('button', { name: `Edit ${LABEL}`, exact: true });
-  for (let i = 0; i < 10; i++) { if ((await btn.count()) === 1) break; await page.waitForTimeout(2000); }
+  for (let i = 0; i < 10; i++) { if ((await btn.count()) === 1 || (await combo.count()) === 1) break; await page.waitForTimeout(2000); }
   const seen = (await page.ariaSnapshot()).split('\n').filter((l) => /Company Size/.test(l)).slice(0, 8);
-  await expect(await btn.count(), `no single "Edit ${LABEL}" button and no open picker on the customer; aria lines seen: ${JSON.stringify(seen)}`).toBe(1);
-  await btn.first().click({ timeout: 15000 });
-  const combo = page.getByRole('combobox', { name: LABEL, exact: true });
-  for (let i = 0; i < 8; i++) { if ((await combo.count()) === 1) break; await page.waitForTimeout(2000); }
-  await expect(await combo.count(), `combobox "${LABEL}" not in edit mode`).toBe(1);
+  const route = (await btn.count()) === 1 ? 'edit-button' : (await combo.count()) === 1 ? 'selection' : 'none';
+  expect(route, `neither "Edit ${LABEL}" nor an already-selected combobox on the customer; aria lines seen: ${JSON.stringify(seen)}`).isNotEqualTo('none');
+  if (route === 'edit-button') {
+    await btn.first().click({ timeout: 15000 });
+    for (let i = 0; i < 8; i++) { if ((await combo.count()) === 1) break; await page.waitForTimeout(2000); }
+    await expect(await combo.count(), `combobox "${LABEL}" not in edit mode after the Edit button`).toBe(1);
+  }
   for (let attempt = 0; attempt < 3; attempt++) {
     if ((await lb.count()) === 1) break;
     await combo.first().click({ timeout: 15000 });
@@ -357,13 +362,19 @@ async function convertLeadForm(page: import('@playwright/test').Page, leadKey: s
   }
 
   // Converted Status must end up 'Converted' — the picklist the conversion keys on.
+  // Measured (run g8, AC1/AC3): the heading paints BEFORE the form's pickers, so both are polled.
   const statusCombo = page.getByRole('combobox', { name: 'Converted Status', exact: true });
-  await expect(await statusCombo.count(), 'the "Converted Status" picker is not on the form').toBe(1);
+  for (let i = 0; i < 10; i++) { if ((await statusCombo.count()) === 1) break; await page.waitForTimeout(2000); }
+  await expect(await statusCombo.count(), 'the "Converted Status" picker is not on the form (polled 20 s after the heading)').toBe(1);
   const convOpt = page.getByRole('option', { name: 'Converted', exact: true });
-  if ((await convOpt.count()) === 1) {
-    await convOpt.first().click({ timeout: 15000 });
-    await page.waitForTimeout(1200);
+  for (let i = 0; i < 4; i++) {
+    if ((await convOpt.count()) === 1) break;
+    await statusCombo.first().click({ timeout: 15000 });
+    await page.waitForTimeout(2000);
   }
+  await expect(await convOpt.count(), 'the Converted Status picker never offers "Converted"').toBe(1);
+  await convOpt.first().click({ timeout: 15000 });
+  await page.waitForTimeout(1200);
   // Measured: once the form is open the page carries TWO buttons named "Convert" (the record-page
   // action and the form's submit). The submit is the one under the "Convert Lead" heading.
   const headBox = await head.boundingBox();
@@ -619,9 +630,11 @@ test.describe('[SCRUM-476] AC10/AC11 — visibility next to Account Name, nothin
 
     // An earlier block may have changed this customer's band; the criterion is that the page
     // shows the band the ORG holds, next to the name — so compare against the org read-back.
-    const orgBand = accRows(CUST.hand)[0][API];
+    // AC8 (an earlier block, same seed) CLEARS C-HAND, so measure the visibility criterion on
+    // C-EXIST-SIZED, whose band no block ever clears.
+    const orgBand = accRows(CUST.existSized)[0][API];
     expect(BANDS, 'AC10 precondition: the org band of the fixture customer is one of the four ranges').toContain(orgBand);
-    await openCustomer(page, 'hand');
+    await openCustomer(page, 'existSized');
     const rendered = await renderedBand(page);
     const gap = await rowsBetweenNameAndSize(page);
     expect(rendered, `AC10: the opened page renders the band the org holds (${orgBand} -> "${labelOf(orgBand)}")`).toBe(labelOf(orgBand));
