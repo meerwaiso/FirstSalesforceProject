@@ -738,10 +738,12 @@ test.describe('[SCRUM-476] AC9 — a value outside the four ranges is refused', 
   test('typing a bogus range offers nothing and never reaches the field', async ({ page }) => {
     test.setTimeout(300000);
     const bogus = '26 to 50 employees';
-    const before = accRows(CUST.hand)[0];
-    expect(before[API], 'AC9 fixture customer starts at 11_to_50').toBe('11_to_50');
+    // AC7/AC8 (earlier blocks, ONE file-level seed) rewrite and clear C-HAND, so AC9 is measured
+    // on C-EXIST-SIZED — the one fixture customer whose band no block ever changes.
+    const before = accRows(CUST.existSized)[0];
+    expect(before[API], 'AC9 fixture customer starts at 51_to_250').toBe('51_to_250');
 
-    await openCustomer(page, 'hand');
+    await openCustomer(page, 'existSized');
     const lb = await openBandPicker(page);
     const offered = await lb.locator('[role=option]').evaluateAll((es) => es.map((e) => e.getAttribute('data-value')));
     expect(offered, 'AC9: the picker offers exactly the blank slot plus the four ranges').toEqual(['', ...BANDS]);
@@ -759,12 +761,12 @@ test.describe('[SCRUM-476] AC9 — a value outside the four ranges is refused', 
     await saveInlineEdit(page);
     await page.waitForTimeout(4000);
 
-    const after = accRows(CUST.hand)[0];
+    const after = accRows(CUST.existSized)[0];
     expect(after.Id, 'AC9: same customer record').toBe(before.Id);
-    expect(after[API], 'AC9: the bogus value never reached Company_Size__c').toBe('11_to_50');
+    expect(after[API], 'AC9: the bogus value never reached Company_Size__c').toBe('51_to_250');
 
-    await openCustomer(page, 'hand');
-    expect(await renderedBand(page), 'AC9: after reload the page still renders the old range').toBe('11 to 50 employees');
-    observed('AC9', `typed "${bogus}" into the picker -> offered options ${JSON.stringify(offered2)}; saved Company_Size__c stayed 11_to_50 on ${ids.c_hand}; page still renders "11 to 50 employees"`);
+    await openCustomer(page, 'existSized');
+    expect(await renderedBand(page), 'AC9: after reload the page still renders the old range').toBe('51 to 250 employees');
+    observed('AC9', `typed "${bogus}" into the picker -> offered options ${JSON.stringify(offered2)}; saved Company_Size__c stayed 51_to_250 on ${ids['c_existSized']}; page still renders "51 to 250 employees"`);
   });
 });
