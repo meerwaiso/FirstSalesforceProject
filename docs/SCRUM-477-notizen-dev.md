@@ -66,9 +66,34 @@ any compaction; the artefacts are in the commit, the reasoning is here.
 - PS assigned with `sf org assign permset -n SCRUM477_CurrentStageDays_Read -o
   Test-Org -b devops-agent@cline.test -b meerwais.osmani@resourceful-bear-6f1u4j.com`.
 
+## Config half: the Permission Set must reach every viewer (measured 2026-11-25)
+
+- The read-back class carries no username any more (SCRUM-478 fix): it asks every active
+  user of the org it runs in — `SELECT Id, Username FROM User WHERE IsActive = true` — and
+  compares `Opportunity.StageName.getDescribe().isAccessible()` ("can see the deal") with the
+  day counter's `isAccessible()`. Same class, same assertions, therefore runnable in Prod.
+- First run of that class: **Failed, Expected: 0, Actual: 2** (Deploy ID 0AfWU00000dQGeg0AG).
+  The two blind viewers are named by the assertion message:
+  `integration@00dwu00000oibvj2ay.com` (profile: Analytics Cloud Integration User) and
+  `insightssecurity@00dwu00000oibvj2ay.com` (profile: Analytics Cloud Security User).
+  Both read the Opportunity and its stage; neither held the PS. A Permission Set can only
+  grant, and their profiles are org-internal, so the gap is closed by assignment, never by
+  widening the PS and never by a second PS.
+- Fix: `sf org assign permset -o Test-Org -n SCRUM477_CurrentStageDays_Read -b
+  integration@00dwu00000oibvj2ay.com -b insightssecurity@00dwu00000oibvj2ay.com` →
+  `scripts/fls-check.sh` step 3 lists 4 users: the CLI user, the human test account, and those
+  two. Re-run: **3/3 passing** (Deploy ID 0AfWU00000dQMHl0AO) → blindWhileOpen = 0,
+  writableCount = 0, stuck rows > 0 with top value > 30.
+- Prod implication owed to DevOps: the PS meta deliberately has **no** `userAssignments`
+  block. Test-Org usernames do not exist in Prod-Org, so embedding them would make the Prod
+  deploy fail; the assignment is an org-specific step that must be repeated in Prod-Org for
+  whoever can see Opportunity there. Whether the two org-internal users count as "can see the
+  deal" was the PO's call to confirm — vetoing it removes exactly those two assignments.
+
 ## Untouched by this ticket
 
 The shared checkout (`feature/SCRUM-424-first-response`) carries files of other,
 unfinished tickets; work happened in the worktree
-`/home/fino/Desktop/SoftwareProjects/Salesforce/wt-SCRUM-477` and nothing else was
-touched.
+`/home/fino/Desktop/SoftwareProjects/Salesforce/wt-SCRUM-477` (phases 1–3) and, for the
+assignment round below, in the detached worktree `wt-477-dev` at the branch head the Tester
+pushed. Nothing else was touched, and no worktree of another agent was entered.
