@@ -6,6 +6,11 @@
  *   (a User cannot grant himself a PSA; MIXED_DML rule SCRUM-442), alle business
  *   DML/SOQL that touches the FLS-gated fields INSIDE System.runAs(<user + PS>).
  *   One runAs-User per @isTest method — never two users doing DML in one transaction.
+ *   SCRUM-480: the grant lists also carry SCRUM459_FollowupMonitoring_Read/_Write —
+ *   the org trigger OpportunityFollowupMonitorTrigger fires on EVERY Opportunity update
+ *   and its handler reads/writes seven SCRUM459 fields inside the runAs user's context.
+ *   Without them the save fails 'No such column Followup_Required__c' in any org whose
+ *   PS grants are not implicitly visible to the synthetic user (measured red in Prod-Org).
  *
  * AC-mapping (docs/SCRUM-445-design.md):
  *   AC2  discount <= 15 % closes as Won without any approval.
@@ -137,7 +142,7 @@ private class SCRUM445DiscountApprovalTest {
     @isTest
     static void ac2_belowThreshold_closesWithoutApproval() {
         User rep = mkUser('ac2', null);
-        grantPS(rep, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess' });
+        grantPS(rep, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess', 'SCRUM459_FollowupMonitoring_Read', 'SCRUM459_FollowupMonitoring_Write' });
         Id oppId = null;
         Boolean closed = false;
         System.runAs(rep) {
@@ -198,7 +203,7 @@ private class SCRUM445DiscountApprovalTest {
         User mgmt = mkUser('ac5', null);
         Id oppId = null;
         Boolean closed = false;
-        grantPS(mgmt, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_Discount_Manager', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess' });
+        grantPS(mgmt, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_Discount_Manager', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess', 'SCRUM459_FollowupMonitoring_Read', 'SCRUM459_FollowupMonitoring_Write' });
         System.runAs(mgmt) {
             // house SCRUM-440: Account insert INSIDE runAs, immediately before the Opportunity
             Id acc = accountId('ac5');
@@ -226,7 +231,7 @@ private class SCRUM445DiscountApprovalTest {
     static void ac7_raiseInvalidatesApproval() {
         User mgmt = mkUser('ac7', null);
         Id oppId = null;
-        grantPS(mgmt, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_Discount_Manager', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess' });
+        grantPS(mgmt, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_Discount_Manager', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess', 'SCRUM459_FollowupMonitoring_Read', 'SCRUM459_FollowupMonitoring_Write' });
         System.runAs(mgmt) {
             // house SCRUM-440: Account insert INSIDE runAs, immediately before the Opportunity
             Id acc = accountId('ac7');
@@ -254,7 +259,7 @@ private class SCRUM445DiscountApprovalTest {
         User mgmt = mkUser('ac8', null);
         Id oppId = null;
         Boolean closed = false;
-        grantPS(mgmt, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_Discount_Manager', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess' });
+        grantPS(mgmt, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_Discount_Manager', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess', 'SCRUM459_FollowupMonitoring_Read', 'SCRUM459_FollowupMonitoring_Write' });
         System.runAs(mgmt) {
             // house SCRUM-440: Account insert INSIDE runAs, immediately before the Opportunity
             Id acc = accountId('ac8');
@@ -285,7 +290,7 @@ private class SCRUM445DiscountApprovalTest {
         User mgmt = mkUser('ac9', null);
         Id oppId = null;
         DmlException caught = null;
-        grantPS(mgmt, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess' });
+        grantPS(mgmt, new String[] { 'SCRUM445_Discount_Read', 'SCRUM445_Discount_Owner', 'SCRUM445_DirectManager_Read', 'SCRUM445_Discount_System', 'SCRUM319_OverdueOpportunity', 'SCRUM381_LeadFollowUp', 'SCRUM414_CloseDateOverdue', 'SCRUM416_OpenOpportunities', 'SCRUM440_Rueckrufwunsch', 'SCRUM442_TestObjectAccess', 'SCRUM459_FollowupMonitoring_Read', 'SCRUM459_FollowupMonitoring_Write' });
         System.runAs(mgmt) {
             // house SCRUM-440: Account insert INSIDE runAs, immediately before the Opportunity
             Id acc = accountId('ac9');
