@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-477 Phase 2: referenciating components, deployt ERST NACH Phase 1.
+         PS + Layout + Report in one commit (house order field, PS, Layout, Report). -->
+    <types>
+        <members>SCRUM477_CurrentStageDays_Read</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>Opportunity-Opportunity Layout</members>
+        <name>Layout</name>
+    </types>
+    <types>
+        <members>Sales/Chancen_Over_30_Tage</members>
+        <name>Report</name>
+    </types>
+    <version>67.0</version>
+</Package>

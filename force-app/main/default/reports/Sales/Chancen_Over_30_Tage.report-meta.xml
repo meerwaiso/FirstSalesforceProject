@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Report xmlns="http://soap.sforce.com/2006/04/metadata">
+    <columns>
+        <field>OPPORTUNITY_NAME</field>
+    </columns>
+    <columns>
+        <field>FULL_NAME</field>
+    </columns>
+    <columns>
+        <field>STAGE_NAME</field>
+    </columns>
+    <columns>
+        <field>AMOUNT</field>
+    </columns>
+    <!-- SCRUM-477 AC8 (longest stuck first) is groupingsDown on the day counter with
+         sortOrder Desc. The org rejects the same field in BOTH lists ("You can't
+         include groupings in the selected columns list"), so the day count is NOT a
+         detail column: it is the group label of each row group - exactly the house
+         mechanism of Ueberfaellige_Faelle (SCRUM-390), where PRIORITY is the grouping
+         and only the other fields are columns. -->
+    <description>SCRUM-477: Open Opportunities that sat more than 30 days (31+) in their current stage, longest stuck first. Columns: opportunity, owner, stage, amount; the day count is the group label (AC7/AC8). Won/Lost deals are never listed.</description>
+    <filter>
+        <criteriaItems>
+            <column>STAGE_NAME</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>false</isUnlocked>
+            <operator>notEqual</operator>
+            <value>Closed Won,Closed Lost</value>
+        </criteriaItems>
+        <criteriaItems>
+            <column>Opportunity.Stage_Days_In_Current_Stage__c</column>
+            <columnToColumn>false</columnToColumn>
+            <isUnlocked>false</isUnlocked>
+            <operator>greaterThan</operator>
+            <value>30</value>
+        </criteriaItems>
+        <language>en_US</language>
+    </filter>
+    <format>Summary</format>
+    <groupingsDown>
+        <dateGranularity>Day</dateGranularity>
+        <field>Opportunity.Stage_Days_In_Current_Stage__c</field>
+        <sortOrder>Desc</sortOrder>
+    </groupingsDown>
+    <name>Chancen_Over_30_Tage</name>
+    <reportType>Opportunity</reportType>
+    <scope>organization</scope>
+    <showDetails>true</showDetails>
+    <showGrandTotal>true</showGrandTotal>
+    <showSubTotals>true</showSubTotals>
+    <!-- SCRUM-477 must list EVERY open record stuck in its stage, so the time frame
+         has to be record-independent. CLOSE_DATE would silently drop open deals that
+         have none (measured in the SCRUM-449 oracle run: 1 row instead of 14), and
+         omitting the element does not clear an existing frame on redeploy. Hence an
+         explicit custom span that covers every CreatedDate in the org. -->
+    <timeFrameFilter>
+        <dateColumn>CREATED_DATE</dateColumn>
+        <endDate>2099-12-31</endDate>
+        <interval>INTERVAL_CUSTOM</interval>
+        <startDate>2000-01-01</startDate>
+    </timeFrameFilter>
+</Report>
