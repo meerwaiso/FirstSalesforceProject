@@ -171,3 +171,46 @@ Alle Befunde measured in Test-Org (`sf ... --target-org devops-agent@cline.test`
 - Spec fixes landed this round (commits on feature/SCRUM-476-company-size): feed windows split per
   conversion; `seen` labels via ariaSnapshot; toBeLessThanOrEqual(1) instead of toBeOneOf; attach via
   the search-results record LINK (fill+submit alone created a SECOND customer, probe476j R2 measured).
+
+## Resume 2026-11-25 (session resumed after an interruption)
+
+- g7 (full suite, new picker helper) was **killed mid-run** by the interruption: log `run-476-e2e-g7.log` reached only 2/11 tests -> no verdict taken from it.
+- org fixture sweep before reseeding: Lead leftovers 12, Account leftovers 5 deleted; re-query 0/0 twice (delete-result JSON parse printed 0 because my success detection was wrong; the re-query proof is what counts).
+- Apex run evidence (measured 2026-11-25, Tooling API `ApexTestRunResult WHERE CreatedDate > 2026-11-20`): newest run **05mWU000002dQ9ZYAU @2026-11-24T15:00:06Z, Status Completed, MethodsEnqueued 16, MethodsFailed 0**. 16 = the two SCRUM-476 classes on the branch: `SCRUM476CompanySizeTest.cls` (13 methods) + `SCRUM476CompanySizeFlsTest.cls` (3: withoutPS invisible+unwritable / readPS visible-not-writable / bothPS editable) -> `@isTest` line counts 14 and 4 incl. the class-level marker.
+- ApexTestResult field names: `MethodFullName`/`MethodNumber`/`MethodParameterInfo` are NOT columns; use `sf api request rest "/query/?name=ApexTestResult" -o Test-Org -X GET` for the field list (needs `-o`, `-X GET`).
+- `ApexTestPackage` refuses `Namespace` as a WHERE column (INVALID_TYPE line) — namespace filtering must be client-side.
+- g8 = full 11-test run with the idempotent picker helper (started 15:18, log run-476-e2e-g8.log), AC9 block added afterwards (commit 90ca34b) -> covered by g9 targeted run, never concurrent with g8 (shared TEST-SCRUM-476 fixture names).
+
+## g8 measured failures + spec fixes (2026-11-25 15:2x-15:36)
+
+- g8 (idempotent-picker version, killed at 15:32 during the session interruption) had THREE red tests; all three measured from their error-context.md:
+  1. AC1/AC3 (`spec.ts:403`) — `combobox "Converted Status"` count **0** while the `Convert Lead` heading was already visible => the form paints its pickers AFTER the heading. Fix: poll statusCombo 10x2 s; also the old `if (convOpt.count()==1)` had no failing branch -> now polled + `expect(...).toBe(1)`.
+  2. AC10/AC11 (`spec.ts:609`) — precondition `BANDS).toContain(orgBand)` got **null**: ONE file-level `test.beforeAll` (verified: 1 beforeAll / 1 afterAll in the file) => all 11 tests share ONE seed, so AC8's clear left C-HAND empty for the later block. Memory rule (c) ("each describe has its own beforeAll seed") is WRONG for a file-level beforeAll — correct it. Fix: measure AC10 on C-EXIST-SIZED (no block clears it).
+  3. AC13 (`spec.ts:664`) — aria showed `combobox "Company Size": 51 to 250 employees` and NO Edit button, NO listbox (SELECTION state left by an earlier picker). Third route added to openBandPicker: no listbox + no button + combobox present -> click the combobox, poll for the listbox.
+- org fixture sweep after the kill: 12 Lead leftovers deleted (rc 0 each), re-query 0 twice; Account 0/0.
+- g9 = full 11-test suite on spec head 32408d7 (fixes above), started 15:36.
+
+## g9 + probe476p (2026-11-25 15:37-16:0x)
+
+- g9 = 12 tests on head 32408d7: EVERY conversion test failed at the same new assertion `the Converted Status picker never offers "Converted"` (5+ identical errors, 0 OBSERVED lines) -> my polled `option "Converted"` was a phantom locator.
+- probe476p (measured 2026-11-25, form aria): `dialog "Convert Lead"`, `heading "Convert Lead" [level=1]`, `text: "*Converted Status"`, `combobox "Converted Status": Closed - Converted`, `button "Convert"`, `button "Cancel"`, `button "Cancel and close"`, `textbox "Account Name *"`, `combobox "Account Search"`, section buttons `Account`/`Contact`/`Opportunity`. `getByRole listbox/option name~Converted Status -> 0`, `any option count -> 0`. => NO listbox/option children until the picker is expanded; do NOT click it (probe476k: fill+submit converts on the default). Fixed in head 1f9f9ba: assert the combobox + an aria line containing "Converted Status"; conversion proven by org read-back.
+- `sf data create record --json` -> `result.id` (NOT `result.recordOutput.records[0].Id`).
+- sweep before g10: see counts below.
+
+## g10 (full 12, head 1f9f9ba, 15:5x-16:1x): 9 passed / 3 failed (16.1 m)
+
+9 OBSERVED lines captured — AC1/AC3/AC12 (lead more_than_250 -> customer more_than_250, page renders it 1 row under Account Name), AC2 (null + page renders no band), AC4 (51_to_250 kept, delta 0), AC5 (null -> more_than_250 same record), AC6 (stays null), AC10/AC11 (**272 customers, 0 real customers outside the run carry a band**, 4 fixture customers, page renders "51 to 250 employees" 1 row under the name), AC12 (deltas equal feed 3/email 0/task 0/contact 1/opp 1/case 0; Account 1 vs 0 across the two paths), AC13 (old lead 51_to_250 unchanged, ConvertedAccountId set, **UI offered 0 Edit controls on the converted lead** -> platform refused the edit, customer stayed 51_to_250), batch (3 conversions -> 3 own bands, Account delta 3).
+3 failed = AC7, AC8, AC9, all at spec line 300: `TypeError: expect(...).isNotEqualTo is not a function` — not a platform issue, a Playwright BDD API mistake. Fixed in head 9714222 (`expect(route === 'none', ...).toBe(false)`); g11 targeted -g "AC7/AC8|AC9" to confirm.
+
+- Org sweep before g11: 0/0 leftovers, re-query 0 twice.
+
+## g11/g12 (2026-11-25 16:0x-16:4x) + two real test bugs found by measurement
+
+- g11 targeted AC7/AC8 + AC9: 2 passed, 1 failed — AC9 red only because C-HAND had been rewritten by AC7/AC8 (one FILE-level seed). Re-anchored AC9 to C-EXIST-SIZED (51_to_250) -> head 6dbe692.
+- g12 full (head 6dbe692): 10 passed / 2 failed (14.6 m). 10 OBSERVED lines captured; new org counts: **275 customers, 0 real customers outside the run carry Company_Size\_\_c** (backfill invariant held), 7 fixture customers.
+  - AC12 red at spec:331 `"Convert" action button not on the lead page` (count 0 after openLead) — flaky paint, every other block found it. Fixed: poll 10x2 s before the assertion (head a512f16).
+  - AC9 red at spec:753 `locator.fill: Element is not an <input>, <textarea> or [contenteditable]` — the aria (g12 error-context) shows the picker is `<button role=combobox aria-haspopup=listbox data-value="51 to 250 employees">`. fill() is refused on a button. Fixed: read `data-value` baseline + `locator.type(bogus, {delay:90})` (keyboard), then re-read the offered options.
+- Push to GitHub hiccuped once (remote rejected: Internal Server Error, Request ID 3EDF:23746:...); retried after 20 s -> `6dbe692..a512f16` landed. Remote branch head read back: a512f16.
+- CI measured: run 45639461938 on head **32408d7** = 4/4 pass (Lint 42 s, Smoke 5m58s, Drift Gate 14m4s, README 5 s). Runs on 9714222/a512f16 not yet listed -> DevOps must read CI on the FINAL head; both are test-artifact-only commits.
+- Apex evidence unchanged: run 05mWU000002dQ9ZYAU (2026-11-24T15:00:06Z) Completed, 16 enqueued / 0 failed (13 + 3 FLS methods: withoutPS invisible+unwritable, readPS visible-not-writable, bothPS editable).
+- g13 = full suite on head a512f16 (the final spec head) — the verdict run.
