@@ -96,7 +96,7 @@ public class SCRUM477StageDaysReadTest {
 
         Opportunity old = readBack(aged.Id);
         System.assertEquals(anchor.date(), old.CreatedDate.date(),
-            'T2: the test moved THIS record's anchor 40 days into the past');
+            'T2: the test moved the anchor of THIS record 40 days into the past');
         Integer expectedAged = anchor.date().daysBetween(Date.today());
         System.assertEquals(40, expectedAged,
             'T2 precondition: the expectation is derived from the date the test set, relative to the run day');
