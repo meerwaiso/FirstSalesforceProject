@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <!-- SCRUM-482: the two SCRUM-477 test classes rebuilt on own fixtures.
+         Test artefacts only — no field, no Permission Set, no report is deployed here. -->
+    <types>
+        <members>SCRUM477StageDaysReadTest</members>
+        <members>SCRUM477CurrentStageDaysFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

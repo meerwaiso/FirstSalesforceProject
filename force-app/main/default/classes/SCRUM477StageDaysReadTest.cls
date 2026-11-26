@@ -1,102 +1,151 @@
-@isTest(SeeAllData=true)
+/**
+ * [SCRUM-477][Developer] Tage jetzige Stage — the counter RULE, judged only on fixtures.
+ * [SCRUM-482] Rebuilt: the class used to run @isTest(SeeAllData=true) and ask the whole
+ * org how many deals are stuck today. That verdict moved with the org's data (76 -> 61
+ * stuck chances within one day), so it turned red on every unrelated change.
+ *
+ * What is asserted now (SCRUM-482 ADR-2/ADR-3):
+ *   the rule — counter == TODAY minus the record's OWN anchor; the anchor is
+ *   LastStageChangeDate once a stage change happened, CreatedDate before that; a
+ *   stage change moves the anchor and keeps the count at 0; a closed deal has no number.
+ *   The magnitude "> 30 days" is NOT asserted here: CreatedDate and LastStageChangeDate
+ *   are createable:false in BOTH orgs (measured 2026-11-26 with sf sobject describe), so
+ *   a record a test creates always anchors on the run day and can never be 31+ days old.
+ *   That magnitude is the release read-back of the report Sales/Chancen_Over_30_Tage.
+ *
+ * Isolation: SeeAllData is dropped, so every SOQL below sees only records THIS test
+ * created. Each read-back is a WHERE Id = :fixtureId query with an asserted row count,
+ * so a vacuous pass is impossible. No username, no date constant, no org-wide query.
+ *
+ * @author developer-agent
+ * @date 2026-11-26
+ */
+@isTest
 public class SCRUM477StageDaysReadTest {
 
-    // SCRUM-477: read-back of the live feature in Test-Org, NOT an isolated unit test.
-    // SeeAllData is deliberate: the criteria this class carries (the human test user
-    // can READ the counter, the counter equals today minus the LAST REAL stage change
-    // of records that already exist, closed deals show NULL) are about records the
-    // feature must not touch - a fixture cannot have a past stage history, because
-    // CreatedDate and LastStageChangeDate cannot be backdated. Every assertion that
-    // depends on org data says "criterion untested" instead of passing silently.
-
-    @isTest(SeeAllData=true)
-    static void humanSessionReadsTheCounter() {
-        // ORG-AGNOSTIC session user (SCRUM-478): a hardcoded username exists only in Test-Org,
-        // so the Prod-Org Drift Gate threw 'List has no rows for assignment to SObject'.
-        // No username is named any more — every ACTIVE user of THIS org is asked, house pattern
-        // SCRUM410CustomerTransferTest ('FROM User WHERE IsActive = true'). runAs consumes no
-        // licence, so this also covers the orgs where only System Administrators hold licences.
-        List<User> users = [SELECT Id, Username FROM User WHERE IsActive = true];
-        System.assert(!users.isEmpty(), 'no active User in this org: criterion untested');
-        Integer seesStage = 0;
-        Integer counterReadable = 0;
-        Integer blindWhileOpen = 0;
-        String blind = '';
-        Integer writableCount = 0;
-        for (User hu : users) {
-            Boolean stageReadable = false;
-            Boolean readable = false;
-            Boolean writable = false;
-            System.runAs(hu) {
-                stageReadable = Opportunity.StageName.getDescribe().isAccessible();
-                readable = Opportunity.Stage_Days_In_Current_Stage__c.getDescribe().isAccessible();
-                writable = Opportunity.Stage_Days_In_Current_Stage__c.getDescribe().isUpdateable();
-            }
-            if (stageReadable) { seesStage++; }
-            if (readable) { counterReadable++; }
-            // The criterion: everyone who can SEE the opportunity sees the day number.
-            // StageName is the marker of "can see the opportunity" — a standard field granted
-            // by OWD, so a user who reads it but not the counter is a real gap.
-            if (stageReadable && !readable) { blindWhileOpen++; blind += (blind == '' ? '' : ', ') + hu.Username; }
-            if (writable) { writableCount++; }
-        }
-        System.debug('SCRUM477 read-back: activeUsers=' + users.size()
-            + ' seesStage=' + seesStage + ' counterReadable=' + counterReadable
-            + ' blindWhileOpen=' + blindWhileOpen + ' writable=' + writableCount);
-        Integer rows = -1;
-        Double topDays = -1;
-        List<Opportunity> stuck = [SELECT Id, StageName, Stage_Days_In_Current_Stage__c
-                                   FROM Opportunity
-                                   WHERE Stage_Days_In_Current_Stage__c > 30
-                                     AND StageName != 'Closed Won' AND StageName != 'Closed Lost'
-                                   ORDER BY Stage_Days_In_Current_Stage__c DESC];
-        rows = stuck.size();
-        if (rows > 0) { topDays = stuck[0].Stage_Days_In_Current_Stage__c; }
-        // Assertions live OUTSIDE every runAs block: a failure inside a block the org
-        // swallows would read as a pass (house warning in SCRUM-449/453).
-        System.assert(counterReadable > 0, 'no active user can READ the counter: the PS is assigned to nobody');
-        System.assertEquals(0, blindWhileOpen, 'users who can see StageName but NOT the day counter (' + blind + ') — AC9/everyone-who-can-see must hold');
-        System.assertEquals(0, writableCount, 'no active user may WRITE the counter (' + writableCount + ' can)');
-        System.assert(rows > 0, 'the stuck filter must match at least one open record, else the criterion is untested');
-        System.assert(topDays > 30, 'the top row must be strictly over 30 days (greaterThan 30, AC6)');
+    // One read-back for every fixture: formula fields are not on the in-memory SObject
+    // after DML (house note SCRUM-403), so the number always comes from a query.
+    private static Opportunity readBack(Id id) {
+        List<Opportunity> rows = [
+            SELECT Id, Name, StageName, CreatedDate, LastStageChangeDate,
+            Stage_Days_In_Current_Stage__c
+            FROM Opportunity
+            WHERE Id = :id
+        ];
+        System.assertEquals(1, rows.size(), 'the fixture must be readable exactly once: ' + id);
+        return rows[0];
     }
 
-    @isTest(SeeAllData=true)
-    static void anchorIsTheLastRealStageChange() {
-        // AC1/AC4/AC5: the number equals today minus the LAST REAL stage change,
-        // measured on records that already exist in Test-Org - nothing here was
-        // created or touched by this test.
-        List<Opportunity> records = [SELECT Id, Name, StageName, CreatedDate, LastStageChangeDate, Stage_Days_In_Current_Stage__c
-                                     FROM Opportunity
-                                     WHERE Stage_Days_In_Current_Stage__c > 30
-                                       AND StageName != 'Closed Won' AND StageName != 'Closed Lost'
-                                     ORDER BY Stage_Days_In_Current_Stage__c DESC LIMIT 10];
-        System.assert(!records.isEmpty(), 'no stuck record found: criterion untested');
-        for (Opportunity o : records) {
-            Date anchor = (o.LastStageChangeDate != null)
-                ? o.LastStageChangeDate.date()
-                : o.CreatedDate.date();
-            Integer expected = anchor.daysBetween(Date.today());
-            System.assertEquals(expected, (Integer) o.Stage_Days_In_Current_Stage__c,
-                                'days must be TODAY minus the last real stage change, not the go-live date (' + o.Name + ')');
-        }
+    // T1 — a brand new open deal shows zero days, anchored on its own CreatedDate.
+    @isTest
+    static void newOpenDeal_showsZeroDays() {
+        List<Opportunity> created = new List<Opportunity>();
+
+        Opportunity fresh = new Opportunity(
+            Name = 'TEST-SCRUM-482-T1',
+            StageName = 'Prospecting',
+            Amount = 1500.00,
+            CloseDate = Date.today().addDays(25)
+        );
+        insert fresh;
+        created.add(fresh);
+
+        Opportunity o = readBack(fresh.Id);
+        System.assertEquals(null, o.LastStageChangeDate,
+            'T1 precondition: a deal that never changed stage has no LastStageChangeDate, ' +
+                'so the formula must fall back to CreatedDate');
+
+        Double anchor = (Double) o.CreatedDate.date().daysBetween(Date.today());
+        System.assertEquals(0.0, anchor,
+            'T1 precondition: the anchor is the record itself, created today — no date constant is used');
+        System.assertEquals(anchor, o.Stage_Days_In_Current_Stage__c,
+            'T1: a new open deal shows 0 days = TODAY minus its own CreatedDate');
+
+        delete created;
     }
 
-    @isTest(SeeAllData=true)
-    static void closedDealsCarryNoNumber() {
-        // AC2, cell side: a closed deal returns NULL, so it can never satisfy the
-        // > 30 filter of the stuck list - even before the STAGE_NAME filter.
-        List<Opportunity> closed = [SELECT Id, Name, StageName, Stage_Days_In_Current_Stage__c
-                                    FROM Opportunity
-                                    WHERE StageName = 'Closed Won' OR StageName = 'Closed Lost'
-                                    ORDER BY StageName DESC LIMIT 10];
-        System.assert(!closed.isEmpty(), 'Test-Org holds no closed opportunity: criterion untested');
-        Integer checked = 0;
+    // T3 — changing the stage moves the anchor to LastStageChangeDate and restarts the count.
+    @isTest
+    static void stageChange_restartsTheCount() {
+        List<Opportunity> created = new List<Opportunity>();
+
+        Opportunity moved = new Opportunity(
+            Name = 'TEST-SCRUM-482-T3',
+            StageName = 'Prospecting',
+            Amount = 2000.00,
+            CloseDate = Date.today().addDays(25)
+        );
+        insert moved;
+        created.add(moved);
+
+        Opportunity before = readBack(moved.Id);
+        System.assertEquals(null, before.LastStageChangeDate,
+            'T3 precondition: the fixture starts without a stage change');
+        System.assertEquals(0.0, (Double) before.CreatedDate.date().daysBetween(Date.today()),
+            'T3 precondition: before the change the count is anchored on CreatedDate, i.e. today');
+
+        // The house transition for T3: both values are open stages, so the record stays on
+        // the stuck list and the transition itself stays outside the closed-stage rules.
+        Opportunity toValueProposition = new Opportunity(
+            Id = moved.Id,
+            StageName = 'Value Proposition'
+        );
+        update toValueProposition;
+
+        Opportunity after = readBack(moved.Id);
+        System.assertEquals('Value Proposition', after.StageName, 'T3 precondition: the stage really moved');
+        System.assertNotEquals(null, after.LastStageChangeDate,
+            'T3: a stage change stamps LastStageChangeDate — the new anchor, never ModifiedDate');
+        Double anchor = (Double) after.LastStageChangeDate.date().daysBetween(Date.today());
+        System.assertEquals(0.0, anchor,
+            'T3: the count restarts — the new anchor is the day of the change, so the number is back at 0');
+        System.assertEquals(anchor, after.Stage_Days_In_Current_Stage__c,
+            'T3: after the change the counter follows the NEW anchor, not the creation date');
+
+        delete created;
+    }
+
+    // T4 — a closed deal carries no number at all, so it can never reach the stuck list.
+    @isTest
+    static void closedDeal_carriesNoNumber() {
+        List<Id> ids = new List<Id>();
+
+        // Discount stays blank, so the SCRUM-445 approval rule and the 25 % cap stay quiet;
+        // Loss_Reason__c is set to a value that is not 'Wettbewerber', so SCRUM-461's
+        // competitor rule stays quiet as well.
+        Opportunity won = new Opportunity(
+            Name = 'TEST-SCRUM-482-T4-won',
+            StageName = 'Closed Won',
+            Amount = 1000.00,
+            CloseDate = Date.today().addDays(5)
+        );
+        Opportunity lost = new Opportunity(
+            Name = 'TEST-SCRUM-482-T4-lost',
+            StageName = 'Closed Lost',
+            Amount = 900.00,
+            CloseDate = Date.today().addDays(5),
+            Loss_Reason__c = 'KeinBudget'
+        );
+        List<Opportunity> closed = new List<Opportunity>{ won, lost };
+        insert closed;
         for (Opportunity o : closed) {
-            System.assert(o.Stage_Days_In_Current_Stage__c == null,
-                          'a closed deal must show no day counter (' + o.Name + ')');
+            ids.add(o.Id);
+        }
+
+        List<Opportunity> back = [
+            SELECT Id, Name, StageName, Stage_Days_In_Current_Stage__c
+            FROM Opportunity
+            WHERE Id IN :ids
+        ];
+        System.assertEquals(2, back.size(), 'T4: both closed fixtures must be readable exactly once');
+        Integer checked = 0;
+        for (Opportunity o : back) {
+            System.assertEquals(null, o.Stage_Days_In_Current_Stage__c,
+                'T4: a closed deal shows no number (' + o.Name + ')');
             checked++;
         }
-        System.assert(checked > 0, 'at least one closed record was asserted');
+        System.assertEquals(2, checked, 'T4: two closed records were asserted, not zero');
+
+        delete closed;
     }
 }
