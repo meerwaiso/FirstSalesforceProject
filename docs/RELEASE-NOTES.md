@@ -28,8 +28,9 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
   production, and a production check that tripped because a technical account could
   see the deals but had not been given the new permission — which we then fixed by
   granting three technical accounts a permission no business reason asked for.
-- The verdict is the same in the test org and in production, on any day: 5 test
-  methods, 0 failures, in both.
+- The verdict is the same in the test org and in production, on any day: 6 test
+  methods, 0 failures, in both. The older-than-30-days case is now proven by a fixture
+  the test aged itself, Observed 40, not by counting the deals that happen to exist.
 
 **Where you see it**
 - In CI: the job "Apex tests independent of the org" is green on this head, and the
@@ -53,6 +54,13 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
   replaced), preceded by the validate job 0Afg500000HBGywCAH green with 5 of 5 tests
   before the org was touched.
 - Release tag release/2026-11-26-SCRUM-482 at commit 872520b.
+- Second delivery, needed because production still held the 3-method class after the first
+  one: deploy at 16:18:09Z (2 of 2 components, 0 errors), preceded by a green validate
+  (RunRelevantTests, 4 of 4 tests), then 6 of 6 methods with 0 failures in production.
+  Tag release/2026-11-26-SCRUM-482-r2 at commit 5784e46.
+- Read back after the second delivery: the class live in production carries 4 methods,
+  LengthWithoutComments 6965, the aged case present, against 3 methods and 4587 before it.
+  Permission holders unchanged at 4 in the test org and 5 in production, none revoked.
 - Both test classes read back live in production (query on ApexClass, 2 rows); the
   counts above were counted by the PO on 26.11.2026.
 
