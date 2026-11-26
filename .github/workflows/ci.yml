@@ -59,6 +59,22 @@ jobs:
       - name: README ist aktuell?
         run: scripts/build-readme.sh --check
 
+  test-hygiene:
+    name: Apex tests independent of the org
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Blocking, needs no org credentials. A test with SeeAllData=true or a fixed
+    # user address passes in one org and fails in another (SCRUM-477/478: the
+    # Prod-Org Drift Gate went red on a hardcoded Test-Org user). Only lines the
+    # PR adds are checked, so older classes do not block unrelated work.
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: No SeeAllData, no fixed users in new test code
+        run: python3 scripts/test-hygiene-gate.py --base "origin/${{ github.base_ref }}"
+
   org:
     name: Metadata, Apex & Session Smoke
     runs-on: ubuntu-latest
