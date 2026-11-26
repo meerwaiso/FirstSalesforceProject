@@ -45,3 +45,21 @@
   `--use-tooling-api` the Tooling API answers "sObject type 'Opportunity' is not supported").
 - Not measured by me: the same run in Prod-Org. That is the Prod-Org Drift Gate's job on the PR
   head (the classes are not deployed to Prod by me — Developer deploys to Test-Org only).
+
+## Round 2 (Architect's design correction, head cc998f9, 2026-11-26)
+
+- The Architect's correction holds and I measured it myself: `Test.setCreatedDate(<Id>,
+  Datetime.now().addDays(-40))` after the insert ages a test fixture, and the counter read back
+  through `WHERE Id = :fixtureId` answered **exactly 40** (assertion `assertEquals((Double) 40,
+  counter)` green). `LastStageChangeDate` stays null on a fresh fixture, so the formula takes the
+  `CreatedDate` branch — the precondition the user named. My ADR-3 summary line above ("a record a
+  test creates can never be 31+ days old") is superseded by this measurement; the magnitude IS
+  automated now (T2 method `agedOpenDeal_showsTheAgedDays_andAStageChangeRestartsThem`).
+- Still unreachable, and asserted nowhere: an aged STAGE CHANGE — `LastStageChangeDate` is refused
+  at compile time (`Field is not writeable`), so the anchor switch is proven at 0 days only
+  (fixture aged by creation, then stage moved → counter back to 0).
+- Apex compile trap that bit me twice in this ticket: `delete` needs a list of SObjects, a
+  `List<Id>` does not compile; and an unescaped apostrophe inside a single-quoted Apex string
+  literal (`'... THIS record's anchor ...'`) closes the literal and turns the whole rest of the
+  class into garbage (313 component errors from ONE bad quote). The deploy report names the line
+  and column — read it, do not re-theorise. Rephrase or escape, never nest a bare apostrophe.
