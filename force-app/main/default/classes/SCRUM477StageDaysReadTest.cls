@@ -39,7 +39,7 @@ public class SCRUM477StageDaysReadTest {
     // T1 — a brand new open deal shows zero days, anchored on its own CreatedDate.
     @isTest
     static void newOpenDeal_showsZeroDays() {
-        List<Id> created = new List<Id>();
+        List<Opportunity> created = new List<Opportunity>();
 
         Opportunity fresh = new Opportunity(
             Name = 'TEST-SCRUM-482-T1',
@@ -48,7 +48,7 @@ public class SCRUM477StageDaysReadTest {
             CloseDate = Date.today().addDays(25)
         );
         insert fresh;
-        created.add(fresh.Id);
+        created.add(fresh);
 
         Opportunity o = readBack(fresh.Id);
         System.assertEquals(null, o.LastStageChangeDate,
@@ -67,7 +67,7 @@ public class SCRUM477StageDaysReadTest {
     // T3 — changing the stage moves the anchor to LastStageChangeDate and restarts the count.
     @isTest
     static void stageChange_restartsTheCount() {
-        List<Id> created = new List<Id>();
+        List<Opportunity> created = new List<Opportunity>();
 
         Opportunity moved = new Opportunity(
             Name = 'TEST-SCRUM-482-T3',
@@ -76,7 +76,7 @@ public class SCRUM477StageDaysReadTest {
             CloseDate = Date.today().addDays(25)
         );
         insert moved;
-        created.add(moved.Id);
+        created.add(moved);
 
         Opportunity before = readBack(moved.Id);
         System.assertEquals(null, before.LastStageChangeDate,
@@ -108,7 +108,7 @@ public class SCRUM477StageDaysReadTest {
     // T4 — a closed deal carries no number at all, so it can never reach the stuck list.
     @isTest
     static void closedDeal_carriesNoNumber() {
-        List<Id> created = new List<Id>();
+        List<Id> ids = new List<Id>();
 
         // Discount stays blank, so the SCRUM-445 approval rule and the 25 % cap stay quiet;
         // Loss_Reason__c is set to a value that is not 'Wettbewerber', so SCRUM-461's
@@ -129,13 +129,13 @@ public class SCRUM477StageDaysReadTest {
         List<Opportunity> closed = new List<Opportunity>{ won, lost };
         insert closed;
         for (Opportunity o : closed) {
-            created.add(o.Id);
+            ids.add(o.Id);
         }
 
         List<Opportunity> back = [
             SELECT Id, Name, StageName, Stage_Days_In_Current_Stage__c
             FROM Opportunity
-            WHERE Id IN :created
+            WHERE Id IN :ids
         ];
         System.assertEquals(2, back.size(), 'T4: both closed fixtures must be readable exactly once');
         Integer checked = 0;
@@ -146,6 +146,6 @@ public class SCRUM477StageDaysReadTest {
         }
         System.assertEquals(2, checked, 'T4: two closed records were asserted, not zero');
 
-        delete created;
+        delete closed;
     }
 }
