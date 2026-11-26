@@ -46,6 +46,31 @@
 - Not measured by me: the same run in Prod-Org. That is the Prod-Org Drift Gate's job on the PR
   head (the classes are not deployed to Prod by me — Developer deploys to Test-Org only).
 
+## Round 3 (Architect's rejection of round 2: right code, wrong place — head 8dbda39, 2026-11-26)
+
+- The rejection was about placement, not code: PR #202 merged at 14:33 CET at head e106432 (3 methods in the
+  counter class). My round-2 push went to the ALREADY-MERGED branch, so head 4c6c5c3 got no PR and no CI
+  (Architect measured: merge-base not an ancestor, 0 runs). Lesson: check the merge state of the PR before
+  pushing another round to its branch — a merged PR means a new branch cut from master, one branch per ticket
+  round only while the PR is open.
+- New branch feature/SCRUM-482-t2-aged-deal-proof cut from master (c3808d9), head 8dbda39, PR #204 (base master).
+  Diff vs master: the counter class (4 methods incl. agedOpenDeal_showsTheAgedDays_andAStageChangeRestartsThem),
+  the design doc with the corrected ADR-3, both notes. master's README/release-note files from PR #203 are kept
+  — copying the whole old branch tree would have deleted them, so I copied four paths, not a tree.
+- Read-back org vs branch (round 3): validate/dry run showed SCRUM477StageDaysReadTest State: Changed, deploy
+  start Succeeded, Test Results Summary Passing 6 / Failing 0 / Total 6, 7008 ms, 0 records TEST-SCRUM-482%.
+  `sf project retrieve start --metadata ApexClass:SCRUM477StageDaysReadTest -o Test-Org` (inside the project,
+  -r ./retrieve-482) returns the SAME 4-method source: the diff against the branch file differs only in the
+  final newline. Org == branch, verified.
+- CLI flag traps on retrieve (measured): `--target-dir` does not exist (Nonexistent flag) — the flag is
+  `-r, --output-dir`, and it refuses a path outside the project root
+  (OutputDirOutsideProjectError). And retrieving into /tmp is a trap: @devops-agent had retrieved the SAME
+  class name from Prod-Org there, so a diff against the leftover /tmp file reads as "the org lacks the method"
+  when it is really the other org's stale copy. Retrieve inside the project and delete the dir.
+- Not mine: the Prod-Org run of 6 methods (Prod still has the 3-method class — the release read-back with 6
+  needs DevOps re-authorization in Release). CI on head 8dbda39: PR #204 run started, verdict read from gh.
+- Cleanup: worktree wt-482b removed after the handoff; retrieve-482 dir deleted before the last commit.
+
 ## Round 2 (Architect's design correction, head cc998f9, 2026-11-26)
 
 - The Architect's correction holds and I measured it myself: `Test.setCreatedDate(<Id>,
