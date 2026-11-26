@@ -64,6 +64,33 @@ Zitat der verbatimen Class- und PS-Names: `SCRUM477StageDaysReadTest`,
 
 - AC2 Prod verdict: CI Prod-Org Drift Gate success at this head; the Tester never runs Apex in Prod-Org.
   The FLS class precondition (`Permission Set ... is deployed`) holds in both orgs (PS read back above).
-- T2 ">30 days" magnitude: not producible on a self-created fixture (CreatedDate / LastStageChangeDate
-  createable:false in both orgs); observed at the UI layer by the SCRUM-477 spec instead.
+- T2 ">30 days" magnitude — CORRECTED in round 3 by @user's challenge: `createable:false` only means the
+  constructor cannot carry the anchor. `Test.setCreatedDate(recordId, Datetime.now().addDays(-40))` after
+  the insert does age a test fixture (house precedent SCRUM398EskalationsstufeTest L42,
+  SCRUM424FirstResponseTest L62), and on a fresh insert `LastStageChangeDate` reads back null, so the
+  formula takes the CreatedDate branch. The magnitude IS automated now (Observed 40 in round 3).
+  Still impossible: an aged STAGE CHANGE — `LastStageChangeDate` is refused at compile time
+  ("Field is not writeable"), so the anchor switch is provable at 0 days only.
 - `SCRUM477CurrentStageDaysFlsTest` orphan in Prod: DevOps obligation at Release.
+
+## Round 3 — head e3a88e6, branch feature/SCRUM-482-t2-aged-deal-proof (PR #204)
+
+- Head verified before testing: `git diff --name-only origin/master...origin/feature/SCRUM-482-t2-aged-deal-proof`
+  = 4 files (3 docs + `force-app/main/default/classes/SCRUM477StageDaysReadTest.cls`); no metadata XML, no
+  `.github/workflows/` file. Worktree `../wt-SCRUM-482-r3`.
+- Deployed the two classes FROM THIS HEAD into Test-Org (`--test-level RunSpecifiedTests`, both classes,
+  zipFileCount 5, 2 components) and ran them twice on the same source:
+  job `0AfWU00000dRvyD0AS` Succeeded 6 run / 0 failures (ms: holder 3459, blind 2224, agedOpenDeal 837, closed 312, new 291, stageChange 365)
+  job `0AfWU00000dRw1R0AS` Succeeded 6 run / 0 failures (ms: holder 1879, blind 1408, agedOpenDeal 459, closed 196, new 172, stageChange 218)
+- T2 method `agedOpenDeal_showsTheAgedDays_andAStageChangeRestartsThem` is the magnitude proof:
+  anchor null + counter 0.0 before the backdate, `Test.setCreatedDate(aged.Id, Datetime.now().addDays(-40))`,
+  CreatedDate read back at the moved anchor, `expectedAged = anchor.date().daysBetween(Date.today())` asserted == 40
+  (derived from the date the test itself set — no calendar constant), then the live formula field asserted == 40.0,
+  then stage update → `LastStageChangeDate` not null, daysBetween 0, counter 0.0 again. Green in both runs.
+- Teardown read back: `SELECT COUNT() FROM Opportunity WHERE Name LIKE 'TEST-SCRUM-482%'` → 0.
+- TRAP (measured, it produced a false "leftover 1"): `SELECT COUNT(Id) ...` returns `totalSize` 1 — the number is in
+  `records[0].expr0`. `SELECT COUNT() ...` puts the number in `totalSize`. Never mix the two readings.
+- Org observability read-backs (T2m half, not a test): Test-Org counter > 30 open = 58, Prod-Org = 13
+  (`COUNT()` variant, CLI target-org user); PS `SCRUM477_CurrentStageDays_Read` holders 4 in Test-Org, 5 in Prod-Org
+  (Tooling query `PermissionSetAssignment WHERE PermissionSetId = ...`; the field is AssigneeId/AssigneeName, not `Assignee.Name`).
+- E2E SCRUM-477 spec not re-runnable on this day: round-1 saves consumed its fixtures (preflight red 1 of 7).
