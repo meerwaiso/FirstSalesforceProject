@@ -109,29 +109,55 @@ the CI gate `test-hygiene-gate.py` turns the same pattern red on the PR (M7: it 
 both classes today, green on the model classes). Every fixture query is
 `WHERE Id = :fixtureId` with an asserted row count of 1, so a vacuous pass is impossible.
 
-**ADR-3 — T2 ("open deal stuck more than 30 days shows the right number") cannot be produced
-by a self-created fixture, and the automated layer tests the rule instead of the magnitude.**
-The counter's only inputs are `LastStageChangeDate` (fallback `CreatedDate`) — both
-`createable: false` in **Test-Org and Prod-Org** (M2). A record created inside a test
-therefore always has both anchors = the run day: the day-difference is always 0, and a fresh
-fixture can never be 31+ days old. That is a platform limit, not a test-design shortcut:
-`SCRUM477StageDaysReadTest` said so in its own header before this ticket. The ticket's own
-hard rules make it worse — an aged fixture (a record created 40 days ago by an earlier run)
-would give different verdicts on different days and different verdicts per org, violating
-AC2 and AC3.
-So the automated layer keeps the **rule**, and the magnitude moves where it actually lives:
-- **Automated (both orgs, any day):** counter == `TODAY() − own anchor`; anchor ==
-  `LastStageChangeDate` once a stage change happened, `CreatedDate` before that; stage change
-  moves the anchor and keeps the count at 0; closed deals return no number. That is T1, T3,
-  T4 plus the anchor branch of T2 — non-vacuous because the fixture row count is asserted as 1.
-- **Release read-back (PO, per release, not an automated test):** run the report
-  `Sales/Chancen_Over_30_Tage` in each org and state the number of rows and the largest group
-  label; plus the `PermissionSetAssignment` counts (M6: 4 Test / 5 Prod today). The `> 30`
-  threshold itself is metadata on the branch (M5, `greaterThan 30`), and the Prod-Org Drift
-  Gate already diffs that file against Prod-Org on every PR.
-- **Not allowed:** a test that manufactures an old anchor (impossible), a re-implementation of
-  the formula in Apex and a unit test of that copy (tests the copy, not the live field), or a
-  long-lived aged fixture left in an org (forbidden by "no leftovers", breaks AC2/AC3).
+**ADR-3 — REVISED 2026-11-26 after @user's challenge: T2 ("open deal whose current stage began
+more than 30 days ago shows the right number") IS automatable. The first version of this ADR was
+wrong: `createable: false` does not make an autofill anchor untestable — Apex has a test-only
+API for exactly that.**
+
+Measurements, in the order they were taken (all read back, none recalled):
+- **M11** `LastStageChangeDate` is not writeable in Apex. `sf apex run` in Test-Org with
+  `new Opportunity(Id = x.Id, StageName = 'Value Proposition', LastStageChangeDate = Date.today().addMonths(-2))`
+  → `executeCompileFailure: Field is not writeable: Opportunity.LastStageChangeDate`.
+- **M12** On a freshly inserted Opportunity `LastStageChangeDate` is **null**: the same script
+  read back `FRESH rows=1 LASTSTAGE=null COUNTER=0`. So a fresh fixture takes the `CreatedDate`
+  branch of the formula (M1) — the precondition the user named holds.
+- **M13** `Test.setCreatedDate(id, dt)` exists and is restricted to test context: in an
+  anonymous script it compiles but throws `Use Test.setCreatedDate() within tests.`
+- **M14 House precedent already on master and green:** `SCRUM398EskalationsstufeTest` (L42) and
+  `SCRUM424FirstResponseTest` (L62) call `Test.setCreatedDate(<id>, DateTime.now().addDays(-n))`
+  immediately after the insert, on a formula `TODAY() - DATEVALUE(CreatedDate)` — the same shape
+  as M1. `docs/SCRUM-424-notizen.md` records that probe as passing (`caseBackdateWorks=Pass`).
+
+So the anchor for T2 comes from a test API, not from DML. T2 becomes automated, in the counter
+class (no `System.runAs`):
+
+```
+insert fixture (StageName = 'Prospecting')                  → anchor = CreatedDate (M12)
+Test.setCreatedDate(fixture.Id, Datetime.now().addDays(-40));
+read back WHERE Id = :fixture.Id, assert 1 row              → expect 40.0
+update StageName = 'Value Proposition'                      → anchor moves to LastStageChangeDate (today)
+read back again, assert 1 row                               → expect 0.0
+```
+
+The expected 40 is derived from the date the test itself set, relative to the run day — so AC2
+(identical verdict in both orgs) and AC3 (any day) still hold, and T2 plus T3 become one proof
+that the counter follows the anchor the formula names. What stays unreachable is an aged
+**stage change** (M11): only an aged **creation** can be manufactured.
+
+- **Automated (both orgs, any day):** T1 = 0 days, **T2 = 40 days on a fixture the test backdates**,
+  T3 = restart at 0 after a stage change, T4 = no number on Won/Lost, plus the anchor branch
+  (fresh fixture: `LastStageChangeDate` null, count anchored on `CreatedDate`).
+- **Release read-back (PO, per release):** now only about the org's real data — rows of
+  `Sales/Chancen_Over_30_Tage` and the largest group label, plus the `PermissionSetAssignment`
+  counts (M6: 4 Test / 5 Prod today). The magnitude on own fixtures is no longer in this row.
+- **Still not allowed:** manufacturing an old `LastStageChangeDate` (M11 refuses at compile),
+  re-implementing the formula in Apex and testing that copy, a long-lived aged fixture ("no
+  leftovers" + AC2/AC3), and `Test.setCreatedDate` inside a method annotated
+  `@isTest(SeeAllData=true)` (platform restriction; both classes already dropped SeeAllData).
+- **Open point the Developer must measure, not assume:** whether `Test.setCreatedDate` applies to
+  a record created inside `System.runAs(user)`. SCRUM-424 hit a `CreatedById` collision combining
+  backdated System-user records with `runAs` users. Keep T2 in the counter class, which has no
+  `runAs`.
 
 **ADR-4 — the FLS negative is asserted with `getDescribe()` plus a rejected SOQL read of the
 test's own record, never with a refused Apex write.** M10 measured that Apex is "inside" its
@@ -229,7 +255,7 @@ fixture users are Standard Users on OWD rights only.
 | AC4 | grep: no `Username =`/`Email =` literal in a query, no 15/18-char Id of a pre-existing record, fixture names carry `TEST-SCRUM-482` |
 | AC5 | three CI jobs green on the head + the test-hygiene job; `grep -r SCRUM477StageDays force-app | manifest` shows both classes in the manifest |
 | AC6 | `git diff origin/master -- force-app/main/default/objects/Opportunity/fields/Stage_Days_In_Current_Stage__c.field-meta.xml force-app/main/default/permissionsets/SCRUM477_CurrentStageDays_Read.permissionset-meta.xml force-app/main/default/reports/Sales/Chancen_Over_30_Tage.report-meta.xml` is **empty** |
-| AC7 | Tester coverage table: one row per T1…T6 with an Observed value; see ADR-3, the ">30 days" row cannot be Observed=0-day-fixture → it is reported as **not covered by the automated layer / release read-back**, not PASS |
+| AC7 | Tester coverage table: one row per T1…T6 with an Observed value; the ">30 days" row must now carry an Observed value of **40** from the fixture the test backdates (ADR-3 revised) — an Observed value of 0 there means the backdate did not happen, which is not a PASS |
 
 ## 11. Open decisions for the Developer (defaults chosen, change only with a PR comment)
 
