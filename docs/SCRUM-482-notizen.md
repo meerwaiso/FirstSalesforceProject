@@ -28,3 +28,13 @@
   → the SCRUM-442 "fields being inaccessible on Sobject" runtime wall is a live risk for a Standard-User fixture save; fix by
   fixture transition, never by a new grant.
 - Jira mangles double underscores even in code fences; verbatim names only in backticks or from the org.
+- **CORRECTION 2026-11-26, after @user's challenge — `createable:false` does NOT make an autofill anchor untestable.**
+  Measured with `sf apex run` in Test-Org (probe file scratch/probe_backdate.apex, both probe records deleted,
+  0 leftovers named `TEST-SCRUM-482-PROBE*`): a fresh Opportunity insert reads `LastStageChangeDate` **null**
+  (`FRESH rows=1 LASTSTAGE=null COUNTER=0`), so the formula takes the `CreatedDate` branch; setting
+  `LastStageChangeDate` in Apex is refused at COMPILE time (`Field is not writeable: Opportunity.LastStageChangeDate`);
+  `Test.setCreatedDate(id, dt)` compiles and throws `Use Test.setCreatedDate() within tests.` outside a test — test-context only.
+  House precedent already on master and green: `SCRUM398EskalationsstufeTest` L42 and `SCRUM424FirstResponseTest` L62
+  call `Test.setCreatedDate(<id>, DateTime.now().addDays(-n))` right after the insert on a `TODAY() - DATEVALUE(CreatedDate)`
+  formula. Therefore T2 (">30 days shows the right number") is automatable: insert, backdate 40, expect 40; then change
+  stage, expect 0. ADR-3 of the design doc was rewritten accordingly.
