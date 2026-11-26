@@ -36,6 +36,46 @@ Was in der Prod-Org angekommen ist — neueste Auslieferung oben.
 
 <!-- Neue Eintraege hier oben einfueegen, direkt unter dieser Zeile. -->
 
+## 26.11.2026 — The checks for the days-in-current-stage counter judge only their own work (SCRUM-482)
+
+**What changes for you**
+- The two automated checks for the days-in-current-stage counter decide their result
+  only on opportunities and users **they create themselves**, under names you can
+  recognise (TEST-SCRUM-482- on the deals, scr482fls- on the users). Neither one
+  reads the deals or the people that happen to sit in one org any more.
+- That is why an unrelated change can no longer turn this check red. The two times
+  it cost us: a check that looked for one specific person who does not exist in
+  production, and a production check that tripped because a technical account could
+  see the deals but had not been given the new permission — which we then fixed by
+  granting three technical accounts a permission no business reason asked for.
+- The verdict is the same in the test org and in production, on any day: 5 test
+  methods, 0 failures, in both.
+
+**Where you see it**
+- In CI: the job "Apex tests independent of the org" is green on this head, and the
+  Prod-Org drift gate ran its check-only validation against production.
+- In the deploy report of this delivery: 5 methods, 0 failures, run in production.
+- The list of open deals stuck over 30 days did not move. Counted on the release
+  day: production 13 of 13 open deals, every one at 154 days; test org 58 of 89,
+  day values 35 to 145.
+
+**Deliberately not in here**
+- Which real people in an org can read the counter stays a read-back you do when we
+  release, not something an automated test decides on.
+- The three technical accounts in production still hold the read-only permission.
+  Nobody revoked them and nobody was newly granted: that decision is yours and it
+  stands untouched.
+- The counter itself, its formula, the read-only permission and the list are
+  unchanged down to the byte: nothing a user sees has moved.
+
+**Evidence**
+- Deploy to production: job 0Afg500000HBLCDCA5 (2 of 2 components — one created, one
+  replaced), preceded by the validate job 0Afg500000HBGywCAH green with 5 of 5 tests
+  before the org was touched.
+- Release tag release/2026-11-26-SCRUM-482 at commit 872520b.
+- Both test classes read back live in production (query on ApexClass, 2 rows); the
+  counts above were counted by the PO on 26.11.2026.
+
 ## 25.11.2026 — Every open deal shows how long it has sat in its stage (SCRUM-477)
 
 **What changes**
