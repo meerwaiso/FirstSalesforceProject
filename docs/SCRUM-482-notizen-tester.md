@@ -47,7 +47,18 @@ Zitat der verbatimen Class- und PS-Names: `SCRUM477StageDaysReadTest`,
 ## E2E regression of the SCRUM-477 behaviour (Test-Org)
 
 - `npm run test:e2e:smoke`: 2 passed (17.4 s) — session layer fine before the spec.
-- `npm run test:e2e -- tests/e2e/SCRUM-477-tage-jetzige-stage.spec.ts`: see e2e-477 log / coverage table.
+- Run 1 (`npm run test:e2e -- tests/e2e/SCRUM-477-tage-jetzige-stage.spec.ts`): 8 passed, 1 failed, 2.9 min.
+  Observed: report SOQL 61 = UI Total 61; groups 145 (12 rows) and 72 (12 rows); record pages 41 and 145 days;
+  AC8 edit affordance counter 0 vs Stage 1; AC7 closed aged over 30 = 52, closed with a number = 0.
+- The red test was AC10 (`AsyncApexJobs grew by 1`). Attributed by reading the org: the job in the save window
+  was `JobType = TestRequest`, ApexClassId `01pWU00000TnyGrYAJ` = SCRUM477CurrentStageDaysFlsTest — a concurrent
+  Apex test run (CI job "Apex tests independent of the org", started 14:01:51Z), not a side effect of the save.
+- Run 2 of the same spec (same head, minutes later): file-level preflight red, 1 of 7 preconditions unmet —
+  AC3 asks for an aged open record in Qualification, found 0. Cause measured: run 1 moved exactly that record
+  (Dickenson Mobile Generators) Qualification → Prospecting. The SCRUM-477 spec consumes its org fixtures
+  and is not replayable the same day. Never re-run a fixture-consuming E2E spec to "confirm green".
+- HTML reports copied out of the worktree before teardown:
+  cache/e2e-reports/SCRUM-482-20261126-run1 and -run2 (index.html + playwright-results.json).
 
 ## Open items nach dem Test run
 
