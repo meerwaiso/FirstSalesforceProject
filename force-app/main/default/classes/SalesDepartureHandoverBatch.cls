@@ -115,11 +115,13 @@ public without sharing class SalesDepartureHandoverBatch
             m.Handover_Run__c = trailRow;
             moves.add(m);
         }
+        // Nested save: restore the value the caller had, never clear an outer scope.
+        Boolean systemWriteActive = OpportunityRiskService.systemWriteInProgress;
         OpportunityRiskService.systemWriteInProgress = true;
         try {
             update moves;
         } finally {
-            OpportunityRiskService.systemWriteInProgress = false;
+            OpportunityRiskService.systemWriteInProgress = systemWriteActive;
         }
         return moves.size();
     }
@@ -161,11 +163,12 @@ public without sharing class SalesDepartureHandoverBatch
             r.Handover_Run__c = null;
             back.add(r);
         }
+        Boolean systemWriteActive = OpportunityRiskService.systemWriteInProgress;
         OpportunityRiskService.systemWriteInProgress = true;
         try {
             update back;
         } finally {
-            OpportunityRiskService.systemWriteInProgress = false;
+            OpportunityRiskService.systemWriteInProgress = systemWriteActive;
         }
         return back.size();
     }

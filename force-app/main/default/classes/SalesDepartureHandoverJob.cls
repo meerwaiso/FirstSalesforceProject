@@ -62,23 +62,37 @@ public without sharing class SalesDepartureHandoverJob implements Queueable {
         List<Id> accountIds = collectIds(accounts);
         List<Id> openDealIds = collectIds(openDeals);
 
-        // The trail row comes FIRST so the provenance on every moved record can
-        // point at it (AC8/AC9). Its Id is needed before the save.
-        Id trailRowId = SalesDepartureHandoverService.logRow(
-            fromUserId, toUserId, rule, evidence,
-            SalesDepartureHandoverService.ST_DONE, null, null
-        );
-
+        // ADR-6 (house SCRUM-449 flag, set by OpportunityRiskService.recomputeAll at
+        // lines 373/403): every handler that stamps `Last_User_Change__c` on a user
+        // edit compares now.OwnerId != was.OwnerId — and an ownership move changes
+        // exactly that field. Without the flag SCRUM-319 `Inactive_Days__c` /
+        // `Is_Overdue__c` and SCRUM-414 `Is_Close_Date_Overdue__c` are silently
+        // re-anchored on every moved deal, which destroys the "deal went cold" signal
+        // (AC6: nothing besides the owner changes). The flag covers the WHOLE handover
+        // transaction — trail insert, both ownership saves and the compensation — and
+        // is reset in `finally`, so a failing save cannot leave it stuck true.
+        OpportunityRiskService.systemWriteInProgress = true;
         try {
-            Integer movedAccounts = SalesDepartureHandoverBatch.moveAccountsChunk(
-                accountIds, fromUserId, toUserId, trailRowId);
-            Integer movedDeals = SalesDepartureHandoverBatch.moveOpenOpportunitiesChunk(
-                openDealIds, fromUserId, toUserId, trailRowId);
-            updateTrailCounts(trailRowId, movedAccounts, movedDeals, closedDeals.size());
-        } catch (DmlException moveError) {
-            // Tier 2: explicit compensation, then the row says Failed in German.
-            handleMoveFailure(trailRowId, accountIds, openDealIds, fromUserId,
-                              moveError.getMessage());
+            // The trail row comes FIRST so the provenance on every moved record can
+            // point at it (AC8/AC9). Its Id is needed before the save.
+            Id trailRowId = SalesDepartureHandoverService.logRow(
+                fromUserId, toUserId, rule, evidence,
+                SalesDepartureHandoverService.ST_DONE, null, null
+            );
+
+            try {
+                Integer movedAccounts = SalesDepartureHandoverBatch.moveAccountsChunk(
+                    accountIds, fromUserId, toUserId, trailRowId);
+                Integer movedDeals = SalesDepartureHandoverBatch.moveOpenOpportunitiesChunk(
+                    openDealIds, fromUserId, toUserId, trailRowId);
+                updateTrailCounts(trailRowId, movedAccounts, movedDeals, closedDeals.size());
+            } catch (DmlException moveError) {
+                // Tier 2: explicit compensation, then the row says Failed in German.
+                handleMoveFailure(trailRowId, accountIds, openDealIds, fromUserId,
+                                  moveError.getMessage());
+            }
+        } finally {
+            OpportunityRiskService.systemWriteInProgress = false;
         }
     }
 

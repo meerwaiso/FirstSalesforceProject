@@ -274,6 +274,23 @@ provenance fields; it must not re-propose any of the six monitoring fields
 `OpportunityRiskService.systemWriteInProgress = true` for the duration — that
 flag is already the house mechanism for system writes (SCRUM-449).
 
+**ADR-6 implemented (rework round 2):** `SalesDepartureHandoverBatch.cls`
+`moveAccountsChunk` / `moveOpenOpportunitiesChunk` wrap each ownership save in
+`OpportunityRiskService.systemWriteInProgress = true` with save/restore of the
+incoming value (nested-call safe), and `SalesDepartureHandoverJob.cls` resets
+the flag in a `finally` for the whole handover transaction — so the trail
+insert and the ownership moves all run under the flag and `OpportunityRiskHandler`
+neither re-stamps `Last_User_Change__c` nor recomputes the anchor, which is what
+keeps SCRUM-319 `Inactive_Days__c` / `Is_Overdue__c` intact (AC6).
+
+The SCRUM-483 classes are reachable to `SCRUM483_Handover_System` by **code
+access**, not by a `classAccesses` entry: an Apex class has no FLS entry (a
+grep over every `permissionsets/*.xml` on `origin/master` shows field FLS for
+Scr483-style objects but no `classAccesses` for any of the six released handover
+services), and `classAccesses` grants the right to *run* a class, which the
+scheduler call does not need. The PS stays at field FLS (ADR-5).
+
+
 **AC6 test shape (falsifiable, per SCRUM-471 and the 0-row trap):**
 - **positive control**: a fixture Account/Opportunity in the state where `DiscountApprovalTrigger`
   *would* post (a `DiscountApprovalManager__c` row for the owner, `Discount_Approval__c` Pending)
@@ -375,3 +392,34 @@ Data model (§1–3) + the 4 Permission Sets (ADR-5) + sharing impact (none) +
 governor notes + **the PS read-back** (`PermissionSetAssignment` rows + one
 provenance field read through a session) in the Developer-Handoff comment. Branch
 `feature/SCRUM-483-departure-handover`, one PR, Test-Org deploy.
+## Rework round 2 (developer) — measured findings, 2026-11-27
+
+All four review blockers were re-measured on the pushed head `caa17fe`; the
+measurements, not the review text, decide what changed.
+
+| Review claim | Measurement on `caa17fe` | What was done |
+| --- | --- | --- |
+| ADR-6 not implemented (0 hits of `systemWriteInProgress`) | true — `git grep` 0 hits | flag now wraps every ownership save (`Batch` ×2 with save/restore, `Job` `finally` reset) |
+| AC12 asserted 0 times | false — 4 asserts in `noManagerNoFallback…` (provenance lines 305/314/325, 0 owner changes line 326) | method renamed `…missingMappingRow_stayBlockedAndVisible` |
+| `From_Name__c` only in the Blocked branch | false — set at line 168 for every row, before the `switch` | unchanged |
+| `To_Name__c` never written | false — line 193 (`Assigned_to_Name__c`) and line 204 (`To_Name__c`), both in `Resolved` | unchanged |
+| `buildRow` loop variable is the Account | false — line 221 `Account ownerPerson = owner;`, reference read on that variable | unchanged |
+| Test failures were `MIXED_DML_OPERATION` ×5 | confirmed, with names: `SalesDepartureHandoverTest.testAC1…` line 35 (`DiscountApprovalManager__c` vs `PermissionSetAssignment`) and `SalesDepartureHandoverFlsTest.testAC11…` line 61 (`User` vs `Account`) | both classes restructured per house rule 3 (setup DML first, business DML in one `runAs` block, one `runAs` user for all later DML) |
+
+**Org blocker found while running the restructured classes (measured twice, two
+routes):** Test-Org refuses to create a Standard User —
+`System.DmlException: Insert failed … LICENSE_LIMIT_EXCEEDED, License Limit
+Exceeded`. A `SELECT … FROM User` in the same run returns **8 users, all
+active, all system users** (`MOsma`, `integ`, `autoproc`, `autocln`, `sec`,
+`Chatter`, `platint`, `devo`), so no user license is free. Apex cannot free one
+either: `delete <List<User>>` is refused at compile time in anonymous mode
+(„DML operation Delete not allowed on List<User>“). Consequence: **no SCRUM-483
+test method can run right now**, since all of them create fixture users — the
+same applies to CI's Apex Test Run. Freeing the licenses is a Setup/user action,
+not an Apex action, and it is not this ticket's code.
+
+**Delay measurement (AC1/AC7, Tester's instrument):** compare `CronTrigger.nextRun`
+(read from the org's `CronTrigger` entry for `SalesDepartureHandoverScheduler.run()`)
+against the `Handover_Run__c` stamp of the trail row; `0 < delay ≤ 1 h`. The
+direct `execute(null)` call in a test has delay ≈ 0 and is **not** that
+measurement; the org-side comparison is.
