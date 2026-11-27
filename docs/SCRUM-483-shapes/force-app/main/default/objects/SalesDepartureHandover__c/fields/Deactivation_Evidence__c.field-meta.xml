@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Deactivation_Evidence__c</fullName>
+    <label>Deactivation-Proof</label>
+    <description>SCRUM-483: how the system found the person.</description>
+    <type>Picklist</type>
+    <trackTrending>false</trackTrending>
+    <valueSet>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>IsActive_false</fullName>
+                <default>false</default>
+                <label>IsActive_false</label>
+            </value>
+            <value>
+                <fullName>Owner_record_deleted</fullName>
+                <default>false</default>
+                <label>Owner_record_deleted</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

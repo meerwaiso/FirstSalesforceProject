@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Info__c</fullName>
+    <label>Note</label>
+    <description>SCRUM-483: German message, what is blocked (AC4).</description>
+    <type>Text</type>
+    <length>255</length>
+    <required>false</required>
+</CustomField>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-483 Phase 3b: Job (references Service + Batch) and Scheduler (references Service + Job). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SalesDepartureHandoverJob</members>
+        <members>SalesDepartureHandoverScheduler</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

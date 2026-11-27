@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Handover-Fallback-Responsibility</label>
+    <pluralLabel>Handover-Fallback-Entries</pluralLabel>
+    <sharingModel>ReadWrite</sharingModel>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>SCRUM-483: the fallback person for the whole sales team. Sales management keeps exactly one record; editable without any IT role.</description>
+    <nameField>
+        <displayFormat>FALLBACK-{0000}</displayFormat>
+        <label>Fallback-Nr.</label>
+        <type>AutoNumber</type>
+    </nameField>
+</CustomObject>

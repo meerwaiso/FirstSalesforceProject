@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-483 Phase 1: the two NEU custom objects and their own fields — ALONE,
+     nothing references them yet (house scr445-phase1-fields.xml / scr410-phase1-object.xml:
+     CustomObject first, a CMOM deploys together with its fields). -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SalesDepartureHandover__c</members>
+        <members>SalesHandoverFallback__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>SalesDepartureHandover__c</members>
+        <members>SalesHandoverFallback__c</members>
+        <name>CustomTab</name>
+    </types>
+    <types>
+        <members>SalesDepartureHandover__c.From_User__c</members>
+        <members>SalesDepartureHandover__c.To_User__c</members>
+        <members>SalesDepartureHandover__c.Target_Rule__c</members>
+        <members>SalesDepartureHandover__c.Deactivation_Evidence__c</members>
+        <members>SalesDepartureHandover__c.Status__c</members>
+        <members>SalesDepartureHandover__c.Accounts_Handed_Over__c</members>
+        <members>SalesDepartureHandover__c.Open_Opportunities_Handed_Over__c</members>
+        <members>SalesDepartureHandover__c.Closed_Opportunities_Kept__c</members>
+        <members>SalesDepartureHandover__c.Handed_Over_At__c</members>
+        <members>SalesDepartureHandover__c.Error_Detail__c</members>
+        <members>SalesDepartureHandover__c.Info__c</members>
+        <members>SalesHandoverFallback__c.Fallback_User__c</members>
+        <members>SalesHandoverFallback__c.Deputy_Name__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>67.0</version>
+</Package>
