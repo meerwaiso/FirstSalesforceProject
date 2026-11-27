@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-483 AC3: sales management chooses and changes the fallback person
+     without any IT role. No System/Manageable permission anywhere in this PS
+     (a Permission Set can only grant, and object CRUD here is the whole need). -->
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SCRUM483_Fallback_Config</fullName>
+    <description>SCRUM-483 Fallback-PS: sales management maintains the one fallback person (AC3, no IT role needed).</description>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>SalesHandoverFallback__c.Fallback_User__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>SalesHandoverFallback__c.Deputy_Name__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>SCRUM483_Fallback_Config</label>
+    <objectPermissions>
+        <allowCreate>true</allowCreate>
+        <allowDelete>true</allowDelete>
+        <allowEdit>true</allowEdit>
+        <allowRead>true</allowRead>
+        <modifyAllRecords>false</modifyAllRecords>
+        <object>SalesHandoverFallback__c</object>
+        <viewAllRecords>false</viewAllRecords>
+    </objectPermissions>
+    <tabSettings>
+        <tab>SalesHandoverFallback__c</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
+</PermissionSet>

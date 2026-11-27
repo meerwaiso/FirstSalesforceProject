@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-483 Phase 3c: the four Permission Sets — LAST, because SCRUM483_Handover_System
+     names Apex classes and the other three name the Custom Tabs of the Phase-1 objects. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SCRUM483_Handover_Keep</members>
+        <members>SCRUM483_Handover_Log</members>
+        <members>SCRUM483_Fallback_Config</members>
+        <members>SCRUM483_Handover_System</members>
+        <name>PermissionSet</name>
+    </types>
+    <version>67.0</version>
+</Package>
