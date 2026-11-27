@@ -290,9 +290,32 @@ flag is already the house mechanism for system writes (SCRUM-449).
 
 Wording carried by the Developer (PO, comment 23891): **AC1 and AC7 hold within one hour of the
 deactivation**, not at the moment of it — the release note states that delay in plain words, and
-the Tester measures the real delay instead of assuming it. AC12 (owner missing from the mapping)
+the Tester measures the real delay instead of assuming it. (Measure it: the fixture's timestamp of
+the switch-off versus the first `Handover_Run__c` read-back of the moved records — assert the delay is
+> 0 and ≤ 1 h; "the scheduler must have run" proves nothing.) AC12 (owner missing from the mapping)
 is a new criterion and is carried into the build: the test class `SalesDepartureHandoverTest`
 asserts it next to AC4 in the same trail tab.
+
+### Release note — ready wording (house file `docs/RELEASE-NOTES.md`, entry due at Deployment)
+
+The PO obligation is not a note to re-derive later; the paragraph is here and the delay is named in
+plain words for the person who asked for it ("at the moment a salesperson is deactivated"):
+
+- **Was sich aendert.** When a salesperson leaves the company and IT switches off his user, the
+  system hands his open opportunities and the customers he owns over to his manager; without a
+  manager to the fallback person sales management has chosen. Deals that are already closed, won or
+  lost stay with the person who worked on them. Contacts, cases and everything else stay where they
+  are; no amounts, stages, dates or emails to customers are touched.
+- **When it happens.** Within one hour after the deactivation — not at the very moment of it. The
+  deactivation itself never fails because of the handover: if the move cannot be done, the person
+  stays switched off and the reason is listed, not hidden.
+- **Wo man es sieht.** The tab "Austritt-Uebergeben": one row per person and run — whom it was
+  handed to, how many customers and open opportunities moved, and in `Info__c` / `Error_Detail__c`
+  the cases where nothing could be moved (neither manager nor fallback, or the target themselves
+  switched off) and a salesperson who is missing from the mapping. On every moved record
+  `Handed_Over_From__c`, `Handed_Over_On__c` and `Handover_Run__c` say who had it before and in which
+  run.
+- **Belege.** SCRUM-483, PR #206; deployed and read back in Test-Org on 2026-11-27.
 
 | AC | Artefact | Count measured today |
 |---|---|---|
