@@ -288,6 +288,12 @@ flag is already the house mechanism for system writes (SCRUM-449).
 
 ## Tests: the AC → artefact contract (no AC without an artefact)
 
+Wording carried by the Developer (PO, comment 23891): **AC1 and AC7 hold within one hour of the
+deactivation**, not at the moment of it — the release note states that delay in plain words, and
+the Tester measures the real delay instead of assuming it. AC12 (owner missing from the mapping)
+is a new criterion and is carried into the build: the test class `SalesDepartureHandoverTest`
+asserts it next to AC4 in the same trail tab.
+
 | AC | Artefact | Count measured today |
 |---|---|---|
 | AC1 open deals + customers to the manager | `SCRUM483...Test`: deactivate a mapping `Rep__c` → assert 12 Account rows + 15 open Opp rows (Meerwais) move, `Closed_Opportunities_Kept__c = 18` | **0 deactivated users exist** → fixture required |
@@ -300,6 +306,7 @@ flag is already the house mechanism for system writes (SCRUM-449).
 | AC8 one place | tab `SalesDepartureHandover__c` visible with the Read-PS + E2E `record-ui`/list view reading `To_User__c`/`From_User__c`/`Handed_Over_At__c` | 0 rows |
 | AC9 traceable + chain | per record `Handed_Over_From__c` + `Handover_Run__c`; chain = run rows ordered by `Handed_Over_At__c`; assert chain over **2** successive handovers of one Account | 0 |
 | AC10 non-sales / empty user | deactivate `Automated Process` (owns **1 Account**, not a `Rep__c`) → assert **0** moves, **0** log rows | 1 Account |
+| AC12 owner owns records but **has no mapping row** (entry mistake) | same fixture, no `Rep__c` row: assert 0 owner changes + one `Status__c=Blocked` row with `Info__c` naming the missing mapping row — the case is listed in the SAME tab as AC4 (PO, comment 23891) | 0 such rows today → fixture builds it |
 | AC11 failure shown, deactivation survives | lock that Account (`Is_Locked__c=true` + `Lock_Reason__c`) so a save throws → assert `Status__c=Failed`, `Error_Detail__c` filled, **records still owned by the old user**, `User.IsActive` still false | 0 such rows today → fixture builds it |
 
 **AC7 note (real):** the two mapping rows are circular (Meerwais→devops-agent and

@@ -103,6 +103,10 @@ public without sharing class SalesDepartureHandoverJob implements Queueable {
     private static void handleMoveFailure(Id rowId, List<Id> accountIds,
                                           List<Id> openDealIds, Id previousOwner,
                                           String germanReason) {
+        // The verdict is written BEFORE the compensation is attempted: when the
+        // revert is refused as well (tier 3), the row still has to say Failed —
+        // otherwise the half-moved state would be invisible (AC11).
+        markFailed(rowId, germanReason);
         try {
             SalesDepartureHandoverBatch.revertAccountsChunk(accountIds, previousOwner);
             SalesDepartureHandoverBatch.revertOpenOpportunitiesChunk(openDealIds,
@@ -116,7 +120,6 @@ public without sharing class SalesDepartureHandoverJob implements Queueable {
                 + germanReason + ' / ' + compensationError.getMessage()
             );
         }
-        markFailed(rowId, germanReason);
     }
 
     /** AC11: the failure is visible, not hidden in a system log. */
@@ -128,9 +131,3 @@ public without sharing class SalesDepartureHandoverJob implements Queueable {
     }
 }
 
-/**
- * Named exception for tier 3 (inner class, same file — a bare
- * `new Exception(...)` is invalid Apex).
- */
-class SalesDepartureHandoverException extends Exception {
-}

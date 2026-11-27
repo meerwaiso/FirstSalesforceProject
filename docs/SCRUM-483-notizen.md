@@ -62,3 +62,50 @@ sf data query --target-org Test-Org -q "SELECT Id,Name FROM SalesUser"        # 
 ## State reached
 
 - [x] design doc written, [ ] commit+push (next), [ ] Jira comment + handoff
+
+## Developer-Agent measurements 2026-11-27 (verified, command named)
+
+- Org before deploy: 8 Users (all active, `ManagerId` NULL on all 8), 268 Accounts (267 owned by
+  the devops-agent pair, 1 owned by `autoproc`), 89 open Opportunities, 2 mapping rows (circular
+  Meerwais <-> devops-agent), 0 `SalesHandoverFallback__c` rows, 0 `SalesDepartureHandover__c`
+  rows, 0 Permission Sets matching `SCRUM483%`.
+- Deploy order that worked: phase1 fields/objects -> phase2 referencing -> phase3a (Exception +
+  Service) -> phase3b (Batch/Job/Scheduler consumers) -> phase3c Permission Sets -> phase4 test
+  pair. `sf project deploy start -x manifest/<m>.xml -o Test-Org -l NoTestRun --json`, each
+  `componentFailures` empty.
+- PS read-back (`sf data query -o Test-Org -t` on `PermissionSetAssignment` with columns
+  `AssigneeId`/`PermissionSetId` — `Assignee`/`PermissionSetName` do not exist):
+  `SCRUM483_Handover_Keep` and `SCRUM483_Handover_Log` and `SCRUM483_Fallback_Config` ->
+  devops-agent@cline.test AND meerwais.osmani@...; `SCRUM483_Handover_System` -> devops-agent only
+  (the scheduled user).
+- `scripts/fls-check.sh Account Handed_Over_From__c Test-Org` and
+  `scripts/fls-check.sh Opportunity Handover_Run__c Test-Org`: existence yes, granted, assigned,
+  verdict "visible for devops-agent@cline.test". A SOQL in the same session returns both
+  provenance fields (`Handed_Over_From__c`, `Handover_Run__c`, `Handed_Over_On__c`) — real-session
+  read-back.
+- Tests: `--test-level RunSpecifiedTests --tests SalesDepartureHandoverTest --tests
+  SalesDepartureHandoverFlsTest` -> numTestsRun 6, numFailures 0 (twice). Coverage percentage was
+  NOT measurable: `--coverage-formatters text|json` wrote empty files, `--code-coverage` is not a
+  flag of `sf project deploy start` (measured: "Nonexistent flag").
+- Platform facts measured today (each cost a fixture iteration):
+  1. a Customer cannot be created with an INACTIVE owner -> `INACTIVE_OWNER_OR_USER`.
+  2. an org system user cannot be deactivated from a test -> `update ap` gives
+     INSUFFICIENT_ACCESS_OR_READONLY "Cannot insert a user with this profile" -> AC10 is asserted
+     as the Service guard (`isSystemUser`) plus untouched records, not as a deactivated system user.
+  3. the org's own `autoproc` Customer is not visible to the test runner (count 0) -> the fixture
+     creates its own Account owned by `autoproc`.
+  4. a person who owns nothing produces no trail row (AC: users who own nothing cause no handover).
+  5. `delete` of a fixture Customer by a Standard User is refused ("insufficient access rights on
+     object id") -> no fixture cleanup, house SCRUM-477 does the same.
+  6. `PermissionSetAssignment` rows are not deletable without a grant SCRUM-483 does not own
+     (house `SCRUM468_Writeoff` has it) -> test users are switched off instead, assignments stay.
+  7. Apex test methods need `@isTest` per method (NOT `@Test`) and `insert` of a User record needs
+     the Standard User `ProfileId`.
+  8. Apex string literals need single quotes; a file written with double quotes fails with
+     hundreds of "Unrecognized symbol" messages — that is the file, not the compiler.
+- AC11 tier 2 (Failed + compensation) is NOT exercisable in Test-Org by construction (a Permission
+  Set can only grant; a Standard User with the grants writes the records, without them cannot reach
+  the candidate; an inactive owner cannot own a record). Test-Org has 12 locked Accounts, none with
+  an open Opportunity, so the locked-record fixture does not exist either. Stated in the test class
+  header instead of faking a refusal; the code path is reviewed by the Architect, CI (System
+  Administrator) is where it can be exercised.

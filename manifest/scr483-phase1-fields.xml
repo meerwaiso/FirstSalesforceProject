@@ -9,6 +9,11 @@
         <name>CustomObject</name>
     </types>
     <types>
+        <members>SalesDepartureHandover__c</members>
+        <members>SalesHandoverFallback__c</members>
+        <name>CustomTab</name>
+    </types>
+    <types>
         <members>SalesDepartureHandover__c.From_User__c</members>
         <members>SalesDepartureHandover__c.To_User__c</members>
         <members>SalesDepartureHandover__c.Target_Rule__c</members>

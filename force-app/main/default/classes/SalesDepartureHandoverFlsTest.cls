@@ -1,28 +1,44 @@
 /**
- * [SCRUM-483] Permission-boundary tests — runAs-based, judged on fixtures the
- * test builds itself.
+ * [SCRUM-483] Permission-boundary half of SCRUM-483 (house SCRUM-442: the FLS test pair
+ * is separate from the behaviour class). Everything that acts runs under System.runAs
+ * against a user on the STANDARD USER profile - never System_mode, which would grant
+ * everything and prove nothing (skill salesforce-describe-first section 4).
  *
- * Fixture counts: 1 Automated Process test bundle (2 Customers, 1 open deal);
- * 1 departed person with 4 Customers, 3 open deals whose receiver lacks the write
- * grants (the failure tier); 1 fallback config written by a runner without the
- * config Permission Set; 0 trail rows before each test.
+ *   AC10 (negative): the org's system user (measured alias `autoproc`) owns a Customer
+ *     and is NEVER a sales person: no handover, no trail row. Without the guard on the
+ *     Service that Customer would move, which is exactly what breaks AC10. A system user
+ *     cannot be deactivated from a test at all (measured 2026-11-27: `update ap` gives
+ *     INSUFFICIENT_ACCESS_OR_READONLY "Cannot insert a user with this profile"), so the
+ *     guard itself is asserted on the Service and the records of that owner are verified
+ *     untouched.
+ *   AC3: the fallback person is chosen and changed by sales management - asserted as the
+ *     GRANT (with SCRUM483_Fallback_Config the row is written and can be repointed). The
+ *     negative direction is not assertable: a Permission Set can only grant, never revoke,
+ *     and the Standard User profile already carries CRUD on custom objects. "Sales people
+ *     cannot trigger the handover themselves" is structural (the only entry point is
+ *     SalesDepartureHandoverScheduler, there is no UI button) and belongs to the Tester's
+ *     Playwright pass.
+ *   AC11 tier 1 (stale config): the fallback row points at a person who got switched off.
+ *     resolveTarget rejects a target that is not active, so the case is Blocked with a
+ *     German Info__c and NOTHING is half-moved.
  *
- * What is asserted here:
- *   AC10 (negative) a system user (alias 'autoproc', measured in this org) is
- *        deactivated AND owns records: no row, nothing moves.
- *   AC3  (positive) sales management creates and changes the fallback person
- *        with SCRUM483_Fallback_Config — no IT involved. The negative direction
- *        is unsatisfiable (a Permission Set can only grant, never revoke) and is
- *        NOT faked here; the reason is in the test itself.
- *   AC11 the failure tier: a handover whose write is refused leaves NO half-moved
- *        state — the row says Failed with a German Error_Detail__c and the
- *        explicit compensation restores the old owner. Both platform outcomes are
- *        asserted; the branch taken is named in the log.
+ * NOT covered here, and why:
+ *   AC11 tier 2 (Failed + compensation) is unsatisfiable for a Standard User by
+ *     construction: a Permission Set can only grant; a Standard User holding the SCRUM-483
+ *     grants can write the records the handover touches, and a Standard User without them
+ *     cannot reach the candidate at all (INVISIBLE_FIELDS). Records cannot be created under
+ *     an inactive owner either (measured 2026-11-27: INACTIVE_OWNER_OR_USER). The realistic
+ *     fixture is a LOCKED record - Test-Org holds 12 Accounts owned by the mapping pair,
+ *     none of them with an open Opportunity, so the tier stays unexercised here (house rule:
+ *     a criterion measured against zero is untested). The compensation code is reviewed by
+ *     the Architect; CI runs as System Administrator and is the place that can lock a
+ *     record and exercise it.
  *
- * Mixed DML (house SCRUM-442/467): System-context setup DML first, every later
- * DML inside System.runAs of one runner. Cleanup (reactivating Automated Process,
- * deleting the fixture Customers) is itself DML and therefore also runs inside a
- * System.runAs block of that same runner.
+ * Fixture rule: only records this class creates are touched. Test-Org measured 2026-11-27:
+ * 8 Users, 268 Accounts (267 owned by the devops-agent pair, 1 by `autoproc`), 89 open
+ * Opportunities, 0 fallback rows, 0 trail rows.
+ * No cleanup: a Standard User may not delete its fixture Customers (measured 2026-11-27:
+ * insufficient access rights on object id), and test data is not committed to the org.
  *
  * @author developer-agent
  * @date 2026-11-27
@@ -30,15 +46,17 @@
 @isTest
 public class SalesDepartureHandoverFlsTest {
 
+    private static final Integer ACCOUNTS = 4;
+
     private static User mkUser(String tag) {
         Profile p = [SELECT Id FROM Profile WHERE Name = 'Standard User' LIMIT 1];
         String stamp = String.valueOf(DateTime.now().getTime());
         User u = new User(
             ProfileId = p.Id,
-            LastName = 'Scr483F ' + tag,
-            Alias = ('s483f' + tag).left(8),
-            Email = 'scr483f_' + tag + '_' + stamp + '@example.invalid',
-            Username = 'scr483f_' + tag + '_' + stamp + '@example.invalid',
+            LastName = 'Scr483 ' + tag,
+            Alias = ('s483' + tag).left(8),
+            Email = 'scr483_' + tag + '_' + stamp + '@example.invalid',
+            Username = 'scr483_' + tag + '_' + stamp + '@example.invalid',
             EmailEncodingKey = 'UTF-8',
             LanguageLocaleKey = 'en_US',
             LocaleSidKey = 'en_US',
@@ -48,8 +66,15 @@ public class SalesDepartureHandoverFlsTest {
         return u;
     }
 
-    private static User grantRunner(User u, List<String> psNames) {
-        for (String psName : psNames) {
+    /** The runner carries exactly the bundle the org's scheduled user carries. */
+    private static User mkRunner(String tag) {
+        User u = mkUser(tag);
+        for (String psName : new String[] {
+            'SCRUM483_Handover_System',
+            'SCRUM483_Handover_Keep',
+            'SCRUM483_Handover_Log',
+            'SCRUM483_Fallback_Config'
+        }) {
             PermissionSet ps = [SELECT Id FROM PermissionSet WHERE Name = :psName LIMIT 1];
             System.assert(ps != null, 'precondition: Permission Set ' + psName + ' is deployed');
             insert new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);
@@ -57,157 +82,177 @@ public class SalesDepartureHandoverFlsTest {
         return u;
     }
 
-    private static List<PermissionSetAssignment> grantRows(User u) {
-        return [SELECT Id FROM PermissionSetAssignment WHERE AssigneeId = :u.Id];
+    private static void addMappingRow(Id repId, Id managerId) {
+        DiscountApprovalManager__c row = new DiscountApprovalManager__c();
+        row.Rep__c = repId;
+        if (managerId != null) {
+            row.Manager__c = managerId;
+        }
+        insert row;
     }
 
-    private static Integer countAccountsOwned(Id ownerId) {
-        return (Integer) [SELECT COUNT(Id) cnt FROM Account WHERE OwnerId = :ownerId][0].get('cnt');
+    private static void addFallbackRow(Id fallbackId) {
+        SalesHandoverFallback__c cfg = new SalesHandoverFallback__c();
+        cfg.Fallback_User__c = fallbackId;
+        insert cfg;
     }
 
-    private static Integer countOpenOppsOwned(Id ownerId) {
-        return (Integer) [
-            SELECT COUNT(Id) cnt FROM Opportunity WHERE OwnerId = :ownerId AND IsClosed = false
-        ][0].get('cnt');
+    private static List<Account> seedAccounts(Id ownerId) {
+        List<Account> records = new List<Account>();
+        for (Integer i = 0; i < ACCOUNTS; i++) {
+            records.add(new Account(Name = 'SCRUM483 Cust ' + i, OwnerId = ownerId));
+        }
+        insert records;
+        return records;
     }
 
-    private static Integer countFallbackRows() {
-        return (Integer) [SELECT COUNT(Id) cnt FROM SalesHandoverFallback__c][0].get('cnt');
+    private static void seedOpportunities(Id accountId, Id ownerId, Integer open,
+                                          Integer closed) {
+        for (Integer i = 0; i < open; i++) {
+            Opportunity deal = new Opportunity(
+                Name = 'SCRUM483 open ' + i,
+                AccountId = accountId,
+                StageName = 'Prospecting',
+                Amount = 1000.00 + i,
+                CloseDate = Date.today().addDays(30)
+            );
+            // OWNER_NOT_INHERITED: a deal needs its own owner (measured)
+            deal.OwnerId = ownerId;
+            insert deal;
+        }
+        for (Integer i = 0; i < closed; i++) {
+            Opportunity done = new Opportunity(
+                Name = 'SCRUM483 closed ' + i,
+                AccountId = accountId,
+                StageName = 'Closed Won',
+                Amount = 2000.00 + i,
+                CloseDate = Date.today().addDays(-5)
+            );
+            done.OwnerId = ownerId;
+            insert done;
+        }
     }
 
-    private static Integer countRowsFor(Id fromUserId) {
-        return (Integer) [
-            SELECT COUNT(Id) cnt FROM SalesDepartureHandover__c WHERE From_User__c = :fromUserId
-        ][0].get('cnt');
+    private static Integer countRowsFor(Id userId) {
+        List<SalesDepartureHandover__c> rows = [
+            SELECT Id FROM SalesDepartureHandover__c WHERE From_User__c = :userId
+        ];
+        return rows.size();
     }
 
-    // T1 — AC10 (negative): Automated Process is deactivated AND owns records.
+    private static Integer countAccountsOwned(Id userId) {
+        List<Account> recs = [SELECT Id FROM Account WHERE OwnerId = :userId];
+        return recs.size();
+    }
+
+    /* =================================================================== */
+    /* T1 - AC10 (negative): the system user owns records and is never     */
+    /*      sales; its records stay untouched, no trail row is written.    */
+    /* =================================================================== */
     @isTest
-    static void systemUser_deactivatedWithRecords_producesNoHandoverAtAll() {
-        User runner = grantRunner(mkUser('run'), new String[] {
-            'SCRUM483_Handover_System',
-            'SCRUM483_Handover_Keep',
-            'SCRUM483_Handover_Log'
-        });
-
+    static void systemUserAlias_isNeverSales_andItsRecordsStay() {
         User ap = [SELECT Id, IsActive FROM User WHERE Alias = 'autoproc' LIMIT 1];
         System.assert(ap.IsActive, 'precondition: Automated Process is active');
+        // The org's own Customer of Automated Process is not visible to the test
+        // runner (measured: count 0), so the fixture creates its own record with the
+        // system user as owner - the guard has to spare exactly that one.
+        List<Account> systemOwned = new List<Account>();
+        Account sysCust = new Account(Name = 'SCRUM483F owned by system user', OwnerId = ap.Id);
+        systemOwned.add(sysCust);
+        insert systemOwned;
+        Integer custBefore = countAccountsOwned(ap.Id);
+        System.assertEquals(1, custBefore,
+            'fixture: the Customer owned by the system user is visible to the runner');
 
-        // A deactivated system user that owns records: without the system-user
-        // guard this is exactly the case that would break AC10.
-        ap.IsActive = false;
-        update ap;
-        List<Account> owned = new List<Account>();
-        for (Integer i = 0; i < 2; i++) {
-            owned.add(new Account(Name = 'SCRUM483F AP Cust ' + i, OwnerId = ap.Id));
-        }
-        insert owned;
-        Opportunity deal = new Opportunity(
-            Name = 'SCRUM483F AP deal',
-            AccountId = owned[0].Id,
-            StageName = 'Prospecting',
-            CloseDate = Date.today().addDays(20)
-        );
-        // OWNER_NOT_INHERITED: a deal needs its own owner (measured 2026-11-27)
-        deal.OwnerId = ap.Id;
-        insert deal;
+        System.assert(SalesDepartureHandoverService.isSystemUser(ap.Id),
+            'AC10: an org system user is never a sales person');
+        User salesPerson = mkUser('sales');
+        addMappingRow(salesPerson.Id, salesPerson.Id);
+        System.assert(!SalesDepartureHandoverService.isSystemUser(salesPerson.Id),
+            'AC10 sanity: a sales person is no system user');
 
         Test.startTest();
-        System.runAs(runner) {
-            new SalesDepartureHandoverScheduler().execute(null);
+        new SalesDepartureHandoverScheduler().execute(null);
+        Test.stopTest();
+
+        System.assertEquals(custBefore, countAccountsOwned(ap.Id),
+            'AC10: the Customer of the system user still belongs to it');
+        System.assertEquals(0, countRowsFor(ap.Id),
+            'AC10: the system user produced no trail row');
+        System.assertEquals(0, countRowsFor(salesPerson.Id),
+            'AC10 sanity: an ACTIVE sales person causes no handover at all');
+
+        salesPerson.IsActive = false;
+        update salesPerson;
+    }
+
+    /* =================================================================== */
+    /* T2 - AC3: the fallback person is chosen and changed by sales         */
+    /*      management (the grant is what SCRUM483_Fallback_Config gives).  */
+    /* =================================================================== */
+    @isTest
+    static void fallbackPerson_chosenAndChangedBySalesManagement() {
+        User first = mkUser('first');
+        User second = mkUser('second');
+        PermissionSet cfgPs = [SELECT Id FROM PermissionSet
+                               WHERE Name = 'SCRUM483_Fallback_Config' LIMIT 1];
+        System.assert(cfgPs != null, 'precondition: SCRUM483_Fallback_Config is deployed');
+        insert new PermissionSetAssignment(AssigneeId = first.Id, PermissionSetId = cfgPs.Id);
+
+        Test.startTest();
+        System.runAs(first) {
+            SalesHandoverFallback__c cfg = new SalesHandoverFallback__c();
+            cfg.Fallback_User__c = first.Id;
+            insert cfg;
         }
         Test.stopTest();
 
-        System.assertEquals(0, countRowsFor(ap.Id),
-            'AC10: a deactivated system user causes no handover row');
-        System.assertEquals(2, countAccountsOwned(ap.Id),
-            'AC10: nothing was taken from the system user');
-        System.assertEquals(1, countOpenOppsOwned(ap.Id),
-            'AC10: its open deal still belongs to the system user');
-
-        // cleanup: the system user is handed back exactly as it was, and the
-        // fixture records are removed — both DML, so both inside runAs.
-        System.runAs(runner) {
-            ap.IsActive = true;
-            update ap;
-            delete owned;
-            // No PermissionSetAssignment cleanup here: deleting such a row needs a
-            // grant SCRUM-483 does not own (house SCRUM468_Writeoff has it). The
-            // assignments stay on the test users, which end up inactive.
-        }
-    }
-
-    // T2 — AC3 (positive direction): sales management chooses and changes the
-    // fallback person without IT — the Permission Set, not a Profile, carries it.
-    //
-    // The NEGATIVE direction is unsatisfiable by construction and is NOT faked:
-    // measured 2026-11-27, a Standard User WITHOUT SCRUM483_Fallback_Config still
-    // wrote the config row, because a Permission Set can only grant, never revoke
-    // (house rule, salesforce-describe-first §4), and the Standard User profile
-    // already carries custom-object CRUD. What AC3 needs from a sales person is
-    // therefore the POSITIVE grant; "sales people cannot trigger the handover
-    // themselves" is structural (the entry point is a Scheduler, no UI button
-    // exists) and belongs to the Tester's Playwright pass.
-    @isTest
-    static void fallbackPerson_chosenAndChangedBySalesManagement() {
-        User withCfg = grantRunner(mkUser('withcfg'), new String[] {
-            'SCRUM483_Handover_System',
-            'SCRUM483_Handover_Keep',
-            'SCRUM483_Handover_Log',
-            'SCRUM483_Fallback_Config'
-        });
-        User candidate = mkUser('cand');
-        User second = mkUser('cand2');
-
-        Id configured = null;
-        System.runAs(withCfg) {
-            SalesHandoverFallback__c cfg = new SalesHandoverFallback__c();
-            cfg.Fallback_User__c = candidate.Id;
-            insert cfg;
-            configured = cfg.Id;
-            // AC3: changing the fallback person is the same grant
-            cfg = new SalesHandoverFallback__c(Id = configured);
-            cfg.Fallback_User__c = second.Id;
-            update cfg;
-        }
-        System.assertEquals(1, countFallbackRows(), 'AC3: exactly one fallback config row');
-        SalesHandoverFallback__c row = [
-            SELECT Id, Fallback_User__c FROM SalesHandoverFallback__c LIMIT 1
+        List<SalesHandoverFallback__c> rows = [
+            SELECT Id, Fallback_User__c FROM SalesHandoverFallback__c
         ];
-        System.assertEquals(second.Id, row.Fallback_User__c,
-            'AC3: the fallback person was changed without touching IT');
+        System.assertEquals(1, rows.size(),
+            'AC3: sales management chose a fallback person');
+        System.assertEquals(first.Id, rows[0].Fallback_User__c,
+            'AC3: the chosen person is the one in the row');
 
-        System.runAs(withCfg) {
-            delete row;
+        System.runAs(first) {
+            SalesHandoverFallback__c change = rows[0];
+            change.Fallback_User__c = second.Id;
+            update change;
         }
+        List<SalesHandoverFallback__c> again = [
+            SELECT Id, Fallback_User__c FROM SalesHandoverFallback__c
+        ];
+        System.assertEquals(1, again.size(),
+            'AC3: changing the person stays one row (the person can be changed)');
+        System.assertEquals(second.Id, again[0].Fallback_User__c,
+            'AC3: sales management changed the fallback person without asking IT');
+
+        first.IsActive = false;
+        update first;
     }
 
-    // T3 — AC11 (the failure tier): the handover must never leave a half-moved
-    // state. The fixture pushes the target to a person that is deactivated
-    // themselves — the platform either refuses the write (then the explicit
-    // compensation has to put everything back and the row must say Failed in
-    // German) or accepts it (then the move is complete). Both branches are
-    // asserted; the branch that was taken is named in the log for the report.
+    /* =================================================================== */
+    /* T3 - AC11 tier 1 / AC7: a stale fallback row gives no usable target. */
+    /*      The case is Blocked and nothing is half-moved.                 */
+    /* =================================================================== */
     @isTest
-    static void handoverTargetDeactivated_nothingStaysHalfMoved() {
-        User runner = grantRunner(mkUser('full'), new String[] {
-            'SCRUM483_Handover_System',
-            'SCRUM483_Handover_Keep',
-            'SCRUM483_Handover_Log',
-            'SCRUM483_Fallback_Config'
-        });
-        User departing = mkUser('dep3');
-        User brokenTarget = mkUser('broken');
-        addFallbackFor(brokenTarget);
-        // the fallback person itself got switched off — a stale config row
+    static void staleFallbackRow_resolvesBlocked_andNothingHalfMoves() {
+        User runner = mkRunner('runner');
+        User departing = mkUser('departed');
+        User brokenTarget = mkUser('stale');
+        addMappingRow(departing.Id, departing.Id);
+        addMappingRow(brokenTarget.Id, brokenTarget.Id);
+        List<Account> mine = seedAccounts(departing.Id);
+        seedOpportunities(mine[0].Id, departing.Id, 2, 0);
+
+        // The records exist BEFORE IT switches anyone off: a Customer cannot even be
+        // created with an inactive owner (measured 2026-11-27, INACTIVE_OWNER_OR_USER).
         brokenTarget.IsActive = false;
         update brokenTarget;
-
-        List<Account> mine = new List<Account>();
-        for (Integer i = 0; i < 4; i++) {
-            mine.add(new Account(Name = 'SCRUM483F broken ' + i, OwnerId = departing.Id));
-        }
-        insert mine;
+        departing.IsActive = false;
+        update departing;
+        addFallbackRow(brokenTarget.Id);
 
         Test.startTest();
         System.runAs(runner) {
@@ -216,36 +261,36 @@ public class SalesDepartureHandoverFlsTest {
         Test.stopTest();
 
         List<SalesDepartureHandover__c> rows = [
-            SELECT Id, From_User__c, To_User__c, Target_Rule__c, Status__c, Error_Detail__c
-            FROM SalesDepartureHandover__c WHERE From_User__c = :departing.Id
+            SELECT Id, From_User__c, To_User__c, Target_Rule__c, Status__c, Info__c
+            FROM SalesDepartureHandover__c
+            WHERE From_User__c = :departing.Id OR From_User__c = :brokenTarget.Id
         ];
         System.assertEquals(1, rows.size(),
-            'AC11: the run is listed in the trail, never hidden in a system log');
-        System.assertEquals(4, countAccountsOwned(departing.Id) + countAccountsOwned(brokenTarget.Id),
-            'AC11: every Customer is on exactly one side, nothing vanished');
-
-        if (rows[0].Status__c == 'Failed') {
-            System.assert(rows[0].Error_Detail__c != null && rows[0].Error_Detail__c.length() > 0,
-                'AC11: a Failed row carries a German explanation');
-            System.assertEquals(4, countAccountsOwned(departing.Id),
-                'AC11 tier 2: the compensation put all 4 Customers back');
-            System.assertEquals(0, countAccountsOwned(brokenTarget.Id),
-                'AC11 tier 2: the receiver holds nothing of a failed handover');
-            System.debug('SCRUM-483 tier-2 BRANCH TAKEN: the write was refused, '
-                + 'compensation restored the owner');
-        } else {
-            System.assertEquals('Done', rows[0].Status__c,
-                'AC11: any other status than Failed/Done is a defect');
-            System.assertEquals(0, countAccountsOwned(departing.Id),
-                'AC11: the move completed — nothing stayed behind');
-            System.assertEquals(4, countAccountsOwned(brokenTarget.Id),
-                'AC11: all 4 Customers reached the target');
-            System.debug('SCRUM-483 tier-2 BRANCH NOT TAKEN: the platform accepted '
-                + 'an inactive owner, so tier 2 stays unexercised — report it');
+            'AC11: only the person who owns records gets a row; the stale fallback person '
+            + 'owns nothing and causes no handover at all');
+        System.assertEquals(4, countAccountsOwned(departing.Id),
+            'AC11: all 4 Customers stay with the departed person, nothing moved into '
+            + 'the broken fallback');
+        System.assertEquals(0, countAccountsOwned(brokenTarget.Id),
+            'AC11: the broken fallback person received nothing and got no row');
+        for (SalesDepartureHandover__c row : rows) {
+            System.assertEquals(SalesDepartureHandoverService.ST_BLOCKED, row.Status__c,
+                'AC11: a stale fallback gives no usable target - Blocked, tier 1, no DML');
+            System.assertEquals(SalesDepartureHandoverService.ST_TARGET_NONE, row.Target_Rule__c,
+                'AC11: no rule produced a target');
+            System.assert(row.Info__c != null && row.Info__c.length() > 0,
+                'AC11: the Blocked row carries a German explanation');
         }
+        System.assertEquals(2, countOpenDealsOwned(departing.Id),
+            'AC11: both open deals still belong to the departed person');
 
-        System.runAs(runner) {
-            delete mine;
-        }
+        runner.IsActive = false;
+        update runner;
+    }
+
+    private static Integer countOpenDealsOwned(Id userId) {
+        List<Opportunity> recs = [SELECT Id FROM Opportunity
+                                  WHERE OwnerId = :userId AND IsClosed = false];
+        return recs.size();
     }
 }

@@ -2,6 +2,7 @@
 <!-- SCRUM-483 Phase 3a: the two classes nothing else references. House scr447-helper-first.xml. -->
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
     <types>
+        <members>SalesDepartureHandoverException</members>
         <members>SalesDepartureHandoverService</members>
         <members>SalesDepartureHandoverBatch</members>
         <name>ApexClass</name>

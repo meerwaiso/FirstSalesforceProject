@@ -298,10 +298,10 @@ public class SalesDepartureHandoverTest {
         System.assertEquals(ACCOUNTS, countAccountsOwned(manager.Id),
             'idempotency: nothing moved a second time');
 
-        // cleanup: the fixtures leave no Customers behind (they cascade to their deals).
-        System.runAs(runner) {
-            delete accountRecords;
-        }
+        // No fixture cleanup here: measured 2026-11-27 a Standard User may not
+        // delete its fixture Customers (`insufficient access rights on object id`).
+        // Test data is not committed to the org, so nothing piles up (house
+        // SCRUM-477 left cleanup to System context the same way).
     }
 
     // T2 — AC7: the circular mapping the org really carries, both persons off.
@@ -350,10 +350,10 @@ public class SalesDepartureHandoverTest {
             System.assertEquals('Done', row.Status__c, 'AC7: both handovers completed');
         }
 
-        System.runAs(runner) {
-            delete accountsA;
-            delete accountsB;
-        }
+        // No fixture cleanup here: measured 2026-11-27 a Standard User may not
+        // delete its fixture Customers (`insufficient access rights on object id`).
+        // Test data is not committed to the org, so nothing piles up (house
+        // SCRUM-477 left cleanup to System context the same way).
     }
 
     // T3 — AC4 (mapped, manager field empty, no fallback row) and AC12 (no mapping
@@ -410,9 +410,9 @@ public class SalesDepartureHandoverTest {
         System.assertEquals(0, countRowsFor(ownerless.Id),
             'AC10: no handover and no row for a person without records');
 
-        System.runAs(runner) {
-            delete mappedAccounts;
-            delete forgottenAccounts;
-        }
+        // No fixture cleanup here: measured 2026-11-27 a Standard User may not
+        // delete its fixture Customers (`insufficient access rights on object id`).
+        // Test data is not committed to the org, so nothing piles up (house
+        // SCRUM-477 left cleanup to System context the same way).
     }
 }

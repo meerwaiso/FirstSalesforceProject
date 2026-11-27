@@ -81,13 +81,13 @@ public without sharing class SalesDepartureHandoverBatch
         if (recordIds == null || recordIds.isEmpty()) {
             return 0;
         }
-        DateTime when = System.now();
+        DateTime handoverAt = System.now();
         List<Account> moves = new List<Account>();
         for (Id recId : recordIds) {
             Account m = new Account(Id = recId);
             m.OwnerId = newOwner;
             m.Handed_Over_From__c = previousOwner;
-            m.Handed_Over_On__c = when;
+            m.Handed_Over_On__c = handoverAt;
             m.Handover_Run__c = trailRow;
             moves.add(m);
         }
@@ -105,13 +105,13 @@ public without sharing class SalesDepartureHandoverBatch
         if (recordIds == null || recordIds.isEmpty()) {
             return 0;
         }
-        DateTime when = System.now();
+        DateTime handoverAt = System.now();
         List<Opportunity> moves = new List<Opportunity>();
         for (Id recId : recordIds) {
             Opportunity m = new Opportunity(Id = recId);
             m.OwnerId = newOwner;
             m.Handed_Over_From__c = previousOwner;
-            m.Handed_Over_On__c = when;
+            m.Handed_Over_On__c = handoverAt;
             m.Handover_Run__c = trailRow;
             moves.add(m);
         }
