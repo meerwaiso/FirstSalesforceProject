@@ -82,19 +82,27 @@ public class SalesDepartureHandoverFlsTest {
         return u;
     }
 
-    private static void addMappingRow(Id repId, Id managerId) {
-        DiscountApprovalManager__c row = new DiscountApprovalManager__c();
-        row.Rep__c = repId;
-        if (managerId != null) {
-            row.Manager__c = managerId;
+    // MIXED_DML: the mapping object is a setup object; the insert opens its own
+    // runAs region (the house's savepoint boundary, pattern SCRUM-410/418) so it
+    // never shares a transaction with PermissionSetAssignment or with the
+    // Account/Opportunity business DML.
+    private static void addMappingRow(Id repId, Id managerId, User acting) {
+        System.runAs(acting) {
+            DiscountApprovalManager__c row = new DiscountApprovalManager__c();
+            row.Rep__c = repId;
+            if (managerId != null) {
+                row.Manager__c = managerId;
+            }
+            insert row;
         }
-        insert row;
     }
 
-    private static void addFallbackRow(Id fallbackId) {
-        SalesHandoverFallback__c cfg = new SalesHandoverFallback__c();
-        cfg.Fallback_User__c = fallbackId;
-        insert cfg;
+    private static void addFallbackRow(Id fallbackId, User acting) {
+        System.runAs(acting) {
+            SalesHandoverFallback__c cfg = new SalesHandoverFallback__c();
+            cfg.Fallback_User__c = fallbackId;
+            insert cfg;
+        }
     }
 
     private static List<Account> seedAccounts(Id ownerId) {
@@ -172,7 +180,7 @@ public class SalesDepartureHandoverFlsTest {
 
         System.assert(SalesDepartureHandoverService.isSystemUser(ap.Id),
             'AC10: an org system user is never a sales person');
-        addMappingRow(salesPerson.Id, salesPerson.Id);
+        addMappingRow(salesPerson.Id, salesPerson.Id, ap);
         System.assert(!SalesDepartureHandoverService.isSystemUser(salesPerson.Id),
             'AC10 sanity: a sales person is no system user');
 
@@ -252,8 +260,8 @@ public class SalesDepartureHandoverFlsTest {
         User runner = mkRunner('runner');
         User departing = mkUser('departed');
         User brokenTarget = mkUser('stale');
-        addMappingRow(departing.Id, departing.Id);
-        addMappingRow(brokenTarget.Id, brokenTarget.Id);
+        addMappingRow(departing.Id, departing.Id, runner);
+        addMappingRow(brokenTarget.Id, brokenTarget.Id, runner);
         List<Account> mine = seedAccounts(departing.Id);
         seedOpportunities(mine[0].Id, departing.Id, 2, 0);
 
@@ -268,7 +276,7 @@ public class SalesDepartureHandoverFlsTest {
         update brokenTarget;
         departing.IsActive = false;
         update departing;
-        addFallbackRow(brokenTarget.Id);
+        addFallbackRow(brokenTarget.Id, runner);
         System.runAs(runner) {
             new SalesDepartureHandoverScheduler().execute(null);
         }
@@ -387,7 +395,7 @@ public class SalesDepartureHandoverFlsTest {
         User manager = mkUser('mgrw');
 
         // ---- the fixture while the person is still active.
-        addMappingRow(departed.Id, manager.Id);
+        addMappingRow(departed.Id, manager.Id, trailWriter);
         List<Account> mine = seedAccounts(departed.Id);
         seedOpportunities(mine[0].Id, departed.Id, 2, 0);
 

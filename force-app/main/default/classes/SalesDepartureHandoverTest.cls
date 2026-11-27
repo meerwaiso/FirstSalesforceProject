@@ -98,19 +98,27 @@ public class SalesDepartureHandoverTest {
         return u;
     }
 
-    private static void addMappingRow(Id repId, Id managerId) {
-        DiscountApprovalManager__c row = new DiscountApprovalManager__c();
-        row.Rep__c = repId;
-        if (managerId != null) {
-            row.Manager__c = managerId;
+    // MIXED_DML: the mapping object is a setup object; the insert opens its own
+    // runAs region (the house's savepoint boundary, pattern SCRUM-410/418) so it
+    // never shares a transaction with PermissionSetAssignment or with the
+    // Account/Opportunity business DML.
+    private static void addMappingRow(Id repId, Id managerId, User acting) {
+        System.runAs(acting) {
+            DiscountApprovalManager__c row = new DiscountApprovalManager__c();
+            row.Rep__c = repId;
+            if (managerId != null) {
+                row.Manager__c = managerId;
+            }
+            insert row;
         }
-        insert row;
     }
 
-    private static void addFallbackRow(Id fallbackId) {
-        SalesHandoverFallback__c cfg = new SalesHandoverFallback__c();
-        cfg.Fallback_User__c = fallbackId;
-        insert cfg;
+    private static void addFallbackRow(Id fallbackId, User acting) {
+        System.runAs(acting) {
+            SalesHandoverFallback__c cfg = new SalesHandoverFallback__c();
+            cfg.Fallback_User__c = fallbackId;
+            insert cfg;
+        }
     }
 
     private static List<Account> seedAccounts(Id ownerId, String tag) {
@@ -310,8 +318,8 @@ public class SalesDepartureHandoverTest {
         List<Account> departedAccounts = new List<Account>();
 
         // ---- ALL business DML of the FIXTURE inside one runAs of the SAME user.
+            addMappingRow(departing.Id, manager.Id, runner);
         System.runAs(runner) {
-            addMappingRow(departing.Id, manager.Id);
             departedAccounts = seedAccounts(departing.Id, 'dep');
             seedOpportunities(departedAccounts[0].Id, departing.Id, OPEN_OPPS, CLOSED_OPPS);
         }
@@ -509,8 +517,8 @@ public class SalesDepartureHandoverTest {
         User second = mkUser('c2');
         User third = mkUser('c3');
 
+            addMappingRow(first.Id, second.Id, runner);
         System.runAs(runner) {
-            addMappingRow(first.Id, second.Id);
             List<Account> seeds = seedAccounts(first.Id, 'c1');
             seedOpportunities(seeds[0].Id, first.Id, OPEN_OPPS, CLOSED_OPPS);
         }
@@ -525,6 +533,7 @@ public class SalesDepartureHandoverTest {
         new SalesDepartureHandoverScheduler().execute(null);
         Test.stopTest();
 
+            addMappingRow(second.Id, third.Id, runner);
         System.runAs(runner) {
             System.assertEquals(ACCOUNTS, countAccountsOwned(second.Id),
                 'AC9 hop 1: the 4 Customers reached B');
@@ -532,7 +541,6 @@ public class SalesDepartureHandoverTest {
                 'AC9 hop 1: nothing of A stays');
 
             // hop 2: the RECEIVER B is switched off as well, with its own row.
-            addMappingRow(second.Id, third.Id);
         }
 
         // AC11: the second IT action, then the move of the second run.
@@ -616,10 +624,10 @@ public class SalesDepartureHandoverTest {
         User pairA = mkUser('pa');
         User pairB = mkUser('pb');
         User fallback = mkUser('fb2');
+            addMappingRow(pairA.Id, pairB.Id, runner);
+            addMappingRow(pairB.Id, pairA.Id, runner);
+            addFallbackRow(fallback.Id, runner);
         System.runAs(runner) {
-            addMappingRow(pairA.Id, pairB.Id);
-            addMappingRow(pairB.Id, pairA.Id);
-            addFallbackRow(fallback.Id);
             List<Account> aRecs = seedAccounts(pairA.Id, 'pa');
             List<Account> bRecs = seedAccounts(pairB.Id, 'pb');
             seedOpportunities(aRecs[0].Id, pairA.Id, 1, 0);
@@ -697,8 +705,8 @@ public class SalesDepartureHandoverTest {
         Id rowId = null;
 
         // ---- the fixture: mapping row + Customers while the person is active.
+            addMappingRow(departing.Id, manager.Id, runner);
         System.runAs(runner) {
-            addMappingRow(departing.Id, manager.Id);
             List<Account> seeds = seedAccounts(departing.Id, 'cmp');
             for (Account s : seeds) {
                 accountIds.add(s.Id);
@@ -785,9 +793,9 @@ public class SalesDepartureHandoverTest {
         User mapped = mkUser('mp');
         User forgotten = mkUser('fg');
         User ownerless = mkUser('own');
+            addMappingRow(mapped.Id, null, runner);
         System.runAs(runner) {
             // AC4: the row EXISTS, the manager column is empty.
-            addMappingRow(mapped.Id, null);
             // AC12: `forgotten` has NO row at all - an entry mistake.
             List<Account> mappedAccounts = seedAccounts(mapped.Id, 'mp');
             seedOpportunities(mappedAccounts[0].Id, mapped.Id, 2, 1);
