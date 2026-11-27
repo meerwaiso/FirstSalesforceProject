@@ -406,17 +406,33 @@ measurements, not the review text, decide what changed.
 | `buildRow` loop variable is the Account | false — line 221 `Account ownerPerson = owner;`, reference read on that variable | unchanged |
 | Test failures were `MIXED_DML_OPERATION` ×5 | confirmed, with names: `SalesDepartureHandoverTest.testAC1…` line 35 (`DiscountApprovalManager__c` vs `PermissionSetAssignment`) and `SalesDepartureHandoverFlsTest.testAC11…` line 61 (`User` vs `Account`) | both classes restructured per house rule 3 (setup DML first, business DML in one `runAs` block, one `runAs` user for all later DML) |
 
-**Org blocker found while running the restructured classes (measured twice, two
-routes):** Test-Org refuses to create a Standard User —
-`System.DmlException: Insert failed … LICENSE_LIMIT_EXCEEDED, License Limit
-Exceeded`. A `SELECT … FROM User` in the same run returns **8 users, all
-active, all system users** (`MOsma`, `integ`, `autoproc`, `autocln`, `sec`,
-`Chatter`, `platint`, `devo`), so no user license is free. Apex cannot free one
-either: `delete <List<User>>` is refused at compile time in anonymous mode
-(„DML operation Delete not allowed on List<User>“). Consequence: **no SCRUM-483
-test method can run right now**, since all of them create fixture users — the
-same applies to CI's Apex Test Run. Freeing the licenses is a Setup/user action,
-not an Apex action, and it is not this ticket's code.
+**License finding, corrected the same round (measured, two paths):** an
+anonymous `sf apex run` probe cannot create a Standard User —
+`LICENSE_LIMIT_EXCEEDED`, while the same org read shows **8 users, all
+system users**. The *test* path is not affected: `sf project deploy validate`
+with `RunSpecifiedTests` ran **6 tests, 6 passing**, and those methods create
+fixture users. So the license limit blocks anonymous probes only, and a probe
+that needs no user (or reuses a fixture-free shape) is the way to measure.
+Apex still cannot delete users (compile refusal in anonymous mode), which is
+why the test classes leave their fixture users behind as house does.
+
+**What can make a move fail (measured):** the org's two Account Validation
+Rules are `LockReason_PflichtBeiGesperrt` =
+`AND(Is_Locked__c, ISBLANK(Lock_Reason__c))` and
+`Wartungsvertrag_End_Before_Start` — both look only at their own fields, so an
+ownership-only save cannot put a record into their violating end state, and a
+record already in that state cannot be created (the same rule refuses the
+create). The refusal is reachable on an *end-state* save (measured: clearing
+`Lock_Reason__c` on a locked Account throws
+FIELD_CUSTOM_VALIDATION_EXCEPTION), so the compensation is tested through its
+own entry point with that reason, and the trigger is stated as not reproducible
+by fixture — AC11 tier 1 measures the mechanics, not the trigger.
+
+**Followup fields (measured):** `sf sobject describe` lists **4** `Followup_*`
+fields, all on `Opportunity` (`Followup_Required__c`, `Followup_Status__c`,
+`Next_Followup_Date__c`, `Overdue_Followup_Count__c`), **none on `Account`** —
+the AC6 snapshot asserts all four on the deal side plus the anchor, risk and
+SCRUM-414 overdue fields, and the derived Account set on the Customer side.
 
 **Delay measurement (AC1/AC7, Tester's instrument):** compare `CronTrigger.nextRun`
 (read from the org's `CronTrigger` entry for `SalesDepartureHandoverScheduler.run()`)

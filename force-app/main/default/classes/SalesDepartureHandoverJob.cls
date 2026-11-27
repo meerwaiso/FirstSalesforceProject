@@ -114,9 +114,19 @@ public without sharing class SalesDepartureHandoverJob implements Queueable {
         update row;
     }
 
-    private static void handleMoveFailure(Id rowId, List<Id> accountIds,
-                                          List<Id> openDealIds, Id previousOwner,
-                                          String germanReason) {
+    /**
+     * Tier 2 entry. PUBLIC on purpose: the refused save that reaches this from
+     * `execute` cannot be produced by a fixture whose only change is the owner
+     * (measured — both Account Validation Rules in the org look only at their own
+     * fields, and a record already in the violating end state cannot be created,
+     * the same rule refuses the create). The Tester drives this entry point with
+     * the refusal the org really produces, so the compensation is measured, not
+     * assumed. Production behaviour is unchanged: `execute` still calls it from
+     * the catch.
+     */
+    public static void handleMoveFailure(Id rowId, List<Id> accountIds,
+                                         List<Id> openDealIds, Id previousOwner,
+                                         String germanReason) {
         // The verdict is written BEFORE the compensation is attempted: when the
         // revert is refused as well (tier 3), the row still has to say Failed —
         // otherwise the half-moved state would be invisible (AC11).

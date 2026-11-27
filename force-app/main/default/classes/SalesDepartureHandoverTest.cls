@@ -159,7 +159,7 @@ public class SalesDepartureHandoverTest {
         Contact contact = new Contact(
             LastName = 'SCRUM483 Contact',
             AccountId = accountId,
-            BirthDate = DateTime.now(),
+            BirthDate = Date.today(),
             OwnerId = ownerId
         );
         insert contact;
@@ -167,7 +167,7 @@ public class SalesDepartureHandoverTest {
             Subject = 'SCRUM483 Case',
             Status = 'New',
             Priority = 'Medium',
-            Accounts = accountId
+            AccountId = accountId
         );
         workItem.OwnerId = ownerId;
         insert workItem;
@@ -178,7 +178,7 @@ public class SalesDepartureHandoverTest {
         Map<Id, String> snap = new Map<Id, String>();
         for (Opportunity o : [
             SELECT Id, Name, OwnerId, AccountId, Description, Amount, CloseDate,
-                   IsClosed, ClosedDate, StageName,
+                   IsClosed, StageName,
                    Last_User_Change__c, Inactive_Days__c, Is_Overdue__c,
                    Last_Risk_Evaluation__c, Risk_Level__c, Risk_Reason__c,
                    Last_Customer_Interaction__c,
@@ -194,8 +194,18 @@ public class SalesDepartureHandoverTest {
 
     private static Map<Id, String> snapshotCustomers(Id ownerId) {
         Map<Id, String> snap = new Map<Id, String>();
-        for (Account a : [SELECT Id, Name, OwnerId, Description FROM Account
-                          WHERE OwnerId = :ownerId]) {
+        for (Account a : [SELECT Id, Name, OwnerId, Description,
+                          Open_Opportunity_Count__c, Open_Opportunity_Value__c,
+                          Open_Value_Drop_Last_Month__c, Customer_Since_Days__c,
+                          Is_Key_Account__c, Company_Size__c, Is_Locked__c,
+                          Lock_Reason__c, Wartungsvertrag_Active__c,
+                          Wartungsvertrag_Ende_Tage__c,
+                          Wartungsvertrag_Renewal_Soon__c,
+                          Wartungsvertrag_Status__c, Satisfaction_Anzahl__c,
+                          Satisfaction_Durchdurch__c, Contacts_Left_Count__c,
+                          Contacts_Without_Mark__c, Last_Contact_Left_Date__c,
+                          Absence_In_Window__c, Absence_Ohne_Deputy__c
+                          FROM Account WHERE OwnerId = :ownerId]) {
             snap.put(a.Id, customerStamp(a));
         }
         return snap;
@@ -203,7 +213,7 @@ public class SalesDepartureHandoverTest {
 
     private static String dealStamp(Opportunity o) {
         return o.Name + '|' + o.Amount + '|' + o.CloseDate + '|' + o.StageName
-            + '|' + o.IsClosed + '|' + o.ClosedDate + '|' + o.AccountId
+            + '|' + o.IsClosed + '|' + o.AccountId
             + '|' + (o.Description == null ? '' : o.Description)
             + '|' + o.Last_User_Change__c + '|' + o.Inactive_Days__c + '|' + o.Is_Overdue__c
             + '|' + o.Last_Risk_Evaluation__c + '|' + o.Risk_Level__c + '|' + o.Risk_Reason__c
@@ -213,8 +223,25 @@ public class SalesDepartureHandoverTest {
             + '|' + o.Next_Followup_Date__c + '|' + o.Overdue_Followup_Count__c;
     }
 
+    /**
+     * AC6 snapshot of a Customer: every field the org derives or stores besides
+     * the ownership must survive the move. Measured with
+     * `sf sobject describe -s Account -o Test-Org`: the org has 4 Followup_*
+     * fields, all on Opportunity, none on Account, so the Account side of AC6
+     * is this derived set plus the lock and the maintenance contract.
+     */
     private static String customerStamp(Account a) {
-        return a.Name + '|' + (a.Description == null ? '' : a.Description);
+        return a.Name + '|' + (a.Description == null ? '' : a.Description)
+            + '|' + a.Open_Opportunity_Count__c + '|' + a.Open_Opportunity_Value__c
+            + '|' + a.Open_Value_Drop_Last_Month__c + '|' + a.Customer_Since_Days__c
+            + '|' + a.Is_Key_Account__c + '|' + a.Company_Size__c
+            + '|' + a.Is_Locked__c + '|' + (a.Lock_Reason__c == null ? '' : a.Lock_Reason__c)
+            + '|' + a.Wartungsvertrag_Active__c + '|' + a.Wartungsvertrag_Ende_Tage__c
+            + '|' + a.Wartungsvertrag_Renewal_Soon__c + '|' + a.Wartungsvertrag_Status__c
+            + '|' + a.Satisfaction_Anzahl__c + '|' + a.Satisfaction_Durchdurch__c
+            + '|' + a.Contacts_Left_Count__c + '|' + a.Contacts_Without_Mark__c
+            + '|' + a.Last_Contact_Left_Date__c
+            + '|' + a.Absence_In_Window__c + '|' + a.Absence_Ohne_Deputy__c;
     }
 
     private static Integer countAccountsOwned(Id ownerId) {
@@ -248,10 +275,14 @@ public class SalesDepartureHandoverTest {
     }
 
     /** AC6: emails and tasks that are about the fixture Customer. */
-    private static Integer countEmailsAbout(Id accountId) {
-        return (Integer) [
-            SELECT COUNT(Id) cnt FROM EmailMessage WHERE AccountId = :accountId
-        ][0].get('cnt');
+    /**
+     * AC6: no email may be sent. EmailMessage has no AccountId (measured with
+     * `sf sobject describe -s EmailMessage`: ParentId / RelatedToId only), so the
+     * falsifiable check is the org-wide row count — a handover that sends nothing
+     * cannot change it.
+     */
+    private static Integer countEmailMessages() {
+        return (Integer) [SELECT COUNT(Id) cnt FROM EmailMessage][0].get('cnt');
     }
 
     private static Integer countTasksAbout(Id accountId) {
@@ -269,29 +300,45 @@ public class SalesDepartureHandoverTest {
         User runner = mkRunner('run');
         User departing = mkUser('dep');
         User manager = mkUser('mgr');
-        // AC11: the deactivation is the IT action. It runs BEFORE any business
-        // DML, and nothing below can undo it.
-        departing.IsActive = false;
-        update departing;
+        // The Accounts of the departed person are handed to the phase after the
+        // runAs block: Apex keeps block locals, and both the Contact seeding and
+        // the switch-off have to run outside System.runAs (measured:
+        // INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY for a runAs user updating
+        // another user; ContactLeftGuardTrigger line 32 / SCRUM453ContactLeftHandler
+        // recompute line 133 for a Contact seeded under System.runAs).
+        List<Account> departedAccounts = new List<Account>();
 
-        // ---- ALL business DML inside one runAs of the SAME user.
+        // ---- ALL business DML of the FIXTURE inside one runAs of the SAME user.
         System.runAs(runner) {
             addMappingRow(departing.Id, manager.Id);
-            List<Account> accountRecords = seedAccounts(departing.Id, 'dep');
-            Account movedAccount = accountRecords[0];
-            seedOpportunities(movedAccount.Id, departing.Id, OPEN_OPPS, CLOSED_OPPS);
-            seedContactAndCase(movedAccount.Id, departing.Id);
+            departedAccounts = seedAccounts(departing.Id, 'dep');
+            seedOpportunities(departedAccounts[0].Id, departing.Id, OPEN_OPPS, CLOSED_OPPS);
+        }
 
-            Map<Id, String> customerBefore = snapshotCustomers(departing.Id);
-            Map<Id, String> dealBefore = snapshotDeals(departing.Id);
-            Integer contactsBefore = countContactsOwned(departing.Id);
-            Integer casesBefore = countCasesOwned(departing.Id);
-            Integer emailsBefore = countEmailsAbout(movedAccount.Id);
-            Integer tasksBefore = countTasksAbout(movedAccount.Id);
+        // Outside the runAs: the org's Contact trigger (SCRUM-453) recomputes the
+        // Account aggregates after insert, which needs FLS the SCRUM-483 bundle
+        // does not carry — measured as CANNOT_INSERT_UPDATE_ACTIVATE_ENTITY under
+        // System.runAs, so the Contact and the Case are seeded in System context.
+        Account fixtureCustomer = departedAccounts[0];
+        seedContactAndCase(fixtureCustomer.Id, departing.Id);
 
-            Test.startTest();
-            new SalesDepartureHandoverScheduler().execute(null);
-            Test.stopTest();
+        Map<Id, String> customerBefore = snapshotCustomers(departing.Id);
+        Map<Id, String> dealBefore = snapshotDeals(departing.Id);
+        Integer contactsBefore = countContactsOwned(departing.Id);
+        Integer casesBefore = countCasesOwned(departing.Id);
+        Integer emailsBefore = countEmailMessages();
+        Integer tasksBefore = countTasksAbout(fixtureCustomer.Id);
+
+        // AC11: the IT action is the deactivation, and it gets a transaction of
+        // its own: setup DML (the User) may not follow business DML in one
+        // transaction (measured MIXED_DML_OPERATION), and Apex refuses to create
+        // a record for an already inactive owner (measured INACTIVE_OWNER_OR_USER),
+        // so the switch-off runs after the seeds and before the handover.
+        Test.startTest();
+        departing.IsActive = false;
+        update departing;
+        new SalesDepartureHandoverScheduler().execute(null);
+        Test.stopTest();
 
             System.assertEquals(ACCOUNTS, customerBefore.size(),
                 'fixture: the departed person owns 4 Customers before the run');
@@ -346,6 +393,7 @@ public class SalesDepartureHandoverTest {
                 FROM Account WHERE OwnerId = :manager.Id
             ];
             System.assertEquals(ACCOUNTS, moved.size(), 'AC9: the manager sees 4 Customers');
+            Map<Id, String> afterValues = snapshotCustomers(manager.Id);
             for (Account a : moved) {
                 System.assertEquals(departing.Id, a.Handed_Over_From__c,
                     'AC9: the Customer names the person it came from');
@@ -355,14 +403,14 @@ public class SalesDepartureHandoverTest {
                     'AC8: the provenance points at this run');
                 System.assert(customerBefore.containsKey(a.Id),
                     'AC6: this Customer was in the before-snapshot');
-                System.assertEquals(customerBefore.get(a.Id), customerStamp(a),
+                System.assertEquals(customerBefore.get(a.Id), afterValues.get(a.Id),
                     'AC6: only Owner and provenance changed on the Customer');
             }
 
             // AC6: the extended snapshot - nothing but Owner + provenance changed.
             List<Opportunity> movedDeals = [
                 SELECT Id, Name, OwnerId, AccountId, Description, Amount, CloseDate,
-                       IsClosed, ClosedDate, StageName,
+                       IsClosed, StageName,
                        Last_User_Change__c, Inactive_Days__c, Is_Overdue__c,
                        Last_Risk_Evaluation__c, Risk_Level__c, Risk_Reason__c,
                        Last_Customer_Interaction__c,
@@ -388,7 +436,7 @@ public class SalesDepartureHandoverTest {
             // AC5/AC6: the kept deals keep owner, content AND no provenance.
             List<Opportunity> kept = [
                 SELECT Id, Name, OwnerId, AccountId, Description, Amount, CloseDate,
-                       IsClosed, ClosedDate, StageName,
+                       IsClosed, StageName,
                        Last_User_Change__c, Inactive_Days__c, Is_Overdue__c,
                        Last_Risk_Evaluation__c, Risk_Level__c, Risk_Reason__c,
                        Last_Customer_Interaction__c,
@@ -420,26 +468,26 @@ public class SalesDepartureHandoverTest {
                 SELECT Id, OwnerId, AccountId FROM Contact WHERE OwnerId = :departing.Id
             ];
             System.assertEquals(1, contacts.size(), 'AC6: exactly one fixture Contact');
-            System.assertEquals(movedAccount.Id, contacts[0].AccountId,
+            System.assertEquals(fixtureCustomer.Id, contacts[0].AccountId,
                 'AC6: the Contact hangs under the Customer that moved, and it stayed');
             List<Case> cases = [
-                SELECT Id, OwnerId, Accounts FROM Case WHERE OwnerId = :departing.Id
+                SELECT Id, OwnerId, AccountId FROM Case WHERE OwnerId = :departing.Id
             ];
             System.assertEquals(1, cases.size(), 'AC6: exactly one fixture Case');
-            System.assertEquals(movedAccount.Id, cases[0].Accounts,
+            System.assertEquals(fixtureCustomer.Id, cases[0].AccountId,
                 'AC6: the Case hangs under the Customer that moved, and it stayed');
 
             // AC6: no emails, no tasks about that Customer.
-            System.assertEquals(emailsBefore, countEmailsAbout(movedAccount.Id),
+            System.assertEquals(emailsBefore, countEmailMessages(),
                 'AC6: the handover sent no email to the customer');
-            System.assertEquals(tasksBefore, countTasksAbout(movedAccount.Id),
+            System.assertEquals(tasksBefore, countTasksAbout(fixtureCustomer.Id),
                 'AC6: the handover created no task');
             System.assertEquals(false, OpportunityRiskService.systemWriteInProgress,
                 'ADR-6: the system-write flag is reset after the run, not left stuck');
 
             // AC8: idempotency - a second run over the same state touches nothing.
             new SalesDepartureHandoverScheduler().execute(null);
-        }
+
         System.assertEquals(1, countRowsFor(departing.Id),
             'AC8: the second run added no row (house SCRUM-388/417)');
         System.assertEquals(ACCOUNTS, countAccountsOwned(manager.Id),
@@ -452,75 +500,98 @@ public class SalesDepartureHandoverTest {
     // =====================================================================
     @isTest
     static void handoverChain_secondHop_recoversEveryHop() {
-        // SETUP DML first: the receiver of hop 1 is deactivated as well, plus the
-        // person who receives everything now.
-        User departed = [SELECT Id FROM User WHERE Alias = 's483dep' LIMIT 1];
-        User manager = [SELECT Id FROM User WHERE Alias = 's483mgr' LIMIT 1];
-        User runner = [SELECT Id FROM User WHERE Alias = 's483run' LIMIT 1];
-        System.assert(departed != null && manager != null && runner != null,
-            'precondition: the T1 fixture users exist');
-        System.assertEquals(false, departed.IsActive, 'T1 deactivated the first person');
-        User secondManager = mkUser('mgr2');
-        manager.IsActive = false;
-        update manager;
+        // AC9: a handover that hands over a second time has to be recoverable as
+        // well — A -> B -> C, two rows that chain, and the record names the LAST
+        // owner it came from. Self-contained fixture (no other method's state).
+        User runner = mkRunner('chn');
+        User first = mkUser('c1');
+        User second = mkUser('c2');
+        User third = mkUser('c3');
 
         System.runAs(runner) {
-            addMappingRow(manager.Id, secondManager.Id);
-            new SalesDepartureHandoverScheduler().execute(null);
+            addMappingRow(first.Id, second.Id);
+            List<Account> seeds = seedAccounts(first.Id, 'c1');
+            seedOpportunities(seeds[0].Id, first.Id, OPEN_OPPS, CLOSED_OPPS);
 
-            // The Customers the first handover moved are now owned by C.
+            // hop 1: A is off, the mapping sends everything to B.
+        }
+
+        // AC11: the IT action, in System context and in its own transaction —
+        // measured: INACTIVE_OWNER_OR_USER (Apex refuses to seed under an
+        // inactive owner) and INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY
+        // (a System.runAs user may not switch off another user).
+        Test.startTest();
+        first.IsActive = false;
+        update first;
+        new SalesDepartureHandoverScheduler().execute(null);
+        Test.stopTest();
+
+        System.runAs(runner) {
+            System.assertEquals(ACCOUNTS, countAccountsOwned(second.Id),
+                'AC9 hop 1: the 4 Customers reached B');
+            System.assertEquals(0, countAccountsOwned(first.Id),
+                'AC9 hop 1: nothing of A stays');
+
+            // hop 2: the RECEIVER B is switched off as well, with its own row.
+            addMappingRow(second.Id, third.Id);
+        }
+
+        // AC11: the IT action, in System context and in its own transaction —
+        // measured: INACTIVE_OWNER_OR_USER (Apex refuses to seed under an
+        // inactive owner) and INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY
+        // (a System.runAs user may not switch off another user).
+        second.IsActive = false;
+        update second;
+        new SalesDepartureHandoverScheduler().execute(null);
+
+        System.runAs(runner) {
+
             List<Account> twice = [
-                SELECT Id, Name, OwnerId, Handed_Over_From__c, Handed_Over_On__c,
-                       Handover_Run__c
-                FROM Account WHERE OwnerId = :secondManager.Id
+                SELECT Id, Name, OwnerId, Description, Handed_Over_From__c,
+                       Handed_Over_On__c, Handover_Run__c
+                FROM Account WHERE OwnerId = :third.Id
             ];
             System.assertEquals(ACCOUNTS, twice.size(),
-                'AC9: all 4 Customers moved a second time to the new manager');
+                'AC9: all 4 Customers moved a second time to C');
             for (Account a : twice) {
-                System.assertEquals(manager.Id, a.Handed_Over_From__c,
-                    'AC9: the record names the LAST owner it came from');
-                System.assertEquals(secondManager.Id, a.OwnerId,
-                    'AC9: the record is owned by C now');
+                System.assertEquals(second.Id, a.Handed_Over_From__c,
+                    'AC9: the record names the LAST owner it came from, not A');
+                System.assertNotEquals(null, a.Handed_Over_On__c,
+                    'AC9: the second hop says when');
             }
-            System.assertEquals(0, countAccountsOwned(manager.Id),
-                'AC1: nothing of the second departure stays');
+            System.assertEquals(0, countAccountsOwned(second.Id),
+                'AC1: nothing of the second departure stays at B');
+            System.assertEquals(0, countAccountsOwned(first.Id),
+                'AC1: nothing stayed at A either');
 
-            // Both hops are recoverable: two rows, From/To overlapping.
             List<SalesDepartureHandover__c> hops = [
                 SELECT Id, From_User__c, To_User__c, Target_Rule__c, Status__c,
                        Accounts_Handed_Over__c, Handed_Over_At__c
                 FROM SalesDepartureHandover__c
-                WHERE From_User__c IN :new Set<Id>{ departed.Id, manager.Id }
+                WHERE From_User__c IN :new Set<Id>{ first.Id, second.Id }
             ];
             System.assertEquals(2, hops.size(), 'AC9: one trail row per departure');
             SalesDepartureHandover__c firstHop = null;
             SalesDepartureHandover__c secondHop = null;
             for (SalesDepartureHandover__c r : hops) {
-                if (r.From_User__c == departed.Id) {
-                    firstHop = r;
-                }
-                if (r.From_User__c == manager.Id) {
-                    secondHop = r;
-                }
+                if (r.From_User__c == first.Id) { firstHop = r; }
+                if (r.From_User__c == second.Id) { secondHop = r; }
             }
             System.assert(firstHop != null && secondHop != null,
                 'AC9: both departures are recorded');
-            System.assertEquals(manager.Id, firstHop.To_User__c, 'AC9: hop 1 ended at B');
-            System.assertEquals(secondManager.Id, secondHop.To_User__c, 'AC9: hop 2 ended at C');
+            System.assert(firstHop != secondHop, 'AC9: the two hops are two rows');
+            System.assertEquals(second.Id, firstHop.To_User__c, 'AC9: hop 1 ended at B');
+            System.assertEquals(third.Id, secondHop.To_User__c, 'AC9: hop 2 ended at C');
             System.assertEquals(ACCOUNTS, firstHop.Accounts_Handed_Over__c, 'AC9: hop 1 moved 4');
             System.assertEquals(ACCOUNTS, secondHop.Accounts_Handed_Over__c, 'AC9: hop 2 moved 4');
             System.assertEquals('Manager', firstHop.Target_Rule__c, 'AC2: hop 1 used the mapping');
             System.assertEquals('Manager', secondHop.Target_Rule__c, 'AC2: hop 2 used the mapping');
             System.assertEquals('Done', secondHop.Status__c, 'AC11: the second hop completed');
-            System.assert(firstHop != secondHop, 'AC9: the two hops are two separate rows');
-            // The chain A -> B -> C is reconstructable from the rows alone.
             System.assertEquals(secondHop.From_User__c, firstHop.To_User__c,
-                'AC9: the hops chain, B appears as receiver and as giver');
+                'AC9: the hops chain, B is receiver and giver');
         }
     }
 
-    // =====================================================================
-    // T2 - AC7: the circular mapping the org really carries, both persons off.
     // =====================================================================
     @isTest
     static void circularPair_bothPersonsReceiveTheFallbackPerson() {
@@ -528,10 +599,6 @@ public class SalesDepartureHandoverTest {
         User pairA = mkUser('pa');
         User pairB = mkUser('pb');
         User fallback = mkUser('fb2');
-        pairA.IsActive = false;
-        pairB.IsActive = false;
-        update new List<User>{ pairA, pairB };
-
         System.runAs(runner) {
             addMappingRow(pairA.Id, pairB.Id);
             addMappingRow(pairB.Id, pairA.Id);
@@ -540,10 +607,25 @@ public class SalesDepartureHandoverTest {
             List<Account> bRecs = seedAccounts(pairB.Id, 'pb');
             seedOpportunities(aRecs[0].Id, pairA.Id, 1, 0);
             seedOpportunities(bRecs[0].Id, pairB.Id, 1, 0);
+            // AC11: the IT action runs AFTER the fixture exists — Apex
+            // refuses to create a record for an already inactive owner
+            // (measured: INACTIVE_OWNER_OR_USER), so the fixture is seeded
+            // while the person is still active and switched off here.
 
-            Test.startTest();
-            new SalesDepartureHandoverScheduler().execute(null);
-            Test.stopTest();
+        }
+
+        // AC11: the IT action, in System context and in its own transaction —
+        // measured: INACTIVE_OWNER_OR_USER (Apex refuses to seed under an
+        // inactive owner) and INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY
+        // (a System.runAs user may not switch off another user).
+        Test.startTest();
+        pairA.IsActive = false;
+        pairB.IsActive = false;
+        update new List<User>{ pairA, pairB };
+        new SalesDepartureHandoverScheduler().execute(null);
+        Test.stopTest();
+
+        System.runAs(runner) {
 
             System.assertEquals(0, countAccountsOwned(pairA.Id), 'AC7: nothing stays at person A');
             System.assertEquals(0, countAccountsOwned(pairB.Id), 'AC7: nothing stays at person B');
@@ -574,16 +656,99 @@ public class SalesDepartureHandoverTest {
     //      row at all.
     // =====================================================================
     @isTest
+    /**
+     * AC11 tier 1 · a refused move is compensated, and the row says Failed.
+     * What the fixture cannot do is PRODUCE the refusal: the org's two Account
+     * Validation Rules look only at their own fields
+     * (`LockReason_PflichtBeiGesperrt` = AND(Is_Locked__c, ISBLANK(Lock_Reason__c))
+     * and `Wartungsvertrag_End_Before_Start`), and a record already in the
+     * violating end state cannot be created — measured: the same rule refuses the
+     * create. The refusal itself is measured separately (a save that leaves a
+     * locked Account without a Lock_Reason__c throws
+     * FIELD_CUSTOM_VALIDATION_EXCEPTION on the end-state save), so this method
+     * measures the mechanics: the old owners come back, the provenance is cleared,
+     * and the trail row says Failed in German.
+     */
+    static void moveRefused_compensationRestoresOwnersAndRowSaysFailed() {
+        // ---- SETUP DML first, System context (house rule 3).
+        User runner = mkRunner('cmp');
+        User departing = mkUser('cmpd');
+        User manager = mkUser('cmpm');
+        // the two locals the phase after the runAs still needs: Apex keeps
+        // block locals, and the IT action runs outside the block.
+        List<Id> accountIds = new List<Id>();
+        Id rowId = null;
+
+        // ---- the fixture: mapping row + Customers while the person is active.
+        System.runAs(runner) {
+            addMappingRow(departing.Id, manager.Id);
+            List<Account> seeds = seedAccounts(departing.Id, 'cmp');
+            for (Account s : seeds) {
+                accountIds.add(s.Id);
+            }
+        }
+
+        // AC11: the IT action AFTER the fixture — measured INACTIVE_OWNER_OR_USER
+        // (Apex refuses to seed under an inactive owner).
+        Test.startTest();
+        departing.IsActive = false;
+        update departing;
+        Test.stopTest();
+
+        // The refused move and its compensation, in the runner's context.
+        System.runAs(runner) {
+            List<Id> noDealIds = new List<Id>();
+
+            rowId = SalesDepartureHandoverService.logRow(
+                departing.Id, manager.Id, 'Manager', 'IsActive_false',
+                SalesDepartureHandoverService.ST_DONE, null, null);
+
+            // The move the run would have made, then the tier-2 entry with the
+            // refusal the org produces.
+            SalesDepartureHandoverBatch.moveAccountsChunk(
+                accountIds, departing.Id, manager.Id, rowId);
+            System.assertEquals(ACCOUNTS, countAccountsOwned(manager.Id),
+                'fixture: the 4 Customers reached the manager before the refusal');
+
+            SalesDepartureHandoverJob.handleMoveFailure(
+                rowId, accountIds, noDealIds, departing.Id,
+                'FIELD_CUSTOM_VALIDATION_EXCEPTION, Bitte tragen Sie den Sperrgrund '
+                + 'in das Feld \u201eSperrgrund\u201c in, w\u00e4hrend der Account '
+                + 'gesperrt ist');
+
+            List<Account> back = [SELECT Id, OwnerId, Handed_Over_From__c,
+                                  Handed_Over_On__c, Handover_Run__c
+                                  FROM Account WHERE OwnerId IN
+                                  :new Set<Id>{ departing.Id, manager.Id }];
+            System.assertEquals(ACCOUNTS, back.size(),
+                'AC11 tier 1: all 4 Customers are back where they were');
+            for (Account a : back) {
+                System.assertEquals(departing.Id, a.OwnerId,
+                    'AC11 tier 1: the compensation restored the departed person');
+                System.assertEquals(null, a.Handed_Over_From__c,
+                    'AC11 tier 1: the provenance of the refused move is cleared');
+                System.assertEquals(null, a.Handover_Run__c,
+                    'AC11 tier 1: no pointer to a refused run stays');
+            }
+            SalesDepartureHandover__c row = [SELECT Id, Status__c, Error_Detail__c
+                                            FROM SalesDepartureHandover__c
+                                            WHERE Id = :rowId LIMIT 1][0];
+            System.assertEquals('Failed', row.Status__c,
+                'AC11 tier 1: the row says Failed, not Done');
+            System.assert(String.valueOf(row.Error_Detail__c).contains('Sperrgrund'),
+                'AC11 tier 1: the row carries the German reason, not a system log');
+            System.assertEquals(ACCOUNTS, countAccountsOwned(departing.Id),
+                'AC11 tier 1: nothing is half-moved afterwards');
+            System.assertEquals(0, countAccountsOwned(manager.Id),
+                'AC11 tier 1: nothing stayed at the intended receiver');
+        }
+    }
+
     static void noManagerNoFallback_and_missingMappingRow_stayBlockedAndVisible() {
         User runner = mkRunner('run3');
         User mapped = mkUser('mp');
         User forgotten = mkUser('fg');
         User ownerless = mkUser('own');
-        mapped.IsActive = false;
-        forgotten.IsActive = false;
-        ownerless.IsActive = false;
-        update new List<User>{ mapped, forgotten, ownerless };
-
         System.runAs(runner) {
             // AC4: the row EXISTS, the manager column is empty.
             addMappingRow(mapped.Id, null);
@@ -592,10 +757,26 @@ public class SalesDepartureHandoverTest {
             seedOpportunities(mappedAccounts[0].Id, mapped.Id, 2, 1);
             List<Account> forgottenAccounts = seedAccounts(forgotten.Id, 'fg');
             seedOpportunities(forgottenAccounts[0].Id, forgotten.Id, 2, 0);
+            // AC11: the IT action runs AFTER the fixture exists — Apex
+            // refuses to create a record for an already inactive owner
+            // (measured: INACTIVE_OWNER_OR_USER), so the fixture is seeded
+            // while the person is still active and switched off here.
 
-            Test.startTest();
-            new SalesDepartureHandoverScheduler().execute(null);
-            Test.stopTest();
+        }
+
+        // AC11: the IT action, in System context and in its own transaction —
+        // measured: INACTIVE_OWNER_OR_USER (Apex refuses to seed under an
+        // inactive owner) and INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY
+        // (a System.runAs user may not switch off another user).
+        Test.startTest();
+        mapped.IsActive = false;
+        forgotten.IsActive = false;
+        ownerless.IsActive = false;
+        update new List<User>{ mapped, forgotten, ownerless };
+        new SalesDepartureHandoverScheduler().execute(null);
+        Test.stopTest();
+
+        System.runAs(runner) {
 
             // nothing moved
             System.assertEquals(ACCOUNTS, countAccountsOwned(mapped.Id),

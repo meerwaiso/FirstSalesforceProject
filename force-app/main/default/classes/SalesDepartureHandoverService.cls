@@ -63,7 +63,10 @@ public without sharing class SalesDepartureHandoverService {
     private static Map<Id, Id> mappedManager;
     private static Set<Id> salesRepIds;
     private static Set<Id> deactivatedThisRun;
-    private static Set<String> loggedKeys;
+    // Initialised at declaration: a test may call logRow() without a preceding
+    // plan(), and a static Set that is only filled inside plan() is null there
+    // (measured: NullPointerException at SalesDepartureHandoverService line 269).
+    private static Set<String> loggedKeys = new Set<String>();
     private static Id fallbackUserId;
 
     // --- Result of the last resolveTarget (rule + info, see below) -----------
