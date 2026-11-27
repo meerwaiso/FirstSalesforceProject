@@ -98,27 +98,24 @@ public class SalesDepartureHandoverTest {
         return u;
     }
 
-    // MIXED_DML: the mapping object is a setup object; the insert opens its own
-    // runAs region (the house's savepoint boundary, pattern SCRUM-410/418) so it
-    // never shares a transaction with PermissionSetAssignment or with the
-    // Account/Opportunity business DML.
-    private static void addMappingRow(Id repId, Id managerId, User acting) {
-        System.runAs(acting) {
-            DiscountApprovalManager__c row = new DiscountApprovalManager__c();
-            row.Rep__c = repId;
-            if (managerId != null) {
-                row.Manager__c = managerId;
-            }
-            insert row;
+    // MIXED_DML (measured 2026-11-27, gate scope): DiscountApprovalManager__c is
+    // a SETUP object, PermissionSetAssignment and Account are not. A setup insert
+    // may not follow a non-setup operation in one transaction, so every mapping
+    // insert has to come before the PermissionSetAssignment grants and before any
+    // Account/Opportunity DML.
+    private static void addMappingRow(Id repId, Id managerId) {
+        DiscountApprovalManager__c row = new DiscountApprovalManager__c();
+        row.Rep__c = repId;
+        if (managerId != null) {
+            row.Manager__c = managerId;
         }
+        insert row;
     }
 
-    private static void addFallbackRow(Id fallbackId, User acting) {
-        System.runAs(acting) {
-            SalesHandoverFallback__c cfg = new SalesHandoverFallback__c();
-            cfg.Fallback_User__c = fallbackId;
-            insert cfg;
-        }
+    private static void addFallbackRow(Id fallbackId) {
+        SalesHandoverFallback__c cfg = new SalesHandoverFallback__c();
+        cfg.Fallback_User__c = fallbackId;
+        insert cfg;
     }
 
     private static List<Account> seedAccounts(Id ownerId, String tag) {
@@ -306,9 +303,12 @@ public class SalesDepartureHandoverTest {
     @isTest
     static void departedSalesPerson_movesCustomersAndOpenDeals_closedStay() {
         // ---- SETUP DML FIRST (User + PermissionSetAssignment), System context.
-        User runner = mkRunner('run');
         User departing = mkUser('dep');
         User manager = mkUser('mgr');
+        // SETUP FIRST (house rule, measured in the gate scope): the mapping row is
+        // setup DML and must precede the PermissionSetAssignment grants inside mkRunner.
+        addMappingRow(departing.Id, manager.Id);
+        User runner = mkRunner('run');
         // The Accounts of the departed person are handed to the phase after the
         // runAs block: Apex keeps block locals, and both the Contact seeding and
         // the switch-off have to run outside System.runAs (measured:
@@ -318,7 +318,6 @@ public class SalesDepartureHandoverTest {
         List<Account> departedAccounts = new List<Account>();
 
         // ---- ALL business DML of the FIXTURE inside one runAs of the SAME user.
-            addMappingRow(departing.Id, manager.Id, runner);
         System.runAs(runner) {
             departedAccounts = seedAccounts(departing.Id, 'dep');
             seedOpportunities(departedAccounts[0].Id, departing.Id, OPEN_OPPS, CLOSED_OPPS);
@@ -512,12 +511,14 @@ public class SalesDepartureHandoverTest {
         // AC9: a handover that hands over a second time has to be recoverable as
         // well — A -> B -> C, two rows that chain, and the record names the LAST
         // owner it came from. Self-contained fixture (no other method's state).
-        User runner = mkRunner('chn');
         User first = mkUser('c1');
         User second = mkUser('c2');
         User third = mkUser('c3');
-
-            addMappingRow(first.Id, second.Id, runner);
+        // Both rows exist in the org before either hop runs; the second row is the
+        // state the second hop reads, and setup DML has to precede the grants.
+        addMappingRow(first.Id, second.Id);
+        addMappingRow(second.Id, third.Id);
+        User runner = mkRunner('chn');
         System.runAs(runner) {
             List<Account> seeds = seedAccounts(first.Id, 'c1');
             seedOpportunities(seeds[0].Id, first.Id, OPEN_OPPS, CLOSED_OPPS);
@@ -533,7 +534,6 @@ public class SalesDepartureHandoverTest {
         new SalesDepartureHandoverScheduler().execute(null);
         Test.stopTest();
 
-            addMappingRow(second.Id, third.Id, runner);
         System.runAs(runner) {
             System.assertEquals(ACCOUNTS, countAccountsOwned(second.Id),
                 'AC9 hop 1: the 4 Customers reached B');
@@ -620,13 +620,13 @@ public class SalesDepartureHandoverTest {
     // =====================================================================
     @isTest
     static void circularPair_bothPersonsReceiveTheFallbackPerson() {
-        User runner = mkRunner('run2');
         User pairA = mkUser('pa');
         User pairB = mkUser('pb');
         User fallback = mkUser('fb2');
-            addMappingRow(pairA.Id, pairB.Id, runner);
-            addMappingRow(pairB.Id, pairA.Id, runner);
-            addFallbackRow(fallback.Id, runner);
+        addMappingRow(pairA.Id, pairB.Id);
+        addMappingRow(pairB.Id, pairA.Id);
+        addFallbackRow(fallback.Id);
+        User runner = mkRunner('run2');
         System.runAs(runner) {
             List<Account> aRecs = seedAccounts(pairA.Id, 'pa');
             List<Account> bRecs = seedAccounts(pairB.Id, 'pb');
@@ -696,16 +696,16 @@ public class SalesDepartureHandoverTest {
      */
     static void moveRefused_compensationRestoresOwnersAndRowSaysFailed() {
         // ---- SETUP DML first, System context (house rule 3).
-        User runner = mkRunner('cmp');
         User departing = mkUser('cmpd');
         User manager = mkUser('cmpm');
+            addMappingRow(departing.Id, manager.Id);
+        User runner = mkRunner('cmp');
         // the two locals the phase after the runAs still needs: Apex keeps
         // block locals, and the IT action runs outside the block.
         List<Id> accountIds = new List<Id>();
         Id rowId = null;
 
         // ---- the fixture: mapping row + Customers while the person is active.
-            addMappingRow(departing.Id, manager.Id, runner);
         System.runAs(runner) {
             List<Account> seeds = seedAccounts(departing.Id, 'cmp');
             for (Account s : seeds) {
@@ -789,11 +789,11 @@ public class SalesDepartureHandoverTest {
     }
 
     static void noManagerNoFallback_and_missingMappingRow_stayBlockedAndVisible() {
-        User runner = mkRunner('run3');
         User mapped = mkUser('mp');
         User forgotten = mkUser('fg');
         User ownerless = mkUser('own');
-            addMappingRow(mapped.Id, null, runner);
+        addMappingRow(mapped.Id, null);
+        User runner = mkRunner('run3');
         System.runAs(runner) {
             // AC4: the row EXISTS, the manager column is empty.
             // AC12: `forgotten` has NO row at all - an entry mistake.
