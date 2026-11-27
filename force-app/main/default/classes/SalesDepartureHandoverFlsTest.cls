@@ -156,6 +156,12 @@ public class SalesDepartureHandoverFlsTest {
         // The org's own Customer of Automated Process is not visible to the test
         // runner (measured: count 0), so the fixture creates its own record with the
         // system user as owner - the guard has to spare exactly that one.
+        // SETUP DML FIRST: the sales person is created before any Account or
+        // custom-object row is inserted (house rule, measured: the gate-scope run
+        // answers MIXED_DML_OPERATION when a User insert follows an Account insert
+        // in one transaction).
+        User salesPerson = mkUser('sales');
+
         List<Account> systemOwned = new List<Account>();
         Account sysCust = new Account(Name = 'SCRUM483F owned by system user', OwnerId = ap.Id);
         systemOwned.add(sysCust);
@@ -166,12 +172,20 @@ public class SalesDepartureHandoverFlsTest {
 
         System.assert(SalesDepartureHandoverService.isSystemUser(ap.Id),
             'AC10: an org system user is never a sales person');
-        User salesPerson = mkUser('sales');
         addMappingRow(salesPerson.Id, salesPerson.Id);
         System.assert(!SalesDepartureHandoverService.isSystemUser(salesPerson.Id),
             'AC10 sanity: a sales person is no system user');
 
+        System.assertEquals(0, countRowsFor(ap.Id),
+            'AC10 sanity: nobody was switched off yet, so no trail row exists');
+
+        // AC11: the IT action in its own transaction, then the handover run. The
+        // switch-off is setup-object DML (User) and may not follow the custom-object
+        // row above in the same transaction (measured MIXED_DML_OPERATION in the
+        // gate scope).
         Test.startTest();
+        salesPerson.IsActive = false;
+        update salesPerson;
         new SalesDepartureHandoverScheduler().execute(null);
         Test.stopTest();
 
@@ -180,10 +194,7 @@ public class SalesDepartureHandoverFlsTest {
         System.assertEquals(0, countRowsFor(ap.Id),
             'AC10: the system user produced no trail row');
         System.assertEquals(0, countRowsFor(salesPerson.Id),
-            'AC10 sanity: an ACTIVE sales person causes no handover at all');
-
-        salesPerson.IsActive = false;
-        update salesPerson;
+            'AC10 sanity: a sales person that owns no record gets no trail row at all');
     }
 
     /* =================================================================== */
@@ -248,13 +259,16 @@ public class SalesDepartureHandoverFlsTest {
 
         // The records exist BEFORE IT switches anyone off: a Customer cannot even be
         // created with an inactive owner (measured 2026-11-27, INACTIVE_OWNER_OR_USER).
+        // The switch-off is setup-object DML (User) and cannot follow the custom-
+        // object rows above in one transaction (measured MIXED_DML_OPERATION in the
+        // gate scope): the two updates and the fallback row get their own
+        // transaction, ordered setup DML first.
+        Test.startTest();
         brokenTarget.IsActive = false;
         update brokenTarget;
         departing.IsActive = false;
         update departing;
         addFallbackRow(brokenTarget.Id);
-
-        Test.startTest();
         System.runAs(runner) {
             new SalesDepartureHandoverScheduler().execute(null);
         }
@@ -292,5 +306,140 @@ public class SalesDepartureHandoverFlsTest {
         List<Opportunity> recs = [SELECT Id FROM Opportunity
                                   WHERE OwnerId = :userId AND IsClosed = false];
         return recs.size();
+    }
+
+    /* =================================================================== */
+    /* T4 - AC3 / AC8 negative half: the provenance fields exist ONLY to a */
+    /*      user that holds the SCRUM-483 Permission Sets. Without them the */
+    /*      field is invisible and reading it throws. Falsifiable: the same */
+    /*      two reads are asserted from a user that DOES hold them.         */
+    /* =================================================================== */
+    @isTest
+    static void withoutThePermissionSets_theProvenanceIsInvisibleAndTheReadThrows() {
+        // ---- SETUP DML FIRST, System context: one person WITHOUT any SCRUM-483
+        // Permission Set, one WITH the bundle (mkRunner).
+        User unprivileged = mkUser('weak');
+        User privileged = mkRunner('full');
+
+        // ---- the fixture: a Customer carrying provenance, owned by both users.
+        List<Account> owned = seedAccounts(unprivileged.Id);
+        for (Account a : owned) {
+            a.Handed_Over_From__c = privileged.Id;
+            a.Handed_Over_On__c = DateTime.now();
+        }
+        update owned;
+
+        // ---- the same field, described by both users, and a read attempt.
+        Test.startTest();
+        System.runAs(unprivileged) {
+            System.assertEquals(false, Account.Handed_Over_From__c.getDescribe().isAccessible(),
+                'AC3/AC8 negative: the provenance is invisible without the Permission Sets');
+            Boolean readRefused = false;
+            try {
+                List<Account> seen = [SELECT Id, Handed_Over_From__c FROM Account
+                                      WHERE OwnerId = :unprivileged.Id WITH USER_MODE];
+                System.assertEquals(owned.size(), seen.size(),
+                    'AC3/AC8 negative: a read of an invisible field did not throw');
+            } catch (QueryException readErr) {
+                readRefused = true;
+                System.assert(String.valueOf(readErr.getMessage())
+                                  .contains('Handed_Over_From__c'),
+                    'AC3/AC8 negative: the refusal names the field that is invisible');
+            } catch (DmlException readErr) {
+                readRefused = true;
+                System.assert(String.valueOf(readErr.getMessage())
+                                  .contains('Handed_Over_From__c'),
+                    'AC3/AC8 negative: the refusal names the field that is invisible');
+            }
+            System.assert(readRefused,
+                'AC3/AC8 negative: the SOQL read of the invisible field throws');
+        }
+
+        System.runAs(privileged) {
+            System.assertEquals(true, Account.Handed_Over_From__c.getDescribe().isAccessible(),
+                'AC3/AC8: the same field IS visible to the holder of the bundle (falsifiable)');
+        }
+        Test.stopTest();
+    }
+
+    /* =================================================================== */
+    /* T5 - AC11 tier 2 / the system-only half: a handover driven by a user */
+    /*      that holds only the logging grant still moves the records, and  */
+    /*      NOTHING about it is attributed to that user. Measured 2026-11-27: */
+    /*      this class is apiVersion 62.0, where database operations run in */
+    /*      system mode by default, so no user's Permission Set can refuse  */
+    /*      the move (a Permission Set can only grant, never revoke) - the  */
+    /*      row therefore says Done here, and the refusal the org really    */
+    /*      produces for a move (the Account Validation Rule "Sperrgrund")   */
+    /*      is driven in SalesDepartureHandoverTest.moveRefused_compensation */
+    /*      RestoresOwnersAndRowSaysFailed, where the row says Failed.       */
+    /* =================================================================== */
+    @isTest
+    static void drivenByATrailWriter_nothingIsAttributedToTheDriver() {
+        // ---- SETUP DML FIRST: the driver holds ONLY the logging grant.
+        User trailWriter = mkUser('writer');
+        PermissionSet logPs = [SELECT Id FROM PermissionSet
+                               WHERE Name = 'SCRUM483_Handover_Log' LIMIT 1];
+        System.assert(logPs != null, 'precondition: SCRUM483_Handover_Log is deployed');
+        insert new PermissionSetAssignment(AssigneeId = trailWriter.Id,
+                                           PermissionSetId = logPs.Id);
+        User departed = mkUser('depw');
+        User manager = mkUser('mgrw');
+
+        // ---- the fixture while the person is still active.
+        addMappingRow(departed.Id, manager.Id);
+        List<Account> mine = seedAccounts(departed.Id);
+        seedOpportunities(mine[0].Id, departed.Id, 2, 0);
+
+        // AC11: the IT action first (setup DML before the run's business DML),
+        // then the handover driven by the driver that owns nothing of it.
+        Test.startTest();
+        departed.IsActive = false;
+        update departed;
+        System.runAs(trailWriter) {
+            new SalesDepartureHandoverJob(departed.Id, manager.Id,
+                                          SalesDepartureHandoverService.RULE_MANAGER,
+                                          SalesDepartureHandoverService.EV_INACTIVE)
+                .execute(null);
+        }
+        Test.stopTest();
+
+        User stillOff = [SELECT Id, IsActive FROM User WHERE Id = :departed.Id];
+        System.assertEquals(false, stillOff.IsActive,
+            'AC11: the deactivation still stands, the handover did not block it');
+
+        List<SalesDepartureHandover__c> rows = [
+            SELECT Id, From_User__c, To_User__c, Target_Rule__c, Status__c,
+                   Info__c, Error_Detail__c, Accounts_Handed_Over__c
+            FROM SalesDepartureHandover__c WHERE From_User__c = :departed.Id
+        ];
+        System.assertEquals(1, rows.size(), 'AC11: one trail row for the departure');
+        for (SalesDepartureHandover__c row : rows) {
+            System.assertEquals(SalesDepartureHandoverService.ST_DONE, row.Status__c,
+                'measured: at apiVersion 62.0 the move is not refused for this driver');
+            System.assertEquals(manager.Id, row.To_User__c,
+                'system-only: the row names the MAPPING manager, not the driving user');
+            System.assertEquals(departed.Id, row.From_User__c,
+                'system-only: the row names the departure, not the driving user');
+        }
+
+        System.assertEquals(4, countAccountsOwned(manager.Id),
+            'AC1: the Customers reached the mapping manager');
+        System.assertEquals(0, countAccountsOwned(trailWriter.Id),
+            'system-only: nothing moved to the driving user, the driver owns nothing');
+        System.assertEquals(0, countAccountsOwned(departed.Id),
+            'AC1: nothing of the departure stays');
+
+        List<Account> moved = [
+            SELECT Id, OwnerId, Handed_Over_From__c, Handed_Over_On__c, Handover_Run__c
+            FROM Account WHERE OwnerId = :manager.Id
+        ];
+        System.assertEquals(4, moved.size(), 'AC1: all 4 Customers moved');
+        for (Account a : moved) {
+            System.assertEquals(departed.Id, a.Handed_Over_From__c,
+                'system-only: the record names the DEPARTED person as the previous owner');
+            System.assertNotEquals(trailWriter.Id, a.Handed_Over_From__c,
+                'system-only: the provenance never names the driving user');
+        }
     }
 }
