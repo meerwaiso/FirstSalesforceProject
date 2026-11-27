@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SCRUM-483 Phase 4: the two Apex test classes (test artefacts, same PR).
+     Deployed LAST: both reference Scheduler/Service/Job/Batch from phase 3a/3b.
+     House: scr445-phase3-apextests.xml / scr482-test.xml. -->
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SalesDepartureHandoverTest</members>
+        <members>SalesDepartureHandoverFlsTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>67.0</version>
+</Package>

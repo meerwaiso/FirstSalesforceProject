@@ -39,7 +39,7 @@
  * @author developer-agent
  * @date 2026-11-27
  */
-public class SalesDepartureHandoverScheduler implements Schedulable {
+global class SalesDepartureHandoverScheduler implements Schedulable {
 
     global void execute(SchedulableContext ctx) {
         SalesDepartureHandoverService.loadRunCaches();
@@ -47,10 +47,17 @@ public class SalesDepartureHandoverScheduler implements Schedulable {
 
         Integer handedOver = 0;
         Integer blocked = 0;
+        Integer ignored = 0;
         for (Id ownerId : candidates.keySet()) {
             String evidence = candidates.get(ownerId);
             if (SalesDepartureHandoverService.alreadyLogged(ownerId, evidence)) {
                 // idempotency (house SCRUM-388/417): a second run touches 0 rows
+                continue;
+            }
+            if (SalesDepartureHandoverService.isSystemUser(ownerId)) {
+                // AC10: the org's own system users (Automated Process, ...) own
+                // records but are nobody's sales person — no handover, NO row.
+                ignored++;
                 continue;
             }
             Id target = SalesDepartureHandoverService.resolveTarget(ownerId);
@@ -67,15 +74,15 @@ public class SalesDepartureHandoverScheduler implements Schedulable {
             }
             // The move runs as its own Queueable job: one person's failure can
             // never undo another person's deactivation, and never aborts the run.
-            SalesDepartureHandoverJob job = new SalesDepartureHandoverJob(
+            System.enqueueJob(new SalesDepartureHandoverJob(
                 ownerId, target, SalesDepartureHandoverService.targetRule(), evidence
-            );
-            enqueue job;
+            ));
             handedOver++;
         }
         System.debug('SCRUM-483 DepartureHandover: candidates='
             + String.valueOf(candidates.size())
             + ' queued=' + String.valueOf(handedOver)
-            + ' blocked=' + String.valueOf(blocked));
+            + ' blocked=' + String.valueOf(blocked)
+            + ' ignored=' + String.valueOf(ignored));
     }
 }
