@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Deputy_Name__c</fullName>
+    <label>Note</label>
+    <description>SCRUM-483: free note of sales management.</description>
+    <type>Text</type>
+    <length>40</length>
+    <required>false</required>
+</CustomField>
