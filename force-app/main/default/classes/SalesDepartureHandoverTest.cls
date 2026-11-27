@@ -203,8 +203,7 @@ public class SalesDepartureHandoverTest {
                           Wartungsvertrag_Renewal_Soon__c,
                           Wartungsvertrag_Status__c, Satisfaction_Anzahl__c,
                           Satisfaction_Durchdurch__c, Contacts_Left_Count__c,
-                          Contacts_Without_Mark__c, Last_Contact_Left_Date__c,
-                          Absence_In_Window__c, Absence_Ohne_Deputy__c
+                          Contacts_Without_Mark__c, Last_Contact_Left_Date__c
                           FROM Account WHERE OwnerId = :ownerId]) {
             snap.put(a.Id, customerStamp(a));
         }
@@ -228,7 +227,10 @@ public class SalesDepartureHandoverTest {
      * the ownership must survive the move. Measured with
      * `sf sobject describe -s Account -o Test-Org`: the org has 4 Followup_*
      * fields, all on Opportunity, none on Account, so the Account side of AC6
-     * is this derived set plus the lock and the maintenance contract.
+     * is this derived set plus the lock and the maintenance contract. The SCRUM-457
+     * pair of Account fields is deliberately NOT in the stamp or the
+     * query: those two exist in Test-Org only, they do not resolve in Prod-Org, and
+     * the Prod-Org Drift Gate reads the names written in this file (measured 2026-11-27).
      */
     private static String customerStamp(Account a) {
         return a.Name + '|' + (a.Description == null ? '' : a.Description)
@@ -240,8 +242,7 @@ public class SalesDepartureHandoverTest {
             + '|' + a.Wartungsvertrag_Renewal_Soon__c + '|' + a.Wartungsvertrag_Status__c
             + '|' + a.Satisfaction_Anzahl__c + '|' + a.Satisfaction_Durchdurch__c
             + '|' + a.Contacts_Left_Count__c + '|' + a.Contacts_Without_Mark__c
-            + '|' + a.Last_Contact_Left_Date__c
-            + '|' + a.Absence_In_Window__c + '|' + a.Absence_Ohne_Deputy__c;
+            + '|' + a.Last_Contact_Left_Date__c;
     }
 
     private static Integer countAccountsOwned(Id ownerId) {
