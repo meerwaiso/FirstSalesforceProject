@@ -194,6 +194,17 @@ jobs:
                 | sed 's/\.cls$//' \
                 | paste -sd, -)
             fi
+            # Test classes the branch itself adds or changes always belong to its
+            # scope, whatever they are called. SCRUM-483 named its tests
+            # SalesDepartureHandover*Test, the prefix match above found none, and
+            # the run fell back to all 601 tests of the org.
+            eigene=$(printf '%s\n' "$geaendert" \
+              | grep -oE '^force-app/main/default/classes/[A-Za-z0-9_]+Test\.cls$' \
+              | sed -E 's#.*/##; s/\.cls$//' || true)
+            if [ -n "$eigene" ]; then
+              klassen=$( { printf '%s\n' "$klassen" | tr ',' '\n'; printf '%s\n' "$eigene"; } \
+                | grep -v '^$' | sort -u | paste -sd, - )
+            fi
           fi
           if [ -n "$klassen" ]; then
             echo "level=RunSpecifiedTests" >> "$GITHUB_OUTPUT"
@@ -225,65 +236,34 @@ jobs:
           BASIS: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || (github.event_name == 'workflow_dispatch' && 'origin/master' || 'HEAD~1') }}
         run: python3 scripts/fls-gate.py --base "$BASIS" --org Test-Org
 
-      # Gate 1 — Apex tests must pass. `sf apex run test` reports coverage but
-      # does not enforce a threshold, which is what we want here: the suite is
-      # green today (15/15) while overall coverage is still 37%.
+      # Gate 1 — Apex tests must pass ON THIS BRANCH'S CODE.
       #
-      # TEST-LEVEL: set by the step above. RunAllTestsInOrg is the same broad
-      # path as `RunLocalTests` without `--class-names` — the explicit spelling,
-      # kept so a runner flake can be read directly as such (the BUG-A repro was
-      # on this path; named runs green).
-      # See Jira SCRUM-394 comment 16496 for the full BUG-A context.
-      - name: Run Apex tests
+      # Until 28.11.2026 this was `sf apex run test` against Test-Org, i.e. against
+      # whatever an agent had last deployed there, plus an advisory full validate.
+      # SCRUM-483: three rework rounds were rejected on MIXED_DML failures of test
+      # classes the CI had never seen in their reworked form; the same head, checked
+      # through this gate, passes 9/9 and shows the real blocker instead (a class at
+      # 50.6 % coverage, which a Prod deploy refuses).
+      #
+      # scripts/apex-gate.sh validates the branch's force-app/ delta check-only with
+      # the ticket's tests (scope step above): nothing is saved in Test-Org, and the
+      # Prod rule applies — every Apex class/trigger in the delta needs 75 % coverage.
+      # Agents run the same script before a handoff.
+      - name: Apex tests on the branch's code (check-only delta validate)
         if: steps.guard.outputs.has_auth == 'true' && steps.scope.outputs.level != 'NoTests'
         env:
           STUFE: ${{ steps.scope.outputs.level }}
           KLASSEN: ${{ steps.scope.outputs.classes }}
-        run: |
-          if [ "$STUFE" = "RunSpecifiedTests" ]; then
-            sf apex run test \
-              --test-level RunSpecifiedTests \
-              --class-names "$KLASSEN" \
-              --code-coverage \
-              --result-format human \
-              --output-dir apex-test-results \
-              --wait 30
-          else
-            sf apex run test \
-              --test-level RunAllTestsInOrg \
-              --code-coverage \
-              --result-format human \
-              --output-dir apex-test-results \
-              --wait 30
-          fi
-
-      # Advisory — a full check-only deploy. Currently blocked by Salesforce's
-      # 75% coverage requirement (org-wide coverage is 37%, and
-      # CasePriorityTrigger has no test class at all). Flip
-      # continue-on-error to false once coverage clears 75% — from then on this
-      # is the honest pre-deploy gate, because production deployments enforce
-      # exactly this threshold.
-      - name: Validate metadata (check-only, advisory)
-        if: steps.guard.outputs.has_auth == 'true' && steps.scope.outputs.level != 'NoTests'
-        continue-on-error: true
-        env:
-          STUFE: ${{ steps.scope.outputs.level }}
-          KLASSEN: ${{ steps.scope.outputs.classes }}
+          BASIS: ${{ github.base_ref }}
         # SCRUM-463: through scripts/ci-prod-validate.sh, so a cancelled run also
         # cancels the validation in Test-Org (it burns the 24-hour Apex budget).
-        # The step stays red when the validation fails, as the bare CLI call was.
         timeout-minutes: 35
         run: |
-          if [ "$STUFE" = "RunSpecifiedTests" ]; then
-            scripts/ci-prod-validate.sh --org Test-Org --source-dir force-app \
-              --test-level RunSpecifiedTests --tests "$KLASSEN" \
-              --wait 30 --out test-validate.json
-          else
-            scripts/ci-prod-validate.sh --org Test-Org --source-dir force-app \
-              --test-level RunLocalTests \
-              --wait 30 --out test-validate.json
-          fi
-          python3 -c 'import json,sys; r=json.load(open("test-validate.json"))["result"]; print("Test-Org validate:", r.get("status")); sys.exit(0 if r.get("success") else 1)'
+          ARGS=(--org Test-Org --out apex-test-results/apex-gate.json)
+          mkdir -p apex-test-results
+          [ -n "$BASIS" ] && ARGS+=(--base "origin/$BASIS")
+          [ "$STUFE" = "RunSpecifiedTests" ] && ARGS+=(--tests "$KLASSEN")
+          scripts/apex-gate.sh "${ARGS[@]}"
 
       - name: Cancel a Test-Org validation the run left behind
         if: cancelled() && steps.guard.outputs.has_auth == 'true'
